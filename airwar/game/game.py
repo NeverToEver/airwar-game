@@ -1,21 +1,24 @@
 from airwar.scenes import SceneManager, GameScene, MenuScene, PauseScene, LoginScene
 from airwar.utils.database import UserDB
-from airwar.window import get_window, create_window
-from airwar.config import get_adaptive_screen_size, set_screen_size
+from airwar.window import create_window
 
 
 class Game:
     def __init__(self):
-        screen_size = get_adaptive_screen_size()
-        self.window = create_window(screen_size[0], screen_size[1], 'Air War - 飞机大战', resizable=True)
+        from airwar.window import create_window
+        from airwar.config import set_screen_size
+
+        self.window = create_window(1200, 700, 'Air War - 飞机大战', resizable=True)
+        self.screen_width = self.window.get_width()
+        self.screen_height = self.window.get_height()
+        set_screen_size(self.screen_width, self.screen_height)
+
         self.running = True
         self._quit_to_menu_requested = False
         self.db = UserDB()
         self.scene_manager = SceneManager()
         self.current_user = None
         self._register_scenes()
-        self.screen_width = screen_size[0]
-        self.screen_height = screen_size[1]
 
     def _handle_resize(self, width: int, height: int) -> None:
         self.screen_width = width
