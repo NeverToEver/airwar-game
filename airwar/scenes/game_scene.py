@@ -1,33 +1,9 @@
 import pygame
 from .scene import Scene
 from airwar.entities import Player, Enemy, EnemySpawner, EnemyData, Boss, BossData
-
-
-REWARD_POOL = {
-    'health': [
-        {'name': 'Extra Life', 'desc': '+50 Max HP, +30 HP', 'icon': 'HP'},
-        {'name': 'Regeneration', 'desc': 'Passively heal 2 HP/sec', 'icon': 'REG'},
-        {'name': 'Lifesteal', 'desc': '+10% lifesteal on kill', 'icon': 'LST'},
-    ],
-    'offense': [
-        {'name': 'Power Shot', 'desc': '+25% bullet damage', 'icon': 'DMG'},
-        {'name': 'Rapid Fire', 'desc': '+20% fire rate', 'icon': 'RPD'},
-        {'name': 'Piercing', 'desc': 'Bullets pierce 1 enemy', 'icon': 'PIR'},
-        {'name': 'Spread Shot', 'desc': 'Fire 3 bullets at once', 'icon': 'SPD'},
-        {'name': 'Explosive', 'desc': 'Bullets deal 30 AoE damage', 'icon': 'EXP'},
-    ],
-    'defense': [
-        {'name': 'Shield', 'desc': 'Block next hit', 'icon': 'SHD'},
-        {'name': 'Armor', 'desc': '-15% damage taken', 'icon': 'ARM'},
-        {'name': 'Evasion', 'desc': '+20% dodge chance', 'icon': 'EVD'},
-        {'name': 'Barrier', 'desc': 'Gain 50 temporary HP', 'icon': 'BAR'},
-    ],
-    'utility': [
-        {'name': 'Speed Boost', 'desc': '+15% move speed', 'icon': 'SPD'},
-        {'name': 'Magnet', 'desc': '+30% score pickup range', 'icon': 'MAG'},
-        {'name': 'Slow Field', 'desc': 'Slow enemies by 20%', 'icon': 'SLO'},
-    ],
-}
+from airwar.game.systems.health_system import HealthSystem
+from airwar.game.systems.reward_system import RewardSystem, REWARD_POOL
+from airwar.game.systems.hud_renderer import HUDRenderer
 
 
 class RewardSelector:
@@ -39,6 +15,7 @@ class RewardSelector:
         self.animation_time = 0
 
     def generate_options(self, cycle_count: int, unlocked_buffs: list) -> list:
+        from airwar.game.systems.reward_system import REWARD_POOL
         import random
         options = []
         categories = list(REWARD_POOL.keys())
@@ -156,8 +133,15 @@ class RewardSelector:
 
 
 class GameScene(Scene):
+    def __init__(self):
+        self.health_system = None
+        self.reward_system = None
+        self.hud_renderer = None
+
     def enter(self, **kwargs) -> None:
         from airwar.config import DIFFICULTY_SETTINGS, get_screen_width, get_screen_height
+        from airwar.input import PygameInputHandler
+        from airwar.game import EnemyBulletSpawner
 
         screen_width = get_screen_width()
         screen_height = get_screen_height()
@@ -166,7 +150,8 @@ class GameScene(Scene):
         self.username = kwargs.get('username', 'Player')
         settings = DIFFICULTY_SETTINGS[difficulty]
 
-        self.player = Player(screen_width // 2 - 25, screen_height - 100)
+        input_handler = PygameInputHandler()
+        self.player = Player(screen_width // 2 - 25, screen_height - 100, input_handler)
         self.player.rect.y = -80
 
         self.entrance_animation = True
@@ -175,7 +160,10 @@ class GameScene(Scene):
         self.player.bullet_damage = settings['bullet_damage']
         self.enemies = []
         self.enemy_bullets = []
+        
+        self.enemy_bullet_spawner = EnemyBulletSpawner(self.enemy_bullets)
         self.enemy_spawner = EnemySpawner()
+        self.enemy_spawner.set_bullet_spawner(self.enemy_bullet_spawner)
         self.enemy_spawner.set_params(
             health=settings['enemy_health'],
             speed=settings['enemy_speed'],
@@ -196,19 +184,6 @@ class GameScene(Scene):
 
         self.difficulty_threshold_multiplier = {'easy': 1.0, 'medium': 1.5, 'hard': 2.0}[difficulty]
 
-        self.unlocked_buffs = []
-        self.pending_reward = None
-
-        self.piercing_level = 0
-        self.spread_level = 0
-        self.explosive_level = 0
-        self.armor_level = 0
-        self.evasion_level = 0
-        self.regen_timer = 0
-        self.lifesteal_total = 0
-        self.magnet_range = 0
-        self.slow_factor = 1.0
-
         self.reward_selector = RewardSelector()
         self.notification = None
         self.notification_timer = 0
@@ -222,10 +197,9 @@ class GameScene(Scene):
         self.boss_spawn_interval = 1800
         self.boss_killed = False
 
-        pygame.font.init()
-        self.hud_font = pygame.font.Font(None, 26)
-        self.buff_font = pygame.font.Font(None, 20)
-        self.notif_font = pygame.font.Font(None, 32)
+        self.health_system = HealthSystem(difficulty)
+        self.reward_system = RewardSystem()
+        self.hud_renderer = HUDRenderer()
 
     def _get_score_multiplier(self, difficulty: str) -> int:
         return {'easy': 1, 'medium': 2, 'hard': 3}[difficulty]
@@ -248,7 +222,7 @@ class GameScene(Scene):
             escape_time=escape_time
         )
         boss = Boss(screen_width // 2 - boss_data.width // 2, -100, boss_data)
-        boss.set_game_scene(self)
+        boss.set_bullet_spawner(self.enemy_bullet_spawner)
         self.boss = boss
         self._show_notification(f"! BOSS APPROACHING ({int(escape_time/60)}s) !")
 
@@ -282,109 +256,52 @@ class GameScene(Scene):
         self.reward_selector.update()
 
         if self.entrance_animation:
-            self.entrance_timer += 1
-            from airwar.config import get_screen_width, get_screen_height
-            screen_width = get_screen_width()
-            screen_height = get_screen_height()
-            progress = self.entrance_timer / self.entrance_duration
-            if progress >= 1.0:
-                self.entrance_animation = False
-                self.player.rect.y = screen_height - 100
-            else:
-                target_y = screen_height - 100
-                start_y = -80
-                self.player.rect.y = int(start_y + (target_y - start_y) * progress)
-                self.player.rect.x = screen_width // 2 - 25
+            self._update_entrance_animation()
             return
 
         if self.paused or self.reward_selector.visible:
             return
 
-        self._update_regeneration()
+        self._update_game_logic()
+
+    def _update_entrance_animation(self) -> None:
+        from airwar.config import get_screen_width, get_screen_height
+        self.entrance_timer += 1
+        screen_width = get_screen_width()
+        screen_height = get_screen_height()
+        progress = self.entrance_timer / self.entrance_duration
+        if progress >= 1.0:
+            self.entrance_animation = False
+            self.player.rect.y = screen_height - 100
+        else:
+            target_y = screen_height - 100
+            start_y = -80
+            self.player.rect.y = int(start_y + (target_y - start_y) * progress)
+            self.player.rect.x = screen_width // 2 - 25
+
+    def _update_game_logic(self) -> None:
+        self.health_system.update(self.player, 'Regeneration' in self.reward_system.unlocked_buffs)
         self._update_invincibility()
         self._update_ripples()
 
         keys = pygame.key.get_pressed()
-        self.player.update(keys=keys)
+        self.player.update()
         self.player.auto_fire()
 
-        self.enemy_spawner.update(self.enemies, self.slow_factor, self)
+        self.enemy_spawner.update(self.enemies, self.reward_system.slow_factor)
 
         if self.boss is None:
             self.boss_spawn_timer += 1
-            spawn_interval = int(self.boss_spawn_interval * (1.0 / self.slow_factor))
+            spawn_interval = int(self.boss_spawn_interval * (1.0 / self.reward_system.slow_factor))
             if self.boss_spawn_timer >= spawn_interval:
                 self.boss_spawn_timer = 0
                 self._spawn_boss()
         else:
-            self.boss.update()
-            player_hitbox = self.player.get_hitbox()
-            if not self.boss.is_entering() and self.boss.active:
-                if self.boss.rect.colliderect(player_hitbox):
-                    if not self.player_invincible:
-                        damage = 30
-                        damage = self._calculate_damage_taken(damage)
-                        self.player.take_damage(damage)
-                        self._on_player_hit(damage)
+            self._update_boss()
 
-            for bullet in self.player.get_bullets():
-                if bullet.active and self.boss and self.boss.active and not self.boss.is_entering():
-                    if bullet.get_rect().colliderect(self.boss.get_rect()):
-                        bullet_damage = bullet.data.damage
-                        score_reward = self.boss.take_damage(bullet_damage)
-                        if score_reward > 0:
-                            self.score += score_reward
-                            self._show_notification(f"+{score_reward} BOSS SCORE!")
-                        if self.piercing_level <= 0:
-                            bullet.active = False
-                        if not self.boss.active:
-                            self.kills += 1
-                            self._on_enemy_killed()
-                            self._check_milestones()
-                            self.boss = None
-
-            if self.boss and not self.boss.active:
-                if self.boss.is_escaped():
-                    self._show_notification("BOSS ESCAPED! (+0)")
-                self.boss = None
-
-        for enemy in self.enemies:
-            enemy.update()
-
-            if enemy.rect.colliderect(self.player.get_hitbox()):
-                if self._try_dodge():
-                    pass
-                else:
-                    self._on_player_hit(20)
-
-        for bullet in self.player.get_bullets():
-            for enemy in self.enemies:
-                if bullet.active and enemy.active:
-                    if bullet.get_rect().colliderect(enemy.get_rect()):
-                        damage = bullet.data.damage
-                        if self.explosive_level > 0:
-                            self._do_explosive_damage(enemy.rect.centerx, enemy.rect.centery, damage)
-                        else:
-                            enemy.take_damage(damage)
-
-                        if self.piercing_level <= 0:
-                            bullet.active = False
-
-                        if not enemy.active:
-                            self.kills += 1
-                            self.score += enemy.data.score * self.score_multiplier
-                            self._on_enemy_killed()
-                            self._check_milestones()
-
-        for eb in self.enemy_bullets:
-            eb.update()
-            player_hitbox = self.player.get_hitbox()
-            if eb.active and eb.rect.colliderect(player_hitbox):
-                if not self.player_invincible:
-                    damage = eb.data.damage
-                    damage = self._calculate_damage_taken(damage)
-                    self.player.take_damage(damage)
-                    self._on_player_hit(damage)
+        self._update_enemies()
+        self._update_bullets()
+        self._update_enemy_bullets()
 
         self.enemies = [e for e in self.enemies if e.active]
         self.enemy_bullets = [b for b in self.enemy_bullets if b.active]
@@ -395,26 +312,73 @@ class GameScene(Scene):
         if not self.player.active:
             self.running = False
 
-    def _update_regeneration(self) -> None:
-        from airwar.config import HEALTH_REGEN
-        regen_settings = HEALTH_REGEN[self.difficulty]
+    def _update_boss(self) -> None:
+        self.boss.update()
+        player_hitbox = self.player.get_hitbox()
+        if not self.boss.is_entering() and self.boss.active:
+            if self.boss.rect.colliderect(player_hitbox):
+                if not self.player_invincible:
+                    damage = self.reward_system.calculate_damage_taken(30)
+                    self.player.take_damage(damage)
+                    self._on_player_hit(damage)
 
-        if 'Regeneration' not in self.unlocked_buffs:
-            self.regen_timer += 1
-            if self.regen_timer >= regen_settings['delay']:
-                self.regen_timer = regen_settings['delay']
-                self.regen_active = True
+        for bullet in self.player.get_bullets():
+            if bullet.active and self.boss and self.boss.active and not self.boss.is_entering():
+                if bullet.get_rect().colliderect(self.boss.get_rect()):
+                    score_reward = self.boss.take_damage(bullet.data.damage)
+                    if score_reward > 0:
+                        self.score += score_reward
+                        self._show_notification(f"+{score_reward} BOSS SCORE!")
+                    if self.reward_system.piercing_level <= 0:
+                        bullet.active = False
+                    if not self.boss.active:
+                        self.kills += 1
+                        self.reward_system.apply_lifesteal(self.player, self.boss.data.score)
+                        self._check_milestones()
+                        self.boss = None
 
-            if getattr(self, 'regen_active', False):
-                self.regen_interval_timer = getattr(self, 'regen_interval_timer', 0) + 1
-                if self.regen_interval_timer >= regen_settings['interval']:
-                    self.regen_interval_timer = 0
-                    self.player.health = min(self.player.health + regen_settings['rate'], self.player.max_health)
-        else:
-            self.regen_timer += 1
-            if self.regen_timer >= 60:
-                self.regen_timer = 0
-                self.player.health = min(self.player.health + 2, self.player.max_health)
+        if self.boss and not self.boss.active:
+            if self.boss.is_escaped():
+                self._show_notification("BOSS ESCAPED! (+0)")
+            self.boss = None
+
+    def _update_enemies(self) -> None:
+        for enemy in self.enemies:
+            enemy.update()
+            if enemy.rect.colliderect(self.player.get_hitbox()):
+                if not self.reward_system.try_dodge():
+                    self._on_player_hit(20)
+
+    def _update_bullets(self) -> None:
+        for bullet in self.player.get_bullets():
+            for enemy in self.enemies:
+                if bullet.active and enemy.active:
+                    if bullet.get_rect().colliderect(enemy.get_rect()):
+                        damage = bullet.data.damage
+                        if self.reward_system.explosive_level > 0:
+                            self.reward_system.do_explosive_damage(
+                                self.enemies, enemy.rect.centerx, enemy.rect.centery, damage)
+                        else:
+                            enemy.take_damage(damage)
+
+                        if self.reward_system.piercing_level <= 0:
+                            bullet.active = False
+
+                        if not enemy.active:
+                            self.kills += 1
+                            self.score += enemy.data.score * self.score_multiplier
+                            self.reward_system.apply_lifesteal(self.player, enemy.data.score)
+                            self._check_milestones()
+
+    def _update_enemy_bullets(self) -> None:
+        for eb in self.enemy_bullets:
+            eb.update()
+            player_hitbox = self.player.get_hitbox()
+            if eb.active and eb.rect.colliderect(player_hitbox):
+                if not self.player_invincible:
+                    damage = self.reward_system.calculate_damage_taken(eb.data.damage)
+                    self.player.take_damage(damage)
+                    self._on_player_hit(damage)
 
     def _on_player_hit(self, damage: int) -> None:
         center_x = self.player.rect.centerx
@@ -436,97 +400,24 @@ class GameScene(Scene):
             ripple['alpha'] -= 8
         self.ripple_effects = [r for r in self.ripple_effects if r['alpha'] > 0]
 
-    def _on_enemy_killed(self) -> None:
-        if 'Lifesteal' in self.unlocked_buffs:
-            heal = int(self.player.max_health * 0.1)
-            self.player.health = min(self.player.health + heal, self.player.max_health)
-
-    def _try_dodge(self) -> bool:
-        if 'Evasion' in self.unlocked_buffs:
-            import random
-            dodge_chance = 0.2
-            if random.random() < dodge_chance:
-                return True
-        return False
-
-    def _calculate_damage_taken(self, damage: int) -> int:
-        if 'Armor' in self.unlocked_buffs:
-            return int(damage * 0.85)
-        return damage
-
-    def _do_explosive_damage(self, x: int, y: int, damage: int) -> None:
-        for enemy in self.enemies:
-            if enemy.active:
-                dist = ((enemy.rect.centerx - x) ** 2 + (enemy.rect.centery - y) ** 2) ** 0.5
-                if dist < 60:
-                    enemy.take_damage(int(damage * 0.5))
-
     def _check_milestones(self) -> None:
         if self.cycle_count >= self.max_cycles:
             return
 
         threshold = self._get_next_threshold()
         if self.score >= threshold:
-            options = self.reward_selector.generate_options(self.cycle_count, self.unlocked_buffs)
+            options = self.reward_selector.generate_options(
+                self.cycle_count, self.reward_system.unlocked_buffs)
             self.reward_selector.show(options, self._on_reward_selected)
             self.paused = True
 
     def _on_reward_selected(self, reward: dict) -> None:
-        name = reward['name']
-        self.unlocked_buffs.append(name)
-
-        if name == 'Extra Life':
-            self.player.max_health += 50
-            self.player.health += 30
-
-        elif name == 'Regeneration':
-            pass
-
-        elif name == 'Lifesteal':
-            pass
-
-        elif name == 'Power Shot':
-            self.player.bullet_damage = int(self.player.bullet_damage * 1.25)
-
-        elif name == 'Rapid Fire':
-            self.player.fire_cooldown = max(1, int(self.player.fire_cooldown * 0.8))
-
-        elif name == 'Piercing':
-            self.piercing_level += 1
-
-        elif name == 'Spread Shot':
-            self.spread_level += 1
-
-        elif name == 'Explosive':
-            self.explosive_level += 1
-
-        elif name == 'Shield':
-            pass
-
-        elif name == 'Armor':
-            self.armor_level += 1
-
-        elif name == 'Evasion':
-            self.evasion_level += 1
-
-        elif name == 'Barrier':
-            self.player.max_health += 50
-            self.player.health += 50
-
-        elif name == 'Speed Boost':
-            self.player.rect.x = self.player.rect.x
-
-        elif name == 'Magnet':
-            pass
-
-        elif name == 'Slow Field':
-            self.slow_factor = 0.8
-
+        notification = self.reward_system.apply_reward(reward, self.player)
         self.milestone_index += 1
         if self.milestone_index % len(self.base_thresholds) == 0:
             self.cycle_count += 1
 
-        self.notification = f"REWARD: {name}"
+        self.notification = notification
         self.notification_timer = 90
         self.paused = False
 
@@ -534,174 +425,72 @@ class GameScene(Scene):
         surface.fill((0, 0, 0))
 
         if self.entrance_animation:
-            progress = self.entrance_timer / self.entrance_duration
-            zoom_scale = 1.0 + (1.5 - 1.0) * (1 - progress)
-
-            if not self.player_invincible or (self.invincibility_timer // 5) % 2 == 0:
-                self.player.render(surface)
-
-            for enemy in self.enemies:
-                enemy.render(surface)
-
-            if self.boss:
-                self.boss.render(surface)
-
-            for eb in self.enemy_bullets:
-                eb.render(surface)
-
-            center_x = surface.get_width() // 2
-            center_y = surface.get_height() // 2
-
-            scaled_width = int(surface.get_width() * zoom_scale)
-            scaled_height = int(surface.get_height() * zoom_scale)
-            scaled_surface = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
-            scaled_surface.blit(surface, (0, 0))
-            scaled_surface = pygame.transform.scale(scaled_surface, (scaled_width, scaled_height))
-
-            x_offset = (scaled_width - surface.get_width()) // 2
-            y_offset = (scaled_height - surface.get_height()) // 2
-            surface.fill((0, 0, 0))
-            surface.blit(scaled_surface, (-x_offset, -y_offset))
-
-            fade_surface = pygame.Surface((surface.get_width(), surface.get_height()))
-            fade_surface.set_alpha(int(80 * (1 - progress)))
-            surface.blit(fade_surface, (0, 0))
+            self._render_entrance_animation(surface)
         else:
-            if not self.player_invincible or (self.invincibility_timer // 5) % 2 == 0:
-                self.player.render(surface)
+            self._render_game(surface)
 
-            for enemy in self.enemies:
-                enemy.render(surface)
+    def _render_entrance_animation(self, surface: pygame.Surface) -> None:
+        progress = self.entrance_timer / self.entrance_duration
+        zoom_scale = 1.0 + (1.5 - 1.0) * (1 - progress)
 
-            if self.boss:
-                self.boss.render(surface)
-                self._render_boss_health_bar(surface)
+        if not self.player_invincible or (self.invincibility_timer // 5) % 2 == 0:
+            self.player.render(surface)
 
-            for eb in self.enemy_bullets:
-                eb.render(surface)
+        for enemy in self.enemies:
+            enemy.render(surface)
 
-            for ripple in self.ripple_effects:
-                from airwar.utils.sprites import draw_ripple
-                draw_ripple(surface, ripple['x'], ripple['y'], ripple['radius'], ripple['alpha'])
+        if self.boss:
+            self.boss.render(surface)
 
-            self._render_hud(surface)
-            self._render_buffs(surface)
-            self._render_notification(surface)
+        for eb in self.enemy_bullets:
+            eb.render(surface)
 
-            if self.reward_selector.visible:
-                self.reward_selector.render(surface)
+        center_x = surface.get_width() // 2
+        center_y = surface.get_height() // 2
 
-    def _render_boss_health_bar(self, surface: pygame.Surface) -> None:
-        if not self.boss:
-            return
+        scaled_width = int(surface.get_width() * zoom_scale)
+        scaled_height = int(surface.get_height() * zoom_scale)
+        scaled_surface = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+        scaled_surface.blit(surface, (0, 0))
+        scaled_surface = pygame.transform.scale(scaled_surface, (scaled_width, scaled_height))
 
-        bar_width = 400
-        bar_height = 28
-        x = (surface.get_width() - bar_width) // 2
-        y = 15
+        x_offset = (scaled_width - surface.get_width()) // 2
+        y_offset = (scaled_height - surface.get_height()) // 2
+        surface.fill((0, 0, 0))
+        surface.blit(scaled_surface, (-x_offset, -y_offset))
 
-        pygame.draw.rect(surface, (40, 40, 60), (x - 3, y - 3, bar_width + 6, bar_height + 6), border_radius=8)
-        pygame.draw.rect(surface, (55, 55, 75), (x, y, bar_width, bar_height), border_radius=6)
+        fade_surface = pygame.Surface((surface.get_width(), surface.get_height()))
+        fade_surface.set_alpha(int(80 * (1 - progress)))
+        surface.blit(fade_surface, (0, 0))
 
-        health_ratio = self.boss.health / self.boss.max_health
-        bar_color = (150, 50, 200) if health_ratio > 0.5 else (180, 100, 50) if health_ratio > 0.25 else (200, 50, 50)
-        pygame.draw.rect(surface, bar_color, (x, y, int(bar_width * health_ratio), bar_height), border_radius=6)
+    def _render_game(self, surface: pygame.Surface) -> None:
+        if not self.player_invincible or (self.invincibility_timer // 5) % 2 == 0:
+            self.player.render(surface)
 
-        font = pygame.font.Font(None, 24)
-        boss_text = font.render("BOSS", True, (255, 255, 255))
-        text_rect = boss_text.get_rect(center=(x + bar_width // 2, y + bar_height // 2))
-        surface.blit(boss_text, text_rect)
+        for enemy in self.enemies:
+            enemy.render(surface)
 
-        time_remaining = self.boss.get_time_remaining()
-        time_text = font.render(f"{time_remaining:.1f}s", True, (255, 220, 100))
-        time_rect = time_text.get_rect(right=x + bar_width - 8, centery=y + bar_height // 2)
-        surface.blit(time_text, time_rect)
+        if self.boss:
+            self.boss.render(surface)
+            self.hud_renderer.render_boss_health_bar(surface, self.boss)
 
-        progress = self.boss.get_survival_progress()
-        if progress > 0.7:
-            warning_text = font.render("HURRY!", True, (255, 100, 100))
-            warning_rect = warning_text.get_rect(left=x + 8, centery=y + bar_height // 2)
-            surface.blit(warning_text, warning_rect)
+        for eb in self.enemy_bullets:
+            eb.render(surface)
 
-    def _render_hud(self, surface: pygame.Surface) -> None:
-        score_text = self.hud_font.render(f"SCORE: {self.score}", True, (255, 255, 255))
-        surface.blit(score_text, (15, 15))
+        self.hud_renderer.render_ripples(surface, self.ripple_effects)
 
-        next_ms = self._get_next_threshold()
-        progress = min(100, int(self.score / next_ms * 100)) if next_ms > 0 else 0
-        progress_text = self.hud_font.render(f"NEXT: {progress}%", True, (200, 200, 100))
-        surface.blit(progress_text, (15, 45))
+        self.hud_renderer.render_hud(
+            surface, self.score, self.difficulty,
+            self.player.health, self.player.max_health, self.kills,
+            self._get_next_threshold(), self.cycle_count, self.max_cycles)
 
-        cycle_text = self.hud_font.render(f"CYCLE: {self.cycle_count}/{self.max_cycles}", True, (150, 150, 200))
-        surface.blit(cycle_text, (15, 75))
+        self.hud_renderer.render_buffs(
+            surface, self.reward_system.unlocked_buffs, self.reward_system.get_buff_color)
 
-        diff_text = self.hud_font.render(f"{self.difficulty.upper()}", True, (200, 200, 100))
-        surface.blit(diff_text, (surface.get_width() - 110, 15))
+        self.hud_renderer.render_notification(surface, self.notification, self.notification_timer)
 
-        health_text = self.hud_font.render(f"HP: {self.player.health}/{self.player.max_health}", True, (100, 255, 150))
-        surface.blit(health_text, (surface.get_width() - 160, 45))
-
-        if self.player.health < self.player.max_health * 0.3:
-            health_text = self.hud_font.render(f"HP: {self.player.health}/{self.player.max_health}", True, (255, 80, 80))
-            surface.blit(health_text, (surface.get_width() - 160, 45))
-
-        kills_text = self.hud_font.render(f"KILLS: {self.kills}", True, (180, 180, 180))
-        surface.blit(kills_text, (surface.get_width() - 120, 75))
-
-    def _render_buffs(self, surface: pygame.Surface) -> None:
-        if not self.unlocked_buffs:
-            return
-        
-        x = 15
-        y = surface.get_height() - 50
-        shown = set()
-
-        pygame.draw.rect(surface, (20, 20, 40), (x - 8, y - 8, 180, 36), border_radius=8)
-        
-        for buff in reversed(list(self.unlocked_buffs)[:8]):
-            if buff in shown:
-                continue
-            shown.add(buff)
-
-            color = self._get_buff_color(buff)
-            text = self.buff_font.render(buff[:4].upper(), True, color)
-            rect = text.get_rect(x=x, y=y)
-            pygame.draw.rect(surface, color, rect, 1, border_radius=4)
-            surface.blit(text, (x + 4, y + 4))
-            x += text.get_width() + 14
-
-            if x > 200:
-                break
-
-    def _get_buff_color(self, name: str) -> tuple:
-        colors = {
-            'Extra Life': (100, 255, 150),
-            'Regeneration': (150, 255, 100),
-            'Lifesteal': (255, 100, 150),
-            'Power Shot': (255, 80, 80),
-            'Rapid Fire': (255, 200, 100),
-            'Piercing': (200, 200, 100),
-            'Spread Shot': (255, 150, 100),
-            'Explosive': (255, 100, 50),
-            'Shield': (200, 100, 255),
-            'Armor': (150, 150, 180),
-            'Evasion': (100, 200, 255),
-            'Barrier': (100, 150, 200),
-            'Speed Boost': (100, 255, 200),
-            'Magnet': (255, 255, 100),
-            'Slow Field': (150, 150, 255),
-        }
-        return colors.get(name, (255, 255, 255))
-
-    def _render_notification(self, surface: pygame.Surface) -> None:
-        if self.notification_timer > 0 and self.notification:
-            alpha = min(255, self.notification_timer * 4)
-            color = (0, 255, 150) if alpha > 150 else (150, 255, 200)
-            text = self.notif_font.render(self.notification, True, color)
-            text.set_alpha(alpha)
-            x = surface.get_width() // 2 - text.get_width() // 2
-            y = 100
-            surface.blit(text, (x, y))
+        if self.reward_selector.visible:
+            self.reward_selector.render(surface)
 
     def get_score(self) -> int:
         return self.score
@@ -722,3 +511,21 @@ class GameScene(Scene):
     def resume(self) -> None:
         if not self.reward_selector.visible:
             self.paused = False
+
+    @property
+    def unlocked_buffs(self) -> list:
+        return self.reward_system.unlocked_buffs
+
+    @unlocked_buffs.setter
+    def unlocked_buffs(self, value: list) -> None:
+        self.reward_system.unlocked_buffs = value
+
+    def _calculate_damage_taken(self, damage: int) -> int:
+        return self.reward_system.calculate_damage_taken(damage)
+
+    def _try_dodge(self) -> bool:
+        return self.reward_system.try_dodge()
+
+    def _do_explosive_damage(self, x: int, y: int, damage: int) -> None:
+        self.reward_system.do_explosive_damage(self.enemies, x, y, damage)
+

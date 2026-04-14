@@ -1,0 +1,95 @@
+import pygame
+from dataclasses import dataclass
+from typing import List
+from airwar.game.systems.hud_renderer import HUDRenderer
+from airwar.game.controllers.game_controller import GameState
+
+
+@dataclass
+class GameEntities:
+    player: any
+    enemies: List
+    boss: any
+
+
+class GameRenderer:
+    def __init__(self, hud_renderer: HUDRenderer = None):
+        self.hud_renderer = hud_renderer or HUDRenderer()
+
+    def render(self, surface: pygame.Surface, state: GameState, entities: GameEntities) -> None:
+        surface.fill((0, 0, 0))
+
+        if state.entrance_animation:
+            self._render_entrance(surface, state, entities)
+        else:
+            self._render_game(surface, state, entities)
+
+    def _render_entrance(self, surface, state, entities):
+        progress = state.entrance_timer / state.entrance_duration
+        zoom_scale = 1.0 + (1.5 - 1.0) * (1 - progress)
+
+        if not state.player_invincible or (state.invincibility_timer // 5) % 2 == 0:
+            if entities.player:
+                entities.player.render(surface)
+
+        for enemy in entities.enemies:
+            enemy.render(surface)
+
+        if entities.boss:
+            entities.boss.render(surface)
+
+        center_x = surface.get_width() // 2
+        center_y = surface.get_height() // 2
+
+        scaled_width = int(surface.get_width() * zoom_scale)
+        scaled_height = int(surface.get_height() * zoom_scale)
+        scaled_surface = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+        scaled_surface.blit(surface, (0, 0))
+        scaled_surface = pygame.transform.scale(scaled_surface, (scaled_width, scaled_height))
+
+        x_offset = (scaled_width - surface.get_width()) // 2
+        y_offset = (scaled_height - surface.get_height()) // 2
+        surface.fill((0, 0, 0))
+        surface.blit(scaled_surface, (-x_offset, -y_offset))
+
+        fade_surface = pygame.Surface((surface.get_width(), surface.get_height()))
+        fade_surface.set_alpha(int(80 * (1 - progress)))
+        surface.blit(fade_surface, (0, 0))
+
+    def _render_game(self, surface, state, entities):
+        if not state.player_invincible or (state.invincibility_timer // 5) % 2 == 0:
+            if entities.player:
+                entities.player.render(surface)
+
+        for enemy in entities.enemies:
+            enemy.render(surface)
+
+        if entities.boss:
+            entities.boss.render(surface)
+            self.hud_renderer.render_boss_health_bar(surface, entities.boss)
+
+        self.hud_renderer.render_ripples(surface, state.ripple_effects)
+
+    def render_hud(
+        self,
+        surface,
+        score: int,
+        difficulty: str,
+        player_health: int,
+        player_max_health: int,
+        kills: int,
+        next_threshold: float,
+        cycle_count: int,
+        max_cycles: int
+    ) -> None:
+        self.hud_renderer.render_hud(
+            surface, score, difficulty,
+            player_health, player_max_health, kills,
+            next_threshold, cycle_count, max_cycles
+        )
+
+    def render_notification(self, surface, notification: str, timer: int) -> None:
+        self.hud_renderer.render_notification(surface, notification, timer)
+
+    def render_buffs(self, surface, unlocked_buffs: list, get_buff_color) -> None:
+        self.hud_renderer.render_buffs(surface, unlocked_buffs, get_buff_color)
