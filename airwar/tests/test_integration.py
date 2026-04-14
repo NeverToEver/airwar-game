@@ -204,9 +204,9 @@ class TestMilestoneSystem:
         scene = GameScene()
         scene.enter(difficulty='medium')
         threshold = scene._get_current_threshold(0)
-        assert threshold == 1000
+        assert threshold == 1500
         threshold_cycle1 = scene._get_current_threshold(5)
-        assert threshold_cycle1 == 1000 * (1.5 ** 1)
+        assert threshold_cycle1 == 1500 * (1.5 ** 1)
 
     def test_next_threshold_uses_milestone_index(self):
         from airwar.scenes.game_scene import GameScene
@@ -214,7 +214,7 @@ class TestMilestoneSystem:
         scene.enter(difficulty='medium')
         scene.milestone_index = 1
         threshold = scene._get_next_threshold()
-        assert threshold == 2500
+        assert threshold == 3750
 
 
 class TestGameFlowIntegration:

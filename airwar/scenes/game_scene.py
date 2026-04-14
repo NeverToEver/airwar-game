@@ -186,6 +186,8 @@ class GameScene(Scene):
         self.max_cycles = 10
         self.cycle_multiplier = 1.5
 
+        self.difficulty_threshold_multiplier = {'easy': 1.0, 'medium': 1.5, 'hard': 2.0}[difficulty]
+
         self.unlocked_buffs = []
         self.pending_reward = None
 
@@ -248,7 +250,7 @@ class GameScene(Scene):
     def _get_current_threshold(self, index: int) -> float:
         base = self.base_thresholds[index % len(self.base_thresholds)]
         cycle_bonus = index // len(self.base_thresholds)
-        return base * (self.cycle_multiplier ** cycle_bonus)
+        return base * (self.cycle_multiplier ** cycle_bonus) * self.difficulty_threshold_multiplier
 
     def _get_next_threshold(self) -> float:
         return self._get_current_threshold(self.milestone_index)
