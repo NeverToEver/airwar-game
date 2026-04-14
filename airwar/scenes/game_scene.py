@@ -100,51 +100,58 @@ class RewardSelector:
         width, height = surface.get_size()
 
         overlay = pygame.Surface((width, height), pygame.SRCALPHA)
-        overlay.fill((10, 10, 30, 220))
+        overlay.fill((8, 8, 25, 240))
         surface.blit(overlay, (0, 0))
 
-        title = pygame.font.Font(None, 52).render("CHOOSE YOUR REWARD", True, (255, 255, 255))
-        surface.blit(title, title.get_rect(center=(width // 2, 80)))
+        title = pygame.font.Font(None, 60).render("CHOOSE YOUR REWARD", True, (255, 255, 255))
+        surface.blit(title, title.get_rect(center=(width // 2, 100)))
 
-        box_width = 500
-        box_height = 90
-        start_y = 150
+        box_width = 580
+        box_height = 110
+        start_y = 180
         start_x = width // 2 - box_width // 2
 
         for i, option in enumerate(self.options):
-            y = start_y + i * (box_height + 25)
+            y = start_y + i * (box_height + 35)
             x = start_x
 
             is_selected = i == self.selected_index
-            box_color = (40, 60, 80) if is_selected else (25, 30, 50)
-            border_color = (0, 255, 150) if is_selected else (80, 100, 140)
+            box_color = (35, 55, 85) if is_selected else (22, 28, 48)
+            border_color = (0, 255, 150) if is_selected else (70, 90, 130)
 
             box_rect = pygame.Rect(x, y, box_width, box_height)
-            pygame.draw.rect(surface, box_color, box_rect)
-            pygame.draw.rect(surface, border_color, box_rect, 3 if is_selected else 2)
 
-            icon_box_width = 70
-            icon_box_rect = pygame.Rect(x + 8, y + 8, icon_box_width, box_height - 16)
-            pygame.draw.rect(surface, (30, 40, 60), icon_box_rect)
-            pygame.draw.rect(surface, border_color, icon_box_rect, 1)
+            if is_selected:
+                glow_rect = box_rect.inflate(8, 8)
+                glow_surf = pygame.Surface((glow_rect.width, glow_rect.height), pygame.SRCALPHA)
+                pygame.draw.rect(glow_surf, (0, 255, 150, 40), glow_surf.get_rect(), border_radius=15)
+                surface.blit(glow_surf, glow_rect)
+
+            pygame.draw.rect(surface, box_color, box_rect, border_radius=12)
+            pygame.draw.rect(surface, border_color, box_rect, 3 if is_selected else 2, border_radius=12)
+
+            icon_box_width = 85
+            icon_box_rect = pygame.Rect(x + 12, y + 12, icon_box_width, box_height - 24)
+            pygame.draw.rect(surface, (28, 38, 60), icon_box_rect, border_radius=8)
+            pygame.draw.rect(surface, border_color, icon_box_rect, 1, border_radius=8)
 
             arrow = ">>> " if is_selected else "    "
-            icon_text = pygame.font.Font(None, 28).render(f"{arrow}{option['icon']}", True,
-                                                        (0, 255, 150) if is_selected else (150, 150, 150))
-            icon_text_rect = icon_text.get_rect(center=(x + 8 + icon_box_width // 2, y + box_height // 2))
+            icon_text = pygame.font.Font(None, 32).render(f"{arrow}{option['icon']}", True,
+                                                        (0, 255, 150) if is_selected else (140, 140, 160))
+            icon_text_rect = icon_text.get_rect(center=(x + 12 + icon_box_width // 2, y + box_height // 2))
             surface.blit(icon_text, icon_text_rect)
 
-            text_x = x + icon_box_width + 25
+            text_x = x + icon_box_width + 35
 
-            name_text = pygame.font.Font(None, 32).render(option['name'], True,
-                                                        (255, 255, 255) if is_selected else (200, 200, 200))
-            surface.blit(name_text, (text_x, y + 15))
+            name_text = pygame.font.Font(None, 38).render(option['name'], True,
+                                                        (255, 255, 255) if is_selected else (200, 200, 220))
+            surface.blit(name_text, (text_x, y + 22))
 
-            desc_text = pygame.font.Font(None, 24).render(option['desc'], True,
-                                                        (160, 200, 160) if is_selected else (100, 100, 130))
-            surface.blit(desc_text, (text_x, y + 50))
+            desc_text = pygame.font.Font(None, 28).render(option['desc'], True,
+                                                        (160, 210, 160) if is_selected else (100, 110, 140))
+            surface.blit(desc_text, (text_x, y + 62))
 
-        hint = pygame.font.Font(None, 22).render("W/S or UP/DOWN to select, ENTER to confirm", True, (80, 100, 120))
+        hint = pygame.font.Font(None, 26).render("W/S or UP/DOWN to select, ENTER to confirm", True, (90, 110, 140))
         surface.blit(hint, hint.get_rect(center=(width // 2, height - 60)))
 
 
@@ -527,63 +534,70 @@ class GameScene(Scene):
         if not self.boss:
             return
 
-        bar_width = 350
-        bar_height = 20
+        bar_width = 400
+        bar_height = 28
         x = (surface.get_width() - bar_width) // 2
-        y = 10
+        y = 15
 
-        pygame.draw.rect(surface, (50, 50, 50), (x, y, bar_width, bar_height))
+        pygame.draw.rect(surface, (40, 40, 60), (x - 3, y - 3, bar_width + 6, bar_height + 6), border_radius=8)
+        pygame.draw.rect(surface, (55, 55, 75), (x, y, bar_width, bar_height), border_radius=6)
 
         health_ratio = self.boss.health / self.boss.max_health
         bar_color = (150, 50, 200) if health_ratio > 0.5 else (180, 100, 50) if health_ratio > 0.25 else (200, 50, 50)
-        pygame.draw.rect(surface, bar_color, (x, y, int(bar_width * health_ratio), bar_height))
+        pygame.draw.rect(surface, bar_color, (x, y, int(bar_width * health_ratio), bar_height), border_radius=6)
 
-        pygame.draw.rect(surface, (200, 200, 200), (x, y, bar_width, bar_height), 2)
-
-        font = pygame.font.Font(None, 22)
+        font = pygame.font.Font(None, 24)
         boss_text = font.render("BOSS", True, (255, 255, 255))
         text_rect = boss_text.get_rect(center=(x + bar_width // 2, y + bar_height // 2))
         surface.blit(boss_text, text_rect)
 
         time_remaining = self.boss.get_time_remaining()
         time_text = font.render(f"{time_remaining:.1f}s", True, (255, 220, 100))
-        time_rect = time_text.get_rect(right=x + bar_width - 5, centery=y + bar_height // 2)
+        time_rect = time_text.get_rect(right=x + bar_width - 8, centery=y + bar_height // 2)
         surface.blit(time_text, time_rect)
 
         progress = self.boss.get_survival_progress()
         if progress > 0.7:
             warning_text = font.render("HURRY!", True, (255, 100, 100))
-            warning_rect = warning_text.get_rect(left=x + 5, centery=y + bar_height // 2)
+            warning_rect = warning_text.get_rect(left=x + 8, centery=y + bar_height // 2)
             surface.blit(warning_text, warning_rect)
 
     def _render_hud(self, surface: pygame.Surface) -> None:
         score_text = self.hud_font.render(f"SCORE: {self.score}", True, (255, 255, 255))
-        surface.blit(score_text, (10, 10))
+        surface.blit(score_text, (15, 15))
 
         next_ms = self._get_next_threshold()
         progress = min(100, int(self.score / next_ms * 100)) if next_ms > 0 else 0
         progress_text = self.hud_font.render(f"NEXT: {progress}%", True, (200, 200, 100))
-        surface.blit(progress_text, (10, 35))
+        surface.blit(progress_text, (15, 45))
 
         cycle_text = self.hud_font.render(f"CYCLE: {self.cycle_count}/{self.max_cycles}", True, (150, 150, 200))
-        surface.blit(cycle_text, (10, 60))
+        surface.blit(cycle_text, (15, 75))
 
         diff_text = self.hud_font.render(f"{self.difficulty.upper()}", True, (200, 200, 100))
-        surface.blit(diff_text, (surface.get_width() - 100, 10))
+        surface.blit(diff_text, (surface.get_width() - 110, 15))
 
         health_text = self.hud_font.render(f"HP: {self.player.health}/{self.player.max_health}", True, (100, 255, 150))
-        surface.blit(health_text, (surface.get_width() - 150, 35))
+        surface.blit(health_text, (surface.get_width() - 160, 45))
 
         if self.player.health < self.player.max_health * 0.3:
             health_text = self.hud_font.render(f"HP: {self.player.health}/{self.player.max_health}", True, (255, 80, 80))
-            surface.blit(health_text, (surface.get_width() - 150, 35))
+            surface.blit(health_text, (surface.get_width() - 160, 45))
+
+        kills_text = self.hud_font.render(f"KILLS: {self.kills}", True, (180, 180, 180))
+        surface.blit(kills_text, (surface.get_width() - 120, 75))
 
     def _render_buffs(self, surface: pygame.Surface) -> None:
-        x = 10
-        y = surface.get_height() - 35
+        if not self.unlocked_buffs:
+            return
+        
+        x = 15
+        y = surface.get_height() - 50
         shown = set()
 
-        for buff in reversed(self.unlocked_buffs):
+        pygame.draw.rect(surface, (20, 20, 40), (x - 8, y - 8, 180, 36), border_radius=8)
+        
+        for buff in reversed(list(self.unlocked_buffs)[:8]):
             if buff in shown:
                 continue
             shown.add(buff)
@@ -591,11 +605,11 @@ class GameScene(Scene):
             color = self._get_buff_color(buff)
             text = self.buff_font.render(buff[:4].upper(), True, color)
             rect = text.get_rect(x=x, y=y)
-            pygame.draw.rect(surface, color, rect, 2)
-            surface.blit(text, (x + 3, y + 2))
-            x += text.get_width() + 12
+            pygame.draw.rect(surface, color, rect, 1, border_radius=4)
+            surface.blit(text, (x + 4, y + 4))
+            x += text.get_width() + 14
 
-            if x > surface.get_width() - 100:
+            if x > 200:
                 break
 
     def _get_buff_color(self, name: str) -> tuple:

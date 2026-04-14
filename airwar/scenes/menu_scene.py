@@ -15,21 +15,21 @@ class MenuScene(Scene):
         self.back_requested = False
 
         pygame.font.init()
-        self.title_font = pygame.font.Font(None, 100)
-        self.option_font = pygame.font.Font(None, 44)
-        self.hint_font = pygame.font.Font(None, 28)
-        self.desc_font = pygame.font.Font(None, 24)
+        self.title_font = pygame.font.Font(None, 120)
+        self.option_font = pygame.font.Font(None, 52)
+        self.hint_font = pygame.font.Font(None, 32)
+        self.desc_font = pygame.font.Font(None, 28)
 
         self.colors = {
-            'bg': (10, 10, 30),
-            'bg_gradient': (20, 20, 60),
+            'bg': (8, 8, 25),
+            'bg_gradient': (15, 15, 50),
             'title': (255, 255, 255),
             'title_glow': (100, 200, 255),
             'selected': (0, 255, 150),
             'selected_glow': (0, 200, 255),
-            'unselected': (80, 80, 120),
-            'hint': (60, 60, 100),
-            'back': (200, 100, 100),
+            'unselected': (90, 90, 130),
+            'hint': (70, 70, 110),
+            'back': (220, 110, 110),
         }
 
     def exit(self) -> None:
@@ -51,7 +51,7 @@ class MenuScene(Scene):
 
     def update(self, *args, **kwargs) -> None:
         self.animation_time += 1
-        self.glow_offset = math.sin(self.animation_time * 0.05) * 10
+        self.glow_offset = math.sin(self.animation_time * 0.05) * 12
 
     def _draw_gradient_background(self, surface: pygame.Surface) -> None:
         width, height = surface.get_size()
@@ -65,7 +65,7 @@ class MenuScene(Scene):
     def _draw_glow_text(self, surface: pygame.Surface, text: str, font: pygame.font.Font,
                         pos: tuple, color: tuple, glow_color: tuple, glow_radius: int = 2) -> None:
         for i in range(glow_radius, 0, -1):
-            alpha = int(100 / i)
+            alpha = int(120 / i)
             glow_surf = font.render(text, True, glow_color)
             glow_surf.set_alpha(alpha)
             glow_rect = glow_surf.get_rect(center=(pos[0], pos[1] + i))
@@ -79,51 +79,51 @@ class MenuScene(Scene):
         width, height = surface.get_size()
         center_x = width // 2
 
-        box_width = 350
-        box_height = 55
+        box_width = 420
+        box_height = 70
         box_rect = pygame.Rect(center_x - box_width // 2, y - box_height // 2, box_width, box_height)
 
         if is_selected:
             glow_color = self.colors['selected_glow']
-            for i in range(3, 0, -1):
-                glow_rect = box_rect.inflate(i * 4, i * 4)
+            for i in range(4, 0, -1):
+                glow_rect = box_rect.inflate(i * 5, i * 5)
                 glow_surf = pygame.Surface((glow_rect.width, glow_rect.height), pygame.SRCALPHA)
-                pygame.draw.rect(glow_surf, (*glow_color, 50 // i), glow_surf.get_rect())
+                pygame.draw.rect(glow_surf, (*glow_color, 60 // i), glow_surf.get_rect())
                 surface.blit(glow_surf, glow_rect)
 
-            pygame.draw.rect(surface, (30, 30, 60), box_rect)
-            pygame.draw.rect(surface, self.colors['selected'], box_rect, 2)
+            pygame.draw.rect(surface, (25, 35, 65), box_rect, border_radius=12)
+            pygame.draw.rect(surface, self.colors['selected'], box_rect, 3, border_radius=12)
         else:
-            pygame.draw.rect(surface, (20, 20, 40), box_rect)
-            pygame.draw.rect(surface, self.colors['unselected'], box_rect, 1)
+            pygame.draw.rect(surface, (18, 20, 40), box_rect, border_radius=12)
+            pygame.draw.rect(surface, self.colors['unselected'], box_rect, 2, border_radius=12)
 
-        arrow = "> " if is_selected else "  "
+        arrow = ">> " if is_selected else "   "
         option_text = self.option_font.render(f"{arrow}{text.upper()}", True,
                                              self.colors['selected'] if is_selected else self.colors['unselected'])
-        text_rect = option_text.get_rect(center=(center_x - 70, y))
+        text_rect = option_text.get_rect(center=(center_x - 60, y))
         surface.blit(option_text, text_rect)
 
         shots_text = self.desc_font.render(f"[ {shots} ]", True,
                                           self.colors['selected'] if is_selected else self.colors['unselected'])
-        shots_rect = shots_text.get_rect(center=(center_x + 90, y))
+        shots_rect = shots_text.get_rect(center=(center_x + 100, y))
         surface.blit(shots_text, shots_rect)
 
     def _draw_back_button(self, surface: pygame.Surface) -> None:
         width, height = surface.get_size()
         back_text = self.hint_font.render("ESC to return to login", True, self.colors['back'])
-        surface.blit(back_text, back_text.get_rect(center=(width // 2, height - 40)))
+        surface.blit(back_text, back_text.get_rect(center=(width // 2, height - 50)))
 
     def render(self, surface: pygame.Surface) -> None:
         self._draw_gradient_background(surface)
         width, height = surface.get_size()
 
-        title_y = 120 + self.glow_offset * 0.5
+        title_y = 140 + self.glow_offset * 0.5
         title_text = "AIR WAR"
         self._draw_glow_text(surface, title_text, self.title_font,
-                           (width // 2, title_y), self.colors['title'], self.colors['title_glow'], 4)
+                           (width // 2, title_y), self.colors['title'], self.colors['title_glow'], 5)
 
-        subtitle = self.hint_font.render("ARCADE EDITION", True, (100, 100, 150))
-        surface.blit(subtitle, subtitle.get_rect(center=(width // 2, title_y + 45)))
+        subtitle = self.hint_font.render("ARCADE EDITION", True, (110, 110, 160))
+        surface.blit(subtitle, subtitle.get_rect(center=(width // 2, title_y + 55)))
 
         difficulty_info = {
             'easy': '3 SHOTS',
@@ -131,16 +131,16 @@ class MenuScene(Scene):
             'hard': '5 SHOTS'
         }
 
-        start_y = 280
+        start_y = 340
         for i, diff in enumerate(self.difficulty_options):
-            self._draw_option_box(surface, diff, start_y + i * 70, i == self.selected_index, difficulty_info[diff])
+            self._draw_option_box(surface, diff, start_y + i * 90, i == self.selected_index, difficulty_info[diff])
 
         start_text = self.hint_font.render("PRESS ENTER TO START", True,
-                                           (100, 100, 150) if (self.animation_time // 30) % 2 == 0 else (150, 150, 200))
-        surface.blit(start_text, start_text.get_rect(center=(width // 2, height - 80)))
+                                           (110, 110, 160) if (self.animation_time // 30) % 2 == 0 else (160, 160, 210))
+        surface.blit(start_text, start_text.get_rect(center=(width // 2, height - 100)))
 
-        controls = self.desc_font.render("W/S or UP/DOWN to select", True, (50, 50, 80))
-        surface.blit(controls, controls.get_rect(center=(width // 2, height - 55)))
+        controls = self.desc_font.render("W/S or UP/DOWN to select", True, (60, 60, 100))
+        surface.blit(controls, controls.get_rect(center=(width // 2, height - 65)))
 
         self._draw_back_button(surface)
 
