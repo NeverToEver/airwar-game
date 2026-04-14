@@ -217,6 +217,45 @@ class TestMilestoneSystem:
         assert threshold == 3750
 
 
+class TestEntranceAnimation:
+    def test_entrance_animation_initializes(self):
+        from airwar.scenes.game_scene import GameScene
+        scene = GameScene()
+        scene.enter(difficulty='medium')
+        assert scene.entrance_animation is True
+        assert scene.entrance_timer == 0
+        assert scene.entrance_duration == 60
+        assert scene.player.rect.y == -80
+
+    def test_entrance_animation_ends_after_duration(self):
+        from airwar.scenes.game_scene import GameScene
+        scene = GameScene()
+        scene.enter(difficulty='medium')
+        for _ in range(60):
+            scene.update()
+        assert scene.entrance_animation is False
+
+    def test_entrance_animation_progresses_player_position(self):
+        from airwar.scenes.game_scene import GameScene
+        from airwar.config import SCREEN_HEIGHT
+        scene = GameScene()
+        scene.enter(difficulty='medium')
+        scene.update()
+        assert scene.player.rect.y > -80
+        assert scene.player.rect.y < SCREEN_HEIGHT - 100
+
+    def test_entrance_animation_blocks_gameplay_during_animation(self):
+        from airwar.scenes.game_scene import GameScene
+        scene = GameScene()
+        scene.enter(difficulty='medium')
+        initial_enemy_count = len(scene.enemies)
+        scene.enemy_spawner.spawn_timer = 1000
+        scene.enemy_spawner.spawn_rate = 1
+        for _ in range(10):
+            scene.update()
+        assert len(scene.enemies) == initial_enemy_count
+
+
 class TestGameFlowIntegration:
     def test_game_scene_initializes_all_components(self):
         from airwar.scenes.game_scene import GameScene

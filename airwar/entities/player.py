@@ -83,11 +83,11 @@ class Player(Entity):
             return bullet
         return None
 
-    def render(self, surface: pygame.Surface) -> None:
+    def render(self, surface: pygame.Surface, offset_x: int = 0, offset_y: int = 0) -> None:
         if not self._sprite:
-            draw_player_ship(surface, self.rect.x, self.rect.y, self.rect.width, self.rect.height)
+            draw_player_ship(surface, self.rect.x + offset_x, self.rect.y + offset_y, self.rect.width, self.rect.height)
         else:
-            surface.blit(self._sprite, self.get_rect())
+            surface.blit(self._sprite, (self.rect.x + offset_x, self.rect.y + offset_y))
 
         self._render_hitbox(surface)
 
