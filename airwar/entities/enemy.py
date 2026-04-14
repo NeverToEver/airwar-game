@@ -22,8 +22,9 @@ class Enemy(Entity):
     def update(self, *args, **kwargs) -> None:
         self.rect.y += self.data.speed
 
-        from airwar.config import SCREEN_HEIGHT
-        if self.rect.y > SCREEN_HEIGHT:
+        from airwar.config import get_screen_height
+        screen_height = get_screen_height()
+        if self.rect.y > screen_height:
             self.active = False
 
         self.fire_timer -= 1
@@ -103,12 +104,13 @@ class EnemySpawner:
         self.bullet_type = bullet_type
 
     def update(self, enemies: List[Enemy], slow_factor: float = 1.0, game=None) -> None:
-        from airwar.config import SCREEN_WIDTH
+        from airwar.config import get_screen_width
+        screen_width = get_screen_width()
 
         self.spawn_timer += 1
         if self.spawn_timer >= self.spawn_rate:
             self.spawn_timer = 0
-            x = random.randint(0, SCREEN_WIDTH - 40)
+            x = random.randint(0, screen_width - 40)
 
             bullet_types = ["single", "spread", "laser"]
             bullet_type = random.choice(bullet_types)
@@ -157,7 +159,8 @@ class Boss(Entity):
         self.phase = data.phase
 
     def update(self, *args, **kwargs) -> None:
-        from airwar.config import SCREEN_WIDTH
+        from airwar.config import get_screen_width
+        screen_width = get_screen_width()
 
         if self.entering:
             self.rect.y += 2
@@ -187,8 +190,8 @@ class Boss(Entity):
         if self.rect.x <= 0:
             self.rect.x = 0
             self.move_direction = 1
-        elif self.rect.x >= SCREEN_WIDTH - self.rect.width:
-            self.rect.x = SCREEN_WIDTH - self.rect.width
+        elif self.rect.x >= screen_width - self.rect.width:
+            self.rect.x = screen_width - self.rect.width
             self.move_direction = -1
 
         self.phase_timer += 1

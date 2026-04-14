@@ -157,13 +157,16 @@ class RewardSelector:
 
 class GameScene(Scene):
     def enter(self, **kwargs) -> None:
-        from airwar.config import SCREEN_WIDTH, SCREEN_HEIGHT, DIFFICULTY_SETTINGS
+        from airwar.config import DIFFICULTY_SETTINGS, get_screen_width, get_screen_height
+
+        screen_width = get_screen_width()
+        screen_height = get_screen_height()
 
         difficulty = kwargs.get('difficulty', 'medium')
         self.username = kwargs.get('username', 'Player')
         settings = DIFFICULTY_SETTINGS[difficulty]
 
-        self.player = Player(SCREEN_WIDTH // 2 - 25, SCREEN_HEIGHT - 100)
+        self.player = Player(screen_width // 2 - 25, screen_height - 100)
         self.player.rect.y = -80
 
         self.entrance_animation = True
@@ -228,7 +231,8 @@ class GameScene(Scene):
         return {'easy': 1, 'medium': 2, 'hard': 3}[difficulty]
 
     def _spawn_boss(self) -> None:
-        from airwar.config import SCREEN_WIDTH
+        from airwar.config import get_screen_width
+        screen_width = get_screen_width()
         base_health = 500 * (1 + self.cycle_count * 0.5)
         escape_time = int(base_health / self.player.bullet_damage * 2.5)
         escape_time = max(600, min(escape_time, 1800))
@@ -243,7 +247,7 @@ class GameScene(Scene):
             phase=1,
             escape_time=escape_time
         )
-        boss = Boss(SCREEN_WIDTH // 2 - boss_data.width // 2, -100, boss_data)
+        boss = Boss(screen_width // 2 - boss_data.width // 2, -100, boss_data)
         boss.set_game_scene(self)
         self.boss = boss
         self._show_notification(f"! BOSS APPROACHING ({int(escape_time/60)}s) !")
@@ -279,16 +283,18 @@ class GameScene(Scene):
 
         if self.entrance_animation:
             self.entrance_timer += 1
-            from airwar.config import SCREEN_HEIGHT, SCREEN_WIDTH
+            from airwar.config import get_screen_width, get_screen_height
+            screen_width = get_screen_width()
+            screen_height = get_screen_height()
             progress = self.entrance_timer / self.entrance_duration
             if progress >= 1.0:
                 self.entrance_animation = False
-                self.player.rect.y = SCREEN_HEIGHT - 100
+                self.player.rect.y = screen_height - 100
             else:
-                target_y = SCREEN_HEIGHT - 100
+                target_y = screen_height - 100
                 start_y = -80
                 self.player.rect.y = int(start_y + (target_y - start_y) * progress)
-                self.player.rect.x = SCREEN_WIDTH // 2 - 25
+                self.player.rect.x = screen_width // 2 - 25
             return
 
         if self.paused or self.reward_selector.visible:

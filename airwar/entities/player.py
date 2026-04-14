@@ -29,7 +29,9 @@ class Player(Entity):
 
     def update(self, *args, **kwargs) -> None:
         keys = kwargs.get('keys', [])
-        from airwar.config import PLAYER_SPEED, SCREEN_WIDTH, SCREEN_HEIGHT
+        from airwar.config import PLAYER_SPEED, get_screen_width, get_screen_height
+        screen_width = get_screen_width()
+        screen_height = get_screen_height()
 
         def is_pressed(*kcodes):
             for k in kcodes:
@@ -46,8 +48,8 @@ class Player(Entity):
         if is_pressed(pygame.K_DOWN, pygame.K_s):
             self.rect.y += PLAYER_SPEED
 
-        self.rect.x = max(0, min(self.rect.x, SCREEN_WIDTH - self.rect.width))
-        self.rect.y = max(0, min(self.rect.y, SCREEN_HEIGHT - self.rect.height))
+        self.rect.x = max(0, min(self.rect.x, screen_width - self.rect.width))
+        self.rect.y = max(0, min(self.rect.y, screen_height - self.rect.height))
 
         if self.fire_cooldown > 0:
             self.fire_cooldown -= 1

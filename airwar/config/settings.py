@@ -2,6 +2,20 @@ SCREEN_WIDTH = 1200
 SCREEN_HEIGHT = 700
 FPS = 60
 
+_screen_width = SCREEN_WIDTH
+_screen_height = SCREEN_HEIGHT
+
+def get_screen_width():
+    return _screen_width
+
+def get_screen_height():
+    return _screen_height
+
+def set_screen_size(width: int, height: int) -> None:
+    global _screen_width, _screen_height
+    _screen_width = width
+    _screen_height = height
+
 HEALTH_REGEN = {
     'easy': {'delay': 180, 'rate': 3, 'interval': 45},
     'medium': {'delay': 240, 'rate': 2, 'interval': 60},

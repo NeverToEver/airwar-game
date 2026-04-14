@@ -8,8 +8,8 @@ class Game:
         pygame.init()
         from airwar.config import get_adaptive_screen_size
         screen_size = get_adaptive_screen_size()
-        self.screen = pygame.display.set_mode(screen_size)
-        pygame.display.set_caption("Air War - 飞机大战")
+        self.screen = pygame.display.set_mode(screen_size, pygame.RESIZABLE)
+        pygame.display.set_caption('Air War - 飞机大战')
         self.clock = pygame.time.Clock()
         self.running = True
         self._quit_to_menu_requested = False
@@ -19,6 +19,15 @@ class Game:
         self._register_scenes()
         self.screen_width = screen_size[0]
         self.screen_height = screen_size[1]
+
+    def _handle_resize(self, width: int, height: int) -> None:
+        min_width, min_height = 800, 600
+        max_width, max_height = 1920, 1080
+        self.screen_width = max(min_width, min(width, max_width))
+        self.screen_height = max(min_height, min(height, max_height))
+        self.screen = pygame.display.set_mode((self.screen_width, self.screen_height), pygame.RESIZABLE)
+        from airwar.config import set_screen_size
+        set_screen_size(self.screen_width, self.screen_height)
 
     def _register_scenes(self) -> None:
         self.scene_manager.register("login", LoginScene())
@@ -34,8 +43,10 @@ class Game:
             while login_scene.is_running() if hasattr(login_scene, 'is_running') else not login_scene.is_ready():
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
-                        pygame.quit()
-                        return
+                        self.running = False
+                        break
+                    elif event.type == pygame.VIDEORESIZE:
+                        self._handle_resize(event.w, event.h)
                     self.scene_manager.handle_events(event)
 
                 self.scene_manager.update()
@@ -59,8 +70,10 @@ class Game:
             while menu_running and self.running:
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
-                        pygame.quit()
-                        return
+                        self.running = False
+                        break
+                    elif event.type == pygame.VIDEORESIZE:
+                        self._handle_resize(event.w, event.h)
                     self.scene_manager.handle_events(event)
 
                 self.scene_manager.update()
@@ -95,6 +108,8 @@ class Game:
                     if event.type == pygame.QUIT:
                         self.running = False
                         break
+                    elif event.type == pygame.VIDEORESIZE:
+                        self._handle_resize(event.w, event.h)
                     elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                         if isinstance(current_scene, GameScene):
                             if current_scene.is_paused():
@@ -143,6 +158,8 @@ class Game:
                 if event.type == pygame.QUIT:
                     self.running = False
                     return
+                elif event.type == pygame.VIDEORESIZE:
+                    self._handle_resize(event.w, event.h)
                 pause_scene.handle_events(event)
 
             pause_scene.update()
@@ -184,6 +201,12 @@ class Game:
                 if event.type == pygame.QUIT:
                     self.running = False
                     waiting = False
+                elif event.type == pygame.VIDEORESIZE:
+                    self._handle_resize(event.w, event.h)
+                    scale = self.screen_width / 800
+                    font_large = pygame.font.Font(None, int(72 * scale))
+                    font_medium = pygame.font.Font(None, int(36 * scale))
+                    font_small = pygame.font.Font(None, int(28 * scale))
                 elif event.type == pygame.KEYDOWN:
                     if event.key in (pygame.K_RETURN, pygame.K_SPACE):
                         return_to_menu = True
