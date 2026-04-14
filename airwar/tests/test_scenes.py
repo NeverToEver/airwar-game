@@ -115,7 +115,7 @@ class TestPauseScene:
         scene = PauseScene()
         scene.enter()
         assert scene.running is True
-        assert scene.options == ['RESUME', 'MAIN MENU']
+        assert scene.options == ['RESUME', 'MAIN MENU', 'QUIT']
 
     def test_pause_scene_is_paused_initially_true(self):
         from airwar.scenes import PauseScene

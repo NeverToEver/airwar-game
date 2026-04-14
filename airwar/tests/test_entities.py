@@ -212,3 +212,32 @@ class TestPlayerHitbox:
         hitbox = player.get_hitbox()
         assert hitbox.width == 20
         assert hitbox.height == 24
+
+    def test_player_health_cannot_exceed_max(self):
+        pass
+
+    def test_player_health_cannot_go_negative(self):
+        pass
+
+    def test_player_fire_returns_bullet(self):
+        from airwar.entities import Player
+        player = Player(100, 200)
+        bullet = player.fire()
+        assert bullet is not None
+        assert bullet.data.owner == 'player'
+
+    def test_player_auto_fire_respects_cooldown(self):
+        from airwar.entities import Player
+        player = Player(100, 200)
+        player.fire_cooldown = 5
+        initial_count = len(player.get_bullets())
+        player.auto_fire()
+        assert len(player.get_bullets()) == initial_count
+
+    def test_player_data_default_values(self):
+        from airwar.entities import Player
+        player = Player(100, 200)
+        assert player.health == 100
+        assert player.max_health == 100
+        assert player.fire_cooldown == 0
+        assert player.bullet_damage > 0

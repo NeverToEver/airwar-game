@@ -204,9 +204,9 @@ class TestMilestoneSystem:
         scene = GameScene()
         scene.enter(difficulty='medium')
         threshold = scene._get_current_threshold(0)
-        assert threshold == 1000
+        assert threshold == 1500
         threshold_cycle1 = scene._get_current_threshold(5)
-        assert threshold_cycle1 == 1000 * (1.5 ** 1)
+        assert threshold_cycle1 == 1500 * (1.5 ** 1)
 
     def test_next_threshold_uses_milestone_index(self):
         from airwar.scenes.game_scene import GameScene
@@ -214,7 +214,46 @@ class TestMilestoneSystem:
         scene.enter(difficulty='medium')
         scene.milestone_index = 1
         threshold = scene._get_next_threshold()
-        assert threshold == 2500
+        assert threshold == 3750
+
+
+class TestEntranceAnimation:
+    def test_entrance_animation_initializes(self):
+        from airwar.scenes.game_scene import GameScene
+        scene = GameScene()
+        scene.enter(difficulty='medium')
+        assert scene.entrance_animation is True
+        assert scene.entrance_timer == 0
+        assert scene.entrance_duration == 60
+        assert scene.player.rect.y == -80
+
+    def test_entrance_animation_ends_after_duration(self):
+        from airwar.scenes.game_scene import GameScene
+        scene = GameScene()
+        scene.enter(difficulty='medium')
+        for _ in range(60):
+            scene.update()
+        assert scene.entrance_animation is False
+
+    def test_entrance_animation_progresses_player_position(self):
+        from airwar.scenes.game_scene import GameScene
+        from airwar.config import SCREEN_HEIGHT
+        scene = GameScene()
+        scene.enter(difficulty='medium')
+        scene.update()
+        assert scene.player.rect.y > -80
+        assert scene.player.rect.y < SCREEN_HEIGHT - 100
+
+    def test_entrance_animation_blocks_gameplay_during_animation(self):
+        from airwar.scenes.game_scene import GameScene
+        scene = GameScene()
+        scene.enter(difficulty='medium')
+        initial_enemy_count = len(scene.enemies)
+        scene.enemy_spawner.spawn_timer = 1000
+        scene.enemy_spawner.spawn_rate = 1
+        for _ in range(10):
+            scene.update()
+        assert len(scene.enemies) == initial_enemy_count
 
 
 class TestGameFlowIntegration:

@@ -157,13 +157,21 @@ class RewardSelector:
 
 class GameScene(Scene):
     def enter(self, **kwargs) -> None:
-        from airwar.config import SCREEN_WIDTH, SCREEN_HEIGHT, DIFFICULTY_SETTINGS
+        from airwar.config import DIFFICULTY_SETTINGS, get_screen_width, get_screen_height
+
+        screen_width = get_screen_width()
+        screen_height = get_screen_height()
 
         difficulty = kwargs.get('difficulty', 'medium')
         self.username = kwargs.get('username', 'Player')
         settings = DIFFICULTY_SETTINGS[difficulty]
 
-        self.player = Player(SCREEN_WIDTH // 2 - 25, SCREEN_HEIGHT - 100)
+        self.player = Player(screen_width // 2 - 25, screen_height - 100)
+        self.player.rect.y = -80
+
+        self.entrance_animation = True
+        self.entrance_timer = 0
+        self.entrance_duration = 60
         self.player.bullet_damage = settings['bullet_damage']
         self.enemies = []
         self.enemy_bullets = []
@@ -185,6 +193,8 @@ class GameScene(Scene):
         self.base_thresholds = [1000, 2500, 5000, 10000, 20000]
         self.max_cycles = 10
         self.cycle_multiplier = 1.5
+
+        self.difficulty_threshold_multiplier = {'easy': 1.0, 'medium': 1.5, 'hard': 2.0}[difficulty]
 
         self.unlocked_buffs = []
         self.pending_reward = None
@@ -221,7 +231,8 @@ class GameScene(Scene):
         return {'easy': 1, 'medium': 2, 'hard': 3}[difficulty]
 
     def _spawn_boss(self) -> None:
-        from airwar.config import SCREEN_WIDTH
+        from airwar.config import get_screen_width
+        screen_width = get_screen_width()
         base_health = 500 * (1 + self.cycle_count * 0.5)
         escape_time = int(base_health / self.player.bullet_damage * 2.5)
         escape_time = max(600, min(escape_time, 1800))
@@ -236,7 +247,7 @@ class GameScene(Scene):
             phase=1,
             escape_time=escape_time
         )
-        boss = Boss(SCREEN_WIDTH // 2 - boss_data.width // 2, -100, boss_data)
+        boss = Boss(screen_width // 2 - boss_data.width // 2, -100, boss_data)
         boss.set_game_scene(self)
         self.boss = boss
         self._show_notification(f"! BOSS APPROACHING ({int(escape_time/60)}s) !")
@@ -248,7 +259,7 @@ class GameScene(Scene):
     def _get_current_threshold(self, index: int) -> float:
         base = self.base_thresholds[index % len(self.base_thresholds)]
         cycle_bonus = index // len(self.base_thresholds)
-        return base * (self.cycle_multiplier ** cycle_bonus)
+        return base * (self.cycle_multiplier ** cycle_bonus) * self.difficulty_threshold_multiplier
 
     def _get_next_threshold(self) -> float:
         return self._get_current_threshold(self.milestone_index)
@@ -269,6 +280,22 @@ class GameScene(Scene):
 
     def update(self, *args, **kwargs) -> None:
         self.reward_selector.update()
+
+        if self.entrance_animation:
+            self.entrance_timer += 1
+            from airwar.config import get_screen_width, get_screen_height
+            screen_width = get_screen_width()
+            screen_height = get_screen_height()
+            progress = self.entrance_timer / self.entrance_duration
+            if progress >= 1.0:
+                self.entrance_animation = False
+                self.player.rect.y = screen_height - 100
+            else:
+                target_y = screen_height - 100
+                start_y = -80
+                self.player.rect.y = int(start_y + (target_y - start_y) * progress)
+                self.player.rect.x = screen_width // 2 - 25
+            return
 
         if self.paused or self.reward_selector.visible:
             return
@@ -506,29 +533,63 @@ class GameScene(Scene):
     def render(self, surface: pygame.Surface) -> None:
         surface.fill((0, 0, 0))
 
-        if not self.player_invincible or (self.invincibility_timer // 5) % 2 == 0:
-            self.player.render(surface)
+        if self.entrance_animation:
+            progress = self.entrance_timer / self.entrance_duration
+            zoom_scale = 1.0 + (1.5 - 1.0) * (1 - progress)
 
-        for enemy in self.enemies:
-            enemy.render(surface)
+            if not self.player_invincible or (self.invincibility_timer // 5) % 2 == 0:
+                self.player.render(surface)
 
-        if self.boss:
-            self.boss.render(surface)
-            self._render_boss_health_bar(surface)
+            for enemy in self.enemies:
+                enemy.render(surface)
 
-        for eb in self.enemy_bullets:
-            eb.render(surface)
+            if self.boss:
+                self.boss.render(surface)
 
-        for ripple in self.ripple_effects:
-            from airwar.utils.sprites import draw_ripple
-            draw_ripple(surface, ripple['x'], ripple['y'], ripple['radius'], ripple['alpha'])
+            for eb in self.enemy_bullets:
+                eb.render(surface)
 
-        self._render_hud(surface)
-        self._render_buffs(surface)
-        self._render_notification(surface)
+            center_x = surface.get_width() // 2
+            center_y = surface.get_height() // 2
 
-        if self.reward_selector.visible:
-            self.reward_selector.render(surface)
+            scaled_width = int(surface.get_width() * zoom_scale)
+            scaled_height = int(surface.get_height() * zoom_scale)
+            scaled_surface = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+            scaled_surface.blit(surface, (0, 0))
+            scaled_surface = pygame.transform.scale(scaled_surface, (scaled_width, scaled_height))
+
+            x_offset = (scaled_width - surface.get_width()) // 2
+            y_offset = (scaled_height - surface.get_height()) // 2
+            surface.fill((0, 0, 0))
+            surface.blit(scaled_surface, (-x_offset, -y_offset))
+
+            fade_surface = pygame.Surface((surface.get_width(), surface.get_height()))
+            fade_surface.set_alpha(int(80 * (1 - progress)))
+            surface.blit(fade_surface, (0, 0))
+        else:
+            if not self.player_invincible or (self.invincibility_timer // 5) % 2 == 0:
+                self.player.render(surface)
+
+            for enemy in self.enemies:
+                enemy.render(surface)
+
+            if self.boss:
+                self.boss.render(surface)
+                self._render_boss_health_bar(surface)
+
+            for eb in self.enemy_bullets:
+                eb.render(surface)
+
+            for ripple in self.ripple_effects:
+                from airwar.utils.sprites import draw_ripple
+                draw_ripple(surface, ripple['x'], ripple['y'], ripple['radius'], ripple['alpha'])
+
+            self._render_hud(surface)
+            self._render_buffs(surface)
+            self._render_notification(surface)
+
+            if self.reward_selector.visible:
+                self.reward_selector.render(surface)
 
     def _render_boss_health_bar(self, surface: pygame.Surface) -> None:
         if not self.boss:
