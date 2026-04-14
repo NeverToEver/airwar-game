@@ -1,13 +1,17 @@
 import pygame
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 from .base import Entity, Vector2
 from .bullet import Bullet, BulletData
 from airwar.utils.sprites import draw_player_ship
 
+if TYPE_CHECKING:
+    from airwar.input.input_handler import InputHandler
+
 
 class Player(Entity):
-    def __init__(self, x: float, y: float):
+    def __init__(self, x: float, y: float, input_handler: 'InputHandler'):
         super().__init__(x, y, 50, 60)
+        self._input_handler = input_handler
         self.health = 100
         self.max_health = 100
         self.score = 0
@@ -28,37 +32,26 @@ class Player(Entity):
         return self.get_hitbox().colliderect(other)
 
     def update(self, *args, **kwargs) -> None:
-        keys = kwargs.get('keys', [])
         from airwar.config import PLAYER_SPEED, get_screen_width, get_screen_height
+        
+        direction = self._input_handler.get_movement_direction()
+        self.rect.x += direction.x * PLAYER_SPEED
+        self.rect.y += direction.y * PLAYER_SPEED
+        
         screen_width = get_screen_width()
         screen_height = get_screen_height()
-
-        def is_pressed(*kcodes):
-            for k in kcodes:
-                if k < len(keys) and keys[k]:
-                    return True
-            return False
-
-        if is_pressed(pygame.K_LEFT, pygame.K_a):
-            self.rect.x -= PLAYER_SPEED
-        if is_pressed(pygame.K_RIGHT, pygame.K_d):
-            self.rect.x += PLAYER_SPEED
-        if is_pressed(pygame.K_UP, pygame.K_w):
-            self.rect.y -= PLAYER_SPEED
-        if is_pressed(pygame.K_DOWN, pygame.K_s):
-            self.rect.y += PLAYER_SPEED
-
+        
         self.rect.x = max(0, min(self.rect.x, screen_width - self.rect.width))
         self.rect.y = max(0, min(self.rect.y, screen_height - self.rect.height))
-
+        
         if self.fire_cooldown > 0:
             self.fire_cooldown -= 1
-
+        
         for bullet in self._bullets:
             bullet.update()
-
+        
         self._bullets = [b for b in self._bullets if b.active]
-
+        
         self.hitbox_timer += 1
 
     def auto_fire(self) -> None:

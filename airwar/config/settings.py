@@ -1,20 +1,8 @@
+from airwar.config.game_config import GameConfig, get_screen_width, get_screen_height, set_screen_size
+
 SCREEN_WIDTH = 1200
 SCREEN_HEIGHT = 700
 FPS = 60
-
-_screen_width = SCREEN_WIDTH
-_screen_height = SCREEN_HEIGHT
-
-def get_screen_width():
-    return _screen_width
-
-def get_screen_height():
-    return _screen_height
-
-def set_screen_size(width: int, height: int) -> None:
-    global _screen_width, _screen_height
-    _screen_width = width
-    _screen_height = height
 
 HEALTH_REGEN = {
     'easy': {'delay': 180, 'rate': 3, 'interval': 45},
@@ -23,25 +11,7 @@ HEALTH_REGEN = {
 }
 
 def get_adaptive_screen_size():
-    import pygame
-    info = pygame.display.Info()
-    max_width = info.current_w - 40
-    max_height = info.current_h - 80
-    
-    target_width = SCREEN_WIDTH
-    target_height = SCREEN_HEIGHT
-    
-    if target_width > max_width:
-        scale = max_width / target_width
-        target_width = max_width
-        target_height = int(target_height * scale)
-    
-    if target_height > max_height:
-        scale = max_height / target_height
-        target_height = max_height
-        target_width = int(target_width * scale)
-    
-    return (target_width, target_height)
+    return GameConfig.get_instance().get_adaptive_screen_size()
 
 PLAYER_SPEED = 5
 BULLET_SPEED = 10

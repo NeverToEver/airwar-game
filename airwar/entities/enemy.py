@@ -1,10 +1,11 @@
 import pygame
 import random
 import math
-from typing import List, TYPE_CHECKING
+from typing import List, Optional, Tuple, TYPE_CHECKING
 from dataclasses import dataclass
 from .base import Entity, EnemyData, Vector2
 from .bullet import Bullet, BulletData
+from .interfaces import IBulletSpawner
 from airwar.utils.sprites import draw_enemy_ship, draw_boss_ship
 
 if TYPE_CHECKING:
@@ -18,6 +19,8 @@ class Enemy(Entity):
         self.health = data.health
         self.max_health = data.health
         self.fire_timer = random.randint(0, data.fire_rate)
+        self._bullet_spawner: Optional[IBulletSpawner] = None
+        self.entity_id = id(self)
 
     def update(self, *args, **kwargs) -> None:
         self.rect.y += self.data.speed
@@ -33,34 +36,48 @@ class Enemy(Entity):
             self._fire()
 
     def _fire(self) -> None:
-        if 'game_scene' not in dir(self):
-            return
-        game: 'GameScene' = self.game_scene
-        bullet_data = BulletData(
-            damage=self._get_damage(),
-            speed=5.0,
-            owner="enemy",
-            bullet_type=self.data.bullet_type
-        )
+        bullets = self._create_bullets()
+        
+        if self._bullet_spawner:
+            for bullet in bullets:
+                self._bullet_spawner.spawn_bullet(bullet)
+
+    def _create_bullets(self) -> List[Bullet]:
+        bullets = []
         center_x = self.rect.centerx - 5
+        
         if self.data.bullet_type == "spread":
             for angle in [-20, 0, 20]:
-                spread_data = BulletData(
+                bullet_data = BulletData(
                     damage=self._get_damage(),
                     speed=5.0,
                     owner="enemy",
                     bullet_type="spread"
                 )
-                bullet = Bullet(center_x + angle, self.rect.bottom, spread_data)
+                bullet = Bullet(center_x + angle, self.rect.bottom, bullet_data)
                 bullet.velocity = Vector2(angle * 0.1, 5)
-                game.enemy_bullets.append(bullet)
+                bullets.append(bullet)
         elif self.data.bullet_type == "laser":
+            bullet_data = BulletData(
+                damage=self._get_damage(),
+                speed=5.0,
+                owner="enemy",
+                bullet_type="laser"
+            )
             bullet = Bullet(center_x, self.rect.bottom, bullet_data)
             bullet.velocity = Vector2(0, 8)
-            game.enemy_bullets.append(bullet)
+            bullets.append(bullet)
         else:
+            bullet_data = BulletData(
+                damage=self._get_damage(),
+                speed=5.0,
+                owner="enemy",
+                bullet_type="single"
+            )
             bullet = Bullet(center_x, self.rect.bottom, bullet_data)
-            game.enemy_bullets.append(bullet)
+            bullets.append(bullet)
+        
+        return bullets
 
     def _get_damage(self) -> int:
         if self.data.bullet_type == "spread":
@@ -70,8 +87,8 @@ class Enemy(Entity):
         else:
             return 15
 
-    def set_game_scene(self, game: 'GameScene') -> None:
-        self.game_scene = game
+    def set_bullet_spawner(self, spawner: IBulletSpawner) -> None:
+        self._bullet_spawner = spawner
 
     def render(self, surface: pygame.Surface) -> None:
         if not self._sprite:
@@ -96,6 +113,7 @@ class EnemySpawner:
         self.speed = 3.0
         self.spawn_rate = 30
         self.bullet_type = "single"
+        self._bullet_spawner: Optional[IBulletSpawner] = None
 
     def set_params(self, health: int, speed: float, spawn_rate: int, bullet_type: str = "single") -> None:
         self.health = health
@@ -103,7 +121,10 @@ class EnemySpawner:
         self.spawn_rate = spawn_rate
         self.bullet_type = bullet_type
 
-    def update(self, enemies: List[Enemy], slow_factor: float = 1.0, game=None) -> None:
+    def set_bullet_spawner(self, spawner: IBulletSpawner) -> None:
+        self._bullet_spawner = spawner
+
+    def update(self, enemies: List[Enemy], slow_factor: float = 1.0) -> None:
         from airwar.config import get_screen_width
         screen_width = get_screen_width()
 
@@ -122,8 +143,8 @@ class EnemySpawner:
                 fire_rate=90 if bullet_type == "laser" else 120
             )
             enemy = Enemy(x, -40, data)
-            if game:
-                enemy.set_game_scene(game)
+            if self._bullet_spawner:
+                enemy.set_bullet_spawner(self._bullet_spawner)
             enemies.append(enemy)
 
 
@@ -157,6 +178,8 @@ class Boss(Entity):
         self.escaped = False
         self._show_escape_warning = False
         self.phase = data.phase
+        self._bullet_spawner: Optional[IBulletSpawner] = None
+        self.entity_id = id(self)
 
     def update(self, *args, **kwargs) -> None:
         from airwar.config import get_screen_width
@@ -205,20 +228,23 @@ class Boss(Entity):
             self._fire()
 
     def _fire(self) -> None:
-        if 'game_scene' not in dir(self):
-            return
-        game: 'GameScene' = self.game_scene
-
+        bullets = []
+        
         if self.attack_pattern == 0:
-            self._spread_attack(game)
+            bullets = self._spread_attack()
         elif self.attack_pattern == 1:
-            self._aim_attack(game)
+            bullets = self._aim_attack()
         else:
-            self._wave_attack(game)
+            bullets = self._wave_attack()
+
+        if self._bullet_spawner:
+            for bullet in bullets:
+                self._bullet_spawner.spawn_bullet(bullet)
 
         self.attack_pattern = (self.attack_pattern + 1) % 3
 
-    def _spread_attack(self, game: 'GameScene') -> None:
+    def _spread_attack(self) -> List[Bullet]:
+        bullets = []
         center_x = self.rect.centerx
         bullet_count = 5 + self.phase
 
@@ -237,13 +263,19 @@ class Boss(Entity):
             )
             bullet = Bullet(center_x, self.rect.bottom, bullet_data)
             bullet.velocity = Vector2(vx, vy)
-            game.enemy_bullets.append(bullet)
+            bullets.append(bullet)
+        
+        return bullets
 
-    def _aim_attack(self, game: 'GameScene') -> None:
-        if not game.player:
-            return
-
-        player_x = game.player.rect.centerx
+    def _aim_attack(self, player_pos: Tuple[float, float] = None) -> List[Bullet]:
+        bullets = []
+        
+        if player_pos is None:
+            player_pos = (self.rect.centerx, self.rect.bottom + 500)
+        
+        player_x = player_pos[0]
+        player_y = player_pos[1]
+        
         bullet_data = BulletData(
             damage=15 + self.phase * 3,
             speed=7.0,
@@ -258,12 +290,16 @@ class Boss(Entity):
                 bullet_data
             )
             dx = player_x - self.rect.centerx
-            dy = game.player.rect.centery - self.rect.bottom
+            dy = player_y - self.rect.bottom
             dist = math.sqrt(dx * dx + dy * dy)
-            bullet.velocity = Vector2(dx / dist * 6, dy / dist * 6)
-            game.enemy_bullets.append(bullet)
+            if dist > 0:
+                bullet.velocity = Vector2(dx / dist * 6, dy / dist * 6)
+            bullets.append(bullet)
+        
+        return bullets
 
-    def _wave_attack(self, game: 'GameScene') -> None:
+    def _wave_attack(self) -> List[Bullet]:
+        bullets = []
         center_x = self.rect.centerx
 
         for i in range(8):
@@ -279,10 +315,12 @@ class Boss(Entity):
             )
             bullet = Bullet(center_x, self.rect.centery, bullet_data)
             bullet.velocity = Vector2(math.cos(rad) * speed, math.sin(rad) * speed)
-            game.enemy_bullets.append(bullet)
+            bullets.append(bullet)
+        
+        return bullets
 
-    def set_game_scene(self, game: 'GameScene') -> None:
-        self.game_scene = game
+    def set_bullet_spawner(self, spawner: IBulletSpawner) -> None:
+        self._bullet_spawner = spawner
 
     def render(self, surface: pygame.Surface) -> None:
         health_ratio = self.health / self.max_health if self.max_health > 0 else 1.0
