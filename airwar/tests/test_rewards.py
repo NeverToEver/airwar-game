@@ -7,14 +7,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 class TestRewardPool:
     def test_reward_pool_structure(self):
-        from airwar.scenes.game_scene import REWARD_POOL
+        from airwar.game.systems.reward_system import REWARD_POOL
         assert 'health' in REWARD_POOL
         assert 'offense' in REWARD_POOL
         assert 'defense' in REWARD_POOL
         assert 'utility' in REWARD_POOL
 
     def test_reward_pool_has_required_fields(self):
-        from airwar.scenes.game_scene import REWARD_POOL
+        from airwar.game.systems.reward_system import REWARD_POOL
         for category, rewards in REWARD_POOL.items():
             assert len(rewards) > 0
             for reward in rewards:
@@ -23,21 +23,21 @@ class TestRewardPool:
                 assert 'icon' in reward
 
     def test_reward_categories_count(self):
-        from airwar.scenes.game_scene import REWARD_POOL
+        from airwar.game.systems.reward_system import REWARD_POOL
         assert len(REWARD_POOL['health']) >= 3
         assert len(REWARD_POOL['offense']) >= 5
         assert len(REWARD_POOL['defense']) >= 4
         assert len(REWARD_POOL['utility']) >= 3
 
     def test_all_rewards_unique(self):
-        from airwar.scenes.game_scene import REWARD_POOL
+        from airwar.game.systems.reward_system import REWARD_POOL
         all_names = []
         for rewards in REWARD_POOL.values():
             all_names.extend([r['name'] for r in rewards])
         assert len(all_names) == len(set(all_names))
 
     def test_rewards_have_meaningful_descriptions(self):
-        from airwar.scenes.game_scene import REWARD_POOL
+        from airwar.game.systems.reward_system import REWARD_POOL
         for category, rewards in REWARD_POOL.items():
             for reward in rewards:
                 assert len(reward['desc']) > 5
