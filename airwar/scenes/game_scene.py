@@ -163,12 +163,9 @@ class GameScene(Scene):
         from airwar.game import EnemyBulletSpawner
         bullet_spawner = EnemyBulletSpawner(self.spawn_controller.enemy_bullets)
         boss = Boss(screen_width // 2 - boss_data.width // 2, -100, boss_data)
-        boss.set_bullet_spawner(enemy_bullet_spawner)
-        boss = self.spawn_controller.spawn_boss(
-            self.game_controller.cycle_count,
-            self.player.bullet_damage
-        )
-        self.game_controller.show_notification(f"! BOSS APPROACHING ({int(boss.data.escape_time/60)}s) !")
+        boss.set_bullet_spawner(bullet_spawner)
+        self.spawn_controller.boss = boss
+        self.game_controller.show_notification(f"! BOSS APPROACHING ({int(escape_time/60)}s) !")
 
     def _update_boss(self) -> None:
         boss = self.spawn_controller.boss
