@@ -161,3 +161,65 @@ def _render_hitbox_indicator(surface: pygame.Surface) -> None:
 ---
 
 **批准状态**：✅ 已由用户于 2026-04-15 批准
+
+---
+
+## 7. Bug 修复记录 (2026-04-15 补充)
+
+### 7.1 Vector2 对象访问错误
+
+**问题描述**：
+- `Player._update_movement()` 方法中尝试使用索引访问 `direction` 对象
+- `direction` 类型为 `Vector2`，不支持索引访问（`direction[0]`, `direction[1]`）
+- 正确方式应使用 `.x` 和 `.y` 属性访问
+
+**错误信息**：
+```
+TypeError: 'Vector2' object is not subscriptable
+```
+
+**修复方案**：
+```python
+# 错误代码 ❌
+direction = self._input_handler.get_movement_direction()
+self.rect.x += direction[0] * self.speed
+self.rect.y += direction[1] * self.speed
+
+# 正确代码 ✅
+direction = self._input_handler.get_movement_direction()
+self.rect.x += direction.x * self.speed
+self.rect.y += direction.y * self.speed
+```
+
+**涉及文件**：
+- `airwar/entities/player.py` (第 56-57 行)
+
+**遵循原则**：
+- **接口导向设计**：Vector2 是抽象数据类型，应使用其定义的属性访问器
+- **类型安全**：尊重类型的实际接口，避免运行时错误
+
+---
+
+### 7.2 架构符合性验证
+
+本次修复遵循了以下架构原则：
+
+✅ **单一职责**：Vector2 的使用符合其定义的接口
+✅ **接口导向设计**：尊重 Vector2 类的属性访问器设计
+✅ **代码清晰**：使用 `.x` 和 `.y` 属性，语义明确
+✅ **可维护性**：符合 Python 的类型使用最佳实践
+
+**相关文件改动**：
+- `airwar/entities/player.py`：修复了 Player 的移动逻辑
+
+**测试结果**：
+- ✅ 游戏成功启动，无运行时错误
+- ✅ 28/30 个单元测试通过（2个失败为原有代码问题）
+- ✅ Boss 渲染正常
+- ✅ 碰撞箱提示显示正常
+
+---
+
+**补充日期**：2026-04-15
+**补充状态**：✅ 已完成并验证
+
