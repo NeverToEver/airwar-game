@@ -191,6 +191,7 @@ class GameScene(Scene):
     def _check_player_bullets_vs_enemies(self) -> None:
         enemies = self.spawn_controller.enemies
         for bullet in self.player.get_bullets():
+            bullet.update()
             for enemy in enemies:
                 if bullet.active and enemy.active:
                     if bullet.get_rect().colliderect(enemy.get_rect()):
