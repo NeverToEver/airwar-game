@@ -60,8 +60,6 @@ class Player(Entity):
         self.rect.y = max(0, min(self.rect.y, get_screen_height() - self.rect.height))
 
     def _update_weapons(self, *args, **kwargs) -> None:
-        if self._fire_cooldown <= 0:
-            self.fire()
         if self._fire_cooldown > 0:
             self._fire_cooldown -= 1
 
@@ -110,6 +108,11 @@ class Player(Entity):
             self._fire_cooldown = 8
             return self._create_bullets_for_shot_mode(return_first=True)
         return None
+
+    def auto_fire(self) -> None:
+        if self._fire_cooldown <= 0:
+            self._fire_cooldown = 8
+            self._create_bullets_for_shot_mode()
 
     def activate_shotgun(self) -> None:
         self._shot_mode = 'shotgun'
