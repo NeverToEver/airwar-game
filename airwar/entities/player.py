@@ -173,6 +173,11 @@ class Player(Entity):
         from airwar.utils.sprites import draw_player_ship
         health_ratio = self.health / self.max_health if self.max_health > 0 else 1.0
         draw_player_ship(surface, self.rect.x, self.rect.y, self.rect.width, self.rect.height)
+        
+        self._render_hitbox_indicator(surface)
+        
+        for bullet in self._bullets:
+            bullet.render(surface)
 
     def is_colliding_with(self, other) -> bool:
         return self.get_hitbox().colliderect(other.rect)
