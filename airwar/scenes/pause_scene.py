@@ -1,15 +1,16 @@
 import pygame
-from .scene import Scene
+from .scene import Scene, PauseAction
 
 
 class PauseScene(Scene):
+    def __init__(self):
+        self.running = False
+        self.result: PauseAction = None
+
     def enter(self, **kwargs) -> None:
         self.running = True
         self.options = ['RESUME', 'MAIN MENU', 'QUIT']
         self.selected_index = 0
-        self.paused = True
-        self.on_resume = None
-        self.on_quit = None
 
         pygame.font.init()
         self.title_font = pygame.font.Font(None, 80)
@@ -30,10 +31,8 @@ class PauseScene(Scene):
     def handle_events(self, event: pygame.event.Event) -> None:
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
-                self.paused = False
                 self.running = False
-                if self.on_resume:
-                    self.on_resume()
+                self.result = PauseAction.RESUME
             elif event.key in (pygame.K_UP, pygame.K_w):
                 self.selected_index = (self.selected_index - 1) % len(self.options)
             elif event.key in (pygame.K_DOWN, pygame.K_s):
@@ -42,21 +41,13 @@ class PauseScene(Scene):
                 self._select_option()
 
     def _select_option(self) -> None:
+        self.running = False
         if self.selected_index == 0:
-            self.paused = False
-            self.running = False
-            if self.on_resume:
-                self.on_resume()
+            self.result = PauseAction.RESUME
         elif self.selected_index == 1:
-            self.paused = False
-            self.running = False
-            if self.on_quit:
-                self.on_quit()
+            self.result = PauseAction.MAIN_MENU
         elif self.selected_index == 2:
-            self.paused = False
-            self.running = False
-            import sys
-            sys.exit(0)
+            self.result = PauseAction.QUIT
 
     def update(self, *args, **kwargs) -> None:
         pass
@@ -92,5 +83,8 @@ class PauseScene(Scene):
         hint = self.hint_font.render("W/S to select  |  ESC to resume", True, self.colors['hint'])
         surface.blit(hint, hint.get_rect(center=(width // 2, height - 80)))
 
+    def get_result(self) -> PauseAction:
+        return self.result
+
     def is_paused(self) -> bool:
-        return self.paused
+        return self.running

@@ -1,6 +1,13 @@
 from abc import ABC, abstractmethod
+from enum import Enum
 from typing import Dict, Any
 import pygame
+
+
+class PauseAction(Enum):
+    RESUME = "resume"
+    MAIN_MENU = "main_menu"
+    QUIT = "quit"
 
 
 class Scene(ABC):

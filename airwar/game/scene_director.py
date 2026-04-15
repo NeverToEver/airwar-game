@@ -1,6 +1,7 @@
 from typing import Optional, List
 import pygame
 from airwar.scenes import SceneManager, GameScene, MenuScene
+from airwar.scenes.scene import PauseAction
 from airwar.ui.game_over_screen import GameOverScreen, ScreenAction
 
 
@@ -13,7 +14,6 @@ class SceneDirector:
         self._user_db = user_db
         self._running = True
         self._current_user: Optional[str] = None
-        self._quit_to_menu_requested = False
         self._selected_difficulty: str = 'medium'
 
     @property
@@ -107,9 +107,6 @@ class SceneDirector:
             if isinstance(current_scene, GameScene):
                 if current_scene.is_game_over():
                     return self._handle_game_over(current_scene)
-            if self._quit_to_menu_requested:
-                self._quit_to_menu_requested = False
-                return False
 
         return True
 
@@ -138,18 +135,21 @@ class SceneDirector:
                     escape_handled = True
                 else:
                     game_scene.pause()
-                    should_continue = self._show_pause_menu(game_scene)
-                    if not should_continue:
+                    action = self._show_pause_menu(game_scene)
+                    if action == PauseAction.RESUME:
+                        game_scene.resume()
+                    elif action == PauseAction.MAIN_MENU:
+                        return False
+                    elif action == PauseAction.QUIT:
+                        self._running = False
                         return True
                     escape_handled = True
         return escape_handled
 
-    def _show_pause_menu(self, game_scene: GameScene) -> bool:
+    def _show_pause_menu(self, game_scene: GameScene) -> PauseAction:
         pause_scene = self._scene_manager._scenes.get("pause")
         if not pause_scene:
-            return False
-        pause_scene.on_resume = lambda: game_scene.resume()
-        pause_scene.on_quit = self._quit_to_menu
+            return PauseAction.QUIT
         pause_scene.enter()
 
         while pause_scene.running:
@@ -157,7 +157,7 @@ class SceneDirector:
             for event in events:
                 if event.type == pygame.QUIT:
                     self._running = False
-                    return False
+                    return PauseAction.QUIT
                 if event.type == pygame.VIDEORESIZE:
                     self._window.resize(event.w, event.h)
                     self._handle_resize(event.w, event.h)
@@ -168,10 +168,8 @@ class SceneDirector:
             self._window.flip()
             self._window.tick(60)
 
-        return not self._quit_to_menu_requested
-
-    def _quit_to_menu(self) -> None:
-        self._quit_to_menu_requested = True
+        result = pause_scene.get_result()
+        return result if result else PauseAction.RESUME
 
     def _handle_game_over(self, game_scene: GameScene) -> bool:
         final_score = game_scene.get_score()
