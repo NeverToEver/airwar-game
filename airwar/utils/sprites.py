@@ -30,151 +30,172 @@ def draw_glow_circle(surface: pygame.Surface, center: tuple, radius: int, color:
 
 
 def draw_player_ship(surface: pygame.Surface, x: float, y: float, width: float = 50, height: float = 60) -> None:
-    """绘制现代化战斗机 - 科幻风格大型设计"""
+    """绘制 B2 风格飞翼隐形战机 - 科幻飞翼布局"""
     center_x = x + width / 2
     center_y = y + height / 2
     
-    hull_dark = (25, 45, 85)
-    hull_mid = (45, 75, 130)
-    hull_light = (70, 110, 180)
-    hull_highlight = (120, 170, 230)
-    cockpit_blue = (30, 180, 255)
-    cockpit_light = (100, 220, 255)
-    thruster_glow = (50, 180, 255)
-    thruster_orange = (255, 150, 50)
+    hull_dark = (15, 30, 55)
+    hull_mid = (25, 55, 95)
+    hull_light = (45, 85, 145)
+    hull_highlight = (75, 125, 195)
     
-    main_wing_left = [
-        (center_x - width * 0.08, center_y + height * 0.1),
-        (x - width * 0.35, y + height * 0.85),
-        (x - width * 0.05, y + height * 0.55),
-    ]
-    pygame.draw.polygon(surface, hull_dark, main_wing_left)
-    pygame.draw.polygon(surface, hull_mid, [
-        (center_x - width * 0.05, center_y + height * 0.05),
-        (x - width * 0.3, y + height * 0.75),
-        (x - width * 0.02, y + height * 0.58),
-    ])
-    pygame.draw.polygon(surface, hull_light, [
-        (center_x - width * 0.12, center_y),
-        (x - width * 0.25, y + height * 0.65),
-        (x - width * 0.1, y + height * 0.52),
-    ])
+    glow_cyan = (50, 200, 255)
+    glow_blue = (30, 150, 255)
+    thruster_glow = (80, 200, 255)
+    thruster_deep = (20, 120, 200)
     
-    main_wing_right = [
-        (center_x + width * 0.08, center_y + height * 0.1),
-        (x + width + width * 0.35, y + height * 0.85),
-        (x + width + width * 0.05, y + height * 0.55),
+    wing_edge_left = [
+        (center_x - width * 0.08, y + height * 0.05),
+        (x - width * 0.55, y + height * 0.65),
+        (x - width * 0.35, y + height * 0.75),
+        (x - width * 0.15, y + height * 0.55),
     ]
-    pygame.draw.polygon(surface, hull_dark, main_wing_right)
-    pygame.draw.polygon(surface, hull_mid, [
-        (center_x + width * 0.05, center_y + height * 0.05),
-        (x + width + width * 0.3, y + height * 0.75),
-        (x + width + width * 0.02, y + height * 0.58),
-    ])
-    pygame.draw.polygon(surface, hull_light, [
-        (center_x + width * 0.12, center_y),
-        (x + width + width * 0.25, y + height * 0.65),
-        (x + width + width * 0.1, y + height * 0.52),
-    ])
+    pygame.draw.polygon(surface, hull_dark, wing_edge_left)
     
-    tail_wing_left = [
-        (center_x - width * 0.05, y + height * 0.35),
-        (x - width * 0.15, y + height * 0.5),
-        (center_x - width * 0.02, y + height * 0.5),
+    wing_front_left = [
+        (center_x - width * 0.08, y + height * 0.05),
+        (x - width * 0.15, y + height * 0.55),
+        (x - width * 0.05, y + height * 0.4),
+        (center_x - width * 0.12, y + height * 0.25),
     ]
-    pygame.draw.polygon(surface, hull_mid, tail_wing_left)
+    pygame.draw.polygon(surface, hull_mid, wing_front_left)
     
-    tail_wing_right = [
-        (center_x + width * 0.05, y + height * 0.35),
-        (x + width + width * 0.15, y + height * 0.5),
-        (center_x + width * 0.02, y + height * 0.5),
+    wing_top_left = [
+        (center_x - width * 0.12, y + height * 0.25),
+        (x - width * 0.05, y + height * 0.4),
+        (x + width * 0.1, y + height * 0.38),
+        (center_x - width * 0.15, y + height * 0.3),
     ]
-    pygame.draw.polygon(surface, hull_mid, tail_wing_right)
+    pygame.draw.polygon(surface, hull_light, wing_top_left)
     
-    main_body = [
-        (center_x, y - height * 0.05),
-        (x + width * 0.85, y + height * 0.25),
-        (x + width * 0.9, y + height * 0.5),
-        (x + width * 0.75, y + height * 0.8),
-        (center_x, y + height + height * 0.1),
-        (x + width * 0.25, y + height * 0.8),
-        (x + width * 0.1, y + height * 0.5),
-        (x + width * 0.15, y + height * 0.25),
+    wing_edge_right = [
+        (center_x + width * 0.08, y + height * 0.05),
+        (x + width + width * 0.55, y + height * 0.65),
+        (x + width + width * 0.35, y + height * 0.75),
+        (x + width + width * 0.15, y + height * 0.55),
     ]
-    pygame.draw.polygon(surface, hull_dark, main_body)
+    pygame.draw.polygon(surface, hull_dark, wing_edge_right)
+    
+    wing_front_right = [
+        (center_x + width * 0.08, y + height * 0.05),
+        (x + width + width * 0.15, y + height * 0.55),
+        (x + width + width * 0.05, y + height * 0.4),
+        (center_x + width * 0.12, y + height * 0.25),
+    ]
+    pygame.draw.polygon(surface, hull_mid, wing_front_right)
+    
+    wing_top_right = [
+        (center_x + width * 0.12, y + height * 0.25),
+        (x + width + width * 0.05, y + height * 0.4),
+        (x + width - width * 0.1, y + height * 0.38),
+        (center_x + width * 0.15, y + height * 0.3),
+    ]
+    pygame.draw.polygon(surface, hull_light, wing_top_right)
+    
+    core_body = [
+        (center_x - width * 0.08, y + height * 0.3),
+        (x + width * 0.08, y + height * 0.3),
+        (x + width * 0.12, y + height * 0.65),
+        (center_x, y + height * 0.85),
+        (x + width * 0.88, y + height * 0.65),
+        (x + width * 0.92, y + height * 0.3),
+    ]
+    pygame.draw.polygon(surface, hull_dark, core_body)
     
     body_middle = [
-        (center_x, y + height * 0.08),
-        (x + width * 0.72, y + height * 0.28),
-        (x + width * 0.65, y + height * 0.5),
-        (center_x, y + height * 0.38),
-        (x + width * 0.35, y + height * 0.5),
-        (x + width * 0.28, y + height * 0.28),
+        (center_x - width * 0.05, y + height * 0.35),
+        (x + width * 0.05, y + height * 0.35),
+        (x + width * 0.08, y + height * 0.6),
+        (center_x, y + height * 0.75),
+        (x + width * 0.92, y + height * 0.6),
+        (x + width * 0.95, y + height * 0.35),
     ]
     pygame.draw.polygon(surface, hull_mid, body_middle)
     
     body_upper = [
-        (center_x, y + height * 0.12),
-        (x + width * 0.6, y + height * 0.25),
-        (x + width * 0.52, y + height * 0.35),
-        (center_x, y + height * 0.28),
-        (x + width * 0.48, y + height * 0.35),
-        (x + width * 0.4, y + height * 0.25),
+        (center_x - width * 0.03, y + height * 0.38),
+        (x + width * 0.03, y + height * 0.38),
+        (x + width * 0.05, y + height * 0.55),
+        (center_x, y + height * 0.65),
+        (x + width * 0.95, y + height * 0.55),
+        (x + width * 0.97, y + height * 0.38),
     ]
     pygame.draw.polygon(surface, hull_light, body_upper)
     
-    cockpit = [
-        (center_x, y + height * 0.15),
-        (x + width * 0.58, y + height * 0.28),
-        (center_x, y + height * 0.38),
-        (x + width * 0.42, y + height * 0.28),
+    center_line_left = [
+        (center_x - width * 0.02, y + height * 0.4),
+        (center_x - width * 0.01, y + height * 0.6),
+        (center_x, y + height * 0.68),
     ]
-    pygame.draw.polygon(surface, cockpit_blue, cockpit)
-    pygame.draw.polygon(surface, cockpit_light, [
-        (center_x, y + height * 0.18),
-        (x + width * 0.52, y + height * 0.28),
-        (center_x, y + height * 0.34),
-        (x + width * 0.48, y + height * 0.28),
-    ])
+    pygame.draw.polygon(surface, glow_cyan, center_line_left)
     
-    engine_housing_left = [
-        (center_x - width * 0.18, y + height * 0.7),
-        (center_x - width * 0.12, y + height * 0.85),
-        (center_x - width * 0.08, y + height * 0.7),
+    center_line_right = [
+        (center_x + width * 0.02, y + height * 0.4),
+        (center_x + width * 0.01, y + height * 0.6),
+        (center_x, y + height * 0.68),
     ]
-    pygame.draw.polygon(surface, hull_dark, engine_housing_left)
+    pygame.draw.polygon(surface, glow_cyan, center_line_right)
     
-    engine_housing_right = [
-        (center_x + width * 0.18, y + height * 0.7),
-        (center_x + width * 0.12, y + height * 0.85),
-        (center_x + width * 0.08, y + height * 0.7),
+    draw_glow_circle(surface, (int(center_x), int(y + height * 0.5)), 5, glow_cyan, 15)
+    draw_glow_circle(surface, (int(center_x), int(y + height * 0.5)), 2, (200, 255, 255), 8)
+    
+    engine_serrated_left = [
+        (center_x - width * 0.15, y + height * 0.72),
+        (center_x - width * 0.2, y + height * 0.78),
+        (center_x - width * 0.12, y + height * 0.8),
+        (center_x - width * 0.08, y + height * 0.76),
     ]
-    pygame.draw.polygon(surface, hull_dark, engine_housing_right)
+    pygame.draw.polygon(surface, hull_dark, engine_serrated_left)
     
-    thruster_y = y + height + height * 0.08
-    for offset in [-width * 0.15, width * 0.15]:
-        for i in range(10, 0, -2):
-            alpha = 25 * (10 - i) // 9
-            thruster_surf = pygame.Surface((12, 18), pygame.SRCALPHA)
+    engine_serrated_center_left = [
+        (center_x - width * 0.08, y + height * 0.75),
+        (center_x - width * 0.06, y + height * 0.82),
+        (center_x - width * 0.02, y + height * 0.8),
+        (center_x, y + height * 0.77),
+    ]
+    pygame.draw.polygon(surface, hull_mid, engine_serrated_center_left)
+    
+    engine_serrated_center_right = [
+        (center_x + width * 0.08, y + height * 0.75),
+        (center_x + width * 0.06, y + height * 0.82),
+        (center_x + width * 0.02, y + height * 0.8),
+        (center_x, y + height * 0.77),
+    ]
+    pygame.draw.polygon(surface, hull_mid, engine_serrated_center_right)
+    
+    engine_serrated_right = [
+        (center_x + width * 0.15, y + height * 0.72),
+        (center_x + width * 0.2, y + height * 0.78),
+        (center_x + width * 0.12, y + height * 0.8),
+        (center_x + width * 0.08, y + height * 0.76),
+    ]
+    pygame.draw.polygon(surface, hull_dark, engine_serrated_right)
+    
+    thruster_y = y + height + height * 0.05
+    
+    for offset in [-width * 0.16, -width * 0.05, width * 0.05, width * 0.16]:
+        for i in range(8, 0, -2):
+            alpha = 30 * (8 - i) // 7
+            thruster_surf = pygame.Surface((8, 12), pygame.SRCALPHA)
             pygame.draw.ellipse(thruster_surf, (*thruster_glow, alpha), 
-                               (6 - i // 2, 8 + i // 3, i, 10 - i // 2))
-            surface.blit(thruster_surf, (int(center_x + offset - 6), int(thruster_y)))
+                               (4 - i // 2, 4 + i // 3, i, 7 - i // 2))
+            surface.blit(thruster_surf, (int(center_x + offset - 4), int(thruster_y)))
     
-    for i in range(6, 0, -1):
-        alpha = 20 * (6 - i) // 5
-        main_thruster_surf = pygame.Surface((10, 16), pygame.SRCALPHA)
-        pygame.draw.ellipse(main_thruster_surf, (*thruster_orange, alpha),
-                          (5 - i // 2, 6 + i // 2, i, 8 - i // 2))
-        surface.blit(main_thruster_surf, (int(center_x - 5), int(thruster_y + 2)))
+    for i in range(5, 0, -1):
+        alpha = 25 * (5 - i) // 4
+        main_thruster_surf = pygame.Surface((6, 10), pygame.SRCALPHA)
+        pygame.draw.ellipse(main_thruster_surf, (*thruster_deep, alpha),
+                          (3 - i // 2, 3 + i // 2, i, 6 - i // 2))
+        surface.blit(main_thruster_surf, (int(center_x - 3), int(thruster_y + 1)))
     
-    pygame.draw.line(surface, hull_highlight, (center_x, y + height * 0.5), 
-                    (center_x, y + height * 0.7), 2)
-    pygame.draw.line(surface, hull_highlight, 
-                    (center_x - width * 0.05, y + height * 0.4),
-                    (center_x - width * 0.05, y + height * 0.6), 1)
-    pygame.draw.line(surface, hull_highlight, 
-                    (center_x + width * 0.05, y + height * 0.4),
-                    (center_x + width * 0.05, y + height * 0.6), 1)
+    for i in range(3):
+        line_y = y + height * 0.42 + i * height * 0.08
+        pygame.draw.line(surface, hull_highlight,
+                        (center_x - width * 0.08, line_y),
+                        (center_x - width * 0.02, line_y), 1)
+        pygame.draw.line(surface, hull_highlight,
+                        (center_x + width * 0.08, line_y),
+                        (center_x + width * 0.02, line_y), 1)
 
 
 def draw_enemy_ship(surface: pygame.Surface, x: float, y: float, width: float = 40, height: float = 40, health_ratio: float = 1.0) -> None:
