@@ -46,8 +46,8 @@ class TestConfigSettings:
 
     def test_screen_dimensions(self):
         from airwar.config import SCREEN_WIDTH, SCREEN_HEIGHT
-        assert SCREEN_WIDTH == 1200
-        assert SCREEN_HEIGHT == 700
+        assert SCREEN_WIDTH == 1400
+        assert SCREEN_HEIGHT == 800
 
     def test_player_speed_positive(self):
         from airwar.config import PLAYER_SPEED, BULLET_SPEED
