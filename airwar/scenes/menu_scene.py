@@ -17,20 +17,14 @@ class MenuScene(Scene):
         self.stars = []
 
         pygame.font.init()
-        self.title_font = pygame.font.Font(None, 120)
-        self.option_font = pygame.font.Font(None, 48)
-        self.hint_font = pygame.font.Font(None, 32)
-        self.desc_font = pygame.font.Font(None, 26)
-        self.small_font = pygame.font.Font(None, 22)
+        self.title_font = pygame.font.Font(None, 110)
+        self.option_font = pygame.font.Font(None, 44)
+        self.hint_font = pygame.font.Font(None, 28)
+        self.desc_font = pygame.font.Font(None, 24)
 
         self._init_particles()
         self._init_stars()
         self._init_colors()
-
-        self.panel_width = 500
-        self.panel_height = 380
-        self.panel_x = 0
-        self.panel_y = 0
 
     def _init_particles(self) -> None:
         import random
@@ -76,11 +70,6 @@ class MenuScene(Scene):
             'option_selected_bg': (25, 35, 65),
             'option_unselected_bg': (18, 20, 40),
         }
-
-    def _update_panel_position(self, surface: pygame.Surface) -> None:
-        width, height = surface.get_size()
-        self.panel_x = width // 2 - self.panel_width // 2
-        self.panel_y = height // 2 - self.panel_height // 2 + 20
 
     def exit(self) -> None:
         pass
@@ -164,89 +153,89 @@ class MenuScene(Scene):
         surface.blit(main_text, main_text.get_rect(center=pos))
 
     def _draw_panel(self, surface: pygame.Surface) -> None:
-        panel_rect = pygame.Rect(self.panel_x, self.panel_y, self.panel_width, self.panel_height)
+        width, height = surface.get_size()
+        
+        panel_width = 400
+        panel_height = 280
+        panel_x = width // 2 - panel_width // 2
+        panel_y = height // 2 - panel_height // 2 + 30
+        
+        panel_rect = pygame.Rect(panel_x, panel_y, panel_width, panel_height)
 
         for i in range(4, 0, -1):
             expand = i * 4
-            glow_surf = pygame.Surface((self.panel_width + expand * 2, self.panel_height + expand * 2), pygame.SRCALPHA)
+            glow_surf = pygame.Surface((panel_width + expand * 2, panel_height + expand * 2), pygame.SRCALPHA)
             alpha = max(5, 25 // i)
             pygame.draw.rect(glow_surf, (*self.colors['title_glow'], alpha),
                           glow_surf.get_rect(), border_radius=18)
-            surface.blit(glow_surf, (self.panel_x - expand, self.panel_y - expand))
+            surface.blit(glow_surf, (panel_x - expand, panel_y - expand))
 
         pygame.draw.rect(surface, self.colors['panel'], panel_rect, border_radius=15)
 
-        border_surf = pygame.Surface((self.panel_width, self.panel_height), pygame.SRCALPHA)
+        border_surf = pygame.Surface((panel_width, panel_height), pygame.SRCALPHA)
         pygame.draw.rect(border_surf, (*self.colors['panel_border'], 140),
                        border_surf.get_rect(), width=2, border_radius=15)
         surface.blit(border_surf, panel_rect.topleft)
 
-    def _draw_option_box(self, surface: pygame.Surface, index: int, is_selected: bool) -> None:
-        diff = self.difficulty_options[index]
+    def _draw_option_item(self, surface: pygame.Surface, diff: str, index: int, 
+                          center_x: int, start_y: int, is_selected: bool) -> None:
+        option_height = 70
+        option_gap = 12
+        y = start_y + index * (option_height + option_gap)
         
-        box_width = self.panel_width - 60
-        box_height = 85
-        center_x = self.panel_x + self.panel_width // 2
-        box_y = self.panel_y + 60 + index * (box_height + 15)
-        box_rect = pygame.Rect(center_x - box_width // 2, box_y, box_width, box_height)
+        box_width = 360
+        box_height = option_height
+        box_rect = pygame.Rect(center_x - box_width // 2, y, box_width, box_height)
 
         if is_selected:
             glow_color = self.colors['selected_glow']
-            for i in range(5, 0, -1):
-                expand = i * 4
+            for i in range(4, 0, -1):
+                expand = i * 3
                 glow_rect = box_rect.inflate(expand * 2, expand * 2)
                 glow_surf = pygame.Surface((glow_rect.width, glow_rect.height), pygame.SRCALPHA)
-                pygame.draw.rect(glow_surf, (*glow_color, 40 // i), glow_surf.get_rect(), border_radius=12)
+                pygame.draw.rect(glow_surf, (*glow_color, 35 // i), glow_surf.get_rect(), border_radius=10)
                 surface.blit(glow_surf, glow_rect)
 
-            pygame.draw.rect(surface, self.colors['option_selected_bg'], box_rect, border_radius=12)
+            pygame.draw.rect(surface, self.colors['option_selected_bg'], box_rect, border_radius=10)
             border_surf = pygame.Surface((box_width, box_height), pygame.SRCALPHA)
             pygame.draw.rect(border_surf, (*self.colors['selected'], 200),
-                           border_surf.get_rect(), width=2, border_radius=12)
+                           border_surf.get_rect(), width=2, border_radius=10)
             surface.blit(border_surf, box_rect.topleft)
         else:
-            pygame.draw.rect(surface, self.colors['option_unselected_bg'], box_rect, border_radius=12)
+            pygame.draw.rect(surface, self.colors['option_unselected_bg'], box_rect, border_radius=10)
             border_surf = pygame.Surface((box_width, box_height), pygame.SRCALPHA)
-            pygame.draw.rect(border_surf, (*self.colors['unselected'], 100),
-                           border_surf.get_rect(), width=1, border_radius=12)
+            pygame.draw.rect(border_surf, (*self.colors['unselected'], 80),
+                           border_surf.get_rect(), width=1, border_radius=10)
             surface.blit(border_surf, box_rect.topleft)
 
-        arrow = ">>" if is_selected else "  "
+        arrow = ">" if is_selected else " "
         diff_text = diff.upper()
-        option_text = self.option_font.render(f"{arrow} {diff_text}", True,
-                                             self.colors['selected'] if is_selected else self.colors['unselected'])
-        text_rect = option_text.get_rect(midleft=(box_rect.x + 20, box_rect.y + 28))
-        surface.blit(option_text, text_rect)
-
-        difficulty_info = {
-            'easy': ('3 SHOTS', 'EASY MODE'),
-            'medium': ('4 SHOTS', 'NORMAL MODE'),
-            'hard': ('5 SHOTS', 'HARD MODE')
-        }
-        shots, mode_text = difficulty_info[diff]
+        text_color = self.colors['selected'] if is_selected else self.colors['unselected']
         
-        shots_color = (0, 255, 150) if is_selected else (90, 90, 130)
-        shots_text = self.desc_font.render(f"[ {shots} ]", True, shots_color)
-        shots_rect = shots_text.get_rect(midright=(box_rect.right - 20, box_rect.y + 28))
-        surface.blit(shots_text, shots_rect)
+        text = self.option_font.render(f"  {arrow}  {diff_text}", True, text_color)
+        text_rect = text.get_rect(midleft=(box_rect.x + 20, box_rect.centery))
+        surface.blit(text, text_rect)
 
-        desc_color = (60, 60, 100) if not is_selected else (80, 80, 130)
-        desc_text = self.small_font.render(mode_text, True, desc_color)
-        desc_rect = desc_text.get_rect(midleft=(box_rect.x + 25, box_rect.y + 55))
-        surface.blit(desc_text, desc_rect)
-
-        if is_selected:
-            indicator_y = box_rect.y + box_height // 2
-            pulse = (math.sin(self.animation_time * 0.1) + 1) / 2
-            alpha = int(150 + 50 * pulse)
-            dot_surf = pygame.Surface((12, 12), pygame.SRCALPHA)
-            pygame.draw.circle(dot_surf, (*self.colors['selected'], alpha), (6, 6), 6)
-            surface.blit(dot_surf, (box_rect.right - 30, indicator_y - 6))
-
-    def _draw_back_button(self, surface: pygame.Surface) -> None:
+    def _draw_title_section(self, surface: pygame.Surface) -> None:
         width, height = surface.get_size()
-        back_text = self.hint_font.render("ESC to return to login", True, self.colors['back'])
-        surface.blit(back_text, back_text.get_rect(center=(width // 2, height - 50)))
+        
+        title_y = 100 + self.glow_offset * 0.5
+        title_text = "AIR WAR"
+        self._draw_glow_text(surface, title_text, self.title_font,
+                           (width // 2, title_y), self.colors['title'], self.colors['title_glow'], 5)
+
+    def _draw_bottom_hints(self, surface: pygame.Surface) -> None:
+        width, height = surface.get_size()
+        
+        if (self.animation_time // 30) % 2 == 0:
+            hint_color = (110, 110, 160)
+        else:
+            hint_color = (140, 140, 180)
+        start_text = self.hint_font.render("PRESS ENTER TO START", True, hint_color)
+        surface.blit(start_text, start_text.get_rect(center=(width // 2, height - 70)))
+
+        controls = self.desc_font.render("W / S to select", True, (60, 60, 100))
+        surface.blit(controls, controls.get_rect(center=(width // 2, height - 45)))
 
     def render(self, surface: pygame.Surface) -> None:
         self._draw_gradient_background(surface)
@@ -254,33 +243,21 @@ class MenuScene(Scene):
         self._draw_particles(surface)
         width, height = surface.get_size()
 
-        self._update_panel_position(surface)
-
-        title_y = 120 + self.glow_offset * 0.5
-        title_text = "AIR WAR"
-        self._draw_glow_text(surface, title_text, self.title_font,
-                           (width // 2, title_y), self.colors['title'], self.colors['title_glow'], 5)
-
-        subtitle = self.hint_font.render("ARCADE EDITION", True, (110, 110, 160))
-        surface.blit(subtitle, subtitle.get_rect(center=(width // 2, title_y + 55)))
-
-        panel_title = self.desc_font.render("SELECT DIFFICULTY", True, (80, 80, 130))
-        panel_title_rect = panel_title.get_rect(center=(width // 2, self.panel_y - 15))
-        surface.blit(panel_title, panel_title_rect)
-
+        self._draw_title_section(surface)
         self._draw_panel(surface)
+
+        panel_width = 400
+        panel_height = 280
+        center_x = width // 2
+        panel_y = height // 2 - panel_height // 2 + 30
         
-        for i in range(len(self.difficulty_options)):
-            self._draw_option_box(surface, i, i == self.selected_index)
+        option_section_height = 70 * 3 + 12 * 2
+        start_y = panel_y + (panel_height - option_section_height) // 2
+        
+        for i, diff in enumerate(self.difficulty_options):
+            self._draw_option_item(surface, diff, i, center_x, start_y, i == self.selected_index)
 
-        start_text = self.hint_font.render("PRESS ENTER TO START", True,
-                                           (110, 110, 160) if (self.animation_time // 30) % 2 == 0 else (160, 160, 210))
-        surface.blit(start_text, start_text.get_rect(center=(width // 2, height - 100)))
-
-        controls = self.desc_font.render("W/S or UP/DOWN to select", True, (60, 60, 100))
-        surface.blit(controls, controls.get_rect(center=(width // 2, height - 65)))
-
-        self._draw_back_button(surface)
+        self._draw_bottom_hints(surface)
 
     def get_difficulty(self) -> str:
         return self.difficulty
