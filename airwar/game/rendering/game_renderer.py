@@ -80,12 +80,14 @@ class GameRenderer:
         kills: int,
         next_threshold: float,
         cycle_count: int,
-        max_cycles: int
+        max_cycles: int,
+        boss_kills: int = 0
     ) -> None:
         self.hud_renderer.render_hud(
             surface, score, difficulty,
             player_health, player_max_health, kills,
-            next_threshold, cycle_count, max_cycles
+            next_threshold, cycle_count, max_cycles,
+            boss_kills=boss_kills
         )
 
     def render_notification(self, surface, notification: str, timer: int) -> None:
