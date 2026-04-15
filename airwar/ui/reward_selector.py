@@ -282,8 +282,8 @@ class RewardSelector:
         
         width, height = surface.get_size()
         
-        self._draw_title()
-        self._draw_panel()
+        self._draw_title(surface)
+        self._draw_panel(surface)
 
         panel_width = 480
         panel_height = 320
