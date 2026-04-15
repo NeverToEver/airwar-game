@@ -73,6 +73,11 @@ class GameController:
         cycle_bonus = self.milestone_index // len(self.base_thresholds)
         return base * (self.cycle_multiplier ** cycle_bonus) * self.difficulty_threshold_multiplier
 
+    def get_current_threshold(self, index: int) -> float:
+        base = self.base_thresholds[index % len(self.base_thresholds)]
+        cycle_bonus = index // len(self.base_thresholds)
+        return base * (self.cycle_multiplier ** cycle_bonus) * self.difficulty_threshold_multiplier
+
     def on_player_hit(self, damage: int, player) -> None:
         center_x = player.rect.centerx
         center_y = player.rect.centery
