@@ -126,10 +126,18 @@ class Player(Entity):
         return pygame.Rect(hb_x, hb_y, self.hitbox_width, self.hitbox_height)
 
     def _render_hitbox_indicator(self, surface: pygame.Surface) -> None:
+        from airwar.config import (
+            HITBOX_INDICATOR_PADDING,
+            HITBOX_INDICATOR_FREQUENCY,
+            HITBOX_INDICATOR_ALPHA_MIN,
+            HITBOX_INDICATOR_ALPHA_MAX
+        )
+
         hb = self.get_hitbox()
-        cx = hb.x + hb.width / 2
-        cy = hb.y + hb.height / 2
-        pulse = abs(math.sin(self._hitbox_timer * 0.15))
+        padding = HITBOX_INDICATOR_PADDING
+        cx = hb.width / 2 + padding
+        cy = hb.height / 2 + padding
+        pulse = abs(math.sin(self._hitbox_timer * HITBOX_INDICATOR_FREQUENCY))
 
         half_w = hb.width / 2
         half_h = hb.height / 2
@@ -141,12 +149,14 @@ class Player(Entity):
             (cx - half_w, cy),
         ]
 
-        alpha = int(150 + pulse * 105)
+        alpha_range = HITBOX_INDICATOR_ALPHA_MAX - HITBOX_INDICATOR_ALPHA_MIN
+        alpha = int(HITBOX_INDICATOR_ALPHA_MIN + pulse * alpha_range)
 
-        glow_surf = pygame.Surface((hb.width + 20, hb.height + 20), pygame.SRCALPHA)
+        glow_surf = pygame.Surface((hb.width + padding * 2, hb.height + padding * 2), pygame.SRCALPHA)
         glow_color = (255, 255, 255, alpha)
         pygame.draw.polygon(glow_surf, glow_color, diamond_points)
-        surface.blit(glow_surf, (hb.x - 10, hb.y - 10))
+        
+        surface.blit(glow_surf, (hb.x - padding, hb.y - padding))
 
     def add_listener(self, listener) -> None:
         if hasattr(listener, 'on_bullet_fired'):

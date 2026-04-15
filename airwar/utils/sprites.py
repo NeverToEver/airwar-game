@@ -361,8 +361,12 @@ def draw_laser_bullet(surface: pygame.Surface, x: float, y: float, width: float,
 def draw_ripple(surface: pygame.Surface, x: float, y: float, radius: float, alpha: int, pulse: int = 0) -> None:
     if alpha <= 0:
         return
-    ripple_color = (150, 255, 255)
-    glow_color = (200, 255, 255)
+    
+    from airwar.config import RIPPLE_ALPHA_FACTOR
+    alpha_factor = RIPPLE_ALPHA_FACTOR
+    
+    ripple_color = (200, 245, 255)
+    glow_color = (220, 250, 255)
     surface_size = int(radius * 2 + 30)
     ripple_surface = pygame.Surface((surface_size, surface_size), pygame.SRCALPHA)
     center_offset = surface_size // 2
@@ -371,21 +375,21 @@ def draw_ripple(surface: pygame.Surface, x: float, y: float, radius: float, alph
     pulse_effect = int(3 * (1 + 0.3 * math.sin(pulse * 0.3)))
 
     for i in range(int(radius), 0, -3):
-        ring_alpha = max(0, alpha * (radius - i) // int(radius))
-        if ring_alpha > 30:
-            color = (*ripple_color, min(255, ring_alpha))
-            thickness = max(2, 3 + pulse_effect // 2)
+        ring_alpha = max(0, alpha * alpha_factor * (radius - i) // int(radius))
+        if ring_alpha > 20:
+            color = (*ripple_color, min(200, ring_alpha))
+            thickness = max(2, 2 + pulse_effect // 3)
             pygame.draw.circle(ripple_surface, color, (center_offset, center_offset), i, thickness)
 
     for i in range(int(radius * 0.6), 0, -2):
-        inner_alpha = max(0, alpha * (radius - i * 1.5) // int(radius * 0.6))
-        if inner_alpha > 50:
-            color = (*glow_color, min(255, inner_alpha))
+        inner_alpha = max(0, alpha * alpha_factor * (radius - i * 1.5) // int(radius * 0.6))
+        if inner_alpha > 30:
+            color = (*glow_color, min(180, inner_alpha))
             pygame.draw.circle(ripple_surface, color, (center_offset, center_offset), i, max(1, 2))
 
-    core_radius = max(3, int(8 - pulse * 0.1))
-    core_alpha = max(0, min(255, alpha * 1.5))
-    if core_alpha > 50:
+    core_radius = max(3, int(6 - pulse * 0.1))
+    core_alpha = max(0, min(180, alpha * alpha_factor * 1.2))
+    if core_alpha > 30:
         pygame.draw.circle(ripple_surface, (*glow_color, core_alpha), (center_offset, center_offset), core_radius)
         pygame.draw.circle(ripple_surface, (255, 255, 255, core_alpha), (center_offset, center_offset), max(1, core_radius - 2))
 
