@@ -110,4 +110,5 @@ class HUDRenderer:
     def render_ripples(self, surface: pygame.Surface, ripples: List[dict]) -> None:
         from airwar.utils.sprites import draw_ripple
         for ripple in ripples:
-            draw_ripple(surface, ripple['x'], ripple['y'], ripple['radius'], ripple['alpha'])
+            pulse = ripple.get('pulse', 0)
+            draw_ripple(surface, ripple['x'], ripple['y'], ripple['radius'], ripple['alpha'], pulse)

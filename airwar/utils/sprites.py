@@ -277,15 +277,41 @@ def draw_laser_bullet(surface: pygame.Surface, x: float, y: float, width: float,
     pygame.draw.line(surface, (255, 220, 240), (center_x, y), (center_x, y + height), 2)
 
 
-def draw_ripple(surface: pygame.Surface, x: float, y: float, radius: float, alpha: int) -> None:
+def draw_ripple(surface: pygame.Surface, x: float, y: float, radius: float, alpha: int, pulse: int = 0) -> None:
     if alpha <= 0:
         return
-    ripple_surface = pygame.Surface((int(radius * 2 + 20), int(radius * 2 + 20)), pygame.SRCALPHA)
-    for i in range(int(radius), 0, -2):
-        ring_alpha = alpha * (radius - i) // int(radius)
-        color = (100, 220, 255, ring_alpha)
-        pygame.draw.circle(ripple_surface, color, (int(radius + 10), int(radius + 10)), i, 2)
-    surface.blit(ripple_surface, (int(x - radius - 10), int(y - radius - 10)))
+
+    ripple_color = (150, 255, 255)
+    glow_color = (200, 255, 255)
+
+    surface_size = int(radius * 2 + 30)
+    ripple_surface = pygame.Surface((surface_size, surface_size), pygame.SRCALPHA)
+    center_offset = surface_size // 2
+    x_pos = int(x - center_offset)
+    y_pos = int(y - center_offset)
+
+    pulse_effect = int(3 * (1 + 0.3 * math.sin(pulse * 0.3)))
+
+    for i in range(int(radius), 0, -3):
+        ring_alpha = max(0, alpha * (radius - i) // int(radius))
+        if ring_alpha > 30:
+            color = (*ripple_color, min(255, ring_alpha))
+            thickness = max(2, 3 + pulse_effect // 2)
+            pygame.draw.circle(ripple_surface, color, (center_offset, center_offset), i, thickness)
+
+    for i in range(int(radius * 0.6), 0, -2):
+        inner_alpha = max(0, alpha * (radius - i * 1.5) // int(radius * 0.6))
+        if inner_alpha > 50:
+            color = (*glow_color, min(255, inner_alpha))
+            pygame.draw.circle(ripple_surface, color, (center_offset, center_offset), i, max(1, 2))
+
+    core_radius = max(3, int(8 - pulse * 0.1))
+    core_alpha = max(0, min(255, alpha * 1.5))
+    if core_alpha > 50:
+        pygame.draw.circle(ripple_surface, (*glow_color, core_alpha), (center_offset, center_offset), core_radius)
+        pygame.draw.circle(ripple_surface, (255, 255, 255, core_alpha), (center_offset, center_offset), max(1, core_radius - 2))
+
+    surface.blit(ripple_surface, (x_pos, y_pos))
 
 
 def draw_boss_ship(surface: pygame.Surface, x: float, y: float, width: float = 120, height: float = 100, health_ratio: float = 1.0) -> None:
