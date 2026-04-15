@@ -104,9 +104,11 @@ class GameController:
         self.state.score += score_gained
 
     def update_ripples(self) -> None:
+        from airwar.config import RIPPLE_FADE_SPEED
+        
         for ripple in self.state.ripple_effects:
             ripple['radius'] += 2.5
-            ripple['alpha'] -= 4
+            ripple['alpha'] -= RIPPLE_FADE_SPEED
             ripple['pulse'] += 1
         self.state.ripple_effects = [r for r in self.state.ripple_effects if r['alpha'] > 0]
 
