@@ -19,6 +19,8 @@ class GameState:
     entrance_animation: bool = True
     entrance_timer: int = 0
     entrance_duration: int = 60
+    kill_count: int = 0
+    boss_kill_count: int = 0
 
 
 class GameController:
@@ -84,6 +86,15 @@ class GameController:
         self.state.ripple_effects.append({'x': center_x, 'y': center_y, 'radius': 10, 'alpha': 255})
         self.state.player_invincible = True
         self.state.invincibility_timer = 90
+
+    def on_enemy_killed(self, score_gained: int) -> None:
+        self.state.kill_count += 1
+        self.state.score += score_gained
+
+    def on_boss_killed(self, score_gained: int) -> None:
+        self.state.kill_count += 1
+        self.state.boss_kill_count += 1
+        self.state.score += score_gained
 
     def update_ripples(self) -> None:
         for ripple in self.state.ripple_effects:
