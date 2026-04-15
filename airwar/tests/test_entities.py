@@ -242,14 +242,15 @@ class TestPlayerHitbox:
         assert bullet is not None
         assert bullet.data.owner == 'player'
 
-    def test_player_auto_fire_respects_cooldown(self):
+    def test_player_fire_cooldown_respects_cooldown(self):
         from airwar.entities import Player
         from airwar.input import MockInputHandler
         input_handler = MockInputHandler()
         player = Player(100, 200, input_handler)
         player.fire_cooldown = 5
         initial_count = len(player.get_bullets())
-        player.auto_fire()
+        bullet = player.fire()
+        assert bullet is None
         assert len(player.get_bullets()) == initial_count
 
     def test_player_data_default_values(self):

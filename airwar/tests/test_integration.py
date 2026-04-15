@@ -65,22 +65,24 @@ class TestPlayerBulletSystem:
         assert bullet is None
         assert len(player.get_bullets()) == 0
 
-    def test_auto_fire_creates_bullets(self):
+    def test_fire_creates_bullets(self):
         from airwar.entities import Player
         from airwar.input import MockInputHandler
         player = Player(100, 200, MockInputHandler())
         player.fire_cooldown = 0
-        player.auto_fire()
+        bullet = player.fire()
+        assert bullet is not None
         assert len(player.get_bullets()) == 1
 
-    def test_bullets_are_removed_when_inactive(self):
+    def test_bullets_become_inactive_when_off_screen(self):
         from airwar.entities import Player, Bullet, BulletData
         from airwar.input import MockInputHandler
         player = Player(100, 200, MockInputHandler())
         bullet = Bullet(100, -100, BulletData())
         player._bullets.append(bullet)
-        player.update()
-        assert len(player.get_bullets()) == 0
+        assert bullet.active is True
+        bullet.update()
+        assert bullet.active is False
 
 
 class TestEnemyBehavior:
