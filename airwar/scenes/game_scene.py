@@ -128,40 +128,16 @@ class GameScene(Scene):
         )
         
         if spawn_needed:
-            self.spawn_controller.spawn_boss(
+            boss = self.spawn_controller.spawn_boss(
                 self.game_controller.cycle_count,
                 self.player.bullet_damage
+            )
+            self.game_controller.show_notification(
+                f"! BOSS APPROACHING ({int(boss.data.escape_time/60)}s) !"
             )
         
         if self.spawn_controller.boss:
             self._update_boss()
-
-    def _spawn_boss(self) -> None:
-        from airwar.config import get_screen_width
-        screen_width = get_screen_width()
-        cycle_count = self.game_controller.cycle_count
-
-        base_health = 500 * (1 + cycle_count * 0.5)
-        escape_time = int(base_health / self.player.bullet_damage * 2.5)
-        escape_time = max(600, min(escape_time, 1800))
-
-        boss_data = BossData(
-            health=base_health,
-            speed=1.5 + cycle_count * 0.1,
-            score=5000 + cycle_count * 1000,
-            width=120,
-            height=100,
-            fire_rate=60 - cycle_count * 3,
-            phase=1,
-            escape_time=escape_time
-        )
-
-        from airwar.game import EnemyBulletSpawner
-        bullet_spawner = EnemyBulletSpawner(self.spawn_controller.enemy_bullets)
-        boss = Boss(screen_width // 2 - boss_data.width // 2, -100, boss_data)
-        boss.set_bullet_spawner(bullet_spawner)
-        self.spawn_controller.boss = boss
-        self.game_controller.show_notification(f"! BOSS APPROACHING ({int(escape_time/60)}s) !")
 
     def _update_boss(self) -> None:
         boss = self.spawn_controller.boss
@@ -305,23 +281,9 @@ class GameScene(Scene):
         self.game_renderer.render_notification(
             surface, self.game_controller.state.notification, self.game_controller.state.notification_timer)
 
-    def get_score(self) -> int:
-        return self.game_controller.state.score if self.game_controller else 0
-
-    def get_kills(self) -> int:
-        return self.game_controller.cycle_count if self.game_controller else 0
-
     @property
     def enemies(self) -> list:
         return self.spawn_controller.enemies if self.spawn_controller else []
-
-    @property
-    def enemy_spawner(self):
-        return self.spawn_controller.enemy_spawner if self.spawn_controller else None
-
-    @property
-    def boss(self):
-        return self.spawn_controller.boss if self.spawn_controller else None
 
     @property
     def score(self) -> int:
@@ -333,6 +295,15 @@ class GameScene(Scene):
             self.game_controller.state.score = value
 
     @property
+    def cycle_count(self) -> int:
+        return self.game_controller.cycle_count if self.game_controller else 0
+
+    @cycle_count.setter
+    def cycle_count(self, value: int) -> None:
+        if self.game_controller:
+            self.game_controller.cycle_count = value
+
+    @property
     def kills(self) -> int:
         return self.game_controller.cycle_count if self.game_controller else 0
 
@@ -340,6 +311,19 @@ class GameScene(Scene):
     def kills(self, value: int) -> None:
         if self.game_controller:
             self.game_controller.cycle_count = value
+
+    @property
+    def milestone_index(self) -> int:
+        return self.game_controller.milestone_index if self.game_controller else 0
+
+    @milestone_index.setter
+    def milestone_index(self, value: int) -> None:
+        if self.game_controller:
+            self.game_controller.milestone_index = value
+
+    @property
+    def boss(self):
+        return self.spawn_controller.boss if self.spawn_controller else None
 
     def is_game_over(self) -> bool:
         return not self.player.active if self.player else True
@@ -356,6 +340,15 @@ class GameScene(Scene):
             self.game_controller.state.paused = False
 
     @property
+    def paused(self) -> bool:
+        return self.game_controller.state.paused if self.game_controller else False
+
+    @paused.setter
+    def paused(self, value: bool) -> None:
+        if self.game_controller:
+            self.game_controller.state.paused = value
+
+    @property
     def unlocked_buffs(self) -> list:
         return self.reward_system.unlocked_buffs if self.reward_system else []
 
@@ -364,23 +357,17 @@ class GameScene(Scene):
         if self.reward_system:
             self.reward_system.unlocked_buffs = value
 
-    @property
-    def cycle_count(self) -> int:
-        return self.game_controller.cycle_count if self.game_controller else 0
+    def _calculate_damage_taken(self, damage: int) -> int:
+        return self.reward_system.calculate_damage_taken(damage)
 
-    @cycle_count.setter
-    def cycle_count(self, value: int) -> None:
-        if self.game_controller:
-            self.game_controller.cycle_count = value
+    def _try_dodge(self) -> bool:
+        return self.reward_system.try_dodge()
 
-    @property
-    def milestone_index(self) -> int:
-        return self.game_controller.milestone_index if self.game_controller else 0
+    def _get_current_threshold(self, index: int) -> float:
+        return self.game_controller.get_current_threshold(index)
 
-    @milestone_index.setter
-    def milestone_index(self, value: int) -> None:
-        if self.game_controller:
-            self.game_controller.milestone_index = value
+    def _get_next_threshold(self) -> float:
+        return self.game_controller.get_next_threshold()
 
     @property
     def entrance_animation(self) -> bool:
@@ -392,35 +379,8 @@ class GameScene(Scene):
             self.game_controller.state.entrance_animation = value
 
     @property
-    def entrance_timer(self) -> int:
-        return self.game_controller.state.entrance_timer if self.game_controller else 0
-
-    @entrance_timer.setter
-    def entrance_timer(self, value: int) -> None:
-        if self.game_controller:
-            self.game_controller.state.entrance_timer = value
-
-    @property
-    def entrance_duration(self) -> int:
-        return self.game_controller.state.entrance_duration if self.game_controller else 60
-
-    @property
-    def running(self) -> bool:
-        return self.game_controller.state.running if self.game_controller else False
-
-    @running.setter
-    def running(self, value: bool) -> None:
-        if self.game_controller:
-            self.game_controller.state.running = value
-
-    @property
-    def paused(self) -> bool:
-        return self.game_controller.state.paused if self.game_controller else False
-
-    @paused.setter
-    def paused(self, value: bool) -> None:
-        if self.game_controller:
-            self.game_controller.state.paused = value
+    def enemy_spawner(self):
+        return self.spawn_controller.enemy_spawner if self.spawn_controller else None
 
     @property
     def notification(self) -> str:
@@ -432,6 +392,33 @@ class GameScene(Scene):
             self.game_controller.state.notification = value
 
     @property
+    def difficulty(self) -> str:
+        return self.game_controller.state.difficulty if self.game_controller else 'medium'
+
+    @difficulty.setter
+    def difficulty(self, value: str) -> None:
+        if self.game_controller:
+            self.game_controller.state.difficulty = value
+
+    @property
+    def entrance_timer(self) -> int:
+        return self.game_controller.state.entrance_timer if self.game_controller else 0
+
+    @entrance_timer.setter
+    def entrance_timer(self, value: int) -> None:
+        if self.game_controller:
+            self.game_controller.state.entrance_timer = value
+
+    @property
+    def running(self) -> bool:
+        return self.game_controller.state.running if self.game_controller else False
+
+    @running.setter
+    def running(self, value: bool) -> None:
+        if self.game_controller:
+            self.game_controller.state.running = value
+
+    @property
     def notification_timer(self) -> int:
         return self.game_controller.state.notification_timer if self.game_controller else 0
 
@@ -441,31 +428,5 @@ class GameScene(Scene):
             self.game_controller.state.notification_timer = value
 
     @property
-    def player_invincible(self) -> bool:
-        return self.game_controller.state.player_invincible if self.game_controller else False
-
-    @player_invincible.setter
-    def player_invincible(self, value: bool) -> None:
-        if self.game_controller:
-            self.game_controller.state.player_invincible = value
-
-    def _calculate_damage_taken(self, damage: int) -> int:
-        return self.reward_system.calculate_damage_taken(damage)
-
-    def _try_dodge(self) -> bool:
-        return self.reward_system.try_dodge()
-
-    def _get_current_threshold(self, index: int) -> float:
-        return self.game_controller.get_current_threshold(index)
-
-    @property
-    def difficulty(self) -> str:
-        return self.game_controller.state.difficulty if self.game_controller else 'medium'
-
-    @difficulty.setter
-    def difficulty(self, value: str) -> None:
-        if self.game_controller:
-            self.game_controller.state.difficulty = value
-
-    def _get_next_threshold(self) -> float:
-        return self.game_controller.get_next_threshold()
+    def entrance_duration(self) -> int:
+        return self.game_controller.state.entrance_duration if self.game_controller else 60

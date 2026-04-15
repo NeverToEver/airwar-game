@@ -182,8 +182,8 @@ class SceneDirector:
         return result if result else PauseAction.RESUME
 
     def _handle_game_over(self, game_scene: GameScene) -> bool:
-        final_score = game_scene.get_score()
-        kills = game_scene.get_kills()
+        final_score = game_scene.score
+        kills = game_scene.cycle_count
         high_score = self._update_user_stats(final_score, kills)
         action = self._game_over_screen.show(
             final_score, kills, self._current_user, high_score)
