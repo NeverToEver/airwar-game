@@ -1,7 +1,7 @@
 from airwar.config.game_config import GameConfig, get_screen_width, get_screen_height, set_screen_size
 
-SCREEN_WIDTH = 1200
-SCREEN_HEIGHT = 700
+SCREEN_WIDTH = 1400
+SCREEN_HEIGHT = 800
 FPS = 60
 
 HEALTH_REGEN = {
