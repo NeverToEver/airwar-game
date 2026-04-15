@@ -44,8 +44,8 @@ class Enemy(Entity):
 
     def _create_bullets(self) -> List[Bullet]:
         bullets = []
-        center_x = self.rect.centerx - 5
-        
+        center_x = self.rect.centerx
+
         if self.data.bullet_type == "spread":
             for angle in [-20, 0, 20]:
                 bullet_data = BulletData(
@@ -75,8 +75,9 @@ class Enemy(Entity):
                 bullet_type="single"
             )
             bullet = Bullet(center_x, self.rect.bottom, bullet_data)
+            bullet.velocity = Vector2(0, 5)
             bullets.append(bullet)
-        
+
         return bullets
 
     def _get_damage(self) -> int:
