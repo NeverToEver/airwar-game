@@ -8,56 +8,58 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 class TestPlayerMovementBoundaries:
     def test_player_cannot_move_beyond_left_boundary(self):
         from airwar.entities import Player
+        from airwar.input import MockInputHandler
         from airwar.config import PLAYER_SPEED
-        player = Player(-10, 200)
+        input_handler = MockInputHandler()
+        input_handler.set_direction(-1, 0)
+        player = Player(-10, 200, input_handler)
         initial_x = player.rect.x
-        import pygame
-        pygame.init()
-        keys = pygame.key.get_pressed()
-        player.update(keys=keys)
+        player.update()
         assert player.rect.x >= 0
 
     def test_player_cannot_move_beyond_right_boundary(self):
         from airwar.entities import Player
+        from airwar.input import MockInputHandler
         from airwar.config import SCREEN_WIDTH, PLAYER_SPEED
-        player = Player(SCREEN_WIDTH + 10, 200)
-        import pygame
-        pygame.init()
-        keys = pygame.key.get_pressed()
-        player.update(keys=keys)
+        input_handler = MockInputHandler()
+        input_handler.set_direction(1, 0)
+        player = Player(SCREEN_WIDTH + 10, 200, input_handler)
+        player.update()
         assert player.rect.x <= SCREEN_WIDTH - player.rect.width
 
     def test_player_cannot_move_beyond_top_boundary(self):
         from airwar.entities import Player
-        player = Player(100, -10)
-        import pygame
-        pygame.init()
-        keys = pygame.key.get_pressed()
-        player.update(keys=keys)
+        from airwar.input import MockInputHandler
+        input_handler = MockInputHandler()
+        input_handler.set_direction(0, -1)
+        player = Player(100, -10, input_handler)
+        player.update()
         assert player.rect.y >= 0
 
     def test_player_cannot_move_beyond_bottom_boundary(self):
         from airwar.entities import Player
+        from airwar.input import MockInputHandler
         from airwar.config import SCREEN_HEIGHT
-        player = Player(100, SCREEN_HEIGHT + 10)
-        import pygame
-        pygame.init()
-        keys = pygame.key.get_pressed()
-        player.update(keys=keys)
+        input_handler = MockInputHandler()
+        input_handler.set_direction(0, 1)
+        player = Player(100, SCREEN_HEIGHT + 10, input_handler)
+        player.update()
         assert player.rect.y <= SCREEN_HEIGHT - player.rect.height
 
 
 class TestPlayerBulletSystem:
     def test_player_fire_creates_bullet(self):
         from airwar.entities import Player
-        player = Player(100, 200)
+        from airwar.input import MockInputHandler
+        player = Player(100, 200, MockInputHandler())
         bullet = player.fire()
         assert bullet is not None
         assert len(player.get_bullets()) == 1
 
     def test_player_cannot_fire_when_on_cooldown(self):
         from airwar.entities import Player
-        player = Player(100, 200)
+        from airwar.input import MockInputHandler
+        player = Player(100, 200, MockInputHandler())
         player.fire_cooldown = 10
         bullet = player.fire()
         assert bullet is None
@@ -65,14 +67,16 @@ class TestPlayerBulletSystem:
 
     def test_auto_fire_creates_bullets(self):
         from airwar.entities import Player
-        player = Player(100, 200)
+        from airwar.input import MockInputHandler
+        player = Player(100, 200, MockInputHandler())
         player.fire_cooldown = 0
         player.auto_fire()
         assert len(player.get_bullets()) == 1
 
     def test_bullets_are_removed_when_inactive(self):
         from airwar.entities import Player, Bullet, BulletData
-        player = Player(100, 200)
+        from airwar.input import MockInputHandler
+        player = Player(100, 200, MockInputHandler())
         bullet = Bullet(100, -100, BulletData())
         player._bullets.append(bullet)
         player.update()
