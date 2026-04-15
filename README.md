@@ -6,7 +6,7 @@
 
 ### ✅ 架构重构已完成
 
-本项目已完成架构重构（参考 [重构设计文档](docs/superpowers/specs/2026-04-14-airwar-refactoring-design.md)），实现了以下改进：
+本项目已完成架构重构，实现了以下改进：
 
 #### Phase 1: 输入层抽象
 - ✅ 创建 `airwar/input/` 模块
@@ -35,38 +35,247 @@
 - ✅ 创建 `BuffRegistry` 注册表
 - ✅ 重构 `RewardSystem` 使用策略模式
 
-### 📊 架构改进成果
+---
 
-| 指标 | 重构前 | 重构后 | 改进 |
-|------|--------|--------|------|
-| **模块化** | 中等 | ✅ 优秀 | 显著提升 |
-| **单一职责** | ❌ 违反 | ✅ 遵循 | 完全符合 |
-| **耦合度** | 高 | 低 | 显著降低 |
-| **可测试性** | 困难 | ✅ 优秀 | 显著提升 |
-| **可扩展性** | 困难 | ✅ 优秀 | 显著提升 |
+## 🏗️ 架构设计概览
+
+### 设计原则
+
+本项目严格遵循以下架构设计原则：
+
+| 原则 | 描述 | 实施状态 |
+|------|------|----------|
+| **单一职责 (SRP)** | 每个类/函数只负责一件事 | ✅ 完全遵循 |
+| **开闭原则 (OCP)** | 对扩展开放，对修改关闭 | ✅ 通过策略模式实现 |
+| **里氏替换 (LSP)** | 子类可替换父类而不影响功能 | ✅ 接口规范一致 |
+| **依赖倒置 (DIP)** | 依赖抽象而非具体实现 | ✅ 使用接口和依赖注入 |
+| **接口隔离 (ISP)** | 客户依赖最小接口 | ✅ IBulletSpawner 等 |
+
+### 核心模块职责
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         main.py                                  │
+│                      (入口点，仅调度)                             │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+         ┌─────────────────┴──────────────────┐
+         ▼                                    ▼
+┌─────────────────────┐          ┌─────────────────────┐
+│   SceneManager      │          │   SceneDirector     │
+│   (场景管理)         │          │   (场景协调)        │
+└─────────┬───────────┘          └─────────┬───────────┘
+          │                                │
+    ┌─────┴─────┬──────┬───────┐     ┌─────┴──────┐
+    ▼           ▼      ▼       ▼     ▼           ▼
+┌──────┐  ┌────────┐ ┌─────┐ ┌──────┐  ┌──────────────┐
+│Login │  │ Menu   │ │Game │ │Pause │  │ GameOver    │
+│Scene │  │ Scene  │ │Scene│ │Scene │  │ Scene       │
+└──────┘  └────────┘ └─────┘ └──────┘  └──────────────┘
+```
+
+### GameScene 内部架构
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│                         GameScene                                   │
+│                    (游戏主场景，协调者)                              │
+├────────────────────────────────────────────────────────────────────┤
+│                                                                    │
+│  ┌─────────────────┐    ┌─────────────────┐    ┌────────────────┐│
+│  │   Player        │    │   EnemySpawner   │    │  Boss           ││
+│  │   (玩家实体)    │    │   (敌人生成器)   │    │  (Boss实体)     ││
+│  └────────┬────────┘    └────────┬─────────┘    └───────┬────────┘│
+│           │                     │                     │          │
+│  ┌────────┴────────┐    ┌───────┴────────┐    ┌───────┴─────────┐│
+│  │ InputHandler   │    │ IBulletSpawner │    │ IBulletSpawner  ││
+│  │ (输入抽象)      │    │ (子弹生成接口)  │    │ (子弹生成接口)  ││
+│  └─────────────────┘    └────────────────┘    └────────────────┘│
+│                                                                    │
+│  ┌─────────────────────────────────────────────────────────────────┐
+│  │                     GameController                              │
+│  │                  (游戏主控制器，管理游戏状态)                   │
+│  ├─────────────────────────────────────────────────────────────────┤
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
+│  │  │HealthSystem │  │ Notification│  │ update_ripples()        │ │
+│  │  │(生命系统)   │  │ Manager     │  │ (涟漪效果管理)          │ │
+│  │  └─────────────┘  └─────────────┘  └─────────────────────────┘ │
+│  └─────────────────────────────────────────────────────────────────┘
+│                                                                    │
+│  ┌─────────────────────────────────────────────────────────────────┐
+│  │                   SpawnController                              │
+│  │                     (生成控制器)                                 │
+│  ├─────────────────────────────────────────────────────────────────┤
+│  │  ┌─────────────────────┐  ┌──────────────────────────────────┐│
+│  │  │ EnemyBulletSpawner   │  │ enemy_bullets                     ││
+│  │  │ (敌弹生成器)         │  │ (敌弹列表，GameScene引用)         ││
+│  │  └─────────────────────┘  └──────────────────────────────────┘│
+│  └─────────────────────────────────────────────────────────────────┘
+│                                                                    │
+└────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## 🎮 游戏截图
+## 🔌 接口规范
 
-> TODO: 添加游戏截图
+### 核心接口列表
 
-## 📑 目录
+| 接口名 | 位置 | 职责 | 方法签名 |
+|--------|------|------|----------|
+| `InputHandler` | `airwar/input/input_handler.py` | 输入抽象 | `get_direction()`, `is_fire_pressed()`, `is_pause_pressed()` |
+| `IBulletSpawner` | `airwar/entities/interfaces.py` | 子弹生成 | `spawn_bullet(bullet: Bullet)` |
+| `IScene` | `airwar/scenes/scene.py` | 场景基类 | `enter()`, `handle_events()`, `update()`, `render()`, `exit()` |
+| `IBuff` | `airwar/game/buffs/base_buff.py` | Buff基类 | `apply(target, current_round)`, `get_description()` |
+| `IRewardStrategy` | `airwar/game/systems/reward_system.py` | 奖励策略 | `select_rewards(score, round_count)` |
 
-- [游戏特色](#游戏特色)
-- [快速开始](#快速开始)
-- [游戏操作](#游戏操作)
-- [游戏系统](#游戏系统)
-  - [难度系统](#难度系统)
-  - [Boss 机制](#boss-机制)
-  - [增益系统](#增益系统)
-  - [回血机制](#回血机制)
-- [配置说明](#配置说明)
-- [运行测试](#运行测试)
-- [项目结构](#项目结构)
-- [重构说明](#重构说明)
+### InputHandler 接口规范
 
-## 游戏特色
+```python
+class InputHandler(ABC):
+    """输入处理抽象接口"""
+
+    @abstractmethod
+    def get_direction(self) -> Tuple[int, int]:
+        """
+        获取移动方向
+        Returns:
+            Tuple[int, int]: (x方向, y方向)，值为 -1, 0, 1
+        """
+
+    @abstractmethod
+    def is_fire_pressed(self) -> bool:
+        """是否按下射击键"""
+
+    @abstractmethod
+    def is_pause_pressed(self) -> bool:
+        """是否按下暂停键"""
+
+    @abstractmethod
+    def is_quit_requested(self) -> bool:
+        """是否请求退出游戏"""
+```
+
+### IBulletSpawner 接口规范
+
+```python
+class IBulletSpawner(ABC):
+    """子弹生成抽象接口"""
+
+    def spawn_bullet(self, bullet: Bullet) -> None:
+        """
+        生成子弹
+        Args:
+            bullet: 要生成的子弹实例
+        Note:
+            实现类应将子弹添加到游戏世界的子弹列表中
+        """
+        raise NotImplementedError
+```
+
+---
+
+## 📋 代码审查清单
+
+### 新增代码必须满足
+
+- [ ] 每个类都有单一、清晰的职责（能用一句话描述）
+- [ ] 所有公共API通过接口/抽象类暴露
+- [ ] 没有魔法数字，所有常量已命名
+- [ ] 没有函数超过40行（超过需拆分）
+- [ ] 没有超过3层嵌套（超过需重构）
+- [ ] 没有重复代码超过3处（需提取到工具函数或基类）
+- [ ] 没有跨模块直接访问内部状态
+- [ ] 底层库调用已封装在抽象层中
+- [ ] 游戏逻辑独立于渲染/输入/UI
+- [ ] 配置已集中管理
+
+### 禁止的 Anti-Patterns
+
+| Anti-Pattern | 检测方法 | 解决方案 |
+|--------------|----------|----------|
+| God Class | 类名包含"Manager"且方法>10 | 按职责拆分 |
+| 魔法数字 | 搜索 `if .* > [0-9]+` | 提取为常量 |
+| 硬编码依赖 | 直接 `import` 具体类 | 使用接口/抽象 |
+| 分散逻辑 | 同一功能在多个文件 | 集中到单一模块 |
+| 深层嵌套 | 4层以上 if/while | 使用卫句/提取方法 |
+| 长函数 | >40行 | 拆分辅助函数 |
+| 全局状态 | 跨模块 mutable 变量 | 集中到状态管理器 |
+| 泄露抽象 | 暴露 pygame 细节 | 封装接口 |
+
+### 命名规范
+
+| 类型 | 规范 | 示例 |
+|------|------|------|
+| 变量 | snake_case，描述性 | `player_health`, `bullet_list` |
+| 函数 | snake_case，动词 | `update_position`, `spawn_enemy` |
+| 类 | PascalCase，名词 | `Player`, `EnemySpawner` |
+| 常量 | UPPER_SNAKE_CASE | `MAX_HEALTH`, `FPS` |
+| 私有成员 | 前缀 `_` | `_internal_state` |
+
+---
+
+## 🛠️ 维护指南
+
+### 添加新Buff步骤
+
+1. 在 `airwar/game/buffs/` 下创建新文件
+2. 继承 `Buff` 基类
+3. 实现 `apply()` 和 `get_description()` 方法
+4. 在 `BuffRegistry` 中注册
+
+```python
+# 示例：新增护盾Buff
+class ShieldBuff(Buff):
+    def __init__(self):
+        super().__init__("Shield", "SHD", BuffType.DEFENSE)
+
+    def apply(self, target: 'Player', current_round: int) -> BuffResult:
+        target.is_shielded = True
+        return BuffResult(
+            applied=True,
+            description="获得护盾，抵挡下一次攻击",
+            health_gained=0
+        )
+```
+
+### 添加新敌人类型步骤
+
+1. 在 `EnemyData` 或 `BossData` 添加数据类
+2. 在 `Enemy._create_bullets()` 添加攻击模式
+3. 在 `DifficultySettings` 配置参数
+4. 添加对应测试用例
+
+### 调试技巧
+
+| 场景 | 调试方法 |
+|------|----------|
+| 子弹不发射 | 检查 `_bullet_spawner` 是否为 None |
+| 涟漪不扩散 | 检查 `GameController.update()` 是否调用 `update_ripples()` |
+| 碰撞检测失败 | 检查 `rect.colliderect()` 坐标是否正确 |
+| 测试失败 | 使用 `pytest -v --tb=short` 查看详细错误 |
+
+---
+
+## 📊 测试覆盖
+
+当前测试数量：**151 个**
+
+| 测试文件 | 测试数量 | 覆盖内容 |
+|----------|----------|----------|
+| test_config.py | 12 | 配置系统 |
+| test_database.py | 9 | 用户数据库 |
+| test_entities.py | 30 | 实体类（玩家/敌人/Boss/子弹） |
+| test_integration.py | 47 | 集成测试 |
+| test_rewards.py | 11 | 奖励系统 |
+| test_scenes.py | 11 | 场景类 |
+| test_scene_director.py | 31 | 场景管理器 |
+
+**所有测试通过** ✅
+
+---
+
+## 🎮 游戏特色
 
 - **三种难度模式**：简单 / 普通 / 困难
 - **Boss 挑战**：周期性出现的 Boss，具有多种攻击模式和逃跑机制
@@ -123,6 +332,8 @@ python main.py
 | `S` / `↓` | 选择下一个选项 |
 | `Enter` | 确认选择 |
 | `ESC` | 返回游戏 |
+
+---
 
 ## 游戏系统
 
@@ -200,6 +411,8 @@ python main.py
 
 > 注意：拥有 Regeneration 增益后，回血速度会大幅提升（2HP/秒）
 
+---
+
 ## 配置说明
 
 游戏配置文件位于 `airwar/config/settings.py`：
@@ -230,6 +443,8 @@ DIFFICULTY_SETTINGS = {
 }
 ```
 
+---
+
 ## 运行测试
 
 ### 运行所有测试
@@ -238,20 +453,7 @@ DIFFICULTY_SETTINGS = {
 pytest airwar/tests/ -v
 ```
 
-### 测试覆盖率
-
-当前测试数量：**113 个**
-
-| 测试文件 | 测试数量 |
-|----------|----------|
-| test_config.py | 12 |
-| test_database.py | 9 |
-| test_entities.py | 30 |
-| test_integration.py | 47 |
-| test_rewards.py | 11 |
-| test_scenes.py | 11 |
-
-**所有测试通过** ✅
+---
 
 ## 项目结构
 
@@ -320,8 +522,11 @@ airwar/
     ├── test_entities.py
     ├── test_integration.py
     ├── test_rewards.py
-    └── test_scenes.py
+    ├── test_scenes.py
+    └── test_scene_director.py
 ```
+
+---
 
 ## 重构说明
 
@@ -341,9 +546,7 @@ airwar/
 4. **子系统分离** - 游戏逻辑拆分为多个独立子系统
 5. **单一职责** - 各模块职责清晰，代码可维护性显著提升
 
-### 相关文档
-
-- [架构重构设计文档](docs/superpowers/specs/2026-04-14-airwar-refactoring-design.md)
+---
 
 ## License
 
