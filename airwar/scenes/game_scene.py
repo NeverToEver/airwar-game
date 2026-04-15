@@ -6,6 +6,7 @@ from airwar.game.systems.reward_system import RewardSystem, REWARD_POOL
 from airwar.game.systems.hud_renderer import HUDRenderer
 from airwar.game.systems.notification_manager import NotificationManager
 from airwar.game.controllers.game_controller import GameController, GameState
+from airwar.game.controllers.spawn_controller import SpawnController
 from airwar.game.rendering.game_renderer import GameRenderer, GameEntities
 from airwar.ui.reward_selector import RewardSelector
 
@@ -18,16 +19,13 @@ class GameScene(Scene):
         self.reward_system: RewardSystem = None
         self.hud_renderer: HUDRenderer = None
         self.notification_manager: NotificationManager = None
+        self.spawn_controller: SpawnController = None
         self.player: Player = None
-        self.enemies = []
-        self.enemy_bullets = []
-        self.boss = None
         self.reward_selector: RewardSelector = RewardSelector()
 
     def enter(self, **kwargs) -> None:
         from airwar.config import DIFFICULTY_SETTINGS, get_screen_width, get_screen_height
         from airwar.input import PygameInputHandler
-        from airwar.game import EnemyBulletSpawner
 
         screen_width = get_screen_width()
         screen_height = get_screen_height()
@@ -43,25 +41,13 @@ class GameScene(Scene):
         self.hud_renderer = HUDRenderer()
         self.notification_manager = self.game_controller.notification_manager
 
+        self.spawn_controller = SpawnController(settings)
+        self.spawn_controller.init_bullet_system()
+
         input_handler = PygameInputHandler()
         self.player = Player(screen_width // 2 - 25, screen_height - 100, input_handler)
         self.player.rect.y = -80
         self.player.bullet_damage = settings['bullet_damage']
-
-        self.enemies = []
-        self.enemy_bullets = []
-        enemy_bullet_spawner = EnemyBulletSpawner(self.enemy_bullets)
-        self.enemy_spawner = EnemySpawner()
-        self.enemy_spawner.set_bullet_spawner(enemy_bullet_spawner)
-        self.enemy_spawner.set_params(
-            health=settings['enemy_health'],
-            speed=settings['enemy_speed'],
-            spawn_rate=settings['spawn_rate']
-        )
-
-        self.boss = None
-        self.boss_spawn_timer = 0
-        self.boss_spawn_interval = 1800
 
         self._setup_reward_selector()
 
@@ -131,22 +117,25 @@ class GameScene(Scene):
         self._check_collisions()
         self._check_milestones()
 
-        self.enemies = [e for e in self.enemies if e.active]
+        self.spawn_controller.cleanup()
         self._cleanup_bullets()
 
         if not self.player.active:
             self.game_controller.state.running = False
 
     def _update_enemy_spawning(self) -> None:
-        self.enemy_spawner.update(self.enemies, self.reward_system.slow_factor)
-
-        if self.boss is None:
-            self.boss_spawn_timer += 1
-            spawn_interval = int(self.boss_spawn_interval * (1.0 / self.reward_system.slow_factor))
-            if self.boss_spawn_timer >= spawn_interval:
-                self.boss_spawn_timer = 0
-                self._spawn_boss()
-        else:
+        spawn_needed = self.spawn_controller.update(
+            self.game_controller.state.score,
+            self.reward_system.slow_factor
+        )
+        
+        if spawn_needed:
+            self.spawn_controller.spawn_boss(
+                self.game_controller.cycle_count,
+                self.player.bullet_damage
+            )
+        
+        if self.spawn_controller.boss:
             self._update_boss()
 
     def _spawn_boss(self) -> None:
@@ -173,24 +162,28 @@ class GameScene(Scene):
         enemy_bullet_spawner = EnemyBulletSpawner(self.enemy_bullets)
         boss = Boss(screen_width // 2 - boss_data.width // 2, -100, boss_data)
         boss.set_bullet_spawner(enemy_bullet_spawner)
-        self.boss = boss
-        self.game_controller.show_notification(f"! BOSS APPROACHING ({int(escape_time/60)}s) !")
+        boss = self.spawn_controller.spawn_boss(
+            self.game_controller.cycle_count,
+            self.player.bullet_damage
+        )
+        self.game_controller.show_notification(f"! BOSS APPROACHING ({int(boss.data.escape_time/60)}s) !")
 
     def _update_boss(self) -> None:
-        self.boss.update()
+        boss = self.spawn_controller.boss
+        boss.update()
         player_hitbox = self.player.get_hitbox()
 
-        if not self.boss.is_entering() and self.boss.active:
-            if self.boss.rect.colliderect(player_hitbox):
+        if not boss.is_entering() and boss.active:
+            if boss.rect.colliderect(player_hitbox):
                 if not self.game_controller.state.player_invincible:
                     damage = self.reward_system.calculate_damage_taken(30)
                     self.player.take_damage(damage)
                     self.game_controller.on_player_hit(damage, self.player)
 
         for bullet in self.player.get_bullets():
-            if bullet.active and self.boss and self.boss.active and not self.boss.is_entering():
-                if bullet.get_rect().colliderect(self.boss.get_rect()):
-                    score_reward = self.boss.take_damage(bullet.data.damage)
+            if bullet.active and boss and boss.active and not boss.is_entering():
+                if bullet.get_rect().colliderect(boss.get_rect()):
+                    score_reward = boss.take_damage(bullet.data.damage)
                     if score_reward > 0:
                         self.game_controller.state.score += score_reward
                         self.game_controller.show_notification(f"+{score_reward} BOSS SCORE!")
@@ -198,18 +191,18 @@ class GameScene(Scene):
                     if self.reward_system.piercing_level <= 0:
                         bullet.active = False
 
-                    if not self.boss.active:
+                    if not boss.active:
                         self.game_controller.cycle_count += 1
-                        self.reward_system.apply_lifesteal(self.player, self.boss.data.score)
-                        self.boss = None
+                        self.reward_system.apply_lifesteal(self.player, boss.data.score)
+                        self.spawn_controller.boss = None
 
-        if self.boss and not self.boss.active:
-            if self.boss.is_escaped():
+        if boss and not boss.active:
+            if boss.is_escaped():
                 self.game_controller.show_notification("BOSS ESCAPED! (+0)")
-            self.boss = None
+            self.spawn_controller.boss = None
 
     def _update_entities(self) -> None:
-        for enemy in self.enemies:
+        for enemy in self.spawn_controller.enemies:
             enemy.update()
             if enemy.rect.colliderect(self.player.get_hitbox()):
                 if not self.reward_system.try_dodge():
@@ -220,13 +213,14 @@ class GameScene(Scene):
         self._check_enemy_bullets_vs_player()
 
     def _check_player_bullets_vs_enemies(self) -> None:
+        enemies = self.spawn_controller.enemies
         for bullet in self.player.get_bullets():
-            for enemy in self.enemies:
+            for enemy in enemies:
                 if bullet.active and enemy.active:
                     if bullet.get_rect().colliderect(enemy.get_rect()):
                         if self.reward_system.explosive_level > 0:
                             self.reward_system.do_explosive_damage(
-                                self.enemies, enemy.rect.centerx, enemy.rect.centery, bullet.data.damage)
+                                enemies, enemy.rect.centerx, enemy.rect.centery, bullet.data.damage)
                         else:
                             enemy.take_damage(bullet.data.damage)
 
@@ -265,8 +259,8 @@ class GameScene(Scene):
     def render(self, surface: pygame.Surface) -> None:
         entities = GameEntities(
             player=self.player,
-            enemies=self.enemies,
-            boss=self.boss
+            enemies=self.spawn_controller.enemies,
+            boss=self.spawn_controller.boss
         )
         self.game_renderer.render(surface, self.game_controller.state, entities)
 
@@ -306,6 +300,18 @@ class GameScene(Scene):
 
     def get_kills(self) -> int:
         return self.game_controller.cycle_count if self.game_controller else 0
+
+    @property
+    def enemies(self) -> list:
+        return self.spawn_controller.enemies if self.spawn_controller else []
+
+    @property
+    def enemy_spawner(self):
+        return self.spawn_controller.enemy_spawner if self.spawn_controller else None
+
+    @property
+    def boss(self):
+        return self.spawn_controller.boss if self.spawn_controller else None
 
     @property
     def score(self) -> int:
