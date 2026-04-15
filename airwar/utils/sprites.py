@@ -171,23 +171,6 @@ def draw_player_ship(surface: pygame.Surface, x: float, y: float, width: float =
     ]
     pygame.draw.polygon(surface, hull_dark, engine_serrated_right)
     
-    thruster_y = y + height + height * 0.05
-    
-    for offset in [-width * 0.16, -width * 0.05, width * 0.05, width * 0.16]:
-        for i in range(8, 0, -2):
-            alpha = 30 * (8 - i) // 7
-            thruster_surf = pygame.Surface((8, 12), pygame.SRCALPHA)
-            pygame.draw.ellipse(thruster_surf, (*thruster_glow, alpha), 
-                               (4 - i // 2, 4 + i // 3, i, 7 - i // 2))
-            surface.blit(thruster_surf, (int(center_x + offset - 4), int(thruster_y)))
-    
-    for i in range(5, 0, -1):
-        alpha = 25 * (5 - i) // 4
-        main_thruster_surf = pygame.Surface((6, 10), pygame.SRCALPHA)
-        pygame.draw.ellipse(main_thruster_surf, (*thruster_deep, alpha),
-                          (3 - i // 2, 3 + i // 2, i, 6 - i // 2))
-        surface.blit(main_thruster_surf, (int(center_x - 3), int(thruster_y + 1)))
-    
     for i in range(3):
         line_y = y + height * 0.42 + i * height * 0.08
         pygame.draw.line(surface, hull_highlight,

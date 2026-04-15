@@ -215,8 +215,8 @@ class TestPlayerHitbox:
         player = Player(100, 200, input_handler)
         assert player.hitbox_width < player.rect.width
         assert player.hitbox_height < player.rect.height
-        assert player.hitbox_width == 20
-        assert player.hitbox_height == 24
+        assert player.hitbox_width == 12
+        assert player.hitbox_height == 16
 
     def test_player_get_hitbox(self):
         from airwar.entities import Player
@@ -224,8 +224,8 @@ class TestPlayerHitbox:
         input_handler = MockInputHandler()
         player = Player(100, 200, input_handler)
         hitbox = player.get_hitbox()
-        assert hitbox.width == 20
-        assert hitbox.height == 24
+        assert hitbox.width == 12
+        assert hitbox.height == 16
 
     def test_player_health_cannot_exceed_max(self):
         pass
