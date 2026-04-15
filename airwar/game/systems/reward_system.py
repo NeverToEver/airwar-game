@@ -1,7 +1,7 @@
 import random
 from typing import List, Dict
-from .buffs.buff_registry import BUFF_REGISTRY, create_buff
-from .buffs.base_buff import Buff
+from airwar.game.buffs.buff_registry import BUFF_REGISTRY, create_buff
+from airwar.game.buffs.base_buff import Buff
 
 
 REWARD_POOL = {
