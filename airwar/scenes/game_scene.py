@@ -43,6 +43,8 @@ class GameScene(Scene):
 
         self.spawn_controller = SpawnController(settings)
         self.spawn_controller.init_bullet_system()
+        
+        self.enemy_bullets = []
 
         input_handler = PygameInputHandler()
         self.player = Player(screen_width // 2 - 25, screen_height - 100, input_handler)
@@ -159,7 +161,7 @@ class GameScene(Scene):
         )
 
         from airwar.game import EnemyBulletSpawner
-        enemy_bullet_spawner = EnemyBulletSpawner(self.enemy_bullets)
+        bullet_spawner = EnemyBulletSpawner(self.spawn_controller.enemy_bullets)
         boss = Boss(screen_width // 2 - boss_data.width // 2, -100, boss_data)
         boss.set_bullet_spawner(enemy_bullet_spawner)
         boss = self.spawn_controller.spawn_boss(
@@ -233,7 +235,7 @@ class GameScene(Scene):
 
     def _check_enemy_bullets_vs_player(self) -> None:
         player_hitbox = self.player.get_hitbox()
-        for eb in self.enemy_bullets:
+        for eb in self.spawn_controller.enemy_bullets:
             eb.update()
             if eb.active and eb.rect.colliderect(player_hitbox):
                 if not self.game_controller.state.player_invincible:
@@ -242,7 +244,7 @@ class GameScene(Scene):
                     self.game_controller.on_player_hit(damage, self.player)
 
     def _cleanup_bullets(self) -> None:
-        self.enemy_bullets = [b for b in self.enemy_bullets if b.active]
+        self.enemy_bullets = [b for b in self.spawn_controller.enemy_bullets if b.active]
 
     def _check_milestones(self) -> None:
         threshold = self.game_controller.get_next_threshold()
@@ -276,7 +278,7 @@ class GameScene(Scene):
             bullet.render(surface)
 
     def _render_enemy_bullets(self, surface: pygame.Surface) -> None:
-        for eb in self.enemy_bullets:
+        for eb in self.spawn_controller.enemy_bullets:
             eb.render(surface)
 
     def _render_hud(self, surface: pygame.Surface) -> None:
