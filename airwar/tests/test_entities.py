@@ -8,7 +8,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 class TestPlayerEntity:
     def test_player_creation(self):
         from airwar.entities import Player
-        player = Player(100, 200)
+        from airwar.input import MockInputHandler
+        input_handler = MockInputHandler()
+        player = Player(100, 200, input_handler)
         assert player.rect.x == 100
         assert player.rect.y == 200
         assert player.health == 100
@@ -17,23 +19,29 @@ class TestPlayerEntity:
 
     def test_player_bullet_damage(self):
         from airwar.entities import Player
-        player = Player(100, 200)
+        from airwar.input import MockInputHandler
+        input_handler = MockInputHandler()
+        player = Player(100, 200, input_handler)
         player.bullet_damage = 50
         assert player.bullet_damage == 50
 
     def test_player_movement_accepts_keys(self):
         from airwar.entities import Player
+        from airwar.input import MockInputHandler
         import pygame
         pygame.init()
-        player = Player(100, 200)
-        keys = pygame.key.get_pressed()
+        input_handler = MockInputHandler()
+        input_handler.set_direction(0, 0)
+        player = Player(100, 200, input_handler)
         initial_x = player.rect.x
-        player.update(keys=keys)
+        player.update()
         assert player.rect.x == initial_x
 
     def test_player_take_damage(self):
         from airwar.entities import Player
-        player = Player(100, 200)
+        from airwar.input import MockInputHandler
+        input_handler = MockInputHandler()
+        player = Player(100, 200, input_handler)
         player.take_damage(30)
         assert player.health == 70
         player.take_damage(80)
@@ -41,7 +49,9 @@ class TestPlayerEntity:
 
     def test_player_fire_cooldown(self):
         from airwar.entities import Player
-        player = Player(100, 200)
+        from airwar.input import MockInputHandler
+        input_handler = MockInputHandler()
+        player = Player(100, 200, input_handler)
         assert player.fire_cooldown == 0
         player.fire()
         assert player.fire_cooldown > 0
@@ -200,7 +210,9 @@ class TestBossEntity:
 class TestPlayerHitbox:
     def test_player_hitbox_smaller_than_sprite(self):
         from airwar.entities import Player
-        player = Player(100, 200)
+        from airwar.input import MockInputHandler
+        input_handler = MockInputHandler()
+        player = Player(100, 200, input_handler)
         assert player.hitbox_width < player.rect.width
         assert player.hitbox_height < player.rect.height
         assert player.hitbox_width == 20
@@ -208,7 +220,9 @@ class TestPlayerHitbox:
 
     def test_player_get_hitbox(self):
         from airwar.entities import Player
-        player = Player(100, 200)
+        from airwar.input import MockInputHandler
+        input_handler = MockInputHandler()
+        player = Player(100, 200, input_handler)
         hitbox = player.get_hitbox()
         assert hitbox.width == 20
         assert hitbox.height == 24
@@ -221,14 +235,18 @@ class TestPlayerHitbox:
 
     def test_player_fire_returns_bullet(self):
         from airwar.entities import Player
-        player = Player(100, 200)
+        from airwar.input import MockInputHandler
+        input_handler = MockInputHandler()
+        player = Player(100, 200, input_handler)
         bullet = player.fire()
         assert bullet is not None
         assert bullet.data.owner == 'player'
 
     def test_player_auto_fire_respects_cooldown(self):
         from airwar.entities import Player
-        player = Player(100, 200)
+        from airwar.input import MockInputHandler
+        input_handler = MockInputHandler()
+        player = Player(100, 200, input_handler)
         player.fire_cooldown = 5
         initial_count = len(player.get_bullets())
         player.auto_fire()
@@ -236,7 +254,9 @@ class TestPlayerHitbox:
 
     def test_player_data_default_values(self):
         from airwar.entities import Player
-        player = Player(100, 200)
+        from airwar.input import MockInputHandler
+        input_handler = MockInputHandler()
+        player = Player(100, 200, input_handler)
         assert player.health == 100
         assert player.max_health == 100
         assert player.fire_cooldown == 0
