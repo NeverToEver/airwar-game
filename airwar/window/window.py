@@ -7,6 +7,8 @@ class Window:
         self._running = False
         self._screen: Optional[pygame.Surface] = None
         self._clock: Optional[pygame.time.Clock] = None
+        self._default_width = width
+        self._default_height = height
         self._width = width
         self._height = height
         self._title = title
@@ -16,16 +18,41 @@ class Window:
 
     def init(self, width: Optional[int] = None, height: Optional[int] = None) -> None:
         pygame.init()
-        if width is not None:
+        
+        if width is not None and height is not None:
             self._width = width
-        if height is not None:
             self._height = height
+        else:
+            self._width, self._height = self._get_adaptive_size()
 
         flags = pygame.RESIZABLE if self._resizable else 0
         self._screen = pygame.display.set_mode((self._width, self._height), flags)
         pygame.display.set_caption(self._title)
         self._clock = pygame.time.Clock()
         self._running = True
+
+    def _get_adaptive_size(self) -> Tuple[int, int]:
+        try:
+            info = pygame.display.Info()
+            max_width = info.current_w - 40
+            max_height = info.current_h - 80
+
+            target_width = self._default_width
+            target_height = self._default_height
+
+            if target_width > max_width:
+                scale = max_width / target_width
+                target_width = max_width
+                target_height = int(target_height * scale)
+
+            if target_height > max_height:
+                scale = max_height / target_height
+                target_height = max_height
+                target_width = int(target_width * scale)
+
+            return (target_width, target_height)
+        except pygame.error:
+            return (self._default_width, self._default_height)
 
     def close(self) -> None:
         self._running = False
