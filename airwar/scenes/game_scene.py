@@ -43,8 +43,6 @@ class GameScene(Scene):
 
         self.spawn_controller = SpawnController(settings)
         self.spawn_controller.init_bullet_system()
-        
-        self.enemy_bullets = []
 
         input_handler = PygameInputHandler()
         self.player = Player(screen_width // 2 - 25, screen_height - 100, input_handler)
@@ -242,7 +240,9 @@ class GameScene(Scene):
                     self.game_controller.on_player_hit(damage, self.player)
 
     def _cleanup_bullets(self) -> None:
-        self.enemy_bullets = [b for b in self.spawn_controller.enemy_bullets if b.active]
+        for b in self.spawn_controller.enemy_bullets:
+            if not b.active:
+                self.spawn_controller.enemy_bullets.remove(b)
 
     def _check_milestones(self) -> None:
         threshold = self.game_controller.get_next_threshold()
