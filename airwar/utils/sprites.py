@@ -394,7 +394,8 @@ def draw_ripple(surface: pygame.Surface, x: float, y: float, radius: float, alph
 
 def draw_boss_ship(surface: pygame.Surface, x: float, y: float, width: float = 120, height: float = 100, health_ratio: float = 1.0) -> None:
     center_x = x + width / 2
-    
+    center_y = y + height / 2
+
     if health_ratio > 0.6:
         hull_dark = (50, 20, 70)
         hull_mid = (90, 40, 120)
@@ -402,6 +403,7 @@ def draw_boss_ship(surface: pygame.Surface, x: float, y: float, width: float = 1
         core_color = (200, 50, 255)
         core_glow = (220, 150, 255)
         eye_color = (255, 50, 200)
+        eye_pupil = (255, 255, 200)
     elif health_ratio > 0.3:
         hull_dark = (70, 40, 40)
         hull_mid = (120, 70, 70)
@@ -409,6 +411,7 @@ def draw_boss_ship(surface: pygame.Surface, x: float, y: float, width: float = 1
         core_color = (255, 140, 50)
         core_glow = (255, 190, 120)
         eye_color = (255, 200, 50)
+        eye_pupil = (255, 255, 200)
     else:
         hull_dark = (80, 30, 30)
         hull_mid = (130, 50, 50)
@@ -416,142 +419,126 @@ def draw_boss_ship(surface: pygame.Surface, x: float, y: float, width: float = 1
         core_color = (220, 50, 50)
         core_glow = (255, 120, 120)
         eye_color = (255, 255, 50)
-    
-    for i in range(3):
-        tentacle_x = center_x - width * 0.45 + i * width * 0.2
-        tentacle_points = [
-            (tentacle_x, y + height * 0.7),
-            (tentacle_x - width * 0.1, y + height * 1.2),
-            (tentacle_x + width * 0.1, y + height * 1.2),
-        ]
-        pygame.draw.polygon(surface, hull_dark, tentacle_points)
-        pygame.draw.circle(surface, core_color, (int(tentacle_x), int(y + height * 1.1)), 8)
-    
-    large_tentacle_left = [
-        (x - width * 0.15, y + height * 0.5),
-        (x - width * 0.5, y + height * 1.1),
-        (x - width * 0.2, y + height * 0.7),
-    ]
-    pygame.draw.polygon(surface, hull_dark, large_tentacle_left)
-    pygame.draw.polygon(surface, hull_mid, [
-        (x - width * 0.18, y + height * 0.55),
-        (x - width * 0.4, y + height * 0.95),
-        (x - width * 0.15, y + height * 0.65),
-    ])
-    pygame.draw.circle(surface, core_color, (int(x - width * 0.35), int(y + height * 0.9)), 12)
-    
-    large_tentacle_right = [
-        (x + width + width * 0.15, y + height * 0.5),
-        (x + width + width * 0.5, y + height * 1.1),
-        (x + width + width * 0.2, y + height * 0.7),
-    ]
-    pygame.draw.polygon(surface, hull_dark, large_tentacle_right)
-    pygame.draw.polygon(surface, hull_mid, [
-        (x + width + width * 0.18, y + height * 0.55),
-        (x + width + width * 0.4, y + height * 0.95),
-        (x + width + width * 0.15, y + height * 0.65),
-    ])
-    pygame.draw.circle(surface, core_color, (int(x + width + width * 0.35), int(y + height * 0.9)), 12)
-    
+        eye_pupil = (255, 255, 255)
+
     wing_left = [
-        (center_x - width * 0.1, y + height * 0.1),
-        (x - width * 0.35, y + height * 0.65),
-        (x + width * 0.05, y + height * 0.4),
-        (center_x - width * 0.25, y - height * 0.05),
+        (center_x - width * 0.08, y + height * 0.25),
+        (x - width * 0.1, y + height * 0.7),
+        (center_x - width * 0.05, y + height * 0.45),
     ]
     pygame.draw.polygon(surface, hull_dark, wing_left)
     pygame.draw.polygon(surface, hull_mid, [
-        (center_x - width * 0.12, y + height * 0.1),
-        (x - width * 0.28, y + height * 0.58),
-        (x + width * 0.02, y + height * 0.42),
-        (center_x - width * 0.3, y - height * 0.08),
+        (center_x - width * 0.07, y + height * 0.28),
+        (x - width * 0.08, y + height * 0.65),
+        (center_x - width * 0.04, y + height * 0.48),
     ])
-    
+
     wing_right = [
-        (center_x + width * 0.1, y + height * 0.1),
-        (x + width + width * 0.35, y + height * 0.65),
-        (x + width - width * 0.05, y + height * 0.4),
-        (center_x + width * 0.25, y - height * 0.05),
+        (center_x + width * 0.08, y + height * 0.25),
+        (x + width + width * 0.1, y + height * 0.7),
+        (center_x + width * 0.05, y + height * 0.45),
     ]
     pygame.draw.polygon(surface, hull_dark, wing_right)
     pygame.draw.polygon(surface, hull_mid, [
-        (center_x + width * 0.12, y + height * 0.1),
-        (x + width + width * 0.28, y + height * 0.58),
-        (x + width - width * 0.02, y + height * 0.42),
-        (center_x + width * 0.3, y - height * 0.08),
+        (center_x + width * 0.07, y + height * 0.28),
+        (x + width + width * 0.08, y + height * 0.65),
+        (center_x + width * 0.04, y + height * 0.48),
     ])
-    
-    main_hull = [
-        (center_x, y - height * 0.1),
-        (x + width * 0.92, y + height * 0.15),
-        (x + width * 0.88, y + height * 0.45),
-        (x + width * 0.78, y + height * 0.88),
-        (x + width * 0.6, y + height * 1.08),
-        (center_x, y + height * 0.92),
-        (x + width * 0.4, y + height * 1.08),
-        (x + width * 0.22, y + height * 0.88),
-        (x + width * 0.12, y + height * 0.45),
-        (x + width * 0.08, y + height * 0.15),
+
+    main_body = [
+        (center_x, y + height * 0.1),
+        (x + width * 0.85, y + height * 0.35),
+        (x + width * 0.9, y + height * 0.65),
+        (center_x, y + height * 0.9),
+        (x + width * 0.1, y + height * 0.65),
+        (x + width * 0.15, y + height * 0.35),
     ]
-    pygame.draw.polygon(surface, hull_dark, main_hull)
-    
-    hull_detail = [
-        (center_x, y + height * 0.08),
-        (x + width * 0.8, y + height * 0.25),
-        (x + width * 0.72, y + height * 0.52),
-        (center_x, y + height * 0.42),
-        (x + width * 0.28, y + height * 0.52),
-        (x + width * 0.2, y + height * 0.25),
+    pygame.draw.polygon(surface, hull_dark, main_body)
+
+    body_mid = [
+        (center_x, y + height * 0.2),
+        (x + width * 0.75, y + height * 0.4),
+        (x + width * 0.8, y + height * 0.6),
+        (center_x, y + height * 0.8),
+        (x + width * 0.2, y + height * 0.6),
+        (x + width * 0.25, y + height * 0.4),
     ]
-    pygame.draw.polygon(surface, hull_mid, hull_detail)
-    
-    hull_upper = [
+    pygame.draw.polygon(surface, hull_mid, body_mid)
+
+    body_top = [
         (center_x, y + height * 0.15),
-        (x + width * 0.68, y + height * 0.28),
-        (x + width * 0.58, y + height * 0.12),
-        (center_x, y + height * 0.08),
-        (x + width * 0.42, y + height * 0.12),
-        (x + width * 0.32, y + height * 0.28),
+        (x + width * 0.7, y + height * 0.32),
+        (x + width * 0.75, y + height * 0.55),
+        (center_x, y + height * 0.72),
+        (x + width * 0.25, y + height * 0.55),
+        (x + width * 0.3, y + height * 0.32),
     ]
-    pygame.draw.polygon(surface, hull_light, hull_upper)
-    
+    pygame.draw.polygon(surface, hull_light, body_top)
+
+    tentacle_1 = [
+        (center_x - width * 0.3, y + height * 0.75),
+        (center_x - width * 0.25, y + height * 1.05),
+        (center_x - width * 0.15, y + height * 0.75),
+    ]
+    pygame.draw.polygon(surface, hull_dark, tentacle_1)
+    draw_glow_circle(surface, (int(center_x - width * 0.2), int(y + height * 0.95)), 8, core_color, 18)
+
+    tentacle_2 = [
+        (center_x - width * 0.08, y + height * 0.82),
+        (center_x, y + height * 1.1),
+        (center_x + width * 0.08, y + height * 0.82),
+    ]
+    pygame.draw.polygon(surface, hull_dark, tentacle_2)
+    draw_glow_circle(surface, (int(center_x), int(y + height * 0.98)), 10, core_color, 22)
+
+    tentacle_3 = [
+        (center_x + width * 0.15, y + height * 0.75),
+        (center_x + width * 0.25, y + height * 1.05),
+        (center_x + width * 0.3, y + height * 0.75),
+    ]
+    pygame.draw.polygon(surface, hull_dark, tentacle_3)
+    draw_glow_circle(surface, (int(center_x + width * 0.2), int(y + height * 0.95)), 8, core_color, 18)
+
+    eye_left_socket = [
+        (center_x - width * 0.32, y + height * 0.38),
+        (center_x - width * 0.18, y + height * 0.48),
+        (center_x - width * 0.22, y + height * 0.58),
+        (center_x - width * 0.38, y + height * 0.5),
+    ]
+    pygame.draw.polygon(surface, (25, 15, 35), eye_left_socket)
+    draw_glow_circle(surface, (int(center_x - width * 0.25), int(y + height * 0.46)), 10, eye_color, 22)
+    draw_glow_circle(surface, (int(center_x - width * 0.25), int(y + height * 0.46)), 5, eye_pupil, 12)
+
+    eye_right_socket = [
+        (center_x + width * 0.32, y + height * 0.38),
+        (center_x + width * 0.18, y + height * 0.48),
+        (center_x + width * 0.22, y + height * 0.58),
+        (center_x + width * 0.38, y + height * 0.5),
+    ]
+    pygame.draw.polygon(surface, (25, 15, 35), eye_right_socket)
+    draw_glow_circle(surface, (int(center_x + width * 0.25), int(y + height * 0.46)), 10, eye_color, 22)
+    draw_glow_circle(surface, (int(center_x + width * 0.25), int(y + height * 0.46)), 5, eye_pupil, 12)
+
+    draw_glow_circle(surface, (int(center_x), int(y + height * 0.6)), 20, core_color, 45)
+    draw_glow_circle(surface, (int(center_x), int(y + height * 0.6)), 12, core_glow, 28)
+    draw_glow_circle(surface, (int(center_x), int(y + height * 0.6)), 6, (255, 255, 255), 15)
+
     for i in range(4):
-        offset = -width * 0.28 + i * width * 0.18
-        draw_glow_circle(surface, (int(center_x + offset), int(y + height * 0.22)), 7, core_color, 15)
-    
-    main_eye_left = [
-        (center_x - width * 0.35, y + height * 0.38),
-        (center_x - width * 0.2, y + height * 0.52),
-        (center_x - width * 0.25, y + height * 0.65),
-        (center_x - width * 0.45, y + height * 0.52),
+        line_y = y + height * 0.35 + i * height * 0.1
+        line_start = center_x - width * 0.18
+        line_end = center_x + width * 0.18
+        pygame.draw.line(surface, hull_light, (line_start, line_y), (line_end, line_y), 2)
+
+    spike_1 = [
+        (center_x - width * 0.15, y + height * 0.15),
+        (center_x - width * 0.2, y - height * 0.05),
+        (center_x - width * 0.1, y + height * 0.12),
     ]
-    pygame.draw.polygon(surface, (20, 10, 30), main_eye_left)
-    draw_glow_circle(surface, (int(center_x - width * 0.3), int(y + height * 0.48)), 14, eye_color, 30)
-    draw_glow_circle(surface, (int(center_x - width * 0.3), int(y + height * 0.48)), 8, (255, 255, 200), 18)
-    
-    main_eye_right = [
-        (center_x + width * 0.35, y + height * 0.38),
-        (center_x + width * 0.2, y + height * 0.52),
-        (center_x + width * 0.25, y + height * 0.65),
-        (center_x + width * 0.45, y + height * 0.52),
+    pygame.draw.polygon(surface, hull_light, spike_1)
+
+    spike_2 = [
+        (center_x + width * 0.15, y + height * 0.15),
+        (center_x + width * 0.2, y - height * 0.05),
+        (center_x + width * 0.1, y + height * 0.12),
     ]
-    pygame.draw.polygon(surface, (20, 10, 30), main_eye_right)
-    draw_glow_circle(surface, (int(center_x + width * 0.3), int(y + height * 0.48)), 14, eye_color, 30)
-    draw_glow_circle(surface, (int(center_x + width * 0.3), int(y + height * 0.48)), 8, (255, 255, 200), 18)
-    
-    draw_glow_circle(surface, (int(center_x), int(y + height * 0.58)), 28, core_color, 60)
-    draw_glow_circle(surface, (int(center_x), int(y + height * 0.58)), 18, core_glow, 40)
-    draw_glow_circle(surface, (int(center_x), int(y + height * 0.58)), 10, (255, 255, 255), 22)
-    
-    for i in range(7):
-        line_y = y + height * 0.32 + i * height * 0.08
-        pygame.draw.line(surface, hull_light, (center_x - width * 0.22, line_y), (center_x + width * 0.22, line_y), 2)
-    
-    for i in range(3):
-        spike_x = center_x - width * 0.4 + i * width * 0.4
-        spike = [
-            (spike_x, y + height * 0.1),
-            (spike_x - width * 0.08, y - height * 0.15),
-            (spike_x + width * 0.08, y - height * 0.15),
-        ]
-        pygame.draw.polygon(surface, hull_light, spike)
+    pygame.draw.polygon(surface, hull_light, spike_2)
