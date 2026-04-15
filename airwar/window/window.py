@@ -3,7 +3,7 @@ from typing import Optional, Tuple, List
 
 
 class Window:
-    def __init__(self, width: int = 1200, height: int = 700, title: str = 'Air War', resizable: bool = True):
+    def __init__(self, width: int = 1400, height: int = 800, title: str = 'Air War', resizable: bool = True):
         self._running = False
         self._screen: Optional[pygame.Surface] = None
         self._clock: Optional[pygame.time.Clock] = None
@@ -123,7 +123,7 @@ def get_window() -> Window:
     return _window_instance
 
 
-def create_window(width: int = 1200, height: int = 700, title: str = 'Air War', resizable: bool = True) -> Window:
+def create_window(width: int = 1400, height: int = 800, title: str = 'Air War', resizable: bool = True) -> Window:
     global _window_instance
     _window_instance = Window(width, height, title, resizable)
     _window_instance.init()
