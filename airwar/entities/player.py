@@ -18,8 +18,8 @@ class Player(Entity):
         self.fire_cooldown = 0
         self.bullet_damage = 50
         self._bullets: List[Bullet] = []
-        self.hitbox_width = 20
-        self.hitbox_height = 24
+        self.hitbox_width = 12
+        self.hitbox_height = 16
         self.hitbox_timer = 0
         self._shot_mode = 'normal'
         self._laser_active = False
@@ -143,7 +143,15 @@ class Player(Entity):
     def _render_hitbox(self, surface: pygame.Surface) -> None:
         if (self.hitbox_timer // 8) % 2 == 0:
             hb = self.get_hitbox()
-            pygame.draw.rect(surface, (255, 100, 100, 150), (hb.x, hb.y, hb.width, hb.height), 2)
+            cx = hb.x + hb.width / 2
+            cy = hb.y + hb.height / 2
+            points = [
+                (cx, hb.y),
+                (hb.x + hb.width, cy),
+                (cx, hb.y + hb.height),
+                (hb.x, cy),
+            ]
+            pygame.draw.polygon(surface, (50, 200, 255), points, 2)
 
     def set_sprite(self, sprite: pygame.Surface) -> None:
         self._sprite = sprite
