@@ -144,12 +144,13 @@ class SceneDirector:
 
     def _show_pause_menu(self, game_scene: GameScene) -> None:
         pause_scene = self._scene_manager._scenes.get("pause")
-        if pause_scene:
-            pause_scene.on_resume = lambda: game_scene.resume()
-            pause_scene.on_quit = self._quit_to_menu
-            pause_scene.enter()
+        if not pause_scene:
+            return
+        pause_scene.on_resume = lambda: game_scene.resume()
+        pause_scene.on_quit = self._quit_to_menu
+        pause_scene.enter()
 
-        while pause_scene.is_paused() if hasattr(pause_scene, 'is_paused') else pause_scene.running:
+        while pause_scene.running:
             events = pygame.event.get()
             for event in events:
                 if event.type == pygame.QUIT:
@@ -157,6 +158,7 @@ class SceneDirector:
                     return
                 if event.type == pygame.VIDEORESIZE:
                     self._window.resize(event.w, event.h)
+                    self._handle_resize(event.w, event.h)
             for event in events:
                 pause_scene.handle_events(event)
             pause_scene.update()
