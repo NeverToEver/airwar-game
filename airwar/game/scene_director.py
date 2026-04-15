@@ -138,14 +138,16 @@ class SceneDirector:
                     escape_handled = True
                 else:
                     game_scene.pause()
-                    self._show_pause_menu(game_scene)
+                    should_continue = self._show_pause_menu(game_scene)
+                    if not should_continue:
+                        return True
                     escape_handled = True
         return escape_handled
 
-    def _show_pause_menu(self, game_scene: GameScene) -> None:
+    def _show_pause_menu(self, game_scene: GameScene) -> bool:
         pause_scene = self._scene_manager._scenes.get("pause")
         if not pause_scene:
-            return
+            return False
         pause_scene.on_resume = lambda: game_scene.resume()
         pause_scene.on_quit = self._quit_to_menu
         pause_scene.enter()
@@ -155,7 +157,7 @@ class SceneDirector:
             for event in events:
                 if event.type == pygame.QUIT:
                     self._running = False
-                    return
+                    return False
                 if event.type == pygame.VIDEORESIZE:
                     self._window.resize(event.w, event.h)
                     self._handle_resize(event.w, event.h)
@@ -165,6 +167,8 @@ class SceneDirector:
             pause_scene.render(self._window.get_surface())
             self._window.flip()
             self._window.tick(60)
+
+        return not self._quit_to_menu_requested
 
     def _quit_to_menu(self) -> None:
         self._quit_to_menu_requested = True
