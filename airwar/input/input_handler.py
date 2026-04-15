@@ -14,16 +14,11 @@ class InputHandler(ABC):
         'up_alt': pygame.K_w,
         'down': pygame.K_DOWN,
         'down_alt': pygame.K_s,
-        'fire': pygame.K_SPACE,
         'pause': pygame.K_ESCAPE,
     }
 
     @abstractmethod
     def get_movement_direction(self) -> Vector2:
-        pass
-
-    @abstractmethod
-    def is_fire_pressed(self) -> bool:
         pass
 
     @abstractmethod
@@ -51,10 +46,6 @@ class PygameInputHandler(InputHandler):
 
         return Vector2(dx, dy)
 
-    def is_fire_pressed(self) -> bool:
-        keys = pygame.key.get_pressed()
-        return keys[self._bindings['fire']]
-
     def is_pause_pressed(self) -> bool:
         keys = pygame.key.get_pressed()
         return keys[self._bindings['pause']]
@@ -63,23 +54,16 @@ class PygameInputHandler(InputHandler):
 class MockInputHandler(InputHandler):
     def __init__(self):
         self._direction = Vector2(0, 0)
-        self._fire_pressed = False
         self._pause_pressed = False
 
     def set_direction(self, dx: float, dy: float) -> None:
         self._direction = Vector2(dx, dy)
-
-    def set_fire_pressed(self, pressed: bool) -> None:
-        self._fire_pressed = pressed
 
     def set_pause_pressed(self, pressed: bool) -> None:
         self._pause_pressed = pressed
 
     def get_movement_direction(self) -> Vector2:
         return self._direction
-
-    def is_fire_pressed(self) -> bool:
-        return self._fire_pressed
 
     def is_pause_pressed(self) -> bool:
         return self._pause_pressed

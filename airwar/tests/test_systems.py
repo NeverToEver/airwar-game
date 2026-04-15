@@ -144,14 +144,6 @@ class TestInputHandler:
         assert isinstance(direction.x, int)
         assert isinstance(direction.y, int)
 
-    def test_pygame_input_handler_is_fire_pressed(self):
-        from airwar.input.input_handler import PygameInputHandler
-
-        handler = PygameInputHandler()
-        result = handler.is_fire_pressed()
-
-        assert isinstance(result, bool)
-
     def test_pygame_input_handler_is_pause_pressed(self):
         from airwar.input.input_handler import PygameInputHandler
 
@@ -171,28 +163,29 @@ class TestInputHandler:
         assert direction.x == 0
         assert direction.y == 0
 
-    def test_mock_input_handler_fire(self):
+    def test_mock_input_handler_pause(self):
         from airwar.input.input_handler import MockInputHandler
 
         handler = MockInputHandler()
-        assert handler.is_fire_pressed() is False
+        assert handler.is_pause_pressed() is False
 
 
-class TestBuffRegistry:
-    def test_buff_registry_exists(self):
-        from airwar.game.buffs import buff_registry
-        assert hasattr(buff_registry, 'BUFF_REGISTRY')
+def test_buff_registry_exists():
+    from airwar.game.buffs import buff_registry
+    assert hasattr(buff_registry, 'BUFF_REGISTRY')
 
-    def test_buff_registry_has_buffs(self):
-        from airwar.game.buffs import buff_registry
-        assert len(buff_registry.BUFF_REGISTRY) >= 15
 
-    def test_create_buff_function(self):
-        from airwar.game.buffs import buff_registry
-        from airwar.game.buffs.base_buff import Buff
+def test_buff_registry_has_buffs():
+    from airwar.game.buffs import buff_registry
+    assert len(buff_registry.BUFF_REGISTRY) >= 15
 
-        buff = buff_registry.create_buff("Power Shot")
-        assert isinstance(buff, Buff)
+
+def test_create_buff_function():
+    from airwar.game.buffs import buff_registry
+    from airwar.game.buffs.base_buff import Buff
+
+    buff = buff_registry.create_buff("Power Shot")
+    assert isinstance(buff, Buff)
 
 
 class TestRewardSelector:
