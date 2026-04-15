@@ -2,8 +2,11 @@ import pygame
 from .scene import Scene
 from airwar.entities import Player, Enemy, EnemySpawner, EnemyData, Boss, BossData
 from airwar.game.systems.health_system import HealthSystem
-from airwar.game.systems.reward_system import RewardSystem, REWARD_POOL
+from airwar.game.systems.reward_system import RewardSystem
 from airwar.game.systems.hud_renderer import HUDRenderer
+from airwar.game.systems.notification_manager import NotificationManager
+from airwar.game.controllers.game_controller import GameController, GameState
+from airwar.game.rendering.game_renderer import GameRenderer, GameEntities
 
 
 class RewardSelector:
@@ -15,27 +18,7 @@ class RewardSelector:
         self.animation_time = 0
 
     def generate_options(self, cycle_count: int, unlocked_buffs: list) -> list:
-        from airwar.game.systems.reward_system import REWARD_POOL
-        import random
-        options = []
-        categories = list(REWARD_POOL.keys())
-
-        for _ in range(3):
-            cat = random.choice(categories)
-            rewards = REWARD_POOL[cat]
-
-            if cat == 'offense' and cycle_count > 2:
-                rewards = [r for r in rewards if r['name'] not in ['Spread Shot', 'Explosive']]
-
-            reward = random.choice(rewards)
-            attempts = 0
-            while reward in options and attempts < 10:
-                reward = random.choice(rewards)
-                attempts += 1
-
-            options.append(reward)
-
-        return options
+        return []
 
     def show(self, options: list, callback) -> None:
         self.visible = True
@@ -134,9 +117,17 @@ class RewardSelector:
 
 class GameScene(Scene):
     def __init__(self):
-        self.health_system = None
-        self.reward_system = None
-        self.hud_renderer = None
+        self.game_controller: GameController = None
+        self.game_renderer: GameRenderer = None
+        self.health_system: HealthSystem = None
+        self.reward_system: RewardSystem = None
+        self.hud_renderer: HUDRenderer = None
+        self.notification_manager: NotificationManager = None
+        self.player: Player = None
+        self.enemies = []
+        self.enemy_bullets = []
+        self.boss = None
+        self.reward_selector: RewardSelector = RewardSelector()
 
     def enter(self, **kwargs) -> None:
         from airwar.config import DIFFICULTY_SETTINGS, get_screen_width, get_screen_height
@@ -147,96 +138,48 @@ class GameScene(Scene):
         screen_height = get_screen_height()
 
         difficulty = kwargs.get('difficulty', 'medium')
-        self.username = kwargs.get('username', 'Player')
+        username = kwargs.get('username', 'Player')
         settings = DIFFICULTY_SETTINGS[difficulty]
+
+        self.game_controller = GameController(difficulty, username)
+        self.game_renderer = GameRenderer()
+        self.health_system = HealthSystem(difficulty)
+        self.reward_system = self.game_controller.reward_system
+        self.hud_renderer = HUDRenderer()
+        self.notification_manager = self.game_controller.notification_manager
 
         input_handler = PygameInputHandler()
         self.player = Player(screen_width // 2 - 25, screen_height - 100, input_handler)
         self.player.rect.y = -80
-
-        self.entrance_animation = True
-        self.entrance_timer = 0
-        self.entrance_duration = 60
         self.player.bullet_damage = settings['bullet_damage']
+
         self.enemies = []
         self.enemy_bullets = []
-        
-        self.enemy_bullet_spawner = EnemyBulletSpawner(self.enemy_bullets)
+        enemy_bullet_spawner = EnemyBulletSpawner(self.enemy_bullets)
         self.enemy_spawner = EnemySpawner()
-        self.enemy_spawner.set_bullet_spawner(self.enemy_bullet_spawner)
+        self.enemy_spawner.set_bullet_spawner(enemy_bullet_spawner)
         self.enemy_spawner.set_params(
             health=settings['enemy_health'],
             speed=settings['enemy_speed'],
             spawn_rate=settings['spawn_rate']
         )
-        self.score = 0
-        self.kills = 0
-        self.difficulty = difficulty
-        self.score_multiplier = self._get_score_multiplier(difficulty)
-        self.running = True
-        self.paused = False
-
-        self.milestone_index = 0
-        self.cycle_count = 0
-        self.base_thresholds = [1000, 2500, 5000, 10000, 20000]
-        self.max_cycles = 10
-        self.cycle_multiplier = 1.5
-
-        self.difficulty_threshold_multiplier = {'easy': 1.0, 'medium': 1.5, 'hard': 2.0}[difficulty]
-
-        self.reward_selector = RewardSelector()
-        self.notification = None
-        self.notification_timer = 0
-
-        self.player_invincible = False
-        self.invincibility_timer = 0
-        self.ripple_effects = []
 
         self.boss = None
         self.boss_spawn_timer = 0
         self.boss_spawn_interval = 1800
-        self.boss_killed = False
 
-        self.health_system = HealthSystem(difficulty)
-        self.reward_system = RewardSystem()
-        self.hud_renderer = HUDRenderer()
+        self._setup_reward_selector()
 
-    def _get_score_multiplier(self, difficulty: str) -> int:
-        return {'easy': 1, 'medium': 2, 'hard': 3}[difficulty]
+    def _setup_reward_selector(self) -> None:
+        self.reward_selector.show = lambda options, callback: self._show_reward_selection(options, callback)
+        self.reward_selector.hide = lambda: setattr(self, 'reward_visible', False)
+        self.reward_selector.visible = False
 
-    def _spawn_boss(self) -> None:
-        from airwar.config import get_screen_width
-        screen_width = get_screen_width()
-        base_health = 500 * (1 + self.cycle_count * 0.5)
-        escape_time = int(base_health / self.player.bullet_damage * 2.5)
-        escape_time = max(600, min(escape_time, 1800))
-
-        boss_data = BossData(
-            health=base_health,
-            speed=1.5 + self.cycle_count * 0.1,
-            score=5000 + self.cycle_count * 1000,
-            width=120,
-            height=100,
-            fire_rate=60 - self.cycle_count * 3,
-            phase=1,
-            escape_time=escape_time
-        )
-        boss = Boss(screen_width // 2 - boss_data.width // 2, -100, boss_data)
-        boss.set_bullet_spawner(self.enemy_bullet_spawner)
-        self.boss = boss
-        self._show_notification(f"! BOSS APPROACHING ({int(escape_time/60)}s) !")
-
-    def _show_notification(self, message: str) -> None:
-        self.notification = message
-        self.notification_timer = 90
-
-    def _get_current_threshold(self, index: int) -> float:
-        base = self.base_thresholds[index % len(self.base_thresholds)]
-        cycle_bonus = index // len(self.base_thresholds)
-        return base * (self.cycle_multiplier ** cycle_bonus) * self.difficulty_threshold_multiplier
-
-    def _get_next_threshold(self) -> float:
-        return self._get_current_threshold(self.milestone_index)
+    def _show_reward_selection(self, options: list, callback) -> None:
+        self.reward_selector.visible = True
+        self.reward_selector.options = options
+        self.reward_selector.selected_index = 0
+        self.reward_selector.on_select = callback
 
     def exit(self) -> None:
         pass
@@ -245,9 +188,9 @@ class GameScene(Scene):
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 if not self.reward_selector.visible:
-                    self.paused = not self.paused
+                    self.game_controller.state.paused = not self.game_controller.state.paused
             elif event.key == pygame.K_SPACE:
-                if not self.paused and not self.reward_selector.visible:
+                if not self.game_controller.state.paused and not self.reward_selector.visible:
                     self.player.fire()
 
         self.reward_selector.handle_input(event)
@@ -255,23 +198,25 @@ class GameScene(Scene):
     def update(self, *args, **kwargs) -> None:
         self.reward_selector.update()
 
-        if self.entrance_animation:
-            self._update_entrance_animation()
+        if self.game_controller.state.entrance_animation:
+            self._update_entrance()
             return
 
-        if self.paused or self.reward_selector.visible:
+        if self.game_controller.state.paused or self.reward_selector.visible:
             return
 
-        self._update_game_logic()
+        self._update_game()
 
-    def _update_entrance_animation(self) -> None:
+    def _update_entrance(self) -> None:
         from airwar.config import get_screen_width, get_screen_height
-        self.entrance_timer += 1
         screen_width = get_screen_width()
         screen_height = get_screen_height()
-        progress = self.entrance_timer / self.entrance_duration
+
+        self.game_controller.state.entrance_timer += 1
+        progress = self.game_controller.state.entrance_timer / self.game_controller.state.entrance_duration
+
         if progress >= 1.0:
-            self.entrance_animation = False
+            self.game_controller.state.entrance_animation = False
             self.player.rect.y = screen_height - 100
         else:
             target_y = screen_height - 100
@@ -279,15 +224,25 @@ class GameScene(Scene):
             self.player.rect.y = int(start_y + (target_y - start_y) * progress)
             self.player.rect.x = screen_width // 2 - 25
 
-    def _update_game_logic(self) -> None:
-        self.health_system.update(self.player, 'Regeneration' in self.reward_system.unlocked_buffs)
-        self._update_invincibility()
-        self._update_ripples()
+    def _update_game(self) -> None:
+        has_regen = 'Regeneration' in self.reward_system.unlocked_buffs
+        self.game_controller.update(self.player, has_regen)
 
-        keys = pygame.key.get_pressed()
         self.player.update()
         self.player.auto_fire()
 
+        self._update_enemy_spawning()
+        self._update_entities()
+        self._check_collisions()
+        self._check_milestones()
+
+        self.enemies = [e for e in self.enemies if e.active]
+        self._cleanup_bullets()
+
+        if not self.player.active:
+            self.game_controller.state.running = False
+
+    def _update_enemy_spawning(self) -> None:
         self.enemy_spawner.update(self.enemies, self.reward_system.slow_factor)
 
         if self.boss is None:
@@ -299,233 +254,183 @@ class GameScene(Scene):
         else:
             self._update_boss()
 
-        self._update_enemies()
-        self._update_bullets()
-        self._update_enemy_bullets()
+    def _spawn_boss(self) -> None:
+        from airwar.config import get_screen_width
+        screen_width = get_screen_width()
+        cycle_count = self.game_controller.cycle_count
 
-        self.enemies = [e for e in self.enemies if e.active]
-        self.enemy_bullets = [b for b in self.enemy_bullets if b.active]
+        base_health = 500 * (1 + cycle_count * 0.5)
+        escape_time = int(base_health / self.player.bullet_damage * 2.5)
+        escape_time = max(600, min(escape_time, 1800))
 
-        if self.notification_timer > 0:
-            self.notification_timer -= 1
+        boss_data = BossData(
+            health=base_health,
+            speed=1.5 + cycle_count * 0.1,
+            score=5000 + cycle_count * 1000,
+            width=120,
+            height=100,
+            fire_rate=60 - cycle_count * 3,
+            phase=1,
+            escape_time=escape_time
+        )
 
-        if not self.player.active:
-            self.running = False
+        from airwar.game import EnemyBulletSpawner
+        enemy_bullet_spawner = EnemyBulletSpawner(self.enemy_bullets)
+        boss = Boss(screen_width // 2 - boss_data.width // 2, -100, boss_data)
+        boss.set_bullet_spawner(enemy_bullet_spawner)
+        self.boss = boss
+        self.game_controller.show_notification(f"! BOSS APPROACHING ({int(escape_time/60)}s) !")
 
     def _update_boss(self) -> None:
         self.boss.update()
         player_hitbox = self.player.get_hitbox()
+
         if not self.boss.is_entering() and self.boss.active:
             if self.boss.rect.colliderect(player_hitbox):
-                if not self.player_invincible:
+                if not self.game_controller.state.player_invincible:
                     damage = self.reward_system.calculate_damage_taken(30)
                     self.player.take_damage(damage)
-                    self._on_player_hit(damage)
+                    self.game_controller.on_player_hit(damage, self.player)
 
         for bullet in self.player.get_bullets():
             if bullet.active and self.boss and self.boss.active and not self.boss.is_entering():
                 if bullet.get_rect().colliderect(self.boss.get_rect()):
                     score_reward = self.boss.take_damage(bullet.data.damage)
                     if score_reward > 0:
-                        self.score += score_reward
-                        self._show_notification(f"+{score_reward} BOSS SCORE!")
+                        self.game_controller.state.score += score_reward
+                        self.game_controller.show_notification(f"+{score_reward} BOSS SCORE!")
+
                     if self.reward_system.piercing_level <= 0:
                         bullet.active = False
+
                     if not self.boss.active:
-                        self.kills += 1
+                        self.game_controller.cycle_count += 1
                         self.reward_system.apply_lifesteal(self.player, self.boss.data.score)
-                        self._check_milestones()
                         self.boss = None
 
         if self.boss and not self.boss.active:
             if self.boss.is_escaped():
-                self._show_notification("BOSS ESCAPED! (+0)")
+                self.game_controller.show_notification("BOSS ESCAPED! (+0)")
             self.boss = None
 
-    def _update_enemies(self) -> None:
+    def _update_entities(self) -> None:
         for enemy in self.enemies:
             enemy.update()
             if enemy.rect.colliderect(self.player.get_hitbox()):
                 if not self.reward_system.try_dodge():
-                    self._on_player_hit(20)
+                    self.game_controller.on_player_hit(20, self.player)
 
-    def _update_bullets(self) -> None:
+    def _check_collisions(self) -> None:
+        self._check_player_bullets_vs_enemies()
+        self._check_enemy_bullets_vs_player()
+
+    def _check_player_bullets_vs_enemies(self) -> None:
         for bullet in self.player.get_bullets():
             for enemy in self.enemies:
                 if bullet.active and enemy.active:
                     if bullet.get_rect().colliderect(enemy.get_rect()):
-                        damage = bullet.data.damage
                         if self.reward_system.explosive_level > 0:
                             self.reward_system.do_explosive_damage(
-                                self.enemies, enemy.rect.centerx, enemy.rect.centery, damage)
+                                self.enemies, enemy.rect.centerx, enemy.rect.centery, bullet.data.damage)
                         else:
-                            enemy.take_damage(damage)
+                            enemy.take_damage(bullet.data.damage)
 
                         if self.reward_system.piercing_level <= 0:
                             bullet.active = False
 
                         if not enemy.active:
-                            self.kills += 1
-                            self.score += enemy.data.score * self.score_multiplier
+                            self.game_controller.state.score += enemy.data.score * self.game_controller.state.score_multiplier
                             self.reward_system.apply_lifesteal(self.player, enemy.data.score)
-                            self._check_milestones()
 
-    def _update_enemy_bullets(self) -> None:
+    def _check_enemy_bullets_vs_player(self) -> None:
+        player_hitbox = self.player.get_hitbox()
         for eb in self.enemy_bullets:
             eb.update()
-            player_hitbox = self.player.get_hitbox()
             if eb.active and eb.rect.colliderect(player_hitbox):
-                if not self.player_invincible:
+                if not self.game_controller.state.player_invincible:
                     damage = self.reward_system.calculate_damage_taken(eb.data.damage)
                     self.player.take_damage(damage)
-                    self._on_player_hit(damage)
+                    self.game_controller.on_player_hit(damage, self.player)
 
-    def _on_player_hit(self, damage: int) -> None:
-        center_x = self.player.rect.centerx
-        center_y = self.player.rect.centery
-        self.ripple_effects.append({'x': center_x, 'y': center_y, 'radius': 10, 'alpha': 255})
-        self.enemy_bullets.clear()
-        self.player_invincible = True
-        self.invincibility_timer = 90
-
-    def _update_invincibility(self) -> None:
-        if self.player_invincible:
-            self.invincibility_timer -= 1
-            if self.invincibility_timer <= 0:
-                self.player_invincible = False
-
-    def _update_ripples(self) -> None:
-        for ripple in self.ripple_effects:
-            ripple['radius'] += 3
-            ripple['alpha'] -= 8
-        self.ripple_effects = [r for r in self.ripple_effects if r['alpha'] > 0]
+    def _cleanup_bullets(self) -> None:
+        self.enemy_bullets = [b for b in self.enemy_bullets if b.active]
 
     def _check_milestones(self) -> None:
-        if self.cycle_count >= self.max_cycles:
-            return
-
-        threshold = self._get_next_threshold()
-        if self.score >= threshold:
-            options = self.reward_selector.generate_options(
-                self.cycle_count, self.reward_system.unlocked_buffs)
-            self.reward_selector.show(options, self._on_reward_selected)
-            self.paused = True
+        threshold = self.game_controller.get_next_threshold()
+        if self.game_controller.state.score >= threshold:
+            options = self.reward_system.generate_options(
+                self.game_controller.cycle_count, self.reward_system.unlocked_buffs)
+            self._show_reward_selection(options, self._on_reward_selected)
+            self.game_controller.state.paused = True
 
     def _on_reward_selected(self, reward: dict) -> None:
-        notification = self.reward_system.apply_reward(reward, self.player)
-        self.milestone_index += 1
-        if self.milestone_index % len(self.base_thresholds) == 0:
-            self.cycle_count += 1
-
-        self.notification = notification
-        self.notification_timer = 90
-        self.paused = False
+        self.game_controller.on_reward_selected(reward, self.player)
+        self.reward_selector.visible = False
 
     def render(self, surface: pygame.Surface) -> None:
-        surface.fill((0, 0, 0))
+        entities = GameEntities(
+            player=self.player,
+            enemies=self.enemies,
+            boss=self.boss
+        )
+        self.game_renderer.render(surface, self.game_controller.state, entities)
 
-        if self.entrance_animation:
-            self._render_entrance_animation(surface)
-        else:
-            self._render_game(surface)
-
-    def _render_entrance_animation(self, surface: pygame.Surface) -> None:
-        progress = self.entrance_timer / self.entrance_duration
-        zoom_scale = 1.0 + (1.5 - 1.0) * (1 - progress)
-
-        if not self.player_invincible or (self.invincibility_timer // 5) % 2 == 0:
-            self.player.render(surface)
-
-        for enemy in self.enemies:
-            enemy.render(surface)
-
-        if self.boss:
-            self.boss.render(surface)
-
-        for eb in self.enemy_bullets:
-            eb.render(surface)
-
-        center_x = surface.get_width() // 2
-        center_y = surface.get_height() // 2
-
-        scaled_width = int(surface.get_width() * zoom_scale)
-        scaled_height = int(surface.get_height() * zoom_scale)
-        scaled_surface = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
-        scaled_surface.blit(surface, (0, 0))
-        scaled_surface = pygame.transform.scale(scaled_surface, (scaled_width, scaled_height))
-
-        x_offset = (scaled_width - surface.get_width()) // 2
-        y_offset = (scaled_height - surface.get_height()) // 2
-        surface.fill((0, 0, 0))
-        surface.blit(scaled_surface, (-x_offset, -y_offset))
-
-        fade_surface = pygame.Surface((surface.get_width(), surface.get_height()))
-        fade_surface.set_alpha(int(80 * (1 - progress)))
-        surface.blit(fade_surface, (0, 0))
-
-    def _render_game(self, surface: pygame.Surface) -> None:
-        if not self.player_invincible or (self.invincibility_timer // 5) % 2 == 0:
-            self.player.render(surface)
-
-        for enemy in self.enemies:
-            enemy.render(surface)
-
-        if self.boss:
-            self.boss.render(surface)
-            self.hud_renderer.render_boss_health_bar(surface, self.boss)
-
-        for eb in self.enemy_bullets:
-            eb.render(surface)
-
-        self.hud_renderer.render_ripples(surface, self.ripple_effects)
-
-        self.hud_renderer.render_hud(
-            surface, self.score, self.difficulty,
-            self.player.health, self.player.max_health, self.kills,
-            self._get_next_threshold(), self.cycle_count, self.max_cycles)
-
-        self.hud_renderer.render_buffs(
-            surface, self.reward_system.unlocked_buffs, self.reward_system.get_buff_color)
-
-        self.hud_renderer.render_notification(surface, self.notification, self.notification_timer)
+        self._render_player_bullets(surface)
+        self._render_enemy_bullets(surface)
+        self._render_hud(surface)
 
         if self.reward_selector.visible:
             self.reward_selector.render(surface)
 
+    def _render_player_bullets(self, surface: pygame.Surface) -> None:
+        for bullet in self.player.get_bullets():
+            bullet.render(surface)
+
+    def _render_enemy_bullets(self, surface: pygame.Surface) -> None:
+        for eb in self.enemy_bullets:
+            eb.render(surface)
+
+    def _render_hud(self, surface: pygame.Surface) -> None:
+        self.game_renderer.render_hud(
+            surface,
+            self.game_controller.state.score,
+            self.game_controller.state.difficulty,
+            self.player.health,
+            self.player.max_health,
+            self.game_controller.cycle_count,
+            self.game_controller.get_next_threshold(),
+            self.game_controller.cycle_count,
+            self.game_controller.milestone_index + self.game_controller.max_cycles
+        )
+
+        self.game_renderer.render_notification(
+            surface, self.game_controller.state.notification, self.game_controller.state.notification_timer)
+
     def get_score(self) -> int:
-        return self.score
+        return self.game_controller.state.score if self.game_controller else 0
 
     def get_kills(self) -> int:
-        return self.kills
+        return self.game_controller.cycle_count if self.game_controller else 0
 
     def is_game_over(self) -> bool:
-        return not self.player.active
+        return not self.player.active if self.player else True
 
     def is_paused(self) -> bool:
-        return self.paused
+        return self.game_controller.state.paused if self.game_controller else False
 
     def pause(self) -> None:
-        if not self.reward_selector.visible:
-            self.paused = True
+        if self.game_controller and not self.reward_selector.visible:
+            self.game_controller.state.paused = True
 
     def resume(self) -> None:
-        if not self.reward_selector.visible:
-            self.paused = False
+        if self.game_controller and not self.reward_selector.visible:
+            self.game_controller.state.paused = False
 
     @property
     def unlocked_buffs(self) -> list:
-        return self.reward_system.unlocked_buffs
+        return self.reward_system.unlocked_buffs if self.reward_system else []
 
     @unlocked_buffs.setter
     def unlocked_buffs(self, value: list) -> None:
-        self.reward_system.unlocked_buffs = value
-
-    def _calculate_damage_taken(self, damage: int) -> int:
-        return self.reward_system.calculate_damage_taken(damage)
-
-    def _try_dodge(self) -> bool:
-        return self.reward_system.try_dodge()
-
-    def _do_explosive_damage(self, x: int, y: int, damage: int) -> None:
-        self.reward_system.do_explosive_damage(self.enemies, x, y, damage)
-
+        if self.reward_system:
+            self.reward_system.unlocked_buffs = value
