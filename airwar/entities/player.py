@@ -1,69 +1,75 @@
 import pygame
-from typing import List, Optional, TYPE_CHECKING
-from .base import Entity, Vector2
+import math
+from typing import Optional, List, TYPE_CHECKING
+from .base import Entity
 from .bullet import Bullet, BulletData
-from airwar.utils.sprites import draw_player_ship
 
 if TYPE_CHECKING:
+    from airwar.input.input_handler import InputHandler
+else:
     from airwar.input.input_handler import InputHandler
 
 
 class Player(Entity):
-    def __init__(self, x: float, y: float, input_handler: 'InputHandler'):
+    def __init__(self, x: float, y: float, input_handler: InputHandler):
         super().__init__(x, y, 50, 60)
         self._input_handler = input_handler
         self.health = 100
         self.max_health = 100
-        self.score = 0
-        self.fire_cooldown = 0
-        self.bullet_damage = 50
-        self._bullets: List[Bullet] = []
+        self.speed = 5
+        self.bullet_damage = 10
+        self._fire_cooldown = 0
+        self._shot_mode = 'normal'
+        self._bullet_listeners: List = []
+        self._bullets: List = []
+        self.is_shielded = False
+        self._shield_duration = 0
         self.hitbox_width = 12
         self.hitbox_height = 16
-        self.hitbox_timer = 0
-        self._shot_mode = 'normal'
-        self._laser_active = False
-        self._laser_timer = 0
-        self._laser_duration = 0
-        self._laser_flicker = False
+        self._hitbox_timer = 0
+        self._render_hitbox = False
 
-    def get_hitbox(self):
-        hitbox_x = self.rect.x + (self.rect.width - self.hitbox_width) / 2
-        hitbox_y = self.rect.y + (self.rect.height - self.hitbox_height) / 2
-        from .base import Rect
-        return Rect(hitbox_x, hitbox_y, self.hitbox_width, self.hitbox_height)
+    @property
+    def fire_cooldown(self) -> int:
+        return self._fire_cooldown
+    
+    @fire_cooldown.setter
+    def fire_cooldown(self, value: int) -> None:
+        self._fire_cooldown = value
 
-    def colliderect(self, other) -> bool:
-        return self.get_hitbox().colliderect(other)
+    @property
+    def bullet_damage_value(self) -> int:
+        return self.bullet_damage
+    
+    @bullet_damage_value.setter
+    def bullet_damage_value(self, value: int) -> None:
+        self.bullet_damage = value
 
     def update(self, *args, **kwargs) -> None:
-        from airwar.config import PLAYER_SPEED, get_screen_width, get_screen_height
+        self._update_movement()
+        self._update_weapons(*args, **kwargs)
+        self._update_effects()
+        self._hitbox_timer += 1
 
+    def _update_movement(self) -> None:
         direction = self._input_handler.get_movement_direction()
-        self.rect.x += direction.x * PLAYER_SPEED
-        self.rect.y += direction.y * PLAYER_SPEED
+        self.rect.x += direction[0] * self.speed
+        self.rect.y += direction[1] * self.speed
+        from airwar.config import get_screen_width, get_screen_height
+        self.rect.x = max(0, min(self.rect.x, get_screen_width() - self.rect.width))
+        self.rect.y = max(0, min(self.rect.y, get_screen_height() - self.rect.height))
 
-        screen_width = get_screen_width()
-        screen_height = get_screen_height()
+    def _update_weapons(self, *args, **kwargs) -> None:
+        if self._input_handler.is_fire_pressed() and self._fire_cooldown <= 0:
+            self.fire()
+        if self._fire_cooldown > 0:
+            self._fire_cooldown -= 1
 
-        self.rect.x = max(0, min(self.rect.x, screen_width - self.rect.width))
-        self.rect.y = max(0, min(self.rect.y, screen_height - self.rect.height))
-
-        if self.fire_cooldown > 0:
-            self.fire_cooldown -= 1
-
-        if self._laser_active:
-            self._laser_timer -= 1
-            self._laser_flicker = (self._laser_timer // 4) % 2 == 0
-            if self._laser_timer <= 0:
-                self._laser_active = False
-
-        for bullet in self._bullets:
-            bullet.update()
-
-        self._bullets = [b for b in self._bullets if b.active]
-
-        self.hitbox_timer += 1
+    def _update_effects(self) -> None:
+        if self._shield_duration > 0:
+            self._shield_duration -= 1
+            if self._shield_duration <= 0:
+                self.is_shielded = False
 
     def _create_bullets_for_shot_mode(self, return_first: bool = False) -> Optional[Bullet]:
         center_x = self.rect.x + self.rect.width / 2
@@ -99,67 +105,71 @@ class Player(Entity):
             self._bullets.append(bullet)
             return bullet
 
-    def auto_fire(self) -> None:
-        from airwar.config import PLAYER_FIRE_RATE
-        if self.fire_cooldown <= 0:
-            self.fire_cooldown = PLAYER_FIRE_RATE
-            self._create_bullets_for_shot_mode()
-
     def fire(self) -> Optional[Bullet]:
-        from airwar.config import PLAYER_FIRE_RATE
-        if self.fire_cooldown <= 0:
-            self.fire_cooldown = PLAYER_FIRE_RATE
+        if self._fire_cooldown <= 0:
+            self._fire_cooldown = 8
             return self._create_bullets_for_shot_mode(return_first=True)
         return None
 
     def activate_shotgun(self) -> None:
         self._shot_mode = 'shotgun'
 
-    def activate_laser(self, duration: int = 180) -> None:
+    def activate_laser(self, duration: int) -> None:
         self._shot_mode = 'laser'
-        self._laser_active = True
-        self._laser_timer = duration
-        self._laser_duration = duration
 
-    def is_laser_active(self) -> bool:
-        return self._laser_active and self._laser_flicker
+    def get_hitbox(self) -> pygame.Rect:
+        hb_x = self.rect.x + (self.rect.width - self.hitbox_width) // 2
+        hb_y = self.rect.y + (self.rect.height - self.hitbox_height) // 2
+        return pygame.Rect(hb_x, hb_y, self.hitbox_width, self.hitbox_height)
 
-    def get_laser_progress(self) -> float:
-        if self._laser_duration > 0:
-            return self._laser_timer / self._laser_duration
-        return 0.0
+    def _render_hitbox_indicator(self, surface: pygame.Surface) -> None:
+        hb = self.get_hitbox()
+        cx = hb.x + hb.width / 2
+        cy = hb.y + hb.height / 2
+        pulse = abs(math.sin(self._hitbox_timer * 0.15))
 
-    def render(self, surface: pygame.Surface, offset_x: int = 0, offset_y: int = 0) -> None:
-        if not self._sprite:
-            draw_player_ship(surface, self.rect.x + offset_x, self.rect.y + offset_y, self.rect.width, self.rect.height)
-        else:
-            surface.blit(self._sprite, (self.rect.x + offset_x, self.rect.y + offset_y))
+        half_w = hb.width / 2
+        half_h = hb.height / 2
 
-        self._render_hitbox(surface)
+        diamond_points = [
+            (cx, cy - half_h),
+            (cx + half_w, cy),
+            (cx, cy + half_h),
+            (cx - half_w, cy),
+        ]
 
-        for bullet in self._bullets:
-            bullet.render(surface)
+        alpha = int(150 + pulse * 105)
 
-    def _render_hitbox(self, surface: pygame.Surface) -> None:
-        if (self.hitbox_timer // 8) % 2 == 0:
-            hb = self.get_hitbox()
-            cx = hb.x + hb.width / 2
-            cy = hb.y + hb.height / 2
-            points = [
-                (cx, hb.y),
-                (hb.x + hb.width, cy),
-                (cx, hb.y + hb.height),
-                (hb.x, cy),
-            ]
-            pygame.draw.polygon(surface, (255, 255, 255), points, 2)
+        glow_surf = pygame.Surface((hb.width + 20, hb.height + 20), pygame.SRCALPHA)
+        glow_color = (255, 255, 255, alpha)
+        pygame.draw.polygon(glow_surf, glow_color, diamond_points)
+        surface.blit(glow_surf, (hb.x - 10, hb.y - 10))
 
-    def set_sprite(self, sprite: pygame.Surface) -> None:
-        self._sprite = sprite
+    def add_listener(self, listener) -> None:
+        if hasattr(listener, 'on_bullet_fired'):
+            self._bullet_listeners.append(listener)
 
     def get_bullets(self) -> List[Bullet]:
         return self._bullets
 
     def take_damage(self, damage: int) -> None:
+        if self.is_shielded:
+            return
         self.health -= damage
         if self.health <= 0:
             self.active = False
+
+    def heal(self, amount: int) -> None:
+        self.health = min(self.max_health, self.health + amount)
+
+    def activate_shield(self, duration: int) -> None:
+        self.is_shielded = True
+        self._shield_duration = duration
+
+    def render(self, surface: pygame.Surface) -> None:
+        from airwar.utils.sprites import draw_player_ship
+        health_ratio = self.health / self.max_health if self.max_health > 0 else 1.0
+        draw_player_ship(surface, self.rect.x, self.rect.y, self.rect.width, self.rect.height)
+
+    def is_colliding_with(self, other) -> bool:
+        return self.get_hitbox().colliderect(other.rect)
