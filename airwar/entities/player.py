@@ -76,9 +76,7 @@ class Player(Entity):
                     bullet = Bullet(
                         center_x,
                         self.rect.y - 10,
-                        BulletData(damage=self.bullet_damage),
-                        angle_offset=angle,
-                        bullet_type='shotgun'
+                        BulletData(damage=self.bullet_damage, angle_offset=angle, bullet_type='shotgun')
                     )
                     self._bullets.append(bullet)
             elif self._shot_mode == 'laser':
@@ -108,9 +106,7 @@ class Player(Entity):
                     b = Bullet(
                         center_x,
                         self.rect.y - 10,
-                        BulletData(damage=self.bullet_damage),
-                        angle_offset=angle,
-                        bullet_type='shotgun'
+                        BulletData(damage=self.bullet_damage, angle_offset=angle, bullet_type='shotgun')
                     )
                     self._bullets.append(b)
                     if bullet is None:
