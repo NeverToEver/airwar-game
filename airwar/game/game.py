@@ -3,12 +3,18 @@ from airwar.utils.database import UserDB
 from airwar.window import create_window
 from airwar.ui import GameOverScreen
 from airwar.game.scene_director import SceneDirector
-from airwar.config import SCREEN_WIDTH, SCREEN_HEIGHT
+from airwar.config import get_adaptive_screen_size
 
 
 class Game:
     def __init__(self):
-        self._window = create_window(SCREEN_WIDTH, SCREEN_HEIGHT, 'Air War - 飞机大战', resizable=True)
+        screen_width, screen_height = get_adaptive_screen_size()
+        self._window = create_window(
+            screen_width, 
+            screen_height, 
+            'Air War - 飞机大战', 
+            resizable=True
+        )
         self._scene_manager = SceneManager()
         self._db = UserDB()
         self._game_over_screen = GameOverScreen(self._window)
