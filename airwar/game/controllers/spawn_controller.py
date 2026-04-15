@@ -1,5 +1,5 @@
 from typing import List, Optional
-from airwar.entities import Enemy, Boss, EnemySpawner, BossData
+from airwar.entities import Enemy, Boss, EnemySpawner, BossData, Bullet
 from airwar.entities.interfaces import IBulletSpawner
 from airwar.config import get_screen_width
 
@@ -14,6 +14,7 @@ class SpawnController:
         )
 
         self.enemies: List[Enemy] = []
+        self.enemy_bullets: List[Bullet] = []
         self.boss: Optional[Boss] = None
         self.boss_spawn_timer = 0
         self.boss_spawn_interval = 1800
@@ -23,6 +24,11 @@ class SpawnController:
     def set_bullet_spawner(self, spawner: IBulletSpawner) -> None:
         self._bullet_spawner = spawner
         self.enemy_spawner.set_bullet_spawner(spawner)
+
+    def init_bullet_system(self) -> None:
+        from airwar.game.spawners.enemy_bullet_spawner import EnemyBulletSpawner
+        bullet_spawner = EnemyBulletSpawner(self.enemy_bullets)
+        self.set_bullet_spawner(bullet_spawner)
 
     def update(self, score: int, slow_factor: float) -> bool:
         self.enemy_spawner.update(self.enemies, slow_factor)
