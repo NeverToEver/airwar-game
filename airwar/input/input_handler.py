@@ -15,6 +15,7 @@ class InputHandler(ABC):
         'down': pygame.K_DOWN,
         'down_alt': pygame.K_s,
         'pause': pygame.K_ESCAPE,
+        'fire': pygame.K_SPACE,
     }
 
     @abstractmethod
@@ -49,6 +50,10 @@ class PygameInputHandler(InputHandler):
     def is_pause_pressed(self) -> bool:
         keys = pygame.key.get_pressed()
         return keys[self._bindings['pause']]
+
+    def is_fire_pressed(self) -> bool:
+        keys = pygame.key.get_pressed()
+        return keys[self._bindings['fire']]
 
 
 class MockInputHandler(InputHandler):
