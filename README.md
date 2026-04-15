@@ -2,44 +2,38 @@
 
 一款街机风格的纵向卷轴射击游戏，使用 Python 和 Pygame 开发。
 
-## 🚀 重构进度状态
+## 🚀 项目状态
 
-### 架构重构已完成
+### ✅ 架构重构已完成
 
 本项目已完成架构重构（参考 [重构设计文档](docs/superpowers/specs/2026-04-14-airwar-refactoring-design.md)），实现了以下改进：
 
-#### ✅ 已完成的重构内容
-
-##### Phase 1: 输入层抽象
+#### Phase 1: 输入层抽象
 - ✅ 创建 `airwar/input/` 模块
 - ✅ 实现 `InputHandler` 抽象接口
 - ✅ 实现 `PygameInputHandler` 和 `MockInputHandler`
 - ✅ 重构 `Player` 类使用依赖注入
 
-##### Phase 2: Enemy/Boss 解耦
+#### Phase 2: Enemy/Boss 解耦
 - ✅ 创建 `IBulletSpawner` 接口
 - ✅ 创建 `EnemyBulletSpawner` 实现类
 - ✅ 重构 `Enemy` 和 `Boss` 类移除 `GameScene` 引用
 - ✅ 重构 `EnemySpawner` 使用依赖注入
 
-##### Phase 3: GameScene 拆分
+#### Phase 3: GameScene 拆分
 - ✅ 创建 `GameController` - 游戏主控制器
 - ✅ 创建 `SpawnController` - 生成控制器
 - ✅ 创建 `CollisionController` - 碰撞控制器
 - ✅ 创建 `GameRenderer` - 游戏渲染器
 - ✅ 创建 `NotificationManager` - 通知系统
-- ✅ 更新 `GameScene` 集成新组件
+- ✅ 提取 `RewardSelector` 到独立模块
+- ✅ GameScene 集成所有新组件
 
-##### Phase 4: RewardSystem 重构
+#### Phase 4: RewardSystem 重构
 - ✅ 创建 `Buff` 基类和 `BuffResult`
 - ✅ 实现所有 `Buff` 具体类（15个）
 - ✅ 创建 `BuffRegistry` 注册表
 - ✅ 重构 `RewardSystem` 使用策略模式
-
-#### 🔄 进行中/待完成
-
-- ⏳ **GameScene 完全精简** - 仍保持原有大部分逻辑，新子系统已可用但未完全集成
-- ⏳ **测试覆盖更新** - 需要为新模块添加单元测试
 
 ### 📊 架构改进成果
 
@@ -69,6 +63,7 @@
   - [回血机制](#回血机制)
 - [配置说明](#配置说明)
 - [运行测试](#运行测试)
+- [项目结构](#项目结构)
 - [重构说明](#重构说明)
 
 ## 游戏特色
@@ -243,31 +238,20 @@ DIFFICULTY_SETTINGS = {
 pytest airwar/tests/ -v
 ```
 
-### 运行特定测试
-
-```bash
-# 只运行实体测试
-pytest airwar/tests/test_entities.py -v
-
-# 只运行配置测试
-pytest airwar/tests/test_config.py -v
-
-# 只运行场景测试
-pytest airwar/tests/test_scenes.py -v
-```
-
 ### 测试覆盖率
 
-当前测试数量：**99 个**
+当前测试数量：**113 个**
 
 | 测试文件 | 测试数量 |
 |----------|----------|
-| test_config.py | 7 |
+| test_config.py | 12 |
 | test_database.py | 9 |
-| test_entities.py | 24 |
-| test_integration.py | 37 |
+| test_entities.py | 30 |
+| test_integration.py | 47 |
 | test_rewards.py | 11 |
 | test_scenes.py | 11 |
+
+**所有测试通过** ✅
 
 ## 项目结构
 
@@ -278,14 +262,14 @@ airwar/
 │   └── settings.py       # 游戏配置
 ├── entities/
 │   ├── __init__.py
-│   ├── base.py          # 基础实体类
+│   ├── base.py          # 基础实体类、数据类
 │   ├── bullet.py        # 子弹类
 │   ├── enemy.py         # 敌人和Boss类
-│   ├── interfaces.py     # 实体接口 (新增)
+│   ├── interfaces.py     # 实体接口
 │   └── player.py         # 玩家类
-├── input/                # 输入处理模块 (新增)
+├── input/                # 输入处理模块
 │   ├── __init__.py
-│   └── input_handler.py
+│   └── input_handler.py  # InputHandler接口和实现
 ├── scenes/
 │   ├── __init__.py
 │   ├── game_scene.py     # 游戏主场景
@@ -295,30 +279,36 @@ airwar/
 │   └── scene.py          # 场景基类
 ├── game/
 │   ├── __init__.py
-│   ├── buffs/           # Buff系统 (新增)
-│   │   ├── base_buff.py
-│   │   ├── buff_registry.py
-│   │   ├── health_buffs.py
-│   │   ├── offense_buffs.py
-│   │   ├── defense_buffs.py
-│   │   └── utility_buffs.py
-│   ├── controllers/      # 游戏控制器 (新增)
-│   │   ├── game_controller.py
-│   │   ├── spawn_controller.py
-│   │   └── collision_controller.py
-│   ├── rendering/       # 渲染层 (新增)
-│   │   └── game_renderer.py
-│   ├── spawners/         # 生成器 (新增)
-│   │   └── enemy_bullet_spawner.py
-│   ├── systems/
-│   │   ├── health_system.py
-│   │   ├── hud_renderer.py
-│   │   ├── notification_manager.py  # 新增
-│   │   └── reward_system.py
-│   └── game.py          # 游戏主类
+│   ├── game.py          # 游戏主类
+│   ├── buffs/           # Buff系统
+│   │   ├── __init__.py
+│   │   ├── base_buff.py      # Buff基类和结果
+│   │   ├── buff_registry.py  # Buff注册表
+│   │   ├── health_buffs.py   # 生命类Buff
+│   │   ├── offense_buffs.py # 攻击类Buff
+│   │   ├── defense_buffs.py # 防御类Buff
+│   │   └── utility_buffs.py # 工具类Buff
+│   ├── controllers/      # 游戏控制器
+│   │   ├── __init__.py
+│   │   ├── game_controller.py   # 游戏主控制器
+│   │   ├── spawn_controller.py   # 生成控制器
+│   │   └── collision_controller.py # 碰撞控制器
+│   ├── rendering/       # 渲染层
+│   │   ├── __init__.py
+│   │   └── game_renderer.py      # 游戏渲染器
+│   ├── spawners/         # 生成器
+│   │   ├── __init__.py
+│   │   └── enemy_bullet_spawner.py # 敌弹生成器
+│   └── systems/
+│       ├── __init__.py
+│       ├── health_system.py      # 生命系统
+│       ├── hud_renderer.py       # HUD渲染器
+│       ├── notification_manager.py # 通知管理器
+│       └── reward_system.py      # 奖励系统
 ├── ui/
 │   ├── __init__.py
-│   └── game_over_screen.py
+│   ├── game_over_screen.py  # 游戏结束界面
+│   └── reward_selector.py   # 奖励选择器
 ├── utils/
 │   ├── __init__.py
 │   ├── database.py       # 用户数据库
@@ -349,6 +339,7 @@ airwar/
 2. **策略模式** - RewardSystem 使用 Buff 策略，支持扩展
 3. **依赖注入** - 所有组件通过接口通信，降低耦合
 4. **子系统分离** - 游戏逻辑拆分为多个独立子系统
+5. **单一职责** - 各模块职责清晰，代码可维护性显著提升
 
 ### 相关文档
 
