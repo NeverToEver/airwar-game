@@ -16,6 +16,8 @@ REWARD_POOL = {
         {'name': 'Piercing', 'desc': 'Bullets pierce 1 enemy', 'icon': 'PIR'},
         {'name': 'Spread Shot', 'desc': 'Fire 3 bullets at once', 'icon': 'SPD'},
         {'name': 'Explosive', 'desc': 'Bullets deal 30 AoE damage', 'icon': 'EXP'},
+        {'name': 'Shotgun', 'desc': 'Fire shotgun spread', 'icon': 'SHT'},
+        {'name': 'Laser', 'desc': 'Laser beam attacks', 'icon': 'LSR'},
     ],
     'defense': [
         {'name': 'Shield', 'desc': 'Block next hit', 'icon': 'SHD'},
@@ -82,7 +84,12 @@ class RewardSystem:
             if name == 'Piercing':
                 self.piercing_level += 1
             elif name == 'Spread Shot':
+                player.activate_shotgun()
                 self.spread_level += 1
+            elif name == 'Shotgun':
+                player.activate_shotgun()
+            elif name == 'Laser':
+                player.activate_laser(180)
             elif name == 'Explosive':
                 self.explosive_level += 1
             elif name == 'Armor':
@@ -107,6 +114,10 @@ class RewardSystem:
             self.spread_level += 1
         elif name == 'Explosive':
             self.explosive_level += 1
+        elif name == 'Shotgun':
+            player.activate_shotgun()
+        elif name == 'Laser':
+            player.activate_laser(180)
 
         return f"UPGRADED: {name}"
 
