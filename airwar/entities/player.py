@@ -65,69 +65,51 @@ class Player(Entity):
 
         self.hitbox_timer += 1
 
+    def _create_bullets_for_shot_mode(self, return_first: bool = False) -> Optional[Bullet]:
+        center_x = self.rect.x + self.rect.width / 2
+        bullet_y = self.rect.y - 10
+        
+        if self._shot_mode == 'shotgun':
+            bullet_x = center_x - 5
+            first_bullet = None
+            for angle in [-15, 0, 15]:
+                bullet = Bullet(
+                    bullet_x,
+                    bullet_y,
+                    BulletData(damage=self.bullet_damage, angle_offset=angle, bullet_type='shotgun')
+                )
+                self._bullets.append(bullet)
+                if first_bullet is None:
+                    first_bullet = bullet
+            return first_bullet if return_first else None
+        elif self._shot_mode == 'laser':
+            bullet = Bullet(
+                center_x - 3,
+                bullet_y,
+                BulletData(damage=self.bullet_damage, bullet_type='laser', is_laser=True)
+            )
+            self._bullets.append(bullet)
+            return bullet
+        else:
+            bullet = Bullet(
+                center_x - 5,
+                bullet_y,
+                BulletData(damage=self.bullet_damage)
+            )
+            self._bullets.append(bullet)
+            return bullet
+
     def auto_fire(self) -> None:
         from airwar.config import PLAYER_FIRE_RATE
         if self.fire_cooldown <= 0:
             self.fire_cooldown = PLAYER_FIRE_RATE
-
-            if self._shot_mode == 'shotgun':
-                center_x = self.rect.x + self.rect.width / 2 - 5
-                for angle in [-15, 0, 15]:
-                    bullet = Bullet(
-                        center_x,
-                        self.rect.y - 10,
-                        BulletData(damage=self.bullet_damage, angle_offset=angle, bullet_type='shotgun')
-                    )
-                    self._bullets.append(bullet)
-            elif self._shot_mode == 'laser':
-                bullet = Bullet(
-                    self.rect.x + self.rect.width / 2 - 3,
-                    self.rect.y - 10,
-                    BulletData(damage=self.bullet_damage, bullet_type='laser', is_laser=True)
-                )
-                self._bullets.append(bullet)
-            else:
-                bullet = Bullet(
-                    self.rect.x + self.rect.width / 2 - 5,
-                    self.rect.y - 10,
-                    BulletData(damage=self.bullet_damage)
-                )
-                self._bullets.append(bullet)
+            self._create_bullets_for_shot_mode()
 
     def fire(self) -> Optional[Bullet]:
         from airwar.config import PLAYER_FIRE_RATE
         if self.fire_cooldown <= 0:
             self.fire_cooldown = PLAYER_FIRE_RATE
-
-            if self._shot_mode == 'shotgun':
-                center_x = self.rect.x + self.rect.width / 2 - 5
-                bullet = None
-                for angle in [-15, 0, 15]:
-                    b = Bullet(
-                        center_x,
-                        self.rect.y - 10,
-                        BulletData(damage=self.bullet_damage, angle_offset=angle, bullet_type='shotgun')
-                    )
-                    self._bullets.append(b)
-                    if bullet is None:
-                        bullet = b
-                return bullet
-            elif self._shot_mode == 'laser':
-                bullet = Bullet(
-                    self.rect.x + self.rect.width / 2 - 3,
-                    self.rect.y - 10,
-                    BulletData(damage=self.bullet_damage, bullet_type='laser', is_laser=True)
-                )
-                self._bullets.append(bullet)
-                return bullet
-            else:
-                bullet = Bullet(
-                    self.rect.x + self.rect.width / 2 - 5,
-                    self.rect.y - 10,
-                    BulletData(damage=self.bullet_damage)
-                )
-                self._bullets.append(bullet)
-                return bullet
+            return self._create_bullets_for_shot_mode(return_first=True)
         return None
 
     def activate_shotgun(self) -> None:

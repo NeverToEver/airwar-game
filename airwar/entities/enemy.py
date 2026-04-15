@@ -81,12 +81,8 @@ class Enemy(Entity):
         return bullets
 
     def _get_damage(self) -> int:
-        if self.data.bullet_type == "spread":
-            return 8
-        elif self.data.bullet_type == "laser":
-            return 25
-        else:
-            return 15
+        from airwar.config import ENEMY_BULLET_DAMAGE
+        return ENEMY_BULLET_DAMAGE.get(self.data.bullet_type, 15)
 
     def set_bullet_spawner(self, spawner: IBulletSpawner) -> None:
         self._bullet_spawner = spawner
@@ -245,9 +241,10 @@ class Boss(Entity):
         self.attack_pattern = (self.attack_pattern + 1) % 3
 
     def _spread_attack(self) -> List[Bullet]:
+        from airwar.config import BOSS_BULLET_DAMAGE_BASE, BOSS_SPREAD_BULLET_COUNT_BASE
         bullets = []
         center_x = self.rect.centerx
-        bullet_count = 5 + self.phase
+        bullet_count = BOSS_SPREAD_BULLET_COUNT_BASE + self.phase
 
         for i in range(bullet_count):
             angle = -90 + (180 / (bullet_count - 1)) * i
@@ -257,7 +254,7 @@ class Boss(Entity):
             vy = math.sin(rad) * speed
 
             bullet_data = BulletData(
-                damage=10 + self.phase * 2,
+                damage=BOSS_BULLET_DAMAGE_BASE + self.phase * 2,
                 speed=5.0,
                 owner="enemy",
                 bullet_type="spread"
@@ -269,6 +266,7 @@ class Boss(Entity):
         return bullets
 
     def _aim_attack(self, player_pos: Tuple[float, float] = None) -> List[Bullet]:
+        from airwar.config import BOSS_AIM_BULLET_DAMAGE_BASE
         bullets = []
         
         if player_pos is None:
@@ -278,7 +276,7 @@ class Boss(Entity):
         player_y = player_pos[1]
         
         bullet_data = BulletData(
-            damage=15 + self.phase * 3,
+            damage=BOSS_AIM_BULLET_DAMAGE_BASE + self.phase * 3,
             speed=7.0,
             owner="enemy",
             bullet_type="laser"
@@ -300,6 +298,7 @@ class Boss(Entity):
         return bullets
 
     def _wave_attack(self) -> List[Bullet]:
+        from airwar.config import BOSS_WAVE_BULLET_DAMAGE
         bullets = []
         center_x = self.rect.centerx
 
@@ -309,7 +308,7 @@ class Boss(Entity):
             speed = 4.0
 
             bullet_data = BulletData(
-                damage=8,
+                damage=BOSS_WAVE_BULLET_DAMAGE,
                 speed=speed,
                 owner="enemy",
                 bullet_type="single"

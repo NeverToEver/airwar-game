@@ -47,6 +47,8 @@ class RewardSystem:
         self.magnet_range: int = 0
         self.slow_factor: float = 1.0
 
+        self._buff_state_handlers = self._init_buff_state_handlers()
+
     def generate_options(self, cycle_count: int, unlocked_buffs: list) -> List[Dict]:
         options = []
         categories = list(REWARD_POOL.keys())
@@ -68,6 +70,22 @@ class RewardSystem:
 
         return options
 
+    def _init_buff_state_handlers(self) -> Dict[str, callable]:
+        return {
+            'Piercing': lambda p: self._increment_stat('piercing_level'),
+            'Spread Shot': lambda p: (p.activate_shotgun(), self._increment_stat('spread_level')),
+            'Shotgun': lambda p: p.activate_shotgun(),
+            'Laser': lambda p: p.activate_laser(180),
+            'Explosive': lambda p: self._increment_stat('explosive_level'),
+            'Armor': lambda p: self._increment_stat('armor_level'),
+            'Evasion': lambda p: self._increment_stat('evasion_level'),
+            'Slow Field': lambda p: setattr(self, 'slow_factor', 0.8),
+        }
+
+    def _increment_stat(self, stat_name: str) -> None:
+        current = getattr(self, stat_name, 0)
+        setattr(self, stat_name, current + 1)
+
     def apply_reward(self, reward: Dict, player) -> str:
         name = reward['name']
 
@@ -81,43 +99,28 @@ class RewardSystem:
             self.unlocked_buffs.append(name)
             self.active_buffs[name] = buff
 
-            if name == 'Piercing':
-                self.piercing_level += 1
-            elif name == 'Spread Shot':
-                player.activate_shotgun()
-                self.spread_level += 1
-            elif name == 'Shotgun':
-                player.activate_shotgun()
-            elif name == 'Laser':
-                player.activate_laser(180)
-            elif name == 'Explosive':
-                self.explosive_level += 1
-            elif name == 'Armor':
-                self.armor_level += 1
-            elif name == 'Evasion':
-                self.evasion_level += 1
-            elif name == 'Slow Field':
-                self.slow_factor = 0.8
+            handler = self._buff_state_handlers.get(name)
+            if handler:
+                handler(player)
 
             return result.notification
         except ValueError:
             return f"REWARD: {name}"
 
     def _upgrade_buff(self, name: str, player) -> str:
-        if name == 'Power Shot':
-            player.bullet_damage = int(player.bullet_damage * 1.25)
-        elif name == 'Rapid Fire':
-            player.fire_cooldown = max(1, int(player.fire_cooldown * 0.8))
-        elif name == 'Piercing':
-            self.piercing_level += 1
-        elif name == 'Spread Shot':
-            self.spread_level += 1
-        elif name == 'Explosive':
-            self.explosive_level += 1
-        elif name == 'Shotgun':
-            player.activate_shotgun()
-        elif name == 'Laser':
-            player.activate_laser(180)
+        upgrade_handlers = {
+            'Power Shot': lambda p: setattr(p, 'bullet_damage', int(p.bullet_damage * 1.25)),
+            'Rapid Fire': lambda p: setattr(p, 'fire_cooldown', max(1, int(p.fire_cooldown * 0.8))),
+            'Piercing': lambda p: self._increment_stat('piercing_level'),
+            'Spread Shot': lambda p: self._increment_stat('spread_level'),
+            'Explosive': lambda p: self._increment_stat('explosive_level'),
+            'Shotgun': lambda p: p.activate_shotgun(),
+            'Laser': lambda p: p.activate_laser(180),
+        }
+
+        handler = upgrade_handlers.get(name)
+        if handler:
+            handler(player)
 
         return f"UPGRADED: {name}"
 
