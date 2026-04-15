@@ -21,12 +21,92 @@ class Enemy(Entity):
         self.fire_timer = random.randint(0, data.fire_rate)
         self._bullet_spawner: Optional[IBulletSpawner] = None
         self.entity_id = id(self)
+        self._init_movement(data.enemy_type)
+
+    def _init_movement(self, enemy_type: str) -> None:
+        from airwar.config import get_screen_width
+        screen_width = get_screen_width()
+        
+        if enemy_type == "sine":
+            self.move_type = "sine"
+            self.move_offset = random.uniform(0, math.pi * 2)
+            self.move_amplitude = random.uniform(1.5, 3.0)
+            self.move_frequency = random.uniform(0.03, 0.06)
+            self.start_x = self.rect.x
+            self.move_timer = 0
+            
+        elif enemy_type == "zigzag":
+            self.move_type = "zigzag"
+            self.direction = random.choice([-1, 1])
+            self.zigzag_timer = 0
+            self.zigzag_interval = random.randint(30, 60)
+            self.zigzag_speed = random.uniform(2.0, 3.5)
+            
+        elif enemy_type == "dive":
+            self.move_type = "dive"
+            self.target_x = self.start_x = self.rect.x
+            self.dive_timer = 0
+            self.dive_delay = random.randint(20, 50)
+            self.diving = False
+            
+        elif enemy_type == "hover":
+            self.move_type = "hover"
+            self.hover_timer = 0
+            self.hover_speed = random.uniform(1.5, 2.5)
+            self.hover_amplitude = random.uniform(20, 40)
+            self.start_x = self.rect.x
+            
+        else:
+            self.move_type = "straight"
 
     def update(self, *args, **kwargs) -> None:
-        self.rect.y += self.data.speed
-
-        from airwar.config import get_screen_height
+        from airwar.config import get_screen_width, get_screen_height
+        screen_width = get_screen_width()
         screen_height = get_screen_height()
+        
+        base_speed = self.data.speed
+        
+        if self.move_type == "sine":
+            self.move_timer += 1
+            self.rect.y += base_speed
+            self.rect.x = self.start_x + math.sin(self.move_timer * self.move_frequency + self.move_offset) * self.move_amplitude * 30
+            self.rect.x = max(0, min(self.rect.x, screen_width - self.rect.width))
+            
+        elif self.move_type == "zigzag":
+            self.rect.y += base_speed
+            self.zigzag_timer += 1
+            if self.zigzag_timer >= self.zigzag_interval:
+                self.zigzag_timer = 0
+                self.direction *= -1
+            self.rect.x += self.direction * self.zigzag_speed
+            if self.rect.x <= 0:
+                self.rect.x = 0
+                self.direction = 1
+            elif self.rect.x >= screen_width - self.rect.width:
+                self.rect.x = screen_width - self.rect.width
+                self.direction = -1
+                
+        elif self.move_type == "dive":
+            self.dive_timer += 1
+            if self.dive_timer >= self.dive_delay and not self.diving:
+                self.diving = True
+            if self.diving:
+                self.rect.y += base_speed * 1.8
+            else:
+                self.rect.y += base_speed * 0.5
+                wave = math.sin(self.dive_timer * 0.05) * 1.5
+                self.rect.x += wave
+                self.rect.x = max(0, min(self.rect.x, screen_width - self.rect.width))
+                
+        elif self.move_type == "hover":
+            self.rect.y += base_speed * 0.7
+            self.hover_timer += 0.08
+            self.rect.x = self.start_x + math.sin(self.hover_timer) * self.hover_amplitude
+            self.rect.x = max(0, min(self.rect.x, screen_width - self.rect.width))
+            
+        else:
+            self.rect.y += base_speed
+
         if self.rect.y > screen_height:
             self.active = False
 
@@ -111,6 +191,22 @@ class EnemySpawner:
         self.spawn_rate = 30
         self.bullet_type = "single"
         self._bullet_spawner: Optional[IBulletSpawner] = None
+        self._enemy_type_distribution = {
+            "straight": 0.30,
+            "sine": 0.25,
+            "zigzag": 0.20,
+            "dive": 0.15,
+            "hover": 0.10,
+        }
+
+    def _select_enemy_type(self) -> str:
+        rand = random.random()
+        cumulative = 0.0
+        for enemy_type, prob in self._enemy_type_distribution.items():
+            cumulative += prob
+            if rand < cumulative:
+                return enemy_type
+        return "straight"
 
     def set_params(self, health: int, speed: float, spawn_rate: int, bullet_type: str = "single") -> None:
         self.health = health
@@ -132,12 +228,15 @@ class EnemySpawner:
 
             bullet_types = ["single", "spread", "laser"]
             bullet_type = random.choice(bullet_types)
+            
+            enemy_type = self._select_enemy_type()
 
             data = EnemyData(
                 health=self.health,
                 speed=self.speed * slow_factor,
                 bullet_type=bullet_type,
-                fire_rate=90 if bullet_type == "laser" else 120
+                fire_rate=90 if bullet_type == "laser" else 120,
+                enemy_type=enemy_type
             )
             enemy = Enemy(x, -40, data)
             if self._bullet_spawner:
