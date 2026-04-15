@@ -11,7 +11,8 @@ class HUDRenderer:
 
     def render_hud(self, surface: pygame.Surface, score: int, difficulty: str,
                   player_health: int, player_max_health: int, kills: int,
-                  next_threshold: float, cycle_count: int, max_cycles: int) -> None:
+                  next_threshold: float, cycle_count: int, max_cycles: int,
+                  boss_kills: int = 0) -> None:
         score_text = self.hud_font.render(f"SCORE: {score}", True, (255, 255, 255))
         surface.blit(score_text, (15, 15))
 
@@ -33,6 +34,9 @@ class HUDRenderer:
 
         kills_text = self.hud_font.render(f"KILLS: {kills}", True, (180, 180, 180))
         surface.blit(kills_text, (surface.get_width() - 120, 75))
+
+        boss_text = self.hud_font.render(f"BOSS: {boss_kills}", True, (255, 100, 100))
+        surface.blit(boss_text, (surface.get_width() - 120, 100))
 
     def render_buffs(self, surface: pygame.Surface, unlocked_buffs: List[str],
                      get_buff_color) -> None:

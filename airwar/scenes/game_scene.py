@@ -22,6 +22,9 @@ class GameScene(Scene):
         self.spawn_controller: SpawnController = None
         self.player: Player = None
         self.reward_selector: RewardSelector = RewardSelector()
+        self._kill_count = 0
+        self._boss_kill_count = 0
+        self._total_score_gained = 0
 
     def enter(self, **kwargs) -> None:
         from airwar.config import DIFFICULTY_SETTINGS, get_screen_width, get_screen_height
@@ -181,6 +184,7 @@ class GameScene(Scene):
                 if bullet.get_rect().colliderect(boss.get_rect()):
                     score_reward = boss.take_damage(bullet.data.damage)
                     if score_reward > 0:
+                        self._total_score_gained += score_reward
                         self.game_controller.state.score += score_reward
                         self.game_controller.show_notification(f"+{score_reward} BOSS SCORE!")
 
@@ -188,6 +192,10 @@ class GameScene(Scene):
                         bullet.active = False
 
                     if not boss.active:
+                        self._kill_count += 1
+                        self._boss_kill_count += 1
+                        self._total_score_gained += boss.data.score
+                        self.game_controller.state.score += boss.data.score
                         self.game_controller.cycle_count += 1
                         self.reward_system.apply_lifesteal(self.player, boss.data.score)
                         self.spawn_controller.boss = None
@@ -224,7 +232,10 @@ class GameScene(Scene):
                             bullet.active = False
 
                         if not enemy.active:
-                            self.game_controller.state.score += enemy.data.score * self.game_controller.state.score_multiplier
+                            score_gained = enemy.data.score * self.game_controller.state.score_multiplier
+                            self._total_score_gained += score_gained
+                            self.game_controller.state.score += score_gained
+                            self._kill_count += 1
                             self.reward_system.apply_lifesteal(self.player, enemy.data.score)
 
     def _check_enemy_bullets_vs_player(self) -> None:
@@ -282,10 +293,11 @@ class GameScene(Scene):
             self.game_controller.state.difficulty,
             self.player.health,
             self.player.max_health,
-            self.game_controller.cycle_count,
+            self._kill_count,
             self.game_controller.get_next_threshold(),
             self.game_controller.cycle_count,
-            self.game_controller.milestone_index + self.game_controller.max_cycles
+            self.game_controller.milestone_index + self.game_controller.max_cycles,
+            boss_kills=self._boss_kill_count
         )
 
         self.game_renderer.render_notification(
