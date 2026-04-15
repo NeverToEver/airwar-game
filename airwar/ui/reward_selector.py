@@ -1,4 +1,5 @@
 import pygame
+import math
 from typing import List, Callable, Optional
 
 
@@ -9,6 +10,58 @@ class RewardSelector:
         self.options: List[dict] = []
         self.on_select: Optional[Callable] = None
         self.animation_time: int = 0
+        self.glow_offset: float = 0
+        self.stars: list = []
+        self.particles: list = []
+        self._init_visual_elements()
+
+    def _init_visual_elements(self) -> None:
+        import random
+        self.stars = []
+        for _ in range(80):
+            self.stars.append({
+                'x': random.random(),
+                'y': random.random(),
+                'size': random.uniform(0.5, 2.0),
+                'brightness': random.randint(50, 150),
+                'twinkle_speed': random.uniform(0.03, 0.08),
+                'twinkle_offset': random.random() * math.pi * 2,
+            })
+        
+        self.particles = []
+        for _ in range(30):
+            self.particles.append({
+                'x': random.random(),
+                'y': random.random(),
+                'size': random.uniform(1.5, 3.0),
+                'speed': random.uniform(0.2, 0.6),
+                'alpha': random.randint(80, 150),
+                'pulse_speed': random.uniform(0.02, 0.05),
+                'pulse_offset': random.random() * math.pi * 2,
+            })
+
+        pygame.font.init()
+        self.title_font = pygame.font.Font(None, 56)
+        self.option_font = pygame.font.Font(None, 36)
+        self.hint_font = pygame.font.Font(None, 24)
+        
+        self.colors = {
+            'bg': (8, 8, 25),
+            'bg_gradient': (12, 12, 45),
+            'title': (255, 255, 255),
+            'title_glow': (100, 200, 255),
+            'selected': (0, 255, 150),
+            'selected_glow': (0, 200, 255),
+            'unselected': (90, 90, 130),
+            'desc_selected': (140, 200, 140),
+            'desc_unselected': (80, 85, 120),
+            'hint': (70, 75, 110),
+            'particle': (100, 180, 255),
+            'panel': (15, 20, 40),
+            'panel_border': (50, 80, 140),
+            'option_selected_bg': (25, 35, 65),
+            'option_unselected_bg': (18, 20, 40),
+        }
 
     def generate_options(self, cycle_count: int, unlocked_buffs: list) -> list:
         from airwar.game.systems.reward_system import REWARD_POOL
@@ -65,64 +118,182 @@ class RewardSelector:
     def update(self) -> None:
         if self.visible:
             self.animation_time += 1
+            self.glow_offset = math.sin(self.animation_time * 0.05) * 8
+            self._update_stars()
+            self._update_particles()
+
+    def _update_stars(self) -> None:
+        import random
+        for star in self.stars:
+            star['y'] += star.get('speed', 0.005) * 0.005
+            if star['y'] > 1:
+                star['y'] = 0
+                star['x'] = random.random()
+
+    def _update_particles(self) -> None:
+        import random
+        for p in self.particles[:]:
+            p['y'] -= p['speed'] * 0.002
+            if p['y'] < -0.1:
+                p['y'] = 1.1
+                p['x'] = random.random()
+                p['alpha'] = random.randint(80, 150)
+
+    def _draw_gradient_background(self, surface: pygame.Surface) -> None:
+        width, height = surface.get_size()
+        for y in range(height):
+            ratio = y / height
+            r = int(self.colors['bg'][0] * (1 - ratio) + self.colors['bg_gradient'][0] * ratio)
+            g = int(self.colors['bg'][1] * (1 - ratio) + self.colors['bg_gradient'][1] * ratio)
+            b = int(self.colors['bg'][2] * (1 - ratio) + self.colors['bg_gradient'][2] * ratio)
+            pygame.draw.line(surface, (r, g, b), (0, y), (width, y))
+
+    def _draw_stars(self, surface: pygame.Surface) -> None:
+        width, height = surface.get_size()
+        for star in self.stars:
+            x = int(star['x'] * width)
+            y = int(star['y'] * height)
+            twinkle = math.sin(self.animation_time * star['twinkle_speed'] + star['twinkle_offset'])
+            brightness = int(star['brightness'] * (0.5 + 0.5 * twinkle))
+            pygame.draw.circle(surface, (brightness, brightness, brightness + 30), (x, y), int(star['size']))
+
+    def _draw_particles(self, surface: pygame.Surface) -> None:
+        width, height = surface.get_size()
+        for p in self.particles:
+            x = int(p['x'] * width)
+            y = int(p['y'] * height)
+            pulse = math.sin(self.animation_time * p['pulse_speed'] + p['pulse_offset'])
+            alpha = int(p['alpha'] * (0.6 + 0.4 * pulse))
+            size = int(p['size'] * (0.7 + 0.3 * pulse))
+
+            particle_surf = pygame.Surface((size * 4, size * 4), pygame.SRCALPHA)
+            for i in range(size * 2, 0, -2):
+                layer_alpha = int(alpha * (size * 2 - i) / (size * 2) * 0.4)
+                pygame.draw.circle(particle_surf, (*self.colors['particle'], layer_alpha),
+                                 (size * 2, size * 2), i)
+            surface.blit(particle_surf, (x - size * 2, y - size * 2))
+
+    def _draw_glow_text(self, surface: pygame.Surface, text: str, font: pygame.font.Font,
+                        pos: tuple, color: tuple, glow_color: tuple, glow_radius: int = 2) -> None:
+        for i in range(glow_radius, 0, -1):
+            alpha = int(100 / i)
+            glow_surf = font.render(text, True, glow_color)
+            glow_surf.set_alpha(alpha)
+            glow_rect = glow_surf.get_rect(center=(pos[0], pos[1] + i))
+            surface.blit(glow_surf, glow_rect)
+
+        main_text = font.render(text, True, color)
+        surface.blit(main_text, main_text.get_rect(center=pos))
+
+    def _draw_panel(self, surface: pygame.Surface) -> None:
+        width, height = surface.get_size()
+        
+        panel_width = 480
+        panel_height = 320
+        panel_x = width // 2 - panel_width // 2
+        panel_y = height // 2 - panel_height // 2 + self.glow_offset * 0.3
+        
+        panel_rect = pygame.Rect(panel_x, panel_y, panel_width, panel_height)
+
+        for i in range(3, 0, -1):
+            expand = i * 4
+            glow_surf = pygame.Surface((panel_width + expand * 2, panel_height + expand * 2), pygame.SRCALPHA)
+            alpha = max(5, 20 // i)
+            pygame.draw.rect(glow_surf, (*self.colors['title_glow'], alpha),
+                          glow_surf.get_rect(), border_radius=18)
+            surface.blit(glow_surf, (panel_x - expand, panel_y - expand))
+
+        pygame.draw.rect(surface, self.colors['panel'], panel_rect, border_radius=15)
+
+        border_surf = pygame.Surface((panel_width, panel_height), pygame.SRCALPHA)
+        pygame.draw.rect(border_surf, (*self.colors['panel_border'], 120),
+                       border_surf.get_rect(), width=2, border_radius=15)
+        surface.blit(border_surf, panel_rect.topleft)
+
+    def _draw_option_item(self, surface: pygame.Surface, option: dict, index: int,
+                          center_x: int, start_y: int, is_selected: bool) -> None:
+        option_height = 80
+        option_gap = 15
+        y = start_y + index * (option_height + option_gap)
+        
+        box_width = 440
+        box_height = option_height
+        box_rect = pygame.Rect(center_x - box_width // 2, y, box_width, box_height)
+
+        if is_selected:
+            glow_color = self.colors['selected_glow']
+            for i in range(4, 0, -1):
+                expand = i * 3
+                glow_rect = box_rect.inflate(expand * 2, expand * 2)
+                glow_surf = pygame.Surface((glow_rect.width, glow_rect.height), pygame.SRCALPHA)
+                pygame.draw.rect(glow_surf, (*glow_color, 30 // i), glow_surf.get_rect(), border_radius=10)
+                surface.blit(glow_surf, glow_rect)
+
+            pygame.draw.rect(surface, self.colors['option_selected_bg'], box_rect, border_radius=10)
+            border_surf = pygame.Surface((box_width, box_height), pygame.SRCALPHA)
+            pygame.draw.rect(border_surf, (*self.colors['selected'], 200),
+                           border_surf.get_rect(), width=2, border_radius=10)
+            surface.blit(border_surf, box_rect.topleft)
+        else:
+            pygame.draw.rect(surface, self.colors['option_unselected_bg'], box_rect, border_radius=10)
+            border_surf = pygame.Surface((box_width, box_height), pygame.SRCALPHA)
+            pygame.draw.rect(border_surf, (*self.colors['unselected'], 70),
+                           border_surf.get_rect(), width=1, border_radius=10)
+            surface.blit(border_surf, box_rect.topleft)
+
+        arrow = ">" if is_selected else " "
+        name_text = option['name']
+        
+        text_color = self.colors['selected'] if is_selected else self.colors['unselected']
+        full_text = f"{arrow} {name_text}"
+        text = self.option_font.render(full_text, True, text_color)
+        text_rect = text.get_rect(midleft=(box_rect.x + 25, box_rect.centery - 8))
+        surface.blit(text, text_rect)
+
+        desc_color = self.colors['desc_selected'] if is_selected else self.colors['desc_unselected']
+        desc = self.hint_font.render(option['desc'], True, desc_color)
+        desc_rect = desc.get_rect(midleft=(box_rect.x + 35, box_rect.centery + 16))
+        surface.blit(desc, desc_rect)
+
+    def _draw_title(self, surface: pygame.Surface) -> None:
+        width, height = surface.get_size()
+        
+        title_y = 130 + self.glow_offset * 0.5
+        self._draw_glow_text(surface, "CHOOSE YOUR REWARD", self.title_font,
+                           (width // 2, title_y), self.colors['title'], self.colors['title_glow'], 3)
+
+    def _draw_bottom_hint(self, surface: pygame.Surface) -> None:
+        width, height = surface.get_size()
+        
+        if (self.animation_time // 25) % 2 == 0:
+            hint_color = (90, 100, 140)
+        else:
+            hint_color = (120, 130, 170)
+        hint = self.hint_font.render("W / S to select   ENTER to confirm", True, hint_color)
+        surface.blit(hint, hint.get_rect(center=(width // 2, height - 50)))
 
     def render(self, surface: pygame.Surface) -> None:
         if not self.visible:
             return
 
+        self._draw_gradient_background(surface)
+        self._draw_stars(surface)
+        self._draw_particles(surface)
+        
         width, height = surface.get_size()
+        
+        self._draw_title()
+        self._draw_panel()
 
-        overlay = pygame.Surface((width, height), pygame.SRCALPHA)
-        overlay.fill((8, 8, 25, 240))
-        surface.blit(overlay, (0, 0))
-
-        title = pygame.font.Font(None, 60).render("CHOOSE YOUR REWARD", True, (255, 255, 255))
-        surface.blit(title, title.get_rect(center=(width // 2, 100)))
-
-        box_width = 580
-        box_height = 110
-        start_y = 180
-        start_x = width // 2 - box_width // 2
-
+        panel_width = 480
+        panel_height = 320
+        center_x = width // 2
+        panel_y = height // 2 - panel_height // 2 + self.glow_offset * 0.3
+        
+        option_section_height = 80 * 3 + 15 * 2
+        start_y = panel_y + (panel_height - option_section_height) // 2 + 10
+        
         for i, option in enumerate(self.options):
-            y = start_y + i * (box_height + 35)
-            x = start_x
+            self._draw_option_item(surface, option, i, center_x, start_y, i == self.selected_index)
 
-            is_selected = i == self.selected_index
-            box_color = (35, 55, 85) if is_selected else (22, 28, 48)
-            border_color = (0, 255, 150) if is_selected else (70, 90, 130)
-
-            box_rect = pygame.Rect(x, y, box_width, box_height)
-
-            if is_selected:
-                glow_rect = box_rect.inflate(8, 8)
-                glow_surf = pygame.Surface((glow_rect.width, glow_rect.height), pygame.SRCALPHA)
-                pygame.draw.rect(glow_surf, (0, 255, 150, 40), glow_surf.get_rect(), border_radius=15)
-                surface.blit(glow_surf, glow_rect)
-
-            pygame.draw.rect(surface, box_color, box_rect, border_radius=12)
-            pygame.draw.rect(surface, border_color, box_rect, 3 if is_selected else 2, border_radius=12)
-
-            icon_box_width = 85
-            icon_box_rect = pygame.Rect(x + 12, y + 12, icon_box_width, box_height - 24)
-            pygame.draw.rect(surface, (28, 38, 60), icon_box_rect, border_radius=8)
-            pygame.draw.rect(surface, border_color, icon_box_rect, 1, border_radius=8)
-
-            arrow = ">>> " if is_selected else "    "
-            icon_text = pygame.font.Font(None, 32).render(f"{arrow}{option['icon']}", True,
-                                                        (0, 255, 150) if is_selected else (140, 140, 160))
-            icon_text_rect = icon_text.get_rect(center=(x + 12 + icon_box_width // 2, y + box_height // 2))
-            surface.blit(icon_text, icon_text_rect)
-
-            text_x = x + icon_box_width + 35
-
-            name_text = pygame.font.Font(None, 38).render(option['name'], True,
-                                                        (255, 255, 255) if is_selected else (200, 200, 220))
-            surface.blit(name_text, (text_x, y + 22))
-
-            desc_text = pygame.font.Font(None, 28).render(option['desc'], True,
-                                                        (160, 210, 160) if is_selected else (100, 110, 140))
-            surface.blit(desc_text, (text_x, y + 62))
-
-        hint = pygame.font.Font(None, 26).render("W/S or UP/DOWN to select, ENTER to confirm", True, (90, 110, 140))
-        surface.blit(hint, hint.get_rect(center=(width // 2, height - 60)))
+        self._draw_bottom_hint(surface)
