@@ -27,8 +27,11 @@ class SceneDirector:
                 break
             if not self._run_menu_flow():
                 continue
-            if not self._run_game_flow():
+            result = self._run_game_flow()
+            if result == "quit":
                 break
+            if result == "main_menu":
+                continue
 
     def stop(self) -> None:
         self._running = False
@@ -81,7 +84,7 @@ class SceneDirector:
 
         return not back_to_login
 
-    def _run_game_flow(self) -> bool:
+    def _run_game_flow(self) -> str:
         self._scene_manager.switch("game",
                                   difficulty=self._selected_difficulty,
                                   username=self._current_user or 'Guest')
@@ -92,11 +95,16 @@ class SceneDirector:
 
             events = self._poll_events()
             if not self._check_quit(events):
-                return False
+                return "quit"
             self._handle_resize_if_needed(events)
 
             if isinstance(current_scene, GameScene):
-                escape_handled = self._handle_pause_toggle(events, current_scene)
+                result = self._handle_pause_toggle(events, current_scene)
+                if result == "main_menu":
+                    return "main_menu"
+                if result == "quit":
+                    return "quit"
+                escape_handled = result is True
 
             self._handle_scene_events(events, escape_handled)
             self._scene_manager.update()
@@ -106,9 +114,13 @@ class SceneDirector:
 
             if isinstance(current_scene, GameScene):
                 if current_scene.is_game_over():
-                    return self._handle_game_over(current_scene)
+                    result = self._handle_game_over(current_scene)
+                    if result:
+                        return "main_menu"
+                    else:
+                        return "quit"
 
-        return True
+        return "quit"
 
     def _poll_events(self) -> List[pygame.event.Event]:
         return pygame.event.get()
@@ -126,25 +138,23 @@ class SceneDirector:
                 self._window.resize(event.w, event.h)
                 self._handle_resize(event.w, event.h)
 
-    def _handle_pause_toggle(self, events: List[pygame.event.Event], game_scene: GameScene) -> bool:
-        escape_handled = False
+    def _handle_pause_toggle(self, events: List[pygame.event.Event], game_scene: GameScene) -> str:
         for event in events:
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 if game_scene.is_paused():
                     game_scene.resume()
-                    escape_handled = True
+                    return "resume"
                 else:
                     game_scene.pause()
                     action = self._show_pause_menu(game_scene)
                     if action == PauseAction.RESUME:
                         game_scene.resume()
+                        return "resume"
                     elif action == PauseAction.MAIN_MENU:
-                        return False
+                        return "main_menu"
                     elif action == PauseAction.QUIT:
-                        self._running = False
-                        return True
-                    escape_handled = True
-        return escape_handled
+                        return "quit"
+        return "none"
 
     def _show_pause_menu(self, game_scene: GameScene) -> PauseAction:
         pause_scene = self._scene_manager._scenes.get("pause")
