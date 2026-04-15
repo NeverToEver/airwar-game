@@ -135,6 +135,7 @@ class SceneDirector:
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 if game_scene.is_paused():
                     game_scene.resume()
+                    escape_handled = True
                 else:
                     game_scene.pause()
                     self._show_pause_menu(game_scene)

@@ -340,7 +340,6 @@ class GameScene(Scene):
     def resume(self) -> None:
         if self.game_controller:
             self.game_controller.state.paused = False
-        self.paused = False
 
     @property
     def unlocked_buffs(self) -> list:
