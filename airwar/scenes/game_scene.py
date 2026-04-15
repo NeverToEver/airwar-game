@@ -69,7 +69,10 @@ class GameScene(Scene):
 
     def handle_events(self, event: pygame.event.Event) -> None:
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_SPACE:
+            if event.key == pygame.K_ESCAPE:
+                if not self.reward_selector.visible and self.game_controller.state.paused:
+                    self.game_controller.state.paused = False
+            elif event.key == pygame.K_SPACE:
                 if not self.game_controller.state.paused and not self.reward_selector.visible:
                     self.player.fire()
 
