@@ -30,11 +30,6 @@ class Enemy(Entity):
         if self.rect.y > screen_height:
             self.active = False
 
-        self.fire_timer -= 1
-        if self.fire_timer <= 0 and self.rect.y > 0:
-            self.fire_timer = self.data.fire_rate
-            self._fire()
-
     def _fire(self) -> None:
         bullets = self._create_bullets()
         
@@ -221,11 +216,6 @@ class Boss(Entity):
         if self.phase_timer >= 300 and self.phase < 3:
             self.phase_timer = 0
             self.phase += 1
-
-        self.fire_timer -= 1
-        if self.fire_timer <= 0:
-            self.fire_timer = max(15, self.data.fire_rate - self.phase * 10)
-            self._fire()
 
     def _fire(self) -> None:
         bullets = []
