@@ -1,6 +1,3 @@
-# Game core
-from airwar.game.game import Game
-
 # Systems modules
 from airwar.game.systems.health_system import HealthSystem
 from airwar.game.systems.reward_system import RewardSystem
@@ -19,9 +16,19 @@ from airwar.game.rendering.game_renderer import GameRenderer, GameEntities
 from airwar.game.spawners.enemy_bullet_spawner import EnemyBulletSpawner
 
 __all__ = [
-    'Game',
     'HealthSystem', 'RewardSystem', 'HUDRenderer', 'NotificationManager',
     'GameController', 'GameState', 'SpawnController', 'CollisionController',
     'GameRenderer', 'GameEntities',
     'EnemyBulletSpawner'
 ]
+
+# Lazy import to avoid circular import
+import sys
+_game_module = None
+
+def __getattr__(name):
+    global _game_module
+    if name == 'Game' and _game_module is None:
+        from airwar.game.game import Game
+        return Game
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
