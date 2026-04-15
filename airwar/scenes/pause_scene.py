@@ -32,6 +32,8 @@ class PauseScene(Scene):
             if event.key == pygame.K_ESCAPE:
                 self.paused = False
                 self.running = False
+                if self.on_resume:
+                    self.on_resume()
             elif event.key in (pygame.K_UP, pygame.K_w):
                 self.selected_index = (self.selected_index - 1) % len(self.options)
             elif event.key in (pygame.K_DOWN, pygame.K_s):
