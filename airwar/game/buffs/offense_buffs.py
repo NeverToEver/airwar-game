@@ -88,3 +88,41 @@ class ExplosiveBuff(Buff):
 
     def get_color(self) -> tuple:
         return (255, 100, 50)
+
+
+class ShotgunBuff(Buff):
+    def __init__(self):
+        self.level = 0
+
+    def apply(self, player) -> BuffResult:
+        self.level += 1
+        return BuffResult(
+            name='Shotgun',
+            notification='REWARD: Shotgun Mode',
+            color=(255, 120, 200)
+        )
+
+    def get_name(self) -> str:
+        return 'Shotgun'
+
+    def get_color(self) -> tuple:
+        return (255, 120, 200)
+
+
+class LaserBuff(Buff):
+    def __init__(self):
+        self.level = 0
+
+    def apply(self, player) -> BuffResult:
+        self.level += 1
+        return BuffResult(
+            name='Laser',
+            notification='REWARD: Laser Mode',
+            color=(100, 200, 255)
+        )
+
+    def get_name(self) -> str:
+        return 'Laser'
+
+    def get_color(self) -> tuple:
+        return (100, 200, 255)

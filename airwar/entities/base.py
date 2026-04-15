@@ -86,6 +86,8 @@ class BulletData:
     speed: float = 10.0
     owner: str = "player"
     bullet_type: str = "single"
+    angle_offset: float = 0.0
+    is_laser: bool = False
 
 
 @dataclass
