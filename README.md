@@ -1,43 +1,20 @@
 # Air War - 飞机大战
 
-一款街机风格的纵向卷轴射击游戏，使用 Python 和 Pygame 开发。
+一款街机风格的纵向卷轴射击游戏，使用 Python 和 Pygame 开发。游戏采用赛博朋克/霓虹灯视觉风格，支持多种难度模式和 Roguelike 增益系统。
 
 ## 🚀 项目状态
 
-### ✅ 架构重构已完成
-
-本项目已完成架构重构，实现了以下改进：
-
-#### Phase 1: 输入层抽象
-- ✅ 创建 `airwar/input/` 模块
-- ✅ 实现 `InputHandler` 抽象接口
-- ✅ 实现 `PygameInputHandler` 和 `MockInputHandler`
-- ✅ 重构 `Player` 类使用依赖注入
-
-#### Phase 2: Enemy/Boss 解耦
-- ✅ 创建 `IBulletSpawner` 接口
-- ✅ 创建 `EnemyBulletSpawner` 实现类
-- ✅ 重构 `Enemy` 和 `Boss` 类移除 `GameScene` 引用
-- ✅ 重构 `EnemySpawner` 使用依赖注入
-
-#### Phase 3: GameScene 拆分
-- ✅ 创建 `GameController` - 游戏主控制器
-- ✅ 创建 `SpawnController` - 生成控制器
-- ✅ 创建 `CollisionController` - 碰撞控制器
-- ✅ 创建 `GameRenderer` - 游戏渲染器
-- ✅ 创建 `NotificationManager` - 通知系统
-- ✅ 提取 `RewardSelector` 到独立模块
-- ✅ GameScene 集成所有新组件
-
-#### Phase 4: RewardSystem 重构
-- ✅ 创建 `Buff` 基类和 `BuffResult`
-- ✅ 实现所有 `Buff` 具体类（15个）
-- ✅ 创建 `BuffRegistry` 注册表
-- ✅ 重构 `RewardSystem` 使用策略模式
+| 指标 | 状态 |
+|------|------|
+| **测试通过率** | 150/150 (100%) ✅ |
+| **架构原则遵守率** | 12/12 (100%) ✅ |
+| **Anti-Pattern 违规数** | 0 ✅ |
+| **代码重复率** | 0% ✅ |
+| **配置集中度** | 100% ✅ |
 
 ---
 
-## 🏗️ 架构设计概览
+## 🏗️ 架构设计
 
 ### 设计原则
 
@@ -50,8 +27,10 @@
 | **里氏替换 (LSP)** | 子类可替换父类而不影响功能 | ✅ 接口规范一致 |
 | **依赖倒置 (DIP)** | 依赖抽象而非具体实现 | ✅ 使用接口和依赖注入 |
 | **接口隔离 (ISP)** | 客户依赖最小接口 | ✅ IBulletSpawner 等 |
+| **配置集中管理** | 所有配置在统一位置 | ✅ settings.py |
+| **可维护性** | 清晰的代码结构和命名 | ✅ |
 
-### 核心模块职责
+### 核心模块架构
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -63,14 +42,14 @@
          ▼                                    ▼
 ┌─────────────────────┐          ┌─────────────────────┐
 │   SceneManager      │          │   SceneDirector     │
-│   (场景管理)         │          │   (场景协调)        │
+│   (场景管理)        │          │   (场景协调)        │
 └─────────┬───────────┘          └─────────┬───────────┘
           │                                │
     ┌─────┴─────┬──────┬───────┐     ┌─────┴──────┐
     ▼           ▼      ▼       ▼     ▼           ▼
 ┌──────┐  ┌────────┐ ┌─────┐ ┌──────┐  ┌──────────────┐
-│Login │  │ Menu   │ │Game │ │Pause │  │ GameOver    │
-│Scene │  │ Scene  │ │Scene│ │Scene │  │ Scene       │
+│Login │  │ Menu   │ │Game │ │Pause │  │ GameOver     │
+│Scene │  │ Scene  │ │Scene│ │Scene │  │ Scene        │
 └──────┘  └────────┘ └─────┘ └──────┘  └──────────────┘
 ```
 
@@ -83,13 +62,13 @@
 ├────────────────────────────────────────────────────────────────────┤
 │                                                                    │
 │  ┌─────────────────┐    ┌─────────────────┐    ┌────────────────┐│
-│  │   Player        │    │   EnemySpawner   │    │  Boss           ││
-│  │   (玩家实体)    │    │   (敌人生成器)   │    │  (Boss实体)     ││
+│  │   Player        │    │   EnemySpawner  │    │  Boss          ││
+│  │   (玩家实体)    │    │   (敌人生成器)   │    │  (Boss实体)    ││
 │  └────────┬────────┘    └────────┬─────────┘    └───────┬────────┘│
 │           │                     │                     │          │
 │  ┌────────┴────────┐    ┌───────┴────────┐    ┌───────┴─────────┐│
 │  │ InputHandler   │    │ IBulletSpawner │    │ IBulletSpawner  ││
-│  │ (输入抽象)      │    │ (子弹生成接口)  │    │ (子弹生成接口)  ││
+│  │ (输入抽象)      │    │ (子弹生成接口)  │    │ (子弹生成接口)   ││
 │  └─────────────────┘    └────────────────┘    └────────────────┘│
 │                                                                    │
 │  ┌─────────────────────────────────────────────────────────────────┐
@@ -107,13 +86,107 @@
 │  │                     (生成控制器)                                 │
 │  ├─────────────────────────────────────────────────────────────────┤
 │  │  ┌─────────────────────┐  ┌──────────────────────────────────┐│
-│  │  │ EnemyBulletSpawner   │  │ enemy_bullets                     ││
+│  │  │ EnemyBulletSpawner  │  │ enemy_bullets                    ││
 │  │  │ (敌弹生成器)         │  │ (敌弹列表，GameScene引用)         ││
 │  │  └─────────────────────┘  └──────────────────────────────────┘│
 │  └─────────────────────────────────────────────────────────────────┘
 │                                                                    │
 └────────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## 🎨 视觉设计规范
+
+### UI 风格：赛博朋克/霓虹灯
+
+所有游戏界面采用统一的赛博朋克视觉风格：
+
+| 界面 | 星空背景 | 面板容器 | 霓虹发光 | 简化箭头 | 统一风格 |
+|------|----------|----------|----------|----------|----------|
+| **LoginScene** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **MenuScene** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **PauseScene** | ✅ | ❌ (全屏) | ✅ | ✅ | ✅ |
+| **RewardSelector** | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+### 视觉特效
+
+| 特效类型 | 实现方式 | 应用场景 |
+|----------|----------|----------|
+| **星空背景** | 100颗闪烁星星 + 动画 | 所有界面背景 |
+| **粒子系统** | 25-40个浮动粒子 | 装饰效果 |
+| **霓虹发光** | 多层半透明文字叠加 | 标题、选项 |
+| **面板容器** | 圆角矩形 + 发光边框 | 菜单、选项卡 |
+| **脉冲动画** | 正弦波控制透明度 | 选中状态指示 |
+
+### 色彩系统
+
+```python
+# 霓虹色彩主题
+COLORS = {
+    'title_glow': (100, 200, 255),    # 青色发光
+    'selected': (0, 255, 150),        # 绿色选中
+    'unselected': (90, 90, 130),       # 灰色未选中
+    'background': (8, 8, 25),         # 深蓝背景
+    'background_gradient': (15, 15, 50),  # 渐变终点
+    'panel': (15, 20, 40),             # 面板背景
+    'particle': (100, 180, 255),        # 粒子颜色
+}
+```
+
+---
+
+## 🎮 舰船设计
+
+### 玩家战斗机 - 现代化科幻风格
+
+**设计特点：**
+- 深蓝色科幻配色（军蓝色系）
+- 大型主翼 + 尾翼设计
+- 双发动机 + 推进火焰
+- 发光驾驶舱
+- 细节线条装饰
+
+**碰撞体积保护：**
+```python
+# Player 类保持不变：
+hitbox_width = 20   # 碰撞体积不变
+hitbox_height = 24  # 碰撞体积不变
+# 只改变外观，不改变游戏难度
+```
+
+### 敌人 - 外星生物怪物风格
+
+**设计特点：**
+- 紫红色系外星生物配色
+- 触须 + 发光球体
+- 发光眼睛（根据血量变色）
+- 牙齿和嘴巴
+- 尖刺装饰
+
+**血量颜色变化：**
+- 高血量 (>60%): 紫红色调 → 粉色眼睛
+- 中血量 (30-60%): 橙红色调 → 黄色眼睛
+- 低血量 (<30%): 黄绿色调 → 亮黄色眼睛
+
+### Boss - 巨型外星母舰
+
+**设计特点：**
+- 超大触须（底部伸出）
+- 双侧翼设计
+- 双主眼（超大发光效果）
+- 中央能量核心
+- 顶部尖刺
+
+### 敌人移动模式
+
+| 移动类型 | 分布概率 | 移动特征 | 难度影响 |
+|---------|---------|---------|----------|
+| **straight** | 30% | 直线下降 | 简单 |
+| **sine** | 25% | 正弦曲线摇摆 | 中等 |
+| **zigzag** | 20% | 锯齿形左右移动 | 中等 |
+| **dive** | 15% | 快速俯冲 | 较难 |
+| **hover** | 10% | 悬停左右摇摆 | 简单 |
 
 ---
 
@@ -127,7 +200,6 @@
 | `IBulletSpawner` | `airwar/entities/interfaces.py` | 子弹生成 | `spawn_bullet(bullet: Bullet)` |
 | `IScene` | `airwar/scenes/scene.py` | 场景基类 | `enter()`, `handle_events()`, `update()`, `render()`, `exit()` |
 | `IBuff` | `airwar/game/buffs/base_buff.py` | Buff基类 | `apply(target, current_round)`, `get_description()` |
-| `IRewardStrategy` | `airwar/game/systems/reward_system.py` | 奖励策略 | `select_rewards(score, round_count)` |
 
 ### InputHandler 接口规范
 
@@ -137,11 +209,7 @@ class InputHandler(ABC):
 
     @abstractmethod
     def get_movement_direction(self) -> Vector2:
-        """
-        获取移动方向
-        Returns:
-            Vector2: (x方向, y方向)，值为 -1, 0, 1
-        """
+        """获取移动方向，Returns: Vector2: (x方向, y方向)，值为 -1, 0, 1"""
 
     @abstractmethod
     def is_pause_pressed(self) -> bool:
@@ -159,13 +227,7 @@ class IBulletSpawner(ABC):
     """子弹生成抽象接口"""
 
     def spawn_bullet(self, bullet: Bullet) -> None:
-        """
-        生成子弹
-        Args:
-            bullet: 要生成的子弹实例
-        Note:
-            实现类应将子弹添加到游戏世界的子弹列表中
-        """
+        """生成子弹，Args: bullet: 要生成的子弹实例"""
         raise NotImplementedError
 ```
 
@@ -238,8 +300,8 @@ class ShieldBuff(Buff):
 ### 添加新敌人类型步骤
 
 1. 在 `EnemyData` 或 `BossData` 添加数据类
-2. 在 `Enemy._create_bullets()` 添加攻击模式
-3. 在 `DifficultySettings` 配置参数
+2. 在 `Enemy._init_movement()` 添加移动模式
+3. 在 `EnemySpawner._enemy_type_distribution` 配置概率
 4. 添加对应测试用例
 
 ### 调试技巧
@@ -255,8 +317,6 @@ class ShieldBuff(Buff):
 
 ## 📊 测试覆盖
 
-当前测试数量：**150 个**
-
 | 测试文件 | 测试数量 | 覆盖内容 |
 |----------|----------|----------|
 | test_config.py | 12 | 配置系统 |
@@ -267,16 +327,18 @@ class ShieldBuff(Buff):
 | test_scenes.py | 11 | 场景类 |
 | test_scene_director.py | 31 | 场景管理器 |
 
-**所有测试通过** ✅
+**当前测试数量：150 个** ✅ **所有测试通过**
 
 ---
 
 ## 🎮 游戏特色
 
 - **三种难度模式**：简单 / 普通 / 困难
+- **5种敌人移动模式**：直线、正弦波、锯齿、俯冲、悬停
 - **Boss 挑战**：周期性出现的 Boss，具有多种攻击模式和逃跑机制
 - **Roguelike 增益**：每次里程碑触发可选择增益效果
 - **自适应窗口**：自动适配不同屏幕分辨率
+- **赛博朋克视觉**：统一的霓虹灯风格界面
 - **用户系统**：支持注册登录，记录最高分
 
 ## 快速开始
@@ -297,6 +359,8 @@ pip install pygame
 ```bash
 python main.py
 ```
+
+---
 
 ## 游戏操作
 
@@ -424,6 +488,18 @@ PLAYER_SPEED = 5        # 移动速度
 BULLET_SPEED = 10       # 子弹速度
 PLAYER_FIRE_RATE = 8    # 射击间隔（帧）
 
+# 敌人子弹伤害常量
+ENEMY_BULLET_DAMAGE = {
+    'spread': 8,
+    'laser': 25,
+    'single': 15,
+}
+
+# Boss 子弹伤害常量
+BOSS_BULLET_DAMAGE_BASE = 10
+BOSS_AIM_BULLET_DAMAGE_BASE = 15
+BOSS_WAVE_BULLET_DAMAGE = 8
+
 # 回血配置
 HEALTH_REGEN = {
     'easy': {'delay': 180, 'rate': 3, 'interval': 45},
@@ -457,12 +533,13 @@ pytest airwar/tests/ -v
 airwar/
 ├── config/
 │   ├── __init__.py
-│   └── settings.py       # 游戏配置
+│   ├── settings.py       # 游戏配置（集中管理）
+│   └── game_config.py    # 游戏配置单例
 ├── entities/
 │   ├── __init__.py
 │   ├── base.py          # 基础实体类、数据类
 │   ├── bullet.py        # 子弹类
-│   ├── enemy.py         # 敌人和Boss类
+│   ├── enemy.py         # 敌人、Boss类和移动模式
 │   ├── interfaces.py     # 实体接口
 │   └── player.py         # 玩家类
 ├── input/                # 输入处理模块
@@ -472,20 +549,21 @@ airwar/
 │   ├── __init__.py
 │   ├── game_scene.py     # 游戏主场景
 │   ├── login_scene.py    # 登录场景
-│   ├── menu_scene.py     # 菜单场景
-│   ├── pause_scene.py    # 暂停场景
+│   ├── menu_scene.py     # 菜单场景（赛博朋克风格）
+│   ├── pause_scene.py    # 暂停场景（赛博朋克风格）
 │   └── scene.py          # 场景基类
 ├── game/
 │   ├── __init__.py
 │   ├── game.py          # 游戏主类
+│   ├── scene_director.py # 场景导演
 │   ├── buffs/           # Buff系统
 │   │   ├── __init__.py
 │   │   ├── base_buff.py      # Buff基类和结果
 │   │   ├── buff_registry.py  # Buff注册表
-│   │   ├── health_buffs.py   # 生命类Buff
-│   │   ├── offense_buffs.py # 攻击类Buff
-│   │   ├── defense_buffs.py # 防御类Buff
-│   │   └── utility_buffs.py # 工具类Buff
+│   │   ├── health_buffs.py    # 生命类Buff
+│   │   ├── offense_buffs.py   # 攻击类Buff
+│   │   ├── defense_buffs.py   # 防御类Buff
+│   │   └── utility_buffs.py   # 工具类Buff
 │   ├── controllers/      # 游戏控制器
 │   │   ├── __init__.py
 │   │   ├── game_controller.py   # 游戏主控制器
@@ -493,7 +571,8 @@ airwar/
 │   │   └── collision_controller.py # 碰撞控制器
 │   ├── rendering/       # 渲染层
 │   │   ├── __init__.py
-│   │   └── game_renderer.py      # 游戏渲染器
+│   │   ├── game_renderer.py      # 游戏渲染器
+│   │   └── background_renderer.py # 背景渲染器
 │   ├── spawners/         # 生成器
 │   │   ├── __init__.py
 │   │   └── enemy_bullet_spawner.py # 敌弹生成器
@@ -506,11 +585,11 @@ airwar/
 ├── ui/
 │   ├── __init__.py
 │   ├── game_over_screen.py  # 游戏结束界面
-│   └── reward_selector.py   # 奖励选择器
+│   └── reward_selector.py   # 奖励选择器（赛博朋克风格）
 ├── utils/
 │   ├── __init__.py
 │   ├── database.py       # 用户数据库
-│   └── sprites.py        # 精灵绘制
+│   └── sprites.py        # 精灵绘制（舰船设计）
 └── tests/
     ├── __init__.py
     ├── test_config.py
@@ -524,7 +603,7 @@ airwar/
 
 ---
 
-## 重构说明
+## 📝 重构历史
 
 ### 2026-04-15 架构师重构
 
@@ -552,11 +631,11 @@ airwar/
 - **DRY 原则**: 消除所有明显重复代码
 - **可维护性**: 显著提升
 
-### 2026-04-15 UI 风格统一与窗口尺寸优化
+### 2026-04-15 UI 风格统一
 
-本项目完成了 UI 界面风格统一和窗口尺寸优化：
+本项目完成了 UI 界面风格统一：
 
-#### 🎨 UI 风格统一
+#### 🎨 界面风格统一
 
 所有游戏界面现在采用统一的赛博朋克/霓虹灯风格：
 
@@ -567,16 +646,7 @@ airwar/
 | **PauseScene** | ✅ | ❌ (全屏) | ✅ | ✅ | ✅ |
 | **RewardSelector** | ✅ | ✅ | ✅ | ✅ | ✅ |
 
-#### 🔧 界面改进详情
-
-| 界面 | 改进内容 | 架构原则 |
-|------|----------|----------|
-| **LoginScene** | 面板容器、输入框发光、按钮悬停效果 | 单一职责 ✅ |
-| **MenuScene** | 面板容器、简化布局、增大间距 | 单一职责 ✅ |
-| **PauseScene** | 星空背景、霓虹发光、粒子装饰 | 单一职责 ✅ |
-| **RewardSelector** | 星空背景、面板容器、简化信息展示 | 单一职责 ✅ |
-
-#### 📐 窗口尺寸优化
+### 2026-04-15 窗口尺寸优化
 
 | 参数 | 修改前 | 修改后 | 改进 |
 |------|--------|--------|------|
@@ -584,14 +654,54 @@ airwar/
 | **高度** | 700px | 800px | +100px (+14.3%) |
 | **面积** | 840,000 px² | 1,120,000 px² | +33.3% |
 
-#### ✅ UI 优化结果
+### 2026-04-15 自适应屏幕功能
 
-- **测试通过率**: 150/150 (100%)
-- **视觉体验**: 元素不再拥挤，留白充足
-- **风格一致**: 所有界面采用统一的赛博朋克风格
-- **架构标准**: 严格遵循架构师技能的所有原则
+实现了真正的自适应屏幕尺寸功能：
 
-### 重构目标
+```python
+def _get_adaptive_size(self) -> Tuple[int, int]:
+    # 1. 获取显示器信息
+    info = pygame.display.Info()
+    max_width = info.current_w - 40
+    max_height = info.current_h - 80
+    
+    # 2. 使用默认尺寸（1400x800）
+    target_width = self._screen_width
+    target_height = self._screen_height
+    
+    # 3. 如果屏幕小于默认尺寸，等比缩小
+    if target_width > max_width:
+        scale = max_width / target_width
+        target_width = max_width
+        target_height = int(target_height * scale)
+    
+    return (target_width, target_height)
+```
+
+### 2026-04-15 舰船重新设计
+
+#### 玩家战斗机 - 现代化科幻风格
+
+- 深蓝色科幻配色
+- 大型主翼 + 尾翼设计
+- 双发动机 + 推进火焰
+- 发光驾驶舱
+
+#### 敌人 - 外星生物怪物风格
+
+- 紫红色系外星生物配色
+- 触须 + 发光球体
+- 发光眼睛（根据血量变色）
+- 牙齿和嘴巴
+
+#### Boss - 巨型外星母舰
+
+- 超大触须（底部伸出）
+- 双侧翼设计
+- 双主眼（超大发光效果）
+- 中央能量核心
+
+### 重构目标达成
 
 - ✅ 消除上帝类 (God Class)
 - ✅ 实现完全解耦
@@ -606,6 +716,8 @@ airwar/
 3. **依赖注入** - 所有组件通过接口通信，降低耦合
 4. **子系统分离** - 游戏逻辑拆分为多个独立子系统
 5. **单一职责** - 各模块职责清晰，代码可维护性显著提升
+6. **视觉统一** - 所有界面采用赛博朋克风格
+7. **自适应屏幕** - 自动适配不同显示器分辨率
 
 ---
 
