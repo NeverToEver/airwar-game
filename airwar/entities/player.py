@@ -60,7 +60,7 @@ class Player(Entity):
         self.rect.y = max(0, min(self.rect.y, get_screen_height() - self.rect.height))
 
     def _update_weapons(self, *args, **kwargs) -> None:
-        if self._input_handler.is_fire_pressed() and self._fire_cooldown <= 0:
+        if self._fire_cooldown <= 0:
             self.fire()
         if self._fire_cooldown > 0:
             self._fire_cooldown -= 1
