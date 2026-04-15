@@ -49,6 +49,7 @@ class GameController:
     def update(self, player, has_regen: bool = False) -> None:
         self.health_system.update(player, has_regen)
         self.notification_manager.update()
+        self.update_ripples()
 
         if self.state.notification_timer > 0:
             self.state.notification_timer -= 1

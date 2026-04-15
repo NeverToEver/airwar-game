@@ -5,7 +5,7 @@ from airwar.entities.bullet import Bullet
 
 class EnemyBulletSpawner(IBulletSpawner):
     def __init__(self, bullet_list: List[Bullet] = None):
-        self.bullet_list = bullet_list if bullet_list else []
+        self.bullet_list = bullet_list if bullet_list is not None else []
 
     def spawn_bullet(self, bullet: Bullet) -> None:
         self.bullet_list.append(bullet)
