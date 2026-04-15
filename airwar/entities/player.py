@@ -53,8 +53,8 @@ class Player(Entity):
 
     def _update_movement(self) -> None:
         direction = self._input_handler.get_movement_direction()
-        self.rect.x += direction[0] * self.speed
-        self.rect.y += direction[1] * self.speed
+        self.rect.x += direction.x * self.speed
+        self.rect.y += direction.y * self.speed
         from airwar.config import get_screen_width, get_screen_height
         self.rect.x = max(0, min(self.rect.x, get_screen_width() - self.rect.width))
         self.rect.y = max(0, min(self.rect.y, get_screen_height() - self.rect.height))
