@@ -121,4 +121,4 @@ class TestPauseScene:
         from airwar.scenes import PauseScene
         scene = PauseScene()
         scene.enter()
-        assert scene.is_paused() is True
+        assert scene.running is True

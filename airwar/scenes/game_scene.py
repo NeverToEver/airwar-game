@@ -175,6 +175,7 @@ class GameScene(Scene):
                 if not self.game_controller.state.player_invincible:
                     damage = self.reward_system.calculate_damage_taken(30)
                     self.player.take_damage(damage)
+                    self._clear_enemy_bullets()
                     self.game_controller.on_player_hit(damage, self.player)
 
         for bullet in self.player.get_bullets():
@@ -204,6 +205,7 @@ class GameScene(Scene):
             enemy.update(self.spawn_controller.enemies, self.reward_system.slow_factor)
             if enemy.rect.colliderect(self.player.get_hitbox()):
                 if not self.reward_system.try_dodge():
+                    self._clear_enemy_bullets()
                     self.game_controller.on_player_hit(20, self.player)
 
     def _check_collisions(self) -> None:
@@ -238,12 +240,18 @@ class GameScene(Scene):
                 if not self.game_controller.state.player_invincible:
                     damage = self.reward_system.calculate_damage_taken(eb.data.damage)
                     self.player.take_damage(damage)
+                    self._clear_enemy_bullets()
                     self.game_controller.on_player_hit(damage, self.player)
 
     def _cleanup_bullets(self) -> None:
         for b in self.spawn_controller.enemy_bullets:
             if not b.active:
                 self.spawn_controller.enemy_bullets.remove(b)
+
+    def _clear_enemy_bullets(self) -> None:
+        for bullet in self.spawn_controller.enemy_bullets[:]:
+            bullet.active = False
+        self.spawn_controller.enemy_bullets.clear()
 
     def _check_milestones(self) -> None:
         threshold = self.game_controller.get_next_threshold()
