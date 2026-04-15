@@ -151,7 +151,7 @@ class Player(Entity):
                 (cx, hb.y + hb.height),
                 (hb.x, cy),
             ]
-            pygame.draw.polygon(surface, (50, 200, 255), points, 2)
+            pygame.draw.polygon(surface, (255, 255, 255), points, 2)
 
     def set_sprite(self, sprite: pygame.Surface) -> None:
         self._sprite = sprite

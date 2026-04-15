@@ -34,15 +34,15 @@ def draw_player_ship(surface: pygame.Surface, x: float, y: float, width: float =
     center_x = x + width / 2
     center_y = y + height / 2
     
-    hull_dark = (15, 30, 55)
-    hull_mid = (25, 55, 95)
-    hull_light = (45, 85, 145)
-    hull_highlight = (75, 125, 195)
+    hull_dark = (35, 60, 100)
+    hull_mid = (55, 100, 160)
+    hull_light = (85, 140, 200)
+    hull_highlight = (130, 180, 230)
     
-    glow_cyan = (50, 200, 255)
-    glow_blue = (30, 150, 255)
-    thruster_glow = (80, 200, 255)
-    thruster_deep = (20, 120, 200)
+    glow_cyan = (80, 220, 255)
+    glow_blue = (60, 180, 255)
+    thruster_glow = (100, 200, 255)
+    thruster_deep = (50, 150, 220)
     
     wing_edge_left = [
         (center_x - width * 0.08, y + height * 0.05),
