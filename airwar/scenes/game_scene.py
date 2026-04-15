@@ -166,7 +166,9 @@ class GameScene(Scene):
 
     def _update_boss(self) -> None:
         boss = self.spawn_controller.boss
-        boss.update()
+        if not boss:
+            return
+        boss.update(self.spawn_controller.enemies)
         player_hitbox = self.player.get_hitbox()
 
         if not boss.is_entering() and boss.active:
@@ -200,7 +202,7 @@ class GameScene(Scene):
 
     def _update_entities(self) -> None:
         for enemy in self.spawn_controller.enemies:
-            enemy.update()
+            enemy.update(self.spawn_controller.enemies, self.reward_system.slow_factor)
             if enemy.rect.colliderect(self.player.get_hitbox()):
                 if not self.reward_system.try_dodge():
                     self.game_controller.on_player_hit(20, self.player)
