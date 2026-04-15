@@ -575,7 +575,7 @@ def draw_boss_ship(surface: pygame.Surface, x: float, y: float, width: float = 1
     
     for i in range(7):
         line_y = y + height * 0.32 + i * height * 0.08
-        pygame.draw.line(surface, hull_highlight,
+        pygame.draw.line(surface, hull_light,
                         (center_x - width * 0.22, line_y),
                         (center_x + width * 0.22, line_y), 2)
     
