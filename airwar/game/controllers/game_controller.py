@@ -84,7 +84,13 @@ class GameController:
     def on_player_hit(self, damage: int, player) -> None:
         center_x = player.rect.centerx
         center_y = player.rect.centery
-        self.state.ripple_effects.append({'x': center_x, 'y': center_y, 'radius': 10, 'alpha': 255})
+        self.state.ripple_effects.append({
+            'x': center_x,
+            'y': center_y,
+            'radius': 15,
+            'alpha': 350,
+            'pulse': 0
+        })
         self.state.player_invincible = True
         self.state.invincibility_timer = 90
 
@@ -99,8 +105,9 @@ class GameController:
 
     def update_ripples(self) -> None:
         for ripple in self.state.ripple_effects:
-            ripple['radius'] += 3
-            ripple['alpha'] -= 8
+            ripple['radius'] += 2.5
+            ripple['alpha'] -= 4
+            ripple['pulse'] += 1
         self.state.ripple_effects = [r for r in self.state.ripple_effects if r['alpha'] > 0]
 
     def show_notification(self, message: str, duration: int = 90) -> None:
