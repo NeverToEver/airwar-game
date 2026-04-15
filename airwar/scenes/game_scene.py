@@ -36,6 +36,7 @@ class GameScene(Scene):
 
         self.game_controller = GameController(difficulty, username)
         self.game_renderer = GameRenderer()
+        self.game_renderer.init_background(screen_width, screen_height)
         self.health_system = HealthSystem(difficulty)
         self.reward_system = self.game_controller.reward_system
         self.hud_renderer = HUDRenderer()

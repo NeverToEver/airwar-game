@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import List
 from airwar.game.systems.hud_renderer import HUDRenderer
 from airwar.game.controllers.game_controller import GameState
+from airwar.game.rendering.background_renderer import BackgroundRenderer
 
 
 @dataclass
@@ -15,9 +16,17 @@ class GameEntities:
 class GameRenderer:
     def __init__(self, hud_renderer: HUDRenderer = None):
         self.hud_renderer = hud_renderer or HUDRenderer()
+        self.background_renderer: BackgroundRenderer = None
+
+    def init_background(self, screen_width: int, screen_height: int) -> None:
+        self.background_renderer = BackgroundRenderer(screen_width, screen_height)
 
     def render(self, surface: pygame.Surface, state: GameState, entities: GameEntities) -> None:
-        surface.fill((0, 0, 0))
+        if self.background_renderer:
+            self.background_renderer.update()
+            self.background_renderer.draw(surface)
+        else:
+            surface.fill((10, 10, 30))
 
         if state.entrance_animation:
             self._render_entrance(surface, state, entities)
