@@ -136,16 +136,12 @@ class InputHandler(ABC):
     """输入处理抽象接口"""
 
     @abstractmethod
-    def get_direction(self) -> Tuple[int, int]:
+    def get_movement_direction(self) -> Vector2:
         """
         获取移动方向
         Returns:
-            Tuple[int, int]: (x方向, y方向)，值为 -1, 0, 1
+            Vector2: (x方向, y方向)，值为 -1, 0, 1
         """
-
-    @abstractmethod
-    def is_fire_pressed(self) -> bool:
-        """是否按下射击键"""
 
     @abstractmethod
     def is_pause_pressed(self) -> bool:
