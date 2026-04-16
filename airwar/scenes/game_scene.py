@@ -130,7 +130,7 @@ class GameScene(Scene):
         if spawn_needed:
             boss = self.spawn_controller.spawn_boss(
                 self.game_controller.cycle_count,
-                self.player.bullet_damage
+                self.reward_system.base_bullet_damage
             )
             self.game_controller.show_notification(
                 f"! BOSS APPROACHING ({int(boss.data.escape_time/60)}s) !"
