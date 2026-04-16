@@ -143,7 +143,8 @@ class GameScene(Scene):
         boss = self.spawn_controller.boss
         if not boss:
             return
-        boss.update(self.spawn_controller.enemies)
+        player_pos = (self.player.rect.centerx, self.player.rect.centery)
+        boss.update(self.spawn_controller.enemies, player_pos=player_pos)
         player_hitbox = self.player.get_hitbox()
 
         if not boss.is_entering() and boss.active:

@@ -206,6 +206,53 @@ class TestBossEntity:
             boss.update()
         assert boss.is_escaped() is True
 
+    def test_boss_attack_direction_initialization(self):
+        from airwar.entities import Boss, BossData
+        boss = Boss(100, 0, BossData())
+        assert boss.attack_direction == 'down'
+        assert hasattr(boss, 'ATTACK_DIRECTIONS')
+        assert 'down' in boss.ATTACK_DIRECTIONS
+
+    def test_boss_attack_direction_random_selection(self):
+        from collections import Counter
+        from airwar.entities import Boss, BossData
+        boss = Boss(100, 50, BossData(fire_rate=1))
+        boss.entering = False
+        directions = []
+        for _ in range(100):
+            boss.update()
+            directions.append(boss.attack_direction)
+        counts = Counter(directions)
+        assert len(counts) == 4
+
+    def test_boss_spread_attack_direction(self):
+        from airwar.entities import Boss, BossData
+        boss = Boss(100, 50, BossData())
+        boss.entering = False
+        for direction in ['down', 'left', 'right', 'up']:
+            boss.attack_direction = direction
+            bullets = boss._spread_attack()
+            assert len(bullets) > 0
+
+    def test_boss_aim_attack_direction(self):
+        from airwar.entities import Boss, BossData
+        boss = Boss(100, 50, BossData())
+        boss.entering = False
+        for direction in ['down', 'left', 'right', 'up']:
+            boss.attack_direction = direction
+            bullets = boss._aim_attack()
+            for bullet in bullets:
+                assert bullet.velocity.length() > 0
+
+    def test_boss_wave_attack_direction(self):
+        from airwar.entities import Boss, BossData
+        boss = Boss(100, 50, BossData())
+        boss.entering = False
+        for direction in ['down', 'left', 'right', 'up']:
+            boss.attack_direction = direction
+            bullets = boss._wave_attack()
+            assert len(bullets) == 8
+
 
 class TestPlayerHitbox:
     def test_player_hitbox_smaller_than_sprite(self):
