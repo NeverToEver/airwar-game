@@ -44,6 +44,7 @@ class RewardSystem:
         self.explosive_level: int = 0
         self.armor_level: int = 0
         self.evasion_level: int = 0
+        self.rapid_fire_level: int = 0
         self.magnet_range: int = 0
         self.slow_factor: float = 1.0
 
@@ -89,11 +90,19 @@ class RewardSystem:
             'Spread Shot': lambda p: (p.activate_shotgun(), self._increment_stat('spread_level')),
             'Shotgun': lambda p: p.activate_shotgun(),
             'Laser': lambda p: p.activate_laser(180),
+            'Rapid Fire': lambda p: self._handle_rapid_fire(p),
             'Explosive': lambda p: self._increment_stat('explosive_level'),
             'Armor': lambda p: self._increment_stat('armor_level'),
             'Evasion': lambda p: self._increment_stat('evasion_level'),
             'Slow Field': lambda p: setattr(self, 'slow_factor', 0.8),
         }
+
+    def _handle_rapid_fire(self, player) -> None:
+        self._increment_stat('rapid_fire_level')
+        cooldown = self._base_fire_cooldown
+        for _ in range(self.rapid_fire_level):
+            cooldown = max(1, int(cooldown * 0.8))
+        player.fire_cooldown = cooldown
 
     def _increment_stat(self, stat_name: str) -> None:
         current = getattr(self, stat_name, 0)
@@ -123,7 +132,7 @@ class RewardSystem:
     def _upgrade_buff(self, name: str, player) -> str:
         upgrade_handlers = {
             'Power Shot': lambda p: setattr(p, 'bullet_damage', int(p.bullet_damage * 1.25)),
-            'Rapid Fire': lambda p: setattr(p, 'fire_cooldown', max(1, int(p.fire_cooldown * 0.8))),
+            'Rapid Fire': lambda p: self._handle_rapid_fire(p),
             'Piercing': lambda p: self._increment_stat('piercing_level'),
             'Spread Shot': lambda p: self._increment_stat('spread_level'),
             'Explosive': lambda p: self._increment_stat('explosive_level'),
@@ -183,6 +192,7 @@ class RewardSystem:
         self.explosive_level = 0
         self.armor_level = 0
         self.evasion_level = 0
+        self.rapid_fire_level = 0
         self.magnet_range = 0
         self.slow_factor = 1.0
         self._base_bullet_damage = 50

@@ -21,7 +21,7 @@ class BuffStatsAggregator:
     def _init_stat_formatters(self) -> Dict[str, callable]:
         return {
             'Power Shot': lambda rs, p: f"+{int((p.bullet_damage / rs.base_bullet_damage - 1) * 100)}%",
-            'Rapid Fire': lambda rs, p: f"+{int((1 - p.fire_cooldown / rs.base_fire_cooldown) * 100)}%" if p.fire_cooldown < rs.base_fire_cooldown else "+20%",
+            'Rapid Fire': lambda rs, p: self._calculate_rapid_fire_value(rs),
             'Piercing': lambda rs, _: f"Lv.{rs.piercing_level}",
             'Spread Shot': lambda rs, _: f"Lv.{rs.spread_level}",
             'Explosive': lambda rs, _: f"Lv.{rs.explosive_level}",
@@ -38,6 +38,17 @@ class BuffStatsAggregator:
             'Slow Field': lambda rs, _: f"{int((1 - rs.slow_factor) * 100)}%",
             'Shield': lambda rs, _: "Ready" if 'Shield' in rs.unlocked_buffs else "-",
         }
+
+    def _calculate_rapid_fire_value(self, reward_system) -> str:
+        level = getattr(reward_system, 'rapid_fire_level', 0)
+        if level <= 0:
+            return "-"
+        base_cooldown = reward_system.base_fire_cooldown
+        cooldown = base_cooldown
+        for _ in range(level):
+            cooldown = max(1, int(cooldown * 0.8))
+        bonus = int((1 - cooldown / base_cooldown) * 100)
+        return f"+{bonus}%"
 
     def _get_buff_color(self, name: str, reward_system) -> Tuple[int, int, int]:
         try:
@@ -117,11 +128,9 @@ class BuffStatsAggregator:
             if total_damage_bonus > 0:
                 summary['DMG'] = f"+{total_damage_bonus}%"
 
-            base_cooldown = reward_system.base_fire_cooldown
-            current_cooldown = getattr(player, 'fire_cooldown', base_cooldown)
-            if current_cooldown < base_cooldown:
-                fire_rate_bonus = int((1 - current_cooldown / base_cooldown) * 100)
-                summary['RATE'] = f"+{fire_rate_bonus}%"
+            rapid_fire_value = self._calculate_rapid_fire_value(reward_system)
+            if rapid_fire_value != "-":
+                summary['RATE'] = rapid_fire_value
 
             total_armor = reward_system.armor_level * 15
             if total_armor > 0:
