@@ -124,9 +124,11 @@ class GameIntegrator:
 
         self._docking_animation_active = True
         self._docking_animation_frame = 0
-        self._docking_start_position = self._game_scene.player.rect.topleft
+        self._docking_start_position = (self._game_scene.player.rect.x, self._game_scene.player.rect.y)
         self._docking_animation_target = self._mother_ship.get_docking_position()
         self._player_control_disabled = True
+
+
 
     def _on_start_undocking_animation(self, **kwargs) -> None:
         if not self._game_scene:
@@ -168,6 +170,8 @@ class GameIntegrator:
             self._docking_animation_frame = 0
             self._player_control_disabled = False
             self._event_bus.publish('DOCKING_ANIMATION_COMPLETE')
+
+
 
     def _update_undocking_animation(self) -> None:
         if not self._game_scene or not self._undocking_start_position:

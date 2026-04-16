@@ -55,6 +55,8 @@ class MotherShipStateMachine(IMotherShipStateMachine):
             self._event_bus.publish('STATE_CHANGED', state=self._current_state)
             self._event_bus.publish('START_DOCKING_ANIMATION')
 
+
+
     def _on_docking_animation_complete(self, **kwargs) -> None:
         if self._can_transition_to(MotherShipState.DOCKED):
             self._change_state(MotherShipState.DOCKED)
