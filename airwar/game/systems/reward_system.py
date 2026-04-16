@@ -34,7 +34,7 @@ REWARD_POOL = {
 
 
 class RewardSystem:
-    def __init__(self):
+    def __init__(self, difficulty: str = 'medium'):
         self.unlocked_buffs: List[str] = []
         self.active_buffs: Dict[str, Buff] = {}
         self.pending_reward = None
@@ -47,7 +47,20 @@ class RewardSystem:
         self.magnet_range: int = 0
         self.slow_factor: float = 1.0
 
+        from airwar.config import DIFFICULTY_SETTINGS
+        settings = DIFFICULTY_SETTINGS.get(difficulty, DIFFICULTY_SETTINGS['medium'])
+        self._base_bullet_damage: int = settings.get('bullet_damage', 50)
+        self._base_fire_cooldown: int = 8
+
         self._buff_state_handlers = self._init_buff_state_handlers()
+
+    @property
+    def base_bullet_damage(self) -> int:
+        return self._base_bullet_damage
+
+    @property
+    def base_fire_cooldown(self) -> int:
+        return self._base_fire_cooldown
 
     def generate_options(self, cycle_count: int, unlocked_buffs: list) -> List[Dict]:
         options = []
@@ -172,3 +185,6 @@ class RewardSystem:
         self.evasion_level = 0
         self.magnet_range = 0
         self.slow_factor = 1.0
+        self._base_bullet_damage = 50
+        self._base_fire_cooldown = 8
+        self._buff_state_handlers = self._init_buff_state_handlers()
