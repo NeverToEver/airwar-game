@@ -3,6 +3,7 @@ import pygame
 from airwar.scenes import SceneManager, GameScene, MenuScene
 from airwar.scenes.scene import PauseAction
 from airwar.ui.game_over_screen import GameOverScreen, ScreenAction
+from airwar.game.mother_ship import PersistenceManager, GameSaveData
 
 
 class SceneDirector:
@@ -15,6 +16,7 @@ class SceneDirector:
         self._running = True
         self._current_user: Optional[str] = None
         self._selected_difficulty: str = 'medium'
+        self._pending_save_data = None
 
     @property
     def current_user(self) -> Optional[str]:
@@ -23,8 +25,10 @@ class SceneDirector:
     def run(self) -> None:
         self._running = True
         while self._running:
-            if not self._run_login_flow():
+            login_result, save_data = self._run_login_flow()
+            if not login_result:
                 break
+            self._pending_save_data = save_data
             if not self._run_menu_flow():
                 continue
             result = self._run_game_flow()
@@ -36,7 +40,7 @@ class SceneDirector:
     def stop(self) -> None:
         self._running = False
 
-    def _run_login_flow(self) -> bool:
+    def _run_login_flow(self) -> tuple:
         self._scene_manager.switch("login")
         login_scene = self._scene_manager.get_current_scene()
 
@@ -44,7 +48,7 @@ class SceneDirector:
                 if hasattr(login_scene, 'is_running') else not login_scene.is_ready()):
             events = self._poll_events()
             if not self._check_quit(events):
-                return False
+                return (False, None)
             self._handle_resize_if_needed(events)
             self._handle_scene_events(events)
             self._scene_manager.update()
@@ -53,10 +57,12 @@ class SceneDirector:
             self._window.tick(60)
 
         if hasattr(login_scene, 'should_quit') and login_scene.should_quit():
-            return False
+            return (False, None)
         if hasattr(login_scene, 'get_username') and login_scene.is_ready():
             self._current_user = login_scene.get_username()
-        return True
+            save_data = self._check_and_get_saved_game(self._current_user)
+            return (True, save_data)
+        return (True, None)
 
     def _run_menu_flow(self) -> bool:
         self._scene_manager.switch("menu")
@@ -89,20 +95,29 @@ class SceneDirector:
                                   difficulty=self._selected_difficulty,
                                   username=self._current_user or 'Guest')
 
+        current_scene = self._scene_manager.get_current_scene()
+        if self._pending_save_data and isinstance(current_scene, GameScene):
+            current_scene.restore_from_save(self._pending_save_data)
+            self._pending_save_data = None
+
         while self._running:
             escape_handled = False
             current_scene = self._scene_manager.get_current_scene()
 
             events = self._poll_events()
             if not self._check_quit(events):
+                if isinstance(current_scene, GameScene):
+                    self._save_game_on_quit(current_scene)
                 return "quit"
             self._handle_resize_if_needed(events)
 
             if isinstance(current_scene, GameScene):
                 result = self._handle_pause_toggle(events, current_scene)
                 if result == "main_menu":
+                    self._clear_saved_game()
                     return "main_menu"
                 if result == "quit":
+                    self._save_game_on_quit(current_scene)
                     return "quit"
                 escape_handled = result is True
 
@@ -114,6 +129,7 @@ class SceneDirector:
 
             if isinstance(current_scene, GameScene):
                 if current_scene.is_game_over():
+                    self._clear_saved_game()
                     result = self._handle_game_over(current_scene)
                     if result:
                         return "main_menu"
@@ -210,3 +226,26 @@ class SceneDirector:
     def _handle_resize(self, width: int, height: int) -> None:
         from airwar.config import set_screen_size
         set_screen_size(width, height)
+
+    def _check_and_get_saved_game(self, username: str) -> Optional[GameSaveData]:
+        if not username:
+            return None
+        persistence_manager = PersistenceManager()
+        save_data = persistence_manager.load_game()
+        if save_data and save_data.username == username:
+            return save_data
+        return None
+
+    def _save_game_on_quit(self, game_scene: GameScene) -> None:
+        if not game_scene or not game_scene._mother_ship_integrator:
+            return
+        if not game_scene._mother_ship_integrator.is_docked():
+            return
+        save_data = game_scene._mother_ship_integrator.create_save_data()
+        if save_data:
+            persistence_manager = PersistenceManager()
+            persistence_manager.save_game(save_data)
+
+    def _clear_saved_game(self) -> None:
+        persistence_manager = PersistenceManager()
+        persistence_manager.delete_save()
