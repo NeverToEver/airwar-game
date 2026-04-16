@@ -116,9 +116,11 @@ class GameScene(Scene):
             self._mother_ship_integrator.update()
 
             if self._mother_ship_integrator.is_docked():
+                self._update_bullets_in_docked_state()
                 return
 
             if self._mother_ship_integrator.is_player_control_disabled():
+                self._update_bullets_in_docked_state()
                 return
 
         if self.game_controller.state.paused or self.reward_selector.visible:
@@ -265,6 +267,12 @@ class GameScene(Scene):
         for b in self.spawn_controller.enemy_bullets:
             if not b.active:
                 self.spawn_controller.enemy_bullets.remove(b)
+
+    def _update_bullets_in_docked_state(self) -> None:
+        for bullet in self.player.get_bullets():
+            bullet.update()
+            if not bullet.active:
+                self.player.remove_bullet(bullet)
 
     def _clear_enemy_bullets(self) -> None:
         for bullet in self.spawn_controller.enemy_bullets[:]:

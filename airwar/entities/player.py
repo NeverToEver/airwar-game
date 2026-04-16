@@ -165,6 +165,10 @@ class Player(Entity):
     def get_bullets(self) -> List[Bullet]:
         return self._bullets
 
+    def remove_bullet(self, bullet: Bullet) -> None:
+        if bullet in self._bullets:
+            self._bullets.remove(bullet)
+
     def take_damage(self, damage: int) -> None:
         if self.is_shielded:
             return
