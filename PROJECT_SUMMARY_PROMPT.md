@@ -1,6 +1,6 @@
 # Air War 项目需求与技术规范总览
 
-> **文档版本**: 3.0
+> **文档版本**: 3.1
 > **日期**: 2026-04-16
 > **维护者**: AI Assistant (Claude)
 > **项目仓库**: gitee.com:xxxplxxx/airwar-game.git
@@ -84,26 +84,27 @@ airwar/
 
 | 编号 | 问题 | 影响文件 | 严重程度 | 状态 |
 |------|------|----------|----------|------|
-| PERF-001 | 全屏渐变每帧重绘 | background_renderer.py | 极高 | 待优化 |
+| PERF-001 | 全屏渐变每帧重绘 | background_renderer.py | 极高 | ✅ **已修复** |
 | PERF-002 | Surface 在渲染循环中创建 | 15+ 文件 | 高 | 待优化 |
 | PERF-003 | O(n²) 碰撞检测 | game_scene.py | 高 | 待优化 |
-| PERF-004 | 粒子系统 Surface 重复创建 | background_renderer.py | 高 | 待优化 |
+| PERF-004 | 粒子系统 Surface 重复创建 | background_renderer.py | 高 | ✅ **已修复** |
 
-### 2.3 语法错误 (🔴 高优先级)
+### 2.3 状态同步缺陷 (🔴 高优先级)
 
 | 编号 | 问题 | 影响文件 | 严重程度 | 状态 |
 |------|------|----------|----------|------|
-| SYNTAX-001 | Star.draw() 运算符优先级错误 | background_renderer.py:23 | 高 | **未修复** |
-| SYNTAX-002 | 括号不匹配 | background_renderer.py:29 | 高 | **未修复** |
+| STATE-001 | 母舰存档状态残留导致错误加载 | scene_director.py, game_scene.py | 高 | **已记录，待修复** |
+| STATE-002 | JSON反序列化无验证 | mother_ship_state.py | 中 | **已记录，待修复** |
 
 ### 2.4 安全问题 (🟡 中优先级)
 
 | 编号 | 问题 | 影响文件 | 严重程度 | 状态 |
 |------|------|----------|----------|------|
-| SEC-001 | JSON反序列化无验证 | mother_ship_state.py | 中 | 待修复 |
 | SEC-002 | 用户输入验证不足 | login_scene.py | 中 | 待增强 |
 | SEC-003 | 弱密码哈希 (SHA256) | database.py | 低 | 可接受 |
 | SEC-004 | 游戏存档可篡改 | game_scene.py | 中 | 设计局限 |
+
+> **注意**：SEC-001 (JSON反序列化无验证) 已合并到 STATE-002
 
 ### 2.5 代码质量问题 (🟡 中优先级)
 
@@ -426,6 +427,7 @@ Tests: test_player.py::test_hitbox_caching
 | 综合技术文档 | `docs/superpowers/specs/SPEC-000-comprehensive-technical-report.md` | 项目完整技术规格 |
 | 优化计划 | `docs/superpowers/specs/SPEC-010-optimization-plan.md` | 待执行优化任务 |
 | 优化报告 | `docs/superpowers/specs/SPEC-011-optimization-report.md` | 已完成优化记录 |
+| 母舰状态保存异常报告 | `docs/superpowers/specs/SPEC-012-mothership-save-state-bug-report.md` | 存档状态同步问题记录 |
 
 ---
 
