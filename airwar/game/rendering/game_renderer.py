@@ -104,3 +104,6 @@ class GameRenderer:
 
     def render_buffs(self, surface, unlocked_buffs: list, get_buff_color) -> None:
         self.hud_renderer.render_buffs(surface, unlocked_buffs, get_buff_color)
+
+    def render_buff_stats_panel(self, surface, reward_system, player) -> None:
+        self.hud_renderer.render_buff_stats_panel(surface, reward_system, player)

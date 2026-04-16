@@ -16,6 +16,7 @@
 | 2026-04-16-project-optimization-guide.md | 2026-04-16 | 已完成 | P1优化指导文档 |
 | 2026-04-16-optimization-report.md | 2026-04-16 | 已完成 | 优化实施报告 |
 | 2026-04-16-code-review-report.md | 2026-04-16 | 已完成 | 代码规范审查报告 |
+| 2026-04-16-buff-stats-panel-design.md | 2026-04-16 | 已完成 | 侧边统计栏功能设计 |
 
 ---
 

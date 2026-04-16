@@ -283,6 +283,9 @@ class GameScene(Scene):
         self.game_renderer.render_notification(
             surface, self.game_controller.state.notification, self.game_controller.state.notification_timer)
 
+        self.game_renderer.render_buff_stats_panel(
+            surface, self.reward_system, self.player)
+
     @property
     def enemies(self) -> list:
         return self.spawn_controller.enemies if self.spawn_controller else []
