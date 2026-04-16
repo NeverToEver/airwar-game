@@ -263,3 +263,11 @@ class GameIntegrator:
         self._mother_ship.show()
         self._progress_bar_ui.hide()
         self._player_control_disabled = False
+
+    def reset_to_idle_with_mothership_visible(self) -> None:
+        self._state_machine._current_state = MotherShipState.IDLE
+        self._mother_ship.show()
+        self._progress_bar_ui.show()
+        self._player_control_disabled = False
+        self._input_detector._progress.reset()
+        self._event_bus.publish('STATE_CHANGED', state=MotherShipState.IDLE)
