@@ -307,18 +307,19 @@ class Boss(Entity):
             'up': (0, -BOSS_ATTACK_DISTANCE)
         }
 
-    def update(self, *args, **kwargs) -> None:
+    def update(self, enemies: List['Enemy'] = None, slow_factor: float = 1.0, 
+              player_pos: Tuple[int, int] = None, *args, **kwargs) -> None:
         from airwar.config import get_screen_width
         screen_width = get_screen_width()
 
         if self.entering:
-            self.rect.y += 2
+            self.rect.y += 2 * slow_factor
             if self.rect.y >= self.target_y:
                 self.rect.y = self.target_y
                 self.entering = False
             return
 
-        self.survival_timer += 1
+        self.survival_timer += slow_factor
 
         if self.survival_timer >= self.data.escape_time:
             self.escaped = True
