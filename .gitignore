@@ -48,3 +48,7 @@ desktop.ini
 
 # Pygame
 *.pyc
+
+# Game Saves
+airwar/data/user_docking_save.json
+*.sav
