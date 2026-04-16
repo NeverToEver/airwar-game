@@ -36,7 +36,7 @@ class GameController:
         from airwar.game.systems.notification_manager import NotificationManager
 
         self.health_system = HealthSystem(difficulty)
-        self.reward_system = RewardSystem()
+        self.reward_system = RewardSystem(difficulty)
         self.notification_manager = NotificationManager()
 
         self.cycle_count = 0

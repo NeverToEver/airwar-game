@@ -20,8 +20,8 @@ class BuffStatsAggregator:
 
     def _init_stat_formatters(self) -> Dict[str, callable]:
         return {
-            'Power Shot': lambda rs, p: f"{int((p.bullet_damage / 10 - 1) * 100)}%",
-            'Rapid Fire': lambda rs, p: f"{int((1 - p.fire_cooldown / 8) * 100)}%",
+            'Power Shot': lambda rs, p: f"+{int((p.bullet_damage / rs.base_bullet_damage - 1) * 100)}%",
+            'Rapid Fire': lambda rs, p: f"+{int((1 - p.fire_cooldown / rs.base_fire_cooldown) * 100)}%" if p.fire_cooldown < rs.base_fire_cooldown else "+20%",
             'Piercing': lambda rs, _: f"Lv.{rs.piercing_level}",
             'Spread Shot': lambda rs, _: f"Lv.{rs.spread_level}",
             'Explosive': lambda rs, _: f"Lv.{rs.explosive_level}",
@@ -111,12 +111,16 @@ class BuffStatsAggregator:
 
         summary = {}
         try:
-            total_damage_bonus = int((player.bullet_damage / 10 - 1) * 100) if player.bullet_damage > 10 else 0
+            base_damage = reward_system.base_bullet_damage
+            current_damage = player.bullet_damage
+            total_damage_bonus = int((current_damage / base_damage - 1) * 100) if current_damage > base_damage else 0
             if total_damage_bonus > 0:
                 summary['DMG'] = f"+{total_damage_bonus}%"
 
-            if player.fire_cooldown < 8:
-                fire_rate_bonus = int((1 - player.fire_cooldown / 8) * 100)
+            base_cooldown = reward_system.base_fire_cooldown
+            current_cooldown = getattr(player, 'fire_cooldown', base_cooldown)
+            if current_cooldown < base_cooldown:
+                fire_rate_bonus = int((1 - current_cooldown / base_cooldown) * 100)
                 summary['RATE'] = f"+{fire_rate_bonus}%"
 
             total_armor = reward_system.armor_level * 15
