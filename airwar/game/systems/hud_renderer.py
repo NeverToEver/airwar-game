@@ -1,5 +1,6 @@
 from typing import Optional, List
 import pygame
+from airwar.ui.buff_stats_panel import BuffStatsPanel
 
 
 class HUDRenderer:
@@ -8,6 +9,7 @@ class HUDRenderer:
         self.hud_font = pygame.font.Font(None, 26)
         self.buff_font = pygame.font.Font(None, 20)
         self.notif_font = pygame.font.Font(None, 32)
+        self._buff_stats_panel = BuffStatsPanel()
 
     def render_hud(self, surface: pygame.Surface, score: int, difficulty: str,
                   player_health: int, player_max_health: int, kills: int,
@@ -112,3 +114,23 @@ class HUDRenderer:
         for ripple in ripples:
             pulse = ripple.get('pulse', 0)
             draw_ripple(surface, ripple['x'], ripple['y'], ripple['radius'], ripple['alpha'], pulse)
+
+    def render_buff_stats_panel(
+        self,
+        surface: pygame.Surface,
+        reward_system,
+        player
+    ) -> None:
+        if not reward_system or not player:
+            return
+
+        try:
+            self._buff_stats_panel.render(
+                surface,
+                reward_system,
+                player,
+                surface.get_width(),
+                surface.get_height()
+            )
+        except Exception:
+            return
