@@ -9,6 +9,15 @@ from airwar.game.controllers.game_controller import GameController
 from airwar.game.controllers.spawn_controller import SpawnController
 from airwar.game.rendering.game_renderer import GameRenderer, GameEntities
 from airwar.ui.reward_selector import RewardSelector
+from airwar.game.mother_ship import (
+    EventBus,
+    InputDetector,
+    MotherShipStateMachine,
+    PersistenceManager,
+    ProgressBarUI,
+    MotherShip,
+    GameIntegrator,
+)
 
 
 class GameScene(Scene):
@@ -22,6 +31,7 @@ class GameScene(Scene):
         self.spawn_controller: SpawnController = None
         self.player: Player = None
         self.reward_selector: RewardSelector = RewardSelector()
+        self._mother_ship_integrator = None
 
     def enter(self, **kwargs) -> None:
         from airwar.config import DIFFICULTY_SETTINGS, get_screen_width, get_screen_height
@@ -51,11 +61,30 @@ class GameScene(Scene):
         self.player.bullet_damage = settings['bullet_damage']
 
         self._setup_reward_selector()
+        self._init_mother_ship_system(screen_width, screen_height)
 
     def _setup_reward_selector(self) -> None:
         self.reward_selector.show = lambda options, callback: self._show_reward_selection(options, callback)
         self.reward_selector.hide = lambda: setattr(self, 'reward_visible', False)
         self.reward_selector.visible = False
+
+    def _init_mother_ship_system(self, screen_width: int, screen_height: int) -> None:
+        event_bus = EventBus()
+        input_detector = InputDetector(event_bus)
+        state_machine = MotherShipStateMachine(event_bus)
+        persistence_manager = PersistenceManager()
+        progress_bar_ui = ProgressBarUI(screen_width, screen_height)
+        mother_ship = MotherShip(screen_width, screen_height)
+
+        self._mother_ship_integrator = GameIntegrator(
+            event_bus=event_bus,
+            input_detector=input_detector,
+            state_machine=state_machine,
+            persistence_manager=persistence_manager,
+            progress_bar_ui=progress_bar_ui,
+            mother_ship=mother_ship,
+        )
+        self._mother_ship_integrator.attach_game_scene(self)
 
     def _show_reward_selection(self, options: list, callback) -> None:
         self.reward_selector.visible = True
@@ -80,6 +109,15 @@ class GameScene(Scene):
         if self.game_controller.state.entrance_animation:
             self._update_entrance()
             return
+
+        if self._mother_ship_integrator:
+            self._mother_ship_integrator.update()
+
+            if self._mother_ship_integrator.is_docked():
+                return
+
+            if self._mother_ship_integrator.is_player_control_disabled():
+                return
 
         if self.game_controller.state.paused or self.reward_selector.visible:
             return
@@ -258,6 +296,9 @@ class GameScene(Scene):
         if self.reward_selector.visible:
             self.reward_selector.render(surface)
 
+        if self._mother_ship_integrator:
+            self._mother_ship_integrator.render(surface)
+
     def _render_player_bullets(self, surface: pygame.Surface) -> None:
         for bullet in self.player.get_bullets():
             bullet.render(surface)
@@ -435,3 +476,42 @@ class GameScene(Scene):
     @property
     def entrance_duration(self) -> int:
         return self.game_controller.state.entrance_duration if self.game_controller else 60
+
+    def restore_from_save(self, save_data) -> None:
+        if not save_data or not self.game_controller or not self.player:
+            return
+
+        self.game_controller.state.score = save_data.score
+        self.game_controller.state.kill_count = save_data.kill_count
+        self.game_controller.milestone_index = save_data.cycle_count % self.game_controller.max_cycles
+        self.game_controller.cycle_count = save_data.cycle_count
+
+        self.player.health = save_data.player_health
+        self.player.max_health = save_data.player_max_health
+
+        self.reward_system.unlocked_buffs = save_data.unlocked_buffs
+        self._restore_buff_levels(save_data.buff_levels)
+
+        self.game_controller.state.difficulty = save_data.difficulty
+        self.game_controller.state.username = save_data.username
+
+        if save_data.is_in_mothership:
+            self._restore_to_mothership_state()
+
+    def _restore_buff_levels(self, buff_levels: dict) -> None:
+        if not buff_levels:
+            return
+        self.reward_system.piercing_level = buff_levels.get('piercing_level', 0)
+        self.reward_system.spread_level = buff_levels.get('spread_level', 0)
+        self.reward_system.explosive_level = buff_levels.get('explosive_level', 0)
+        self.reward_system.armor_level = buff_levels.get('armor_level', 0)
+        self.reward_system.evasion_level = buff_levels.get('evasion_level', 0)
+        self.reward_system.rapid_fire_level = buff_levels.get('rapid_fire_level', 0)
+
+    def _restore_to_mothership_state(self) -> None:
+        if self._mother_ship_integrator:
+            self._mother_ship_integrator.force_docked_state()
+        self.game_controller.state.entrance_animation = False
+        self.game_controller.state.paused = True
+        self.player.rect.y = -80
+        self.player.rect.x = self.game_controller.state.score // 2 % 800
