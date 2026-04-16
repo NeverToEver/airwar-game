@@ -108,6 +108,8 @@ class GameScene(Scene):
 
         if self.game_controller.state.entrance_animation:
             self._update_entrance()
+            if self._mother_ship_integrator:
+                self._mother_ship_integrator.update()
             return
 
         if self._mother_ship_integrator:
