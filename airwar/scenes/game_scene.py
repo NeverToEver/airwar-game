@@ -510,8 +510,8 @@ class GameScene(Scene):
 
     def _restore_to_mothership_state(self) -> None:
         if self._mother_ship_integrator:
-            self._mother_ship_integrator.force_docked_state()
+            self._mother_ship_integrator.reset_to_idle_with_mothership_visible()
         self.game_controller.state.entrance_animation = False
-        self.game_controller.state.paused = True
-        self.player.rect.y = -80
+        self.game_controller.state.paused = False
+        self.player.rect.y = 200
         self.player.rect.x = self.game_controller.state.score // 2 % 800
