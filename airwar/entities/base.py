@@ -15,6 +15,19 @@ class Vector2:
     def __mul__(self, scalar: float) -> 'Vector2':
         return Vector2(self.x * scalar, self.y * scalar)
 
+    def __abs__(self) -> 'Vector2':
+        return Vector2(abs(self.x), abs(self.y))
+    
+    def length(self) -> float:
+        import math
+        return math.sqrt(self.x * self.x + self.y * self.y)
+    
+    def normalize(self) -> 'Vector2':
+        length = self.length()
+        if length > 0:
+            return Vector2(self.x / length, self.y / length)
+        return Vector2(0, 0)
+    
     def to_tuple(self) -> Tuple[float, float]:
         return (self.x, self.y)
 
@@ -45,6 +58,14 @@ class Rect:
     @property
     def right(self) -> float:
         return self.x + self.width
+    
+    @property
+    def left(self) -> float:
+        return self.x
+    
+    @property
+    def top(self) -> float:
+        return self.y
 
     def colliderect(self, other: 'Rect') -> bool:
         return (self.x < other.x + other.width and

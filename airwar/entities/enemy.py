@@ -178,6 +178,8 @@ class Enemy(Entity):
         self._sprite = sprite
 
     def take_damage(self, damage: int) -> None:
+        if damage is None or damage < 0:
+            return
         self.health -= damage
         if self.health <= 0:
             self.active = False
@@ -246,17 +248,19 @@ class EnemySpawner:
 
 @dataclass
 class BossData:
-    health: int = 500
+    health: int = 2000
     speed: float = 1.5
     score: int = 5000
     width: float = 120
     height: float = 100
-    fire_rate: int = 60
+    fire_rate: int = 45
     phase: int = 1
-    escape_time: int = 1500
+    escape_time: int = 3000
 
 
 class Boss(Entity):
+    ATTACK_DIRECTIONS = ['down', 'left', 'right', 'up']
+    
     def __init__(self, x: float, y: float, data: BossData):
         super().__init__(x, y, data.width, data.height)
         self.data = data
@@ -267,6 +271,7 @@ class Boss(Entity):
         self.move_direction = 1
         self.move_timer = 0
         self.attack_pattern = 0
+        self.attack_direction = 'down'
         self.entering = True
         self.entry_y = y
         self.target_y = 80
@@ -276,6 +281,31 @@ class Boss(Entity):
         self.phase = data.phase
         self._bullet_spawner: Optional[IBulletSpawner] = None
         self.entity_id = id(self)
+
+    def _get_direction_offsets(self) -> dict:
+        return {
+            'down': (-90, self.rect.bottom),
+            'left': (180, self.rect.centery),
+            'right': (0, self.rect.centery),
+            'up': (90, self.rect.y)
+        }
+
+    def _get_direction_sources(self) -> dict:
+        return {
+            'down': (self.rect.centerx, self.rect.bottom),
+            'left': (self.rect.left, self.rect.centery),
+            'right': (self.rect.right, self.rect.centery),
+            'up': (self.rect.centerx, self.rect.y)
+        }
+
+    def _get_target_offsets(self) -> dict:
+        from airwar.config import BOSS_ATTACK_DISTANCE
+        return {
+            'down': (0, BOSS_ATTACK_DISTANCE),
+            'left': (-BOSS_ATTACK_DISTANCE, 0),
+            'right': (BOSS_ATTACK_DISTANCE, 0),
+            'up': (0, -BOSS_ATTACK_DISTANCE)
+        }
 
     def update(self, *args, **kwargs) -> None:
         from airwar.config import get_screen_width
@@ -324,7 +354,10 @@ class Boss(Entity):
             self._fire()
 
     def _fire(self) -> None:
+        import random
         bullets = []
+        
+        self.attack_direction = random.choice(self.ATTACK_DIRECTIONS)
         
         if self.attack_pattern == 0:
             bullets = self._spread_attack()
@@ -340,71 +373,87 @@ class Boss(Entity):
         self.attack_pattern = (self.attack_pattern + 1) % 3
 
     def _spread_attack(self) -> List[Bullet]:
-        from airwar.config import BOSS_BULLET_DAMAGE_BASE, BOSS_SPREAD_BULLET_COUNT_BASE
+        from airwar.config import (BOSS_BULLET_DAMAGE_BASE, BOSS_SPREAD_BULLET_COUNT_BASE,
+                                   BOSS_SPREAD_SPEED, BOSS_SPREAD_ANGLE_RANGE, 
+                                   BOSS_SIDE_ANGLE_RANGE, BOSS_SIDE_ANGLE_OFFSET)
         bullets = []
+        
+        direction_offsets = self._get_direction_offsets()
+        
+        base_angle, y_pos = direction_offsets.get(self.attack_direction, (-90, self.rect.bottom))
         center_x = self.rect.centerx
         bullet_count = BOSS_SPREAD_BULLET_COUNT_BASE + self.phase
 
         for i in range(bullet_count):
-            angle = -90 + (180 / (bullet_count - 1)) * i
+            if self.attack_direction == 'left' or self.attack_direction == 'right':
+                angle = base_angle + (BOSS_SIDE_ANGLE_RANGE / (bullet_count - 1)) * i - BOSS_SIDE_ANGLE_OFFSET
+            else:
+                angle = base_angle + (BOSS_SPREAD_ANGLE_RANGE / (bullet_count - 1)) * i
+            
             rad = math.radians(angle)
-            speed = 5.0
+            speed = BOSS_SPREAD_SPEED
             vx = math.cos(rad) * speed
             vy = math.sin(rad) * speed
 
             bullet_data = BulletData(
                 damage=BOSS_BULLET_DAMAGE_BASE + self.phase * 2,
-                speed=5.0,
+                speed=BOSS_SPREAD_SPEED,
                 owner="enemy",
                 bullet_type="spread"
             )
-            bullet = Bullet(center_x, self.rect.bottom, bullet_data)
+            bullet = Bullet(center_x, y_pos, bullet_data)
             bullet.velocity = Vector2(vx, vy)
             bullets.append(bullet)
         
         return bullets
 
     def _aim_attack(self, player_pos: Tuple[float, float] = None) -> List[Bullet]:
-        from airwar.config import BOSS_AIM_BULLET_DAMAGE_BASE
+        from airwar.config import BOSS_AIM_BULLET_DAMAGE_BASE, BOSS_AIM_SPEED, BOSS_ATTACK_DISTANCE, BOSS_BULLET_OFFSET_X
         bullets = []
         
-        if player_pos is None:
-            player_pos = (self.rect.centerx, self.rect.bottom + 500)
+        direction_sources = self._get_direction_sources()
         
-        player_x = player_pos[0]
-        player_y = player_pos[1]
+        source_x, source_y = direction_sources.get(self.attack_direction, (self.rect.centerx, self.rect.bottom))
+        
+        target_offsets = self._get_target_offsets()
+        dx, dy = target_offsets.get(self.attack_direction, (0, BOSS_ATTACK_DISTANCE))
         
         bullet_data = BulletData(
             damage=BOSS_AIM_BULLET_DAMAGE_BASE + self.phase * 3,
-            speed=7.0,
+            speed=BOSS_AIM_SPEED,
             owner="enemy",
             bullet_type="laser"
         )
 
         for i in range(3):
-            bullet = Bullet(
-                self.rect.centerx - 30 + i * 30,
-                self.rect.bottom,
-                bullet_data
-            )
-            dx = player_x - self.rect.centerx
-            dy = player_y - self.rect.bottom
-            dist = math.sqrt(dx * dx + dy * dy)
-            if dist > 0:
-                bullet.velocity = Vector2(dx / dist * 6, dy / dist * 6)
+            bullet = Bullet(source_x - BOSS_BULLET_OFFSET_X + i * BOSS_BULLET_OFFSET_X, source_y, bullet_data)
+            velocity = Vector2(dx, dy)
+            velocity = velocity.normalize() * BOSS_AIM_SPEED
+            bullet.velocity = velocity
             bullets.append(bullet)
         
         return bullets
 
     def _wave_attack(self) -> List[Bullet]:
-        from airwar.config import BOSS_WAVE_BULLET_DAMAGE
+        from airwar.config import BOSS_WAVE_BULLET_DAMAGE, BOSS_WAVE_SPEED, BOSS_WAVE_ANGLE_INTERVAL
         bullets = []
-        center_x = self.rect.centerx
+        
+        direction_sources = self._get_direction_sources()
+        
+        center_x, center_y = direction_sources.get(self.attack_direction, (self.rect.centerx, self.rect.centery))
 
         for i in range(8):
-            angle = -90 + 22.5 * i
+            if self.attack_direction == 'left':
+                angle = 180 + BOSS_WAVE_ANGLE_INTERVAL * i
+            elif self.attack_direction == 'right':
+                angle = 0 + BOSS_WAVE_ANGLE_INTERVAL * i
+            elif self.attack_direction == 'up':
+                angle = 90 + BOSS_WAVE_ANGLE_INTERVAL * i
+            else:
+                angle = -90 + BOSS_WAVE_ANGLE_INTERVAL * i
+            
             rad = math.radians(angle)
-            speed = 4.0
+            speed = BOSS_WAVE_SPEED
 
             bullet_data = BulletData(
                 damage=BOSS_WAVE_BULLET_DAMAGE,
@@ -412,7 +461,7 @@ class Boss(Entity):
                 owner="enemy",
                 bullet_type="single"
             )
-            bullet = Bullet(center_x, self.rect.centery, bullet_data)
+            bullet = Bullet(center_x, center_y, bullet_data)
             bullet.velocity = Vector2(math.cos(rad) * speed, math.sin(rad) * speed)
             bullets.append(bullet)
         
@@ -442,6 +491,8 @@ class Boss(Entity):
             surface.blit(warning_surf, warning_rect)
 
     def take_damage(self, damage: int) -> int:
+        if damage is None or damage < 0:
+            return 0
         self.health -= damage
         if self.health <= 0:
             self.active = False
