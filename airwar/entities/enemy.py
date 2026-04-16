@@ -319,7 +319,7 @@ class Boss(Entity):
                 self.entering = False
             return
 
-        self.survival_timer += slow_factor
+        self.survival_timer += 1
 
         if self.survival_timer >= self.data.escape_time:
             self.escaped = True
