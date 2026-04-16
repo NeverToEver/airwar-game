@@ -27,6 +27,8 @@ class InputDetector(IInputDetector):
 
         self._h_was_pressed = is_h_currently_pressed
 
+
+
     def _on_h_pressed(self, current_time: float) -> None:
         self._progress.is_pressing = True
         self._progress.press_start_time = current_time
