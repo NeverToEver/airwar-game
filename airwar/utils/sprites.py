@@ -169,7 +169,7 @@ def draw_player_ship(surface: pygame.Surface, x: float, y: float, width: float =
         pygame.draw.line(surface, hull_highlight, (center_x + width * 0.08, line_y), (center_x + width * 0.02, line_y), 1)
 
 
-def draw_enemy_ship(surface: pygame.Surface, x: float, y: float, width: float = 40, height: float = 40, health_ratio: float = 1.0) -> None:
+def draw_enemy_ship(surface: pygame.Surface, x: float, y: float, width: float = 50, height: float = 50, health_ratio: float = 1.0) -> None:
     center_x = x + width / 2
     
     if health_ratio > 0.6:
