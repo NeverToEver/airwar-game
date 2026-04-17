@@ -7,6 +7,7 @@ from .base import Entity, EnemyData, Vector2
 from .bullet import Bullet, BulletData
 from .interfaces import IBulletSpawner
 from airwar.utils.sprites import draw_enemy_ship, draw_boss_ship
+from airwar.config import ENEMY_HEATBOX_SIZE, ENEMY_HEATBOX_PADDING
 
 if TYPE_CHECKING:
     from airwar.scenes.game_scene import GameScene
@@ -14,7 +15,8 @@ if TYPE_CHECKING:
 
 class Enemy(Entity):
     def __init__(self, x: float, y: float, data: EnemyData):
-        super().__init__(x, y, 40, 40)
+        heatbox_size = ENEMY_HEATBOX_SIZE
+        super().__init__(x, y, heatbox_size, heatbox_size)
         self.data = data
         self.health = data.health
         self.max_health = data.health
@@ -226,7 +228,7 @@ class EnemySpawner:
         self.spawn_timer += 1
         if self.spawn_timer >= self.spawn_rate:
             self.spawn_timer = 0
-            x = random.randint(0, screen_width - 40)
+            x = random.randint(0, screen_width - ENEMY_HEATBOX_SIZE)
 
             bullet_types = ["single", "spread", "laser"]
             bullet_type = random.choice(bullet_types)
