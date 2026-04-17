@@ -1,0 +1,28 @@
+{
+  "score": 0,
+  "cycle_count": 0,
+  "milestone_index": 0,
+  "kill_count": 0,
+  "boss_kill_count": 0,
+  "unlocked_buffs": [],
+  "buff_levels": {
+    "piercing_level": 0,
+    "spread_level": 0,
+    "explosive_level": 0,
+    "armor_level": 0,
+    "evasion_level": 0,
+    "rapid_fire_level": 0
+  },
+  "player_health": 100,
+  "player_max_health": 100,
+  "player_x": 700,
+  "player_y": 130,
+  "player_bullet_damage": 100,
+  "player_fire_interval": 8,
+  "player_shot_mode": "normal",
+  "player_speed": 5,
+  "difficulty": "easy",
+  "timestamp": 1776408237.343071,
+  "is_in_mothership": true,
+  "username": "TestPlayer"
+}

@@ -75,15 +75,19 @@ class GameIntegrator:
         if state == MotherShipState.PRESSING:
             self._mother_ship.show()
             self._progress_bar_ui.show()
+            self._clear_ripple_effects()
         elif state == MotherShipState.IDLE:
             self._mother_ship.hide()
             self._progress_bar_ui.hide()
+            self._clear_ripple_effects()
         elif state == MotherShipState.UNDOCKING:
             self._mother_ship.show()
             self._progress_bar_ui.show()
+            self._clear_ripple_effects()
         elif state == MotherShipState.DOCKED:
             self._progress_bar_ui.hide()
             self._player_control_disabled = False
+            self._clear_ripple_effects()
 
     def _on_save_game_request(self, **kwargs) -> None:
         if not self._game_scene:
@@ -217,6 +221,12 @@ class GameIntegrator:
 
         if hasattr(self._game_scene, 'boss') and self._game_scene.boss:
             self._game_scene.boss = None
+
+    def _clear_ripple_effects(self) -> None:
+        if not self._game_scene or not self._game_scene.game_controller:
+            return
+
+        self._game_scene.game_controller.state.ripple_effects.clear()
 
     def get_docking_animation_progress(self) -> float:
         if not self._docking_animation_active:

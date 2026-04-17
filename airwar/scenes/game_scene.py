@@ -222,7 +222,9 @@ class GameScene(Scene):
     def _update_entities(self) -> None:
         for enemy in self.spawn_controller.enemies:
             enemy.update(self.spawn_controller.enemies, self.reward_system.slow_factor)
-            if enemy.rect.colliderect(self.player.get_hitbox()):
+            enemy_hitbox = enemy.get_hitbox()
+            player_hitbox = self.player.get_hitbox()
+            if enemy_hitbox.colliderect(player_hitbox):
                 if not self.reward_system.try_dodge():
                     self._clear_enemy_bullets()
                     self.game_controller.on_player_hit(20, self.player)
@@ -237,7 +239,10 @@ class GameScene(Scene):
             bullet.update()
             for enemy in enemies:
                 if bullet.active and enemy.active:
-                    if bullet.get_rect().colliderect(enemy.get_rect()):
+                    bullet_rect = bullet.get_rect()
+                    enemy_hitbox = enemy.get_hitbox()
+                    
+                    if bullet_rect.colliderect(enemy_hitbox):
                         if self.reward_system.explosive_level > 0:
                             self.reward_system.do_explosive_damage(
                                 enemies, enemy.rect.centerx, enemy.rect.centery, bullet.data.damage)

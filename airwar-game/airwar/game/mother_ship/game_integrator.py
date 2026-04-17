@@ -76,22 +76,33 @@ class GameIntegrator:
             self._mother_ship.show()
             self._progress_bar_ui.show()
             self._player_control_disabled = False
+            self._clear_ripple_effects()
         elif state == MotherShipState.DOCKING:
             self._mother_ship.show()
             self._progress_bar_ui.hide()
             self._player_control_disabled = True
+            self._clear_ripple_effects()
         elif state == MotherShipState.IDLE:
             self._mother_ship.hide()
             self._progress_bar_ui.hide()
             self._player_control_disabled = False
+            self._clear_ripple_effects()
         elif state == MotherShipState.UNDOCKING:
             self._mother_ship.show()
             self._progress_bar_ui.hide()
             self._player_control_disabled = True
+            self._clear_ripple_effects()
         elif state == MotherShipState.DOCKED:
             self._mother_ship.show()
             self._progress_bar_ui.hide()
             self._player_control_disabled = True
+            self._clear_ripple_effects()
+
+    def _clear_ripple_effects(self) -> None:
+        if not self._game_scene or not self._game_scene.game_controller:
+            return
+
+        self._game_scene.game_controller.state.ripple_effects.clear()
 
     def _on_save_game_request(self, **kwargs) -> None:
         if not self._game_scene:

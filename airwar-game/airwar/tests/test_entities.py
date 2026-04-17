@@ -60,9 +60,10 @@ class TestPlayerEntity:
 class TestEnemyEntity:
     def test_enemy_creation(self):
         from airwar.entities import Enemy, EnemyData
+        from airwar.config import ENEMY_HITBOX_PADDING
         enemy = Enemy(100, 0, EnemyData())
-        assert enemy.rect.x == 100
-        assert enemy.rect.y == 0
+        assert enemy.rect.x == 100 - ENEMY_HITBOX_PADDING
+        assert enemy.rect.y == 0 - ENEMY_HITBOX_PADDING
         assert enemy.active is True
 
     def test_enemy_health(self):
