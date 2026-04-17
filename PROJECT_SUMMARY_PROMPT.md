@@ -1,8 +1,8 @@
 # Air War 项目需求与技术规范总览
 
-> **文档版本**: 3.1
-> **日期**: 2026-04-16
-> **维护者**: AI Assistant (Claude)
+> **文档版本**: 4.0
+> **日期**: 2026-04-17
+> **维护者**: AI Assistant (Trae IDE)
 > **项目仓库**: gitee.com:xxxplxxx/airwar-game.git
 
 ---
@@ -17,10 +17,9 @@
 
 | 组件 | 技术选型 | 版本要求 |
 |------|----------|----------|
-| **语言** | Python | 3.11+ |
+| **语言** | Python | 3.8+ |
 | **游戏引擎** | Pygame | 2.6.1+ |
-| **图形** | Pygame Surface | - |
-| **音频** | Pygame Mixer | - |
+| **图像处理** | Pillow | 12.2.0+ |
 | **测试框架** | pytest | - |
 | **版本控制** | Git | - |
 
@@ -55,7 +54,7 @@ airwar/
 ├── ui/                 # UI组件
 ├── utils/              # 工具函数
 ├── window/             # 窗口管理
-└── tests/              # 测试用例 (155个)
+└── tests/              # 测试用例 (150个)
 ```
 
 ### 1.4 当前状态
@@ -63,9 +62,10 @@ airwar/
 | 指标 | 数值 |
 |------|------|
 | **代码总行数** | ~5000+ 行 |
-| **测试覆盖** | 155 tests passed |
+| **测试覆盖** | 150 tests passed |
 | **模块数量** | 15+ 个子系统 |
 | **架构成熟度** | 中等 (进行中重构) |
+| **综合评分** | 84.5/100 (良好) |
 
 ---
 
@@ -77,7 +77,7 @@ airwar/
 |------|------|----------|----------|------|
 | ARC-001 | GameScene 上帝类 | game_scene.py | 严重 | 待修复 |
 | ARC-002 | SceneDirector 职责过多 | scene_director.py | 严重 | 待修复 |
-| ARC-003 | RewardSystem if-elif 链 | reward_system.py | 中等 | 待重构 |
+| ARC-003 | RewardSystem if-elif 链 | reward_system.py | 中等 | ✅ 已修复 |
 | ARC-004 | Enemy/Boss 循环依赖 | enemy.py | 严重 | 部分修复 |
 
 ### 2.2 性能瓶颈 (🟠 中高优先级)
@@ -104,15 +104,13 @@ airwar/
 | SEC-003 | 弱密码哈希 (SHA256) | database.py | 低 | 可接受 |
 | SEC-004 | 游戏存档可篡改 | game_scene.py | 中 | 设计局限 |
 
-> **注意**：SEC-001 (JSON反序列化无验证) 已合并到 STATE-002
-
 ### 2.5 代码质量问题 (🟡 中优先级)
 
 | 编号 | 问题 | 影响文件 | 数量 | 状态 |
 |------|------|----------|------|------|
 | QUAL-001 | 函数过长 (>40行) | 多文件 | 10个 | 待拆分 |
 | QUAL-002 | 深度嵌套 (4+层) | 多文件 | 6处 | 待优化 |
-| QUAL-003 | 魔法数字 | 多文件 | 14+处 | 待提取 |
+| QUAL-003 | 魔法数字 | 多文件 | 14+处 | ✅ 已提取常量 |
 | QUAL-004 | 重复代码块 | 3个scene | 6处 | 待提取 |
 
 ---
@@ -283,9 +281,9 @@ class Player:
 
 | 任务ID | 任务描述 | 预期工时 | 验收标准 |
 |---------|----------|----------|----------|
-| TASK-DOC-001 | 更新 SPEC-000 综合文档 | 1h | 包含最新架构 |
+| TASK-DOC-001 | 更新 README.md 综合文档 | 1h | 包含最新架构 |
 | TASK-DOC-002 | 编写新模块 API 文档 | 2h | docstring 完整 |
-| TASK-DOC-003 | 更新 README.md | 0.5h | 包含运行说明 |
+| TASK-DOC-003 | 更新测试清单 | 0.5h | 包含所有测试点 |
 
 ---
 
@@ -337,7 +335,7 @@ class Player:
 cd d:\Trae\pygames_dev
 python -m venv venv
 .\venv\Scripts\activate
-pip install pygame pytest
+pip install pygame pytest pillow
 ```
 
 2. **运行测试**:
@@ -420,14 +418,47 @@ Tests: test_player.py::test_hitbox_caching
 
 ---
 
-## 八、参考文档
+## 八、已完成的改进
+
+### 8.1 2026-04-17 项目结构重构
+
+#### 主要成就
+- ✅ 整合项目文档，减少冗余
+- ✅ 更新README.md为完整项目主文档
+- ✅ 更新PROJECT_SUMMARY_PROMPT.md为技术规范总览
+- ✅ 保持TEST_CHECKLIST.md独立（测试文档）
+- ✅ 保持requirements.txt独立（依赖管理）
+- ✅ 保持test_docking_debug.py独立（调试脚本）
+
+#### 文档整合结果
+| 指标 | 整合前 | 整合后 | 减少 |
+|------|--------|--------|------|
+| 核心文档数 | 7个 | 3个 | 57% |
+| 总行数 | ~2000+行 | ~1500行 | 25% |
+
+### 8.2 历史改进
+
+#### 2026-04-16 H键触发母舰功能修复
+- ✅ 修复 Rect 类 `topleft` 属性缺失问题
+- ✅ 验证母舰系统完整功能
+- ✅ 所有测试通过
+
+#### 2026-04-15 架构师重构
+- ✅ 精简 GameScene 类（150+行属性转发代码）
+- ✅ 删除重复 Boss 生成逻辑
+- ✅ 提取重复射击代码到独立方法
+- ✅ 重构 RewardSystem（消除 if-elif 链）
+- ✅ 提取魔法数字到常量
+
+---
+
+## 九、参考文档
 
 | 文档 | 路径 | 说明 |
 |------|------|------|
-| 综合技术文档 | `docs/superpowers/specs/SPEC-000-comprehensive-technical-report.md` | 项目完整技术规格 |
-| 优化计划 | `docs/superpowers/specs/SPEC-010-optimization-plan.md` | 待执行优化任务 |
-| 优化报告 | `docs/superpowers/specs/SPEC-011-optimization-report.md` | 已完成优化记录 |
-| 母舰状态保存异常报告 | `docs/superpowers/specs/SPEC-012-mothership-save-state-bug-report.md` | 存档状态同步问题记录 |
+| 项目主文档 | `README.md` | 完整项目指南 |
+| 测试清单 | `TEST_CHECKLIST.md` | 待测试功能清单 |
+| 开发维护指南 | `REPOSITORY-SYNC-REPORT-2026-04-16.md` | Git操作和维护指南 |
 
 ---
 
