@@ -16,7 +16,8 @@ if TYPE_CHECKING:
 class Enemy(Entity):
     def __init__(self, x: float, y: float, data: EnemyData):
         heatbox_size = ENEMY_HEATBOX_SIZE
-        super().__init__(x, y, heatbox_size, heatbox_size)
+        padding = ENEMY_HEATBOX_PADDING
+        super().__init__(x - padding, y - padding, heatbox_size + padding * 2, heatbox_size + padding * 2)
         self.data = data
         self.health = data.health
         self.max_health = data.health
@@ -186,6 +187,13 @@ class Enemy(Entity):
         if self.health <= 0:
             self.active = False
 
+    def get_hitbox(self) -> pygame.Rect:
+        return pygame.Rect(self.rect.x, self.rect.y, self.rect.width, self.rect.height)
+
+    def check_point_collision(self, x: float, y: float) -> bool:
+        return (self.rect.x <= x <= self.rect.x + self.rect.width and
+                self.rect.y <= y <= self.rect.y + self.rect.height)
+
 
 class EnemySpawner:
     def __init__(self):
@@ -222,13 +230,14 @@ class EnemySpawner:
         self._bullet_spawner = spawner
 
     def update(self, enemies: List[Enemy], slow_factor: float = 1.0) -> None:
-        from airwar.config import get_screen_width
+        from airwar.config import get_screen_width, ENEMY_HEATBOX_SIZE, ENEMY_HEATBOX_PADDING
         screen_width = get_screen_width()
 
         self.spawn_timer += 1
         if self.spawn_timer >= self.spawn_rate:
             self.spawn_timer = 0
-            x = random.randint(0, screen_width - ENEMY_HEATBOX_SIZE)
+            total_width = ENEMY_HEATBOX_SIZE + ENEMY_HEATBOX_PADDING * 2
+            x = random.randint(0, screen_width - total_width)
 
             bullet_types = ["single", "spread", "laser"]
             bullet_type = random.choice(bullet_types)

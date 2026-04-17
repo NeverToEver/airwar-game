@@ -7,6 +7,7 @@ from .base import Entity, EnemyData, Vector2
 from .bullet import Bullet, BulletData
 from .interfaces import IBulletSpawner
 from airwar.utils.sprites import draw_enemy_ship, draw_boss_ship
+from airwar.config import ENEMY_HITBOX_SIZE, ENEMY_HITBOX_PADDING
 
 if TYPE_CHECKING:
     from airwar.scenes.game_scene import GameScene
@@ -14,7 +15,9 @@ if TYPE_CHECKING:
 
 class Enemy(Entity):
     def __init__(self, x: float, y: float, data: EnemyData):
-        super().__init__(x, y, 40, 40)
+        hitbox_size = ENEMY_HITBOX_SIZE
+        padding = ENEMY_HITBOX_PADDING
+        super().__init__(x - padding, y - padding, hitbox_size + padding * 2, hitbox_size + padding * 2)
         self.data = data
         self.health = data.health
         self.max_health = data.health
@@ -184,6 +187,13 @@ class Enemy(Entity):
         if self.health <= 0:
             self.active = False
 
+    def get_hitbox(self) -> pygame.Rect:
+        return pygame.Rect(self.rect.x, self.rect.y, self.rect.width, self.rect.height)
+
+    def check_point_collision(self, x: float, y: float) -> bool:
+        return (self.rect.x <= x <= self.rect.x + self.rect.width and
+                self.rect.y <= y <= self.rect.y + self.rect.height)
+
 
 class EnemySpawner:
     def __init__(self):
@@ -220,13 +230,14 @@ class EnemySpawner:
         self._bullet_spawner = spawner
 
     def update(self, enemies: List[Enemy], slow_factor: float = 1.0) -> None:
-        from airwar.config import get_screen_width
+        from airwar.config import get_screen_width, ENEMY_HITBOX_SIZE, ENEMY_HITBOX_PADDING
         screen_width = get_screen_width()
 
         self.spawn_timer += 1
         if self.spawn_timer >= self.spawn_rate:
             self.spawn_timer = 0
-            x = random.randint(0, screen_width - 40)
+            total_width = ENEMY_HITBOX_SIZE + ENEMY_HITBOX_PADDING * 2
+            x = random.randint(0, screen_width - total_width)
 
             bullet_types = ["single", "spread", "laser"]
             bullet_type = random.choice(bullet_types)
