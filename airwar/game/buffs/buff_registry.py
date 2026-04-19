@@ -1,9 +1,11 @@
 from typing import Type, Dict
 from .base_buff import Buff
-from .health_buffs import ExtraLifeBuff, RegenerationBuff, LifestealBuff
-from .offense_buffs import PowerShotBuff, RapidFireBuff, PiercingBuff, SpreadShotBuff, ExplosiveBuff, ShotgunBuff, LaserBuff
-from .defense_buffs import ShieldBuff, ArmorBuff, EvasionBuff, BarrierBuff
-from .utility_buffs import SpeedBoostBuff, MagnetBuff, SlowFieldBuff
+from .buffs import (
+    ExtraLifeBuff, RegenerationBuff, LifestealBuff,
+    ShieldBuff, ArmorBuff, EvasionBuff, BarrierBuff,
+    PowerShotBuff, RapidFireBuff, PiercingBuff, SpreadShotBuff, ExplosiveBuff, ShotgunBuff, LaserBuff,
+    SpeedBoostBuff, MagnetBuff, SlowFieldBuff
+)
 
 
 BUFF_REGISTRY: Dict[str, Type[Buff]] = {

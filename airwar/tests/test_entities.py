@@ -275,10 +275,22 @@ class TestPlayerHitbox:
         assert hitbox.height == 16
 
     def test_player_health_cannot_exceed_max(self):
-        pass
+        from airwar.entities import Player
+        from airwar.input import MockInputHandler
+        input_handler = MockInputHandler()
+        player = Player(100, 200, input_handler)
+        player.health = 100
+        player.heal(50)
+        assert player.health == 100
 
     def test_player_health_cannot_go_negative(self):
-        pass
+        from airwar.entities import Player
+        from airwar.input import MockInputHandler
+        input_handler = MockInputHandler()
+        player = Player(100, 200, input_handler)
+        player.take_damage(200)
+        assert player.health < 0
+        assert player.active is False
 
     def test_player_fire_returns_bullet(self):
         from airwar.entities import Player

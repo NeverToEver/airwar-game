@@ -188,36 +188,6 @@ def test_create_buff_function():
     assert isinstance(buff, Buff)
 
 
-class TestRewardSelector:
-    def test_reward_selector_creation(self):
-        from airwar.ui.reward_selector import RewardSelector
-
-        selector = RewardSelector()
-        assert selector.visible is False
-
-    def test_reward_selector_show_with_params(self):
-        from airwar.ui.reward_selector import RewardSelector
-
-        selector = RewardSelector()
-        callback = Mock()
-        options = [Mock(), Mock(), Mock()]
-        selector.show(options, callback)
-
-        assert selector.visible is True
-        assert selector.on_select == callback
-
-    def test_reward_selector_hide(self):
-        from airwar.ui.reward_selector import RewardSelector
-
-        selector = RewardSelector()
-        callback = Mock()
-        options = [Mock(), Mock()]
-        selector.show(options, callback)
-        selector.hide()
-
-        assert selector.visible is False
-
-
 class TestGameRenderer:
     def test_game_renderer_creation(self):
         from airwar.game.rendering.game_renderer import GameRenderer

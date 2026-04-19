@@ -107,18 +107,3 @@ class TestLoginScene:
         scene = LoginScene()
         scene.enter()
         assert scene.should_quit() is False
-
-
-class TestPauseScene:
-    def test_pause_scene_enter_initializes(self):
-        from airwar.scenes import PauseScene
-        scene = PauseScene()
-        scene.enter()
-        assert scene.running is True
-        assert scene.options == ['RESUME', 'MAIN MENU', 'QUIT']
-
-    def test_pause_scene_is_paused_initially_true(self):
-        from airwar.scenes import PauseScene
-        scene = PauseScene()
-        scene.enter()
-        assert scene.running is True

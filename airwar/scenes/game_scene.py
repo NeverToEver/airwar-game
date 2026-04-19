@@ -212,12 +212,10 @@ class GameScene(Scene):
                         self.game_controller.on_boss_killed(boss.data.score)
                         self.game_controller.cycle_count += 1
                         self.reward_system.apply_lifesteal(self.player, boss.data.score)
-                        self.spawn_controller.boss = None
 
         if boss and not boss.active:
             if boss.is_escaped():
                 self.game_controller.show_notification("BOSS ESCAPED! (+0)")
-            self.spawn_controller.boss = None
 
     def _update_entities(self) -> None:
         for enemy in self.spawn_controller.enemies:
