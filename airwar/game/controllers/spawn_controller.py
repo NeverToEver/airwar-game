@@ -17,7 +17,9 @@ class SpawnController:
         self.enemy_bullets: List[Bullet] = []
         self.boss: Optional[Boss] = None
         self.boss_spawn_timer = 0
-        self.boss_spawn_interval = 1800
+        self.boss_spawn_interval = settings.get('boss_spawn_interval', 1800)
+        self._base_boss_spawn_interval = self.boss_spawn_interval
+        self._escape_penalty_multiplier = settings.get('escape_penalty_multiplier', 1.5)
         self.boss_killed = False
         self._bullet_spawner: Optional[IBulletSpawner] = None
 
@@ -60,11 +62,22 @@ class SpawnController:
         if self._bullet_spawner:
             boss.set_bullet_spawner(self._bullet_spawner)
         self.boss = boss
+        self.boss_spawn_interval = self._base_boss_spawn_interval
         return boss
 
+    def reset_boss_timer(self, penalty: bool = False) -> None:
+        self.boss_spawn_timer = 0
+        if penalty:
+            self.boss_spawn_interval = int(self._base_boss_spawn_interval * self._escape_penalty_multiplier)
+
     def cleanup(self) -> None:
+        self.cleanup_enemies()
+        self._handle_boss_cleanup()
+
+    def cleanup_enemies(self) -> None:
         self.enemies = [e for e in self.enemies if e.active]
+
+    def _handle_boss_cleanup(self) -> None:
         if self.boss and not self.boss.active:
-            if self.boss.is_escaped():
-                pass
+            self.reset_boss_timer(penalty=self.boss.is_escaped())
             self.boss = None
