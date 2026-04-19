@@ -7,7 +7,7 @@ from .base import Entity, EnemyData, Vector2
 from .bullet import Bullet, BulletData
 from .interfaces import IBulletSpawner
 from airwar.utils.sprites import draw_enemy_ship, draw_boss_ship
-from airwar.config import ENEMY_HEATBOX_SIZE, ENEMY_HEATBOX_PADDING
+from airwar.config import ENEMY_HITBOX_SIZE, ENEMY_HITBOX_PADDING
 
 if TYPE_CHECKING:
     from airwar.scenes.game_scene import GameScene
@@ -15,9 +15,9 @@ if TYPE_CHECKING:
 
 class Enemy(Entity):
     def __init__(self, x: float, y: float, data: EnemyData):
-        heatbox_size = ENEMY_HEATBOX_SIZE
-        padding = ENEMY_HEATBOX_PADDING
-        super().__init__(x - padding, y - padding, heatbox_size + padding * 2, heatbox_size + padding * 2)
+        hitbox_size = ENEMY_HITBOX_SIZE
+        padding = ENEMY_HITBOX_PADDING
+        super().__init__(x - padding, y - padding, hitbox_size + padding * 2, hitbox_size + padding * 2)
         self.data = data
         self.health = data.health
         self.max_health = data.health
@@ -230,13 +230,13 @@ class EnemySpawner:
         self._bullet_spawner = spawner
 
     def update(self, enemies: List[Enemy], slow_factor: float = 1.0) -> None:
-        from airwar.config import get_screen_width, ENEMY_HEATBOX_SIZE, ENEMY_HEATBOX_PADDING
+        from airwar.config import get_screen_width, ENEMY_HITBOX_SIZE, ENEMY_HITBOX_PADDING
         screen_width = get_screen_width()
 
         self.spawn_timer += 1
         if self.spawn_timer >= self.spawn_rate:
             self.spawn_timer = 0
-            total_width = ENEMY_HEATBOX_SIZE + ENEMY_HEATBOX_PADDING * 2
+            total_width = ENEMY_HITBOX_SIZE + ENEMY_HITBOX_PADDING * 2
             x = random.randint(0, screen_width - total_width)
 
             bullet_types = ["single", "spread", "laser"]
