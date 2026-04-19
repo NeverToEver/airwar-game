@@ -1,7 +1,7 @@
 # Air War - 飞机大战
 
 > **项目版本**: 1.0
-> **最后更新**: 2026-04-17
+> **最后更新**: 2026-04-20
 > **技术栈**: Python 3.8+ | Pygame 2.6.1+
 > **项目状态**: ✅ 活跃开发中
 
@@ -18,6 +18,7 @@
 | Python | 3.8+ | 编程语言环境 |
 | pygame | 2.6.1+ | 游戏开发库 |
 | pillow | 12.2.0+ | 图像处理库 |
+| pytest | 最新版 | 测试框架（可选） |
 
 ### 安装步骤
 
@@ -26,20 +27,43 @@
 # 1. 检查 Python 是否已安装
 python --version
 
-# 2. 安装依赖
+# 2. 创建虚拟环境（推荐）
+python -m venv venv
+
+# 3. 激活虚拟环境
+.\venv\Scripts\activate
+
+# 4. 安装依赖
 pip install pygame>=2.6.1 pillow>=12.2.0
 
-# 3. 运行游戏
+# 5. 运行游戏
 python main.py
 ```
 
 **macOS/Linux:**
 ```bash
-# 1. 安装依赖
-pip3 install pygame>=2.6.1 pillow>=12.2.0
+# 1. 检查 Python 版本
+python3 --version
 
-# 2. 运行游戏
-python3 main.py
+# 2. 安装系统依赖（Ubuntu/Debian）
+sudo apt update
+sudo apt install python3-pip python3.12-venv
+
+# 3. 创建虚拟环境
+cd airwar-game
+python3 -m venv venv
+
+# 4. 激活虚拟环境
+source venv/bin/activate
+
+# 5. 升级 pip
+pip install --upgrade pip
+
+# 6. 安装依赖
+pip install pygame>=2.6.1 pillow>=12.2.0
+
+# 7. 运行游戏
+./venv/bin/python main.py
 ```
 
 ---
@@ -366,17 +390,26 @@ COLORS = {
 |----------|----------|----------|
 | test_config.py | 12 | 配置系统 |
 | test_database.py | 9 | 用户数据库 |
-| test_entities.py | 30 | 实体类（玩家/敌人/Boss/子弹） |
+| test_entities.py | 15 | 实体类（玩家/敌人/Boss/子弹） |
 | test_integration.py | 47 | 集成测试 |
 | test_rewards.py | 11 | 奖励系统 |
 | test_scenes.py | 11 | 场景类 |
 | test_scene_director.py | 31 | 场景管理器 |
+| test_buffs.py | 28 | Buff系统 |
+| test_mother_ship.py | 31 | 母舰系统 |
+| test_systems.py | 23 | 系统类 |
+| test_player_advanced.py | 5 | 高级玩家功能 |
+| test_new_features.py | 6 | 新功能测试 |
+| test_collision_and_edge_cases.py | 22 | 碰撞与边界测试 |
 
-**当前测试数量：150 个** ✅ **所有测试通过**
+**当前测试数量：269 个** ✅ **所有测试通过**
 
 ### 8.2 运行测试
 
 ```bash
+# 激活虚拟环境
+source venv/bin/activate
+
 # 运行所有测试
 pytest airwar/tests/ -v
 
@@ -413,7 +446,7 @@ pytest airwar/tests/ --cov=airwar --cov-report=html
 ### 9.2 关键优势
 
 1. ✅ **SOLID原则遵循良好** - 单一职责、依赖倒置等原则执行到位
-2. ✅ **测试覆盖率高** - 155个测试用例，覆盖所有核心模块
+2. ✅ **测试覆盖率高** - 269个测试用例，覆盖所有核心模块
 3. ✅ **接口设计规范** - 使用抽象接口解耦模块依赖
 4. ✅ **配置集中管理** - 所有常量集中在settings.py
 5. ✅ **事件驱动架构** - EventBus实现模块间松耦合通信
@@ -457,6 +490,21 @@ pytest airwar/tests/ --cov=airwar --cov-report=html
 
 ## 十一、重构历史
 
+### 2026-04-20 文档和环境配置更新
+
+#### 主要变更
+
+- 更新README文档，添加Linux虚拟环境安装指南
+- 添加虚拟环境常见问题及解决方案章节
+- 更新测试数量统计（269个测试）
+- 更新技术栈信息和依赖版本要求
+
+#### 环境配置优化
+
+- 配置虚拟环境（venv）作为推荐安装方式
+- 添加Ubuntu/Debian系统依赖安装步骤
+- 解决PEP 668环境管理限制
+
 ### 2026-04-17 项目结构重构
 
 #### 主要变更
@@ -468,7 +516,7 @@ pytest airwar/tests/ --cov=airwar --cov-report=html
 
 - `airwar/` - 核心游戏模块（配置、实体、场景、游戏逻辑）
 - `docs/` - 技术文档和项目规范
-- 测试套件完整（150个测试用例）
+- 测试套件完整（269个测试用例）
 - 包含完整的 README.md 文档
 
 #### 技术实现
@@ -558,13 +606,509 @@ self._docking_start_position = (self._game_scene.player.rect.x, self._game_scene
 
 | 指标 | 状态 |
 |------|------|
-| **测试通过率** | 150/150 (100%) ✅ |
+| **测试通过率** | 269/269 (100%) ✅ |
 | **架构原则遵守率** | 12/12 (100%) ✅ |
 | **Anti-Pattern 违规数** | 0 ✅ |
 | **代码重复率** | 0% ✅ |
 | **配置集中度** | 100% ✅ |
 | **母舰系统** | ✅ 已实现 |
 | **H键功能** | ✅ 已修复 |
+| **虚拟环境支持** | ✅ 已配置 |
+
+---
+
+## 附录A：Linux虚拟环境常见问题及解决方案
+
+### A.1 PEP 668 - Externally Managed Environment
+
+**问题描述**：
+```
+error: externally-managed-environment
+
+× This environment is externally managed
+╰─> To install Python packages system-wide, try apt install
+    python3-xyz, where xyz is the package you are trying to install.
+```
+
+**原因**：
+Ubuntu 24.04、Debian 12+ 等现代Linux发行版采用了PEP 668标准，默认保护系统Python环境不被破坏。
+
+**解决方案**：
+
+**方法1：使用虚拟环境（推荐）**
+```bash
+# 安装必要的系统包
+sudo apt update
+sudo apt install python3-pip python3.12-venv
+
+# 创建虚拟环境
+python3 -m venv venv
+
+# 激活虚拟环境
+source venv/bin/activate
+
+# 安装依赖
+pip install pygame>=2.6.1 pillow>=12.2.0
+```
+
+**方法2：使用pipx（适用于独立应用）**
+```bash
+# 安装pipx
+sudo apt install pipx
+pipx ensurepath
+
+# 使用pipx安装
+pipx install pygame
+```
+
+**方法3：临时绕过限制（不推荐用于开发环境）**
+```bash
+pip install --break-system-packages pygame>=2.6.1 pillow>=12.2.0
+```
+
+---
+
+### A.2 虚拟环境创建失败
+
+**问题描述**：
+```
+The virtual environment was not created successfully because ensurepip is not
+available.
+```
+
+**原因**：
+缺少 `python3-venv` 包。
+
+**解决方案**：
+```bash
+# Ubuntu/Debian
+sudo apt update
+sudo apt install python3.12-venv
+
+# 重新创建虚拟环境
+python3 -m venv venv
+```
+
+**Fedora/RHEL/CentOS**：
+```bash
+sudo dnf install python3-venv
+```
+
+**Arch Linux**：
+```bash
+sudo pacman -S python-virtualenv
+```
+
+---
+
+### A.3 虚拟环境激活失败
+
+**问题描述**：
+```
+bash: venv/bin/activate: No such file or directory
+```
+
+**原因**：
+虚拟环境目录不存在或路径错误。
+
+**解决方案**：
+
+1. **检查虚拟环境是否创建成功**
+```bash
+ls -la venv/
+# 应该看到 bin/activate 文件
+```
+
+2. **使用正确的路径**
+```bash
+# 方法1：使用相对路径
+cd /path/to/airwar-game
+source venv/bin/activate
+
+# 方法2：使用绝对路径
+source /home/user/airwar-game/venv/bin/activate
+```
+
+3. **Windows子系统（WSL）注意**
+```bash
+# WSL中不需要 .bat 文件
+source venv/bin/activate
+```
+
+---
+
+### A.4 依赖包安装冲突
+
+**问题描述**：
+```
+ERROR: Cannot install pygame 2.6.1 because these package versions have conflicting dependencies.
+```
+
+**原因**：
+依赖包版本冲突或系统包污染。
+
+**解决方案**：
+
+1. **清理并重建虚拟环境**
+```bash
+# 删除旧虚拟环境
+rm -rf venv
+
+# 创建新虚拟环境
+python3 -m venv venv
+
+# 激活并安装
+source venv/bin/activate
+pip install --upgrade pip
+pip install pygame>=2.6.1 pillow>=12.2.0
+```
+
+2. **使用requirements.txt批量安装**
+```bash
+# 确保requirements.txt内容正确
+cat requirements.txt
+# pygame>=2.6.1
+# pillow>=12.2.0
+
+# 安装所有依赖
+pip install -r requirements.txt
+```
+
+3. **检查Python版本兼容性**
+```bash
+# 查看当前Python版本
+python3 --version
+
+# 确保版本 >= 3.8
+# 如果版本过低，考虑使用pyenv或conda管理多版本
+```
+
+---
+
+### A.5 模块未找到错误（ModuleNotFoundError）
+
+**问题描述**：
+```
+ModuleNotFoundError: No module named 'pygame'
+```
+
+**原因**：
+在系统Python而不是虚拟环境中运行程序。
+
+**解决方案**：
+
+1. **确保已激活虚拟环境**
+```bash
+source venv/bin/activate
+which python
+# 应该显示: /path/to/airwar-game/venv/bin/python
+```
+
+2. **使用虚拟环境的Python直接运行**
+```bash
+# 方法1：激活后运行
+source venv/bin/activate
+python main.py
+
+# 方法2：直接使用venv中的python（无需激活）
+./venv/bin/python main.py
+
+# 方法3：使用python -m方式
+./venv/bin/python -m airwar.game
+```
+
+3. **验证模块是否安装**
+```bash
+# 激活虚拟环境
+source venv/bin/activate
+
+# 检查已安装的包
+pip list | grep pygame
+# 应该显示: pygame 2.6.1
+
+# 测试导入
+python -c "import pygame; print(pygame.__version__)"
+```
+
+---
+
+### A.6 权限问题
+
+**问题描述**：
+```
+PermissionError: [Errno 13] Permission denied: '/usr/lib/python3/dist-packages'
+```
+
+**原因**：
+尝试在系统目录安装包而不是用户目录或虚拟环境。
+
+**解决方案**：
+
+1. **永远不要使用sudo安装Python包到系统目录**
+```bash
+# 错误做法 ❌
+sudo pip install pygame  # 不要这样做！
+
+# 正确做法 ✅
+# 使用虚拟环境
+source venv/bin/activate
+pip install pygame
+```
+
+2. **如果必须全局安装，使用--user选项**
+```bash
+pip install --user pygame>=2.6.1
+```
+
+3. **修复已损坏的pip**
+```bash
+# 重新安装pip
+python3 -m ensurepip --upgrade
+
+# 或使用get-pip.py
+curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+python3 get-pip.py
+```
+
+---
+
+### A.7 SDL/图形库问题
+
+**问题描述**：
+```
+pygame.error: No available video device
+```
+
+或
+
+```
+pygame.error: SDL not built with X11 support
+```
+
+**原因**：
+缺少图形界面支持库或显示环境配置问题。
+
+**解决方案**：
+
+**Ubuntu/Debian**：
+```bash
+# 安装SDL开发库
+sudo apt install libsdl2-2.0-0 libsdl2-image-2.0-0 libsdl2-mixer-2.0-0 libsdl2-ttf-2.0-0
+
+# 安装其他依赖
+sudo apt install libsmpeg2 libavformat-dev libswscale-dev
+
+# 如果是WSL，需要配置GUI
+# 设置DISPLAY环境变量
+export DISPLAY=:0
+```
+
+**无头环境（服务器/容器）测试**：
+```python
+# 设置SDL为Dummy驱动
+import os
+os.environ['SDL_VIDEODRIVER'] = 'dummy'
+os.environ['SDL_AUDIODRIVER'] = 'dummy'
+
+import pygame
+pygame.init()
+```
+
+**或使用Xvfb（虚拟帧缓冲）**：
+```bash
+# 安装Xvfb
+sudo apt install xvfb
+
+# 使用Xvfb运行游戏
+xvfb-run -a ./venv/bin/python main.py
+```
+
+---
+
+### A.8 pip版本过旧
+
+**问题描述**：
+```
+WARNING: You are using pip version XX.X.X; however, version XX.X.X is available.
+```
+
+**解决方案**：
+```bash
+# 激活虚拟环境
+source venv/bin/activate
+
+# 升级pip
+pip install --upgrade pip
+
+# 或使用python -m pip
+python -m pip install --upgrade pip
+```
+
+---
+
+### A.9 网络问题导致安装失败
+
+**问题描述**：
+```
+Connection error: HTTPSConnectionPool(host='pypi.org', port=443): Max retries exceeded
+```
+
+**解决方案**：
+
+1. **使用国内镜像源**
+```bash
+# 激活虚拟环境
+source venv/bin/activate
+
+# 使用清华镜像
+pip install pygame>=2.6.1 -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+# 或使用阿里云镜像
+pip install pygame>=2.6.1 -i https://mirrors.aliyun.com/pypi/simple/
+
+# 设置默认镜像（持久化）
+pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+```
+
+2. **使用requirements.txt配置镜像**
+```bash
+# 在requirements.txt顶部添加
+-i https://pypi.tuna.tsinghua.edu.cn/simple
+
+# 然后安装
+pip install -r requirements.txt
+```
+
+3. **检查网络连接**
+```bash
+ping pypi.org
+curl -I https://pypi.org
+```
+
+---
+
+### A.10 虚拟环境大小问题
+
+**问题描述**：
+磁盘空间不足，虚拟环境占用过大。
+
+**解决方案**：
+
+1. **清理pip缓存**
+```bash
+source venv/bin/activate
+pip cache purge
+```
+
+2. **删除不必要的文件**
+```bash
+# 删除虚拟环境中的build和dist目录
+find venv -type d -name 'build' -exec rm -rf {} +
+find venv -type d -name '__pycache__' -exec rm -rf {} +
+```
+
+3. **使用--no-cache-dir选项安装**
+```bash
+pip install --no-cache-dir pygame>=2.6.1
+```
+
+---
+
+### A.11 虚拟环境激活脚本不兼容
+
+**问题描述**：
+```
+bash: activate: No such file or directory
+```
+
+**原因**：
+使用了fish、zsh等其他shell但activate是bash脚本。
+
+**解决方案**：
+
+1. **使用bash**
+```bash
+bash
+source venv/bin/activate
+```
+
+2. **或直接使用Python路径**
+```bash
+# 直接使用虚拟环境中的Python
+/absolute/path/to/airwar-game/venv/bin/python main.py
+
+# 或添加到PATH
+export PATH="/absolute/path/to/airwar-game/venv/bin:$PATH"
+python main.py
+```
+
+---
+
+### A.12 虚拟环境与IDE集成
+
+**VS Code配置**：
+```json
+{
+    "python.defaultInterpreterPath": "/path/to/airwar-game/venv/bin/python",
+    "python.terminal.activateEnvironment": true
+}
+```
+
+**PyCharm配置**：
+1. File → Settings → Project → Python Interpreter
+2. 点击齿轮图标 → Add
+3. 选择 "Existing environment"
+4. 设置路径为：`/path/to/airwar-game/venv/bin/python`
+
+---
+
+### A.13 常见错误快速查询表
+
+| 错误信息 | 原因 | 解决方案 |
+|---------|------|---------|
+| `externally-managed-environment` | PEP 668限制 | 使用虚拟环境 |
+| `ensurepip is not available` | 缺少venv包 | `apt install python3-venv` |
+| `No module named 'pygame'` | 未激活虚拟环境 | `source venv/bin/activate` |
+| `Permission denied` | 权限问题 | 不要用sudo，使用venv |
+| `No available video device` | 缺少SDL库 | `apt install libsdl2-*` |
+| `Conflicting dependencies` | 版本冲突 | 重建虚拟环境 |
+| `Connection error` | 网络问题 | 使用国内镜像 |
+
+---
+
+### A.14 最佳实践建议
+
+1. **始终使用虚拟环境** - 隔离项目依赖，避免系统污染
+2. **锁定依赖版本** - 在requirements.txt中指定精确版本
+3. **定期更新依赖** - 但要测试兼容性
+4. **提交venv到.gitignore** - 不要提交虚拟环境目录
+5. **文档化安装步骤** - 方便其他开发者复现环境
+6. **测试环境一致性** - 开发、测试、生产环境保持一致
+
+**示例.gitignore配置**：
+```gitignore
+# 虚拟环境
+venv/
+env/
+ENV/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 测试覆盖率
+htmlcov/
+.coverage
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+```
 
 ---
 
@@ -575,5 +1119,5 @@ MIT License
 ---
 
 **项目维护**: AI Assistant (Trae IDE)
-**最后更新**: 2026-04-17
-**文档版本**: 3.0
+**最后更新**: 2026-04-20
+**文档版本**: 4.0
