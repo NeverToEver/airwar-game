@@ -2,37 +2,37 @@ import pytest
 import pygame
 from airwar.scenes.game_scene import GameScene
 from airwar.entities import Enemy, EnemyData
-from airwar.config import ENEMY_HEATBOX_SIZE, ENEMY_HEATBOX_PADDING
+from airwar.config import ENEMY_HITBOX_SIZE, ENEMY_HITBOX_PADDING
 
 pygame.init()
 pygame.display.set_mode((800, 600))
 
 
-class TestEnemyHeatboxExpansion:
+class TestEnemyHitboxExpansion:
     """测试敌机碰撞体扩展功能"""
 
-    def test_heatbox_padding_increased(self):
+    def test_hitbox_padding_increased(self):
         """验证碰撞体填充区域已增加"""
-        assert ENEMY_HEATBOX_PADDING == 8, "ENEMY_HEATBOX_PADDING should be 8"
-        assert ENEMY_HEATBOX_SIZE == 50, "ENEMY_HEATBOX_SIZE should be 50"
+        assert ENEMY_HITBOX_PADDING == 8, "ENEMY_HITBOX_PADDING should be 8"
+        assert ENEMY_HITBOX_SIZE == 50, "ENEMY_HITBOX_SIZE should be 50"
 
-    def test_enemy_heatbox_expanded_by_padding(self):
+    def test_enemy_hitbox_expanded_by_padding(self):
         """验证敌机碰撞体已正确扩展"""
         data = EnemyData(health=100, speed=1.0, bullet_type="single", fire_rate=120, enemy_type="straight")
         enemy = Enemy(400, 300, data)
 
-        expected_size = ENEMY_HEATBOX_SIZE + ENEMY_HEATBOX_PADDING * 2
+        expected_size = ENEMY_HITBOX_SIZE + ENEMY_HITBOX_PADDING * 2
         hitbox = enemy.get_hitbox()
 
         assert hitbox.width == expected_size, f"Expected width {expected_size}, got {hitbox.width}"
         assert hitbox.height == expected_size, f"Expected height {expected_size}, got {hitbox.height}"
 
-    def test_enemy_heatbox_position_offset(self):
+    def test_enemy_hitbox_position_offset(self):
         """验证碰撞体位置已正确偏移"""
         data = EnemyData(health=100, speed=1.0, bullet_type="single", fire_rate=120, enemy_type="straight")
         enemy = Enemy(400, 300, data)
 
-        padding = ENEMY_HEATBOX_PADDING
+        padding = ENEMY_HITBOX_PADDING
         expected_x = 400 - padding
         expected_y = 300 - padding
 
