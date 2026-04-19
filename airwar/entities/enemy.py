@@ -7,7 +7,7 @@ from .base import Entity, EnemyData, Vector2
 from .bullet import Bullet, BulletData
 from .interfaces import IBulletSpawner
 from airwar.utils.sprites import draw_enemy_ship, draw_boss_ship
-from airwar.config import ENEMY_HITBOX_SIZE, ENEMY_HITBOX_PADDING
+from airwar.config import ENEMY_HITBOX_SIZE, ENEMY_HITBOX_PADDING, ENEMY_VISUAL_SCALE, ENEMY_COLLISION_SCALE
 
 if TYPE_CHECKING:
     from airwar.scenes.game_scene import GameScene
@@ -15,9 +15,20 @@ if TYPE_CHECKING:
 
 class Enemy(Entity):
     def __init__(self, x: float, y: float, data: EnemyData):
-        hitbox_size = ENEMY_HITBOX_SIZE
-        padding = ENEMY_HITBOX_PADDING
-        super().__init__(x - padding, y - padding, hitbox_size + padding * 2, hitbox_size + padding * 2)
+        base_size = ENEMY_HITBOX_SIZE + ENEMY_HITBOX_PADDING * 2
+        
+        collision_size = int(base_size * ENEMY_COLLISION_SCALE)
+        render_size = int(base_size * ENEMY_VISUAL_SCALE)
+        
+        self._collision_rect = pygame.Rect(
+            x - (collision_size - render_size) // 2,
+            y - (collision_size - render_size) // 2,
+            collision_size,
+            collision_size
+        )
+        
+        super().__init__(x, y, render_size, render_size)
+        
         self.data = data
         self.health = data.health
         self.max_health = data.health
@@ -25,6 +36,19 @@ class Enemy(Entity):
         self._bullet_spawner: Optional[IBulletSpawner] = None
         self.entity_id = id(self)
         self._init_movement(data.enemy_type)
+        self._sync_rects()
+
+    @property
+    def collision_rect(self) -> pygame.Rect:
+        return self._collision_rect
+
+    @collision_rect.setter
+    def collision_rect(self, value: pygame.Rect) -> None:
+        self._collision_rect = value
+
+    def _sync_rects(self) -> None:
+        self._collision_rect.x = self.rect.x - (self._collision_rect.width - self.rect.width) // 2
+        self._collision_rect.y = self.rect.y - (self._collision_rect.height - self.rect.height) // 2
 
     def _init_movement(self, enemy_type: str) -> None:
         from airwar.config import get_screen_width
@@ -74,6 +98,7 @@ class Enemy(Entity):
             self.rect.y += base_speed
             self.rect.x = self.start_x + math.sin(self.move_timer * self.move_frequency + self.move_offset) * self.move_amplitude * 30
             self.rect.x = max(0, min(self.rect.x, screen_width - self.rect.width))
+            self._sync_rects()
             
         elif self.move_type == "zigzag":
             self.rect.y += base_speed
@@ -88,6 +113,7 @@ class Enemy(Entity):
             elif self.rect.x >= screen_width - self.rect.width:
                 self.rect.x = screen_width - self.rect.width
                 self.direction = -1
+            self._sync_rects()
                 
         elif self.move_type == "dive":
             self.dive_timer += 1
@@ -100,15 +126,18 @@ class Enemy(Entity):
                 wave = math.sin(self.dive_timer * 0.05) * 1.5
                 self.rect.x += wave
                 self.rect.x = max(0, min(self.rect.x, screen_width - self.rect.width))
+            self._sync_rects()
                 
         elif self.move_type == "hover":
             self.rect.y += base_speed * 0.7
             self.hover_timer += 0.08
             self.rect.x = self.start_x + math.sin(self.hover_timer) * self.hover_amplitude
             self.rect.x = max(0, min(self.rect.x, screen_width - self.rect.width))
+            self._sync_rects()
             
         else:
             self.rect.y += base_speed
+            self._sync_rects()
 
         if self.rect.y > screen_height:
             self.active = False
@@ -173,7 +202,8 @@ class Enemy(Entity):
     def render(self, surface: pygame.Surface) -> None:
         if not self._sprite:
             health_ratio = self.health / self.max_health if self.max_health > 0 else 1.0
-            draw_enemy_ship(surface, self.rect.x, self.rect.y, self.rect.width, self.rect.height, health_ratio)
+            draw_enemy_ship(surface, self.rect.x, self.rect.y, 
+                          self.rect.width, self.rect.height, health_ratio)
         else:
             surface.blit(self._sprite, self.get_rect())
 
@@ -188,11 +218,10 @@ class Enemy(Entity):
             self.active = False
 
     def get_hitbox(self) -> pygame.Rect:
-        return pygame.Rect(self.rect.x, self.rect.y, self.rect.width, self.rect.height)
+        return self._collision_rect
 
     def check_point_collision(self, x: float, y: float) -> bool:
-        return (self.rect.x <= x <= self.rect.x + self.rect.width and
-                self.rect.y <= y <= self.rect.y + self.rect.height)
+        return self._collision_rect.collidepoint(x, y)
 
 
 class EnemySpawner:
@@ -230,14 +259,15 @@ class EnemySpawner:
         self._bullet_spawner = spawner
 
     def update(self, enemies: List[Enemy], slow_factor: float = 1.0) -> None:
-        from airwar.config import get_screen_width, ENEMY_HITBOX_SIZE, ENEMY_HITBOX_PADDING
+        from airwar.config import get_screen_width, ENEMY_HITBOX_SIZE, ENEMY_HITBOX_PADDING, ENEMY_COLLISION_SCALE
         screen_width = get_screen_width()
 
         self.spawn_timer += 1
         if self.spawn_timer >= self.spawn_rate:
             self.spawn_timer = 0
-            total_width = ENEMY_HITBOX_SIZE + ENEMY_HITBOX_PADDING * 2
-            x = random.randint(0, screen_width - total_width)
+            base_size = ENEMY_HITBOX_SIZE + ENEMY_HITBOX_PADDING * 2
+            collision_size = int(base_size * ENEMY_COLLISION_SCALE)
+            x = random.randint(0, screen_width - collision_size)
 
             bullet_types = ["single", "spread", "laser"]
             bullet_type = random.choice(bullet_types)

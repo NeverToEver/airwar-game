@@ -2,7 +2,7 @@ import pytest
 import pygame
 from airwar.scenes.game_scene import GameScene
 from airwar.entities import Enemy, EnemyData
-from airwar.config import ENEMY_HITBOX_SIZE, ENEMY_HITBOX_PADDING
+from airwar.config import ENEMY_HITBOX_SIZE, ENEMY_HITBOX_PADDING, ENEMY_VISUAL_SCALE, ENEMY_COLLISION_SCALE
 
 pygame.init()
 pygame.display.set_mode((800, 600))
@@ -17,27 +17,43 @@ class TestEnemyHitboxExpansion:
         assert ENEMY_HITBOX_SIZE == 50, "ENEMY_HITBOX_SIZE should be 50"
 
     def test_enemy_hitbox_expanded_by_padding(self):
-        """验证敌机碰撞体已正确扩展"""
+        """验证敌机碰撞体已正确扩展（带缩放）"""
         data = EnemyData(health=100, speed=1.0, bullet_type="single", fire_rate=120, enemy_type="straight")
         enemy = Enemy(400, 300, data)
 
-        expected_size = ENEMY_HITBOX_SIZE + ENEMY_HITBOX_PADDING * 2
+        base_size = ENEMY_HITBOX_SIZE + ENEMY_HITBOX_PADDING * 2
+        expected_collision_size = int(base_size * ENEMY_COLLISION_SCALE)
         hitbox = enemy.get_hitbox()
 
-        assert hitbox.width == expected_size, f"Expected width {expected_size}, got {hitbox.width}"
-        assert hitbox.height == expected_size, f"Expected height {expected_size}, got {hitbox.height}"
+        assert hitbox.width == expected_collision_size, f"Expected collision width {expected_collision_size}, got {hitbox.width}"
+        assert hitbox.height == expected_collision_size, f"Expected collision height {expected_collision_size}, got {hitbox.height}"
 
-    def test_enemy_hitbox_position_offset(self):
-        """验证碰撞体位置已正确偏移"""
+    def test_enemy_visual_size_scaled(self):
+        """验证敌机视觉尺寸已按比例缩放"""
         data = EnemyData(health=100, speed=1.0, bullet_type="single", fire_rate=120, enemy_type="straight")
         enemy = Enemy(400, 300, data)
 
-        padding = ENEMY_HITBOX_PADDING
-        expected_x = 400 - padding
-        expected_y = 300 - padding
+        base_size = ENEMY_HITBOX_SIZE + ENEMY_HITBOX_PADDING * 2
+        expected_visual_size = int(base_size * ENEMY_VISUAL_SCALE)
 
-        assert enemy.rect.x == expected_x, f"Expected x {expected_x}, got {enemy.rect.x}"
-        assert enemy.rect.y == expected_y, f"Expected y {expected_y}, got {enemy.rect.y}"
+        assert enemy.rect.width == expected_visual_size, f"Expected visual width {expected_visual_size}, got {enemy.rect.width}"
+        assert enemy.rect.height == expected_visual_size, f"Expected visual height {expected_visual_size}, got {enemy.rect.height}"
+
+    def test_enemy_render_and_collision_sizes_differ(self):
+        """验证渲染尺寸和碰撞尺寸不同"""
+        data = EnemyData(health=100, speed=1.0, bullet_type="single", fire_rate=120, enemy_type="straight")
+        enemy = Enemy(400, 300, data)
+
+        assert enemy.rect.width != enemy.get_hitbox().width, "Visual size should differ from collision size"
+        assert enemy.rect.height != enemy.get_hitbox().height, "Visual size should differ from collision size"
+
+    def test_collision_larger_than_visual(self):
+        """验证碰撞箱比视觉尺寸大"""
+        data = EnemyData(health=100, speed=1.0, bullet_type="single", fire_rate=120, enemy_type="straight")
+        enemy = Enemy(400, 300, data)
+
+        assert enemy.get_hitbox().width > enemy.rect.width, "Collision hitbox should be larger than visual"
+        assert enemy.get_hitbox().height > enemy.rect.height, "Collision hitbox should be larger than visual"
 
     def test_enemy_get_hitbox_method_exists(self):
         """验证get_hitbox方法存在"""
