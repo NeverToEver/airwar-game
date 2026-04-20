@@ -217,10 +217,11 @@ class GameScene(Scene):
         1. 更新游戏控制器 (生命值再生等)
         2. 更新玩家 (移动、射击)
         3. 更新敌人生成
-        4. 更新所有实体
-        5. 碰撞检测
-        6. 检查里程碑奖励
-        7. 清理无效实体
+        4. 更新敌人子弹
+        5. 更新所有实体
+        6. 碰撞检测
+        7. 检查里程碑奖励
+        8. 清理无效实体
         """
         has_regen = 'Regeneration' in self.reward_system.unlocked_buffs
         self.game_controller.update(self.player, has_regen)
@@ -229,6 +230,7 @@ class GameScene(Scene):
         self.player.auto_fire()
 
         self._update_enemy_spawning()
+        self._update_enemy_bullets()
         self._update_entities()
         self._check_collisions()
         self._check_milestones()
@@ -256,6 +258,10 @@ class GameScene(Scene):
         
         if self.spawn_controller.boss:
             self._update_boss()
+
+    def _update_enemy_bullets(self) -> None:
+        for bullet in self.spawn_controller.enemy_bullets:
+            bullet.update()
 
     def _update_boss(self) -> None:
         boss = self.spawn_controller.boss
