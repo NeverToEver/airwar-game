@@ -74,8 +74,8 @@ class TestHealthBuffs:
         result = buff.apply(player)
         
         assert result.name == 'Extra Life'
-        assert player.max_health == 150
-        assert player.health == 80
+        assert buff.calculate_value(100, 1) == 150
+        assert buff.calculate_increment(100) == 50
 
     def test_regeneration_buff(self):
         from airwar.game.buffs.buff_registry import create_buff
@@ -96,13 +96,14 @@ class TestOffenseBuffs:
         
         input_handler = MockInputHandler()
         player = Player(100, 200, input_handler)
-        initial_damage = player.bullet_damage
+        base_damage = player.bullet_damage
         
         buff = create_buff('Power Shot')
         result = buff.apply(player)
         
         assert result.name == 'Power Shot'
-        assert player.bullet_damage > initial_damage
+        assert buff.calculate_value(base_damage, 1) == int(base_damage * 1.25)
+        assert buff.calculate_increment(base_damage) == int(base_damage * 0.25)
 
     def test_rapid_fire_buff(self):
         from airwar.game.buffs.buff_registry import create_buff
@@ -135,7 +136,8 @@ class TestOffenseBuffs:
         result = buff.apply(player)
         
         assert result.name == 'Spread Shot'
-        assert buff.level == 1
+        assert buff.calculate_value(0, 1) == 1
+        assert buff.calculate_increment(0) == 1
 
     def test_explosive_buff(self):
         from airwar.game.buffs.buff_registry import create_buff
@@ -202,15 +204,13 @@ class TestDefenseBuffs:
         
         input_handler = MockInputHandler()
         player = Player(100, 200, input_handler)
-        initial_max_health = player.max_health
-        initial_health = player.health
         
         buff = create_buff('Barrier')
         result = buff.apply(player)
         
         assert result.name == 'Barrier'
-        assert player.max_health > initial_max_health
-        assert player.health == player.max_health
+        assert buff.calculate_value(0, 1) == 1
+        assert buff.calculate_increment(100) == 50
 
 
 class TestUtilityBuffs:
@@ -320,6 +320,8 @@ class TestRewardSystemLifesteal:
         reward = {'name': 'Lifesteal', 'desc': '+10% lifesteal on kill', 'icon': 'LST'}
         scene._on_reward_selected(reward)
         
+        assert 'Lifesteal' in scene.reward_system.unlocked_buffs
+        
         initial_health = scene.player.health
         scene.reward_system.apply_lifesteal(scene.player, 100)
         
@@ -397,3 +399,64 @@ class TestRewardSystemExplosive:
         )
         
         assert enemy.health == initial_health
+
+
+class TestRefactoredBuffSystem:
+    def test_power_shot_calculate_value(self):
+        from airwar.game.buffs.buff_registry import create_buff
+        
+        buff = create_buff('Power Shot')
+        base = 50
+        
+        assert buff.calculate_value(base, 0) == 50
+        assert buff.calculate_value(base, 1) == int(50 * 1.25)
+        assert buff.calculate_value(base, 2) == int(50 * 1.25 * 1.25)
+        assert buff.calculate_value(base, 3) == int(50 * 1.25 * 1.25 * 1.25)
+
+    def test_rapid_fire_calculate_value(self):
+        from airwar.game.buffs.buff_registry import create_buff
+        
+        buff = create_buff('Rapid Fire')
+        base = 10
+        
+        assert buff.calculate_value(base, 0) == 10
+        assert buff.calculate_value(base, 1) == max(1, int(10 * 0.8))
+        assert buff.calculate_value(base, 2) == max(1, int(10 * 0.8 * 0.8))
+
+    def test_reward_system_power_shot_upgrade(self):
+        from airwar.scenes.game_scene import GameScene
+        scene = GameScene()
+        scene.enter(difficulty='medium')
+        
+        initial_damage = scene.reward_system._base_bullet_damage
+        
+        scene._on_reward_selected({'name': 'Power Shot', 'desc': '+25% bullet damage', 'icon': 'DMG'})
+        assert scene.player.bullet_damage == int(initial_damage * 1.25)
+        assert scene.reward_system.buff_levels['Power Shot'] == 1
+        
+        scene._on_reward_selected({'name': 'Power Shot', 'desc': '+25% bullet damage', 'icon': 'DMG'})
+        assert scene.player.bullet_damage == int(initial_damage * 1.25 * 1.25)
+        assert scene.reward_system.buff_levels['Power Shot'] == 2
+
+    def test_reward_system_rapid_fire_upgrade(self):
+        from airwar.scenes.game_scene import GameScene
+        scene = GameScene()
+        scene.enter(difficulty='medium')
+        
+        base_cooldown = scene.reward_system._base_fire_cooldown
+        
+        scene._on_reward_selected({'name': 'Rapid Fire', 'desc': '+20% fire rate', 'icon': 'RPD'})
+        assert scene.player.fire_cooldown == max(1, int(base_cooldown * 0.8))
+        assert scene.reward_system.buff_levels['Rapid Fire'] == 1
+        
+        scene._on_reward_selected({'name': 'Rapid Fire', 'desc': '+20% fire rate', 'icon': 'RPD'})
+        assert scene.player.fire_cooldown == max(1, int(base_cooldown * 0.8 * 0.8))
+        assert scene.reward_system.buff_levels['Rapid Fire'] == 2
+
+    def test_buff_get_notification(self):
+        from airwar.game.buffs.buff_registry import create_buff
+        
+        buff = create_buff('Power Shot')
+        assert buff.get_notification(1) == 'REWARD: Power Shot'
+        assert buff.get_notification(2) == 'UPGRADED: Power Shot (Lv.2)'
+        assert buff.get_notification(3) == 'UPGRADED: Power Shot (Lv.3)'

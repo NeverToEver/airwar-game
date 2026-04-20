@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Tuple, Optional
 
 
 @dataclass
@@ -21,4 +21,16 @@ class Buff(ABC):
 
     @abstractmethod
     def get_color(self) -> Tuple[int, int, int]:
+        pass
+
+    @abstractmethod
+    def calculate_value(self, base_value: int, current_level: int) -> int:
+        pass
+
+    @abstractmethod
+    def calculate_increment(self, base_value: int) -> int:
+        pass
+
+    @abstractmethod
+    def get_notification(self, level: int) -> str:
         pass
