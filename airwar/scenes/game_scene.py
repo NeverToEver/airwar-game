@@ -7,6 +7,7 @@ from airwar.game.systems.hud_renderer import HUDRenderer
 from airwar.game.systems.notification_manager import NotificationManager
 from airwar.game.controllers.game_controller import GameController
 from airwar.game.controllers.spawn_controller import SpawnController
+from airwar.game.controllers.collision_controller import CollisionController
 from airwar.game.rendering.game_renderer import GameRenderer, GameEntities
 from airwar.ui.reward_selector import RewardSelector
 from airwar.game.mother_ship import (
@@ -18,6 +19,7 @@ from airwar.game.mother_ship import (
     MotherShip,
     GameIntegrator,
 )
+from airwar.game.constants import PlayerConstants, GAME_CONSTANTS
 
 
 class GameScene(Scene):
@@ -29,6 +31,7 @@ class GameScene(Scene):
         self.hud_renderer: HUDRenderer = None
         self.notification_manager: NotificationManager = None
         self.spawn_controller: SpawnController = None
+        self.collision_controller: CollisionController = None
         self.player: Player = None
         self.reward_selector: RewardSelector = RewardSelector()
         self._mother_ship_integrator = None
@@ -55,9 +58,15 @@ class GameScene(Scene):
         self.spawn_controller = SpawnController(settings)
         self.spawn_controller.init_bullet_system()
 
+        self.collision_controller = CollisionController()
+
         input_handler = PygameInputHandler()
-        self.player = Player(screen_width // 2 - 25, screen_height - 100, input_handler)
-        self.player.rect.y = -80
+        self.player = Player(
+            screen_width // 2 - PlayerConstants.INITIAL_X_OFFSET,
+            screen_height - PlayerConstants.SCREEN_BOTTOM_OFFSET,
+            input_handler
+        )
+        self.player.rect.y = PlayerConstants.INITIAL_Y
         self.player.bullet_damage = settings['bullet_damage']
 
         self._setup_reward_selector()
@@ -138,12 +147,12 @@ class GameScene(Scene):
 
         if progress >= 1.0:
             self.game_controller.state.entrance_animation = False
-            self.player.rect.y = screen_height - 100
+            self.player.rect.y = screen_height - PlayerConstants.SCREEN_BOTTOM_OFFSET
         else:
-            target_y = screen_height - 100
-            start_y = -80
+            target_y = screen_height - PlayerConstants.SCREEN_BOTTOM_OFFSET
+            start_y = PlayerConstants.INITIAL_Y
             self.player.rect.y = int(start_y + (target_y - start_y) * progress)
-            self.player.rect.x = screen_width // 2 - 25
+            self.player.rect.x = screen_width // 2 - PlayerConstants.INITIAL_X_OFFSET
 
     def _update_game(self) -> None:
         has_regen = 'Regeneration' in self.reward_system.unlocked_buffs
@@ -185,37 +194,69 @@ class GameScene(Scene):
         boss = self.spawn_controller.boss
         if not boss:
             return
+        
+        self._update_boss_movement(boss)
+        self._check_boss_player_collision(boss)
+        self._process_boss_damage(boss)
+        self._handle_boss_escape(boss)
+    
+    def _update_boss_movement(self, boss) -> None:
         player_pos = (self.player.rect.centerx, self.player.rect.centery)
         boss.update(self.spawn_controller.enemies, player_pos=player_pos)
-        player_hitbox = self.player.get_hitbox()
-
-        if not boss.is_entering() and boss.active:
-            if boss.rect.colliderect(player_hitbox):
-                if not self.game_controller.state.player_invincible:
-                    damage = self.reward_system.calculate_damage_taken(30)
-                    self.player.take_damage(damage)
-                    self._clear_enemy_bullets()
-                    self.game_controller.on_player_hit(damage, self.player)
-
+    
+    def _check_boss_player_collision(self, boss) -> None:
+        if boss.is_entering() or not boss.active:
+            return
+        
+        if not boss.rect.colliderect(self.player.get_hitbox()):
+            return
+        
+        if self.game_controller.state.player_invincible:
+            return
+        
+        damage = self.reward_system.calculate_damage_taken(30)
+        self.player.take_damage(damage)
+        self._clear_enemy_bullets()
+        self.game_controller.on_player_hit(damage, self.player)
+    
+    def _process_boss_damage(self, boss) -> None:
+        if boss.is_entering() or not boss.active:
+            return
+        
         for bullet in self.player.get_bullets():
-            if bullet.active and boss and boss.active and not boss.is_entering():
-                if bullet.get_rect().colliderect(boss.get_rect()):
-                    score_reward = boss.take_damage(bullet.data.damage)
-                    if score_reward > 0:
-                        self.game_controller.state.score += score_reward
-                        self.game_controller.show_notification(f"+{score_reward} BOSS SCORE!")
-
-                    if self.reward_system.piercing_level <= 0:
-                        bullet.active = False
-
-                    if not boss.active:
-                        self.game_controller.on_boss_killed(boss.data.score)
-                        self.game_controller.cycle_count += 1
-                        self.reward_system.apply_lifesteal(self.player, boss.data.score)
-
-        if boss and not boss.active:
-            if boss.is_escaped():
-                self.game_controller.show_notification("BOSS ESCAPED! (+0)")
+            if not self._is_valid_bullet_for_boss(bullet, boss):
+                continue
+            
+            score_reward = boss.take_damage(bullet.data.damage)
+            if score_reward > 0:
+                self._on_boss_hit(score_reward)
+    
+    def _is_valid_bullet_for_boss(self, bullet, boss) -> bool:
+        return (
+            bullet.active and 
+            boss.active and 
+            not boss.is_entering() and
+            bullet.get_rect().colliderect(boss.get_rect())
+        )
+    
+    def _on_boss_hit(self, score_reward: int) -> None:
+        self.game_controller.state.score += score_reward
+        self.game_controller.show_notification(f"+{score_reward} BOSS SCORE!")
+        
+        if self.reward_system.piercing_level <= 0:
+            pass
+        
+        if not self.spawn_controller.boss.active:
+            self.game_controller.on_boss_killed(self.spawn_controller.boss.data.score)
+            self.game_controller.cycle_count += 1
+            self.reward_system.apply_lifesteal(self.player, self.spawn_controller.boss.data.score)
+    
+    def _handle_boss_escape(self, boss) -> None:
+        if not boss or boss.active:
+            return
+        
+        if boss.is_escaped():
+            self.game_controller.show_notification("BOSS ESCAPED! (+0)")
 
     def _update_entities(self) -> None:
         for enemy in self.spawn_controller.enemies:
@@ -228,43 +269,62 @@ class GameScene(Scene):
                     self.game_controller.on_player_hit(20, self.player)
 
     def _check_collisions(self) -> None:
-        self._check_player_bullets_vs_enemies()
-        self._check_enemy_bullets_vs_player()
-
+        if not self.collision_controller:
+            self.collision_controller = CollisionController()
+        
+        self.collision_controller.check_all_collisions(
+            player=self.player,
+            enemies=self.spawn_controller.enemies,
+            boss=self.spawn_controller.boss,
+            enemy_bullets=self.spawn_controller.enemy_bullets,
+            reward_system=self.reward_system,
+            player_invincible=self.game_controller.state.player_invincible,
+            score_multiplier=self.game_controller.state.score_multiplier,
+            on_enemy_killed=lambda: None,
+            on_boss_killed=lambda: self.game_controller.on_boss_killed(self.spawn_controller.boss.data.score if self.spawn_controller.boss else 0),
+            on_boss_hit=lambda score: self._on_boss_hit(score),
+            on_player_hit=lambda damage, player: self.game_controller.on_player_hit(damage, player),
+            on_lifesteal=lambda player, score: self.reward_system.apply_lifesteal(player, score),
+        )
+    
+    def _on_boss_hit(self, score: int) -> None:
+        self.game_controller.state.score += score
+        self.game_controller.show_notification(f"+{score} BOSS SCORE!")
+        if not self.spawn_controller.boss.active:
+            self.game_controller.cycle_count += 1
+            self.reward_system.apply_lifesteal(self.player, self.spawn_controller.boss.data.score)
+            self._clear_enemy_bullets()
+    
     def _check_player_bullets_vs_enemies(self) -> None:
-        enemies = self.spawn_controller.enemies
-        for bullet in self.player.get_bullets():
-            bullet.update()
-            for enemy in enemies:
-                if bullet.active and enemy.active:
-                    bullet_rect = bullet.get_rect()
-                    enemy_hitbox = enemy.get_hitbox()
-                    
-                    if bullet_rect.colliderect(enemy_hitbox):
-                        if self.reward_system.explosive_level > 0:
-                            self.reward_system.do_explosive_damage(
-                                enemies, enemy.rect.centerx, enemy.rect.centery, bullet.data.damage)
-                        else:
-                            enemy.take_damage(bullet.data.damage)
-
-                        if self.reward_system.piercing_level <= 0:
-                            bullet.active = False
-
-                        if not enemy.active:
-                            score_gained = enemy.data.score * self.game_controller.state.score_multiplier
-                            self.game_controller.on_enemy_killed(score_gained)
-                            self.reward_system.apply_lifesteal(self.player, enemy.data.score)
-
+        if not self.collision_controller:
+            self.collision_controller = CollisionController()
+        
+        score_gained, enemies_killed = self.collision_controller.check_player_bullets_vs_enemies(
+            self.player.get_bullets(),
+            self.spawn_controller.enemies,
+            self.game_controller.state.score_multiplier,
+            self.reward_system.explosive_level
+        )
+        
+        for _ in range(enemies_killed):
+            self.game_controller.on_enemy_killed(score_gained)
+            self.reward_system.apply_lifesteal(self.player, 0)
+    
     def _check_enemy_bullets_vs_player(self) -> None:
-        player_hitbox = self.player.get_hitbox()
-        for eb in self.spawn_controller.enemy_bullets:
-            eb.update()
-            if eb.active and eb.rect.colliderect(player_hitbox):
-                if not self.game_controller.state.player_invincible:
-                    damage = self.reward_system.calculate_damage_taken(eb.data.damage)
-                    self.player.take_damage(damage)
-                    self._clear_enemy_bullets()
-                    self.game_controller.on_player_hit(damage, self.player)
+        if not self.collision_controller:
+            self.collision_controller = CollisionController()
+        
+        self.collision_controller.check_enemy_bullets_vs_player(
+            self.spawn_controller.enemy_bullets,
+            self.player.get_hitbox(),
+            lambda d: self.reward_system.calculate_damage_taken(d),
+            lambda d: (
+                self.player.take_damage(d),
+                self._clear_enemy_bullets(),
+                self.game_controller.on_player_hit(d, self.player)
+            )
+        )
+
 
     def _cleanup_bullets(self) -> None:
         for b in self.spawn_controller.enemy_bullets:
@@ -526,5 +586,5 @@ class GameScene(Scene):
             self._mother_ship_integrator.reset_to_idle_with_mothership_visible()
         self.game_controller.state.entrance_animation = False
         self.game_controller.state.paused = False
-        self.player.rect.y = 200
-        self.player.rect.x = self.game_controller.state.score // 2 % 800
+        self.player.rect.y = PlayerConstants.MOTHERSHIP_Y_POSITION
+        self.player.rect.x = self.game_controller.state.score // 2 % PlayerConstants.DEFAULT_SCREEN_WIDTH
