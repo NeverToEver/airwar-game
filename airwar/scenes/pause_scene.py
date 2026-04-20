@@ -7,7 +7,7 @@ class PauseScene(Scene):
     def enter(self, **kwargs) -> None:
         self.running = True
         self.result: PauseAction = None
-        self.options = ['RESUME', 'MAIN MENU', 'QUIT']
+        self.options = ['RESUME', 'MAIN MENU', 'SAVE AND QUIT', 'QUIT WITHOUT SAVING']
         self.selected_index = 0
         self.animation_time = 0
         self.glow_offset = 0
@@ -85,7 +85,9 @@ class PauseScene(Scene):
         elif self.selected_index == 1:
             self.result = PauseAction.MAIN_MENU
         elif self.selected_index == 2:
-            self.result = PauseAction.QUIT
+            self.result = PauseAction.SAVE_AND_QUIT
+        elif self.selected_index == 3:
+            self.result = PauseAction.QUIT_WITHOUT_SAVING
 
     def update(self, *args, **kwargs) -> None:
         import random
@@ -221,8 +223,8 @@ class PauseScene(Scene):
         self._draw_decorative_lines(surface)
         self._draw_icon_decoration(surface)
 
-        option_spacing = 85
-        start_y = height // 2 + 30
+        option_spacing = 70
+        start_y = height // 2 + 20
         for i, option in enumerate(self.options):
             self._draw_option_box(surface, option, start_y + i * option_spacing, i == self.selected_index)
 

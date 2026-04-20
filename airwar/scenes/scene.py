@@ -7,6 +7,8 @@ import pygame
 class PauseAction(Enum):
     RESUME = "resume"
     MAIN_MENU = "main_menu"
+    SAVE_AND_QUIT = "save_and_quit"
+    QUIT_WITHOUT_SAVING = "quit_without_saving"
     QUIT = "quit"
 
 
