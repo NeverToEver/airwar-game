@@ -109,7 +109,14 @@ class TestCollisionController:
         import pygame
         
         controller = CollisionController()
-        player_hitbox = pygame.Rect(100, 100, 50, 50)
+        
+        class MockPlayer:
+            def __init__(self):
+                self.hitbox = pygame.Rect(100, 100, 50, 50)
+            def get_hitbox(self):
+                return self.hitbox
+        
+        player = MockPlayer()
         
         bullet = Bullet(120, 120, BulletData())
         bullet.active = True
@@ -118,11 +125,11 @@ class TestCollisionController:
             return dmg
         
         hit_called = []
-        def mock_on_hit(dmg):
+        def mock_on_hit(dmg, player):
             hit_called.append(dmg)
         
         player_damaged = controller.check_enemy_bullets_vs_player(
-            [bullet], player_hitbox, mock_calc_damage, mock_on_hit
+            [bullet], player, mock_calc_damage, mock_on_hit
         )
         
         assert player_damaged is True
@@ -134,7 +141,14 @@ class TestCollisionController:
         import pygame
         
         controller = CollisionController()
-        player_hitbox = pygame.Rect(100, 100, 50, 50)
+        
+        class MockPlayer:
+            def __init__(self):
+                self.hitbox = pygame.Rect(100, 100, 50, 50)
+            def get_hitbox(self):
+                return self.hitbox
+        
+        player = MockPlayer()
         boss = Boss(100, 100, BossData(health=1000))
         boss.entering = False
         
@@ -142,11 +156,11 @@ class TestCollisionController:
             return dmg
         
         hit_called = []
-        def mock_on_hit(dmg):
+        def mock_on_hit(dmg, player):
             hit_called.append(dmg)
         
         player_damaged = controller.check_boss_vs_player(
-            boss, player_hitbox, mock_calc_damage, mock_on_hit
+            boss, player, mock_calc_damage, mock_on_hit
         )
         
         assert player_damaged is True
@@ -158,7 +172,14 @@ class TestCollisionController:
         import pygame
         
         controller = CollisionController()
-        player_hitbox = pygame.Rect(100, 100, 50, 50)
+        
+        class MockPlayer:
+            def __init__(self):
+                self.hitbox = pygame.Rect(100, 100, 50, 50)
+            def get_hitbox(self):
+                return self.hitbox
+        
+        player = MockPlayer()
         boss = Boss(100, 100, BossData(health=1000))
         boss.entering = True
         
@@ -166,11 +187,11 @@ class TestCollisionController:
             return dmg
         
         hit_called = []
-        def mock_on_hit(dmg):
+        def mock_on_hit(dmg, player):
             hit_called.append(dmg)
         
         player_damaged = controller.check_boss_vs_player(
-            boss, player_hitbox, mock_calc_damage, mock_on_hit
+            boss, player, mock_calc_damage, mock_on_hit
         )
         
         assert player_damaged is False

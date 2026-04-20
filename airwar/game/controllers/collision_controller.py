@@ -67,7 +67,7 @@ class CollisionController:
         
         if self.check_enemy_bullets_vs_player(
             enemy_bullets,
-            player.get_hitbox(),
+            player,
             lambda d: reward_system.calculate_damage_taken(d),
             on_player_hit
         ):
@@ -92,7 +92,7 @@ class CollisionController:
             
             if self.check_boss_vs_player(
                 boss,
-                player.get_hitbox(),
+                player,
                 lambda d: reward_system.calculate_damage_taken(d),
                 on_player_hit
             ):
@@ -171,17 +171,18 @@ class CollisionController:
     def check_enemy_bullets_vs_player(
         self,
         enemy_bullets: List['Bullet'],
-        player_hitbox,
+        player,
         calculate_damage_func: Callable,
         on_player_hit_func: Callable
     ) -> bool:
         player_damaged = False
+        player_hitbox = player.get_hitbox()
 
         for eb in enemy_bullets:
             eb.update()
             if eb.active and eb.rect.colliderect(player_hitbox):
                 damage = calculate_damage_func(eb.data.damage)
-                on_player_hit_func(damage)
+                on_player_hit_func(damage, player)
                 player_damaged = True
                 break
 
@@ -190,16 +191,17 @@ class CollisionController:
     def check_boss_vs_player(
         self,
         boss: 'Boss',
-        player_hitbox,
+        player,
         calculate_damage_func: Callable,
         on_player_hit_func: Callable
     ) -> bool:
         player_damaged = False
+        player_hitbox = player.get_hitbox()
 
         if boss and boss.active and not boss.is_entering():
             if boss.get_rect().colliderect(player_hitbox):
                 damage = calculate_damage_func(30)
-                on_player_hit_func(damage)
+                on_player_hit_func(damage, player)
                 player_damaged = True
 
         return player_damaged
