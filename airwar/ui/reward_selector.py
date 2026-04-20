@@ -13,6 +13,8 @@ class RewardSelector:
         self.glow_offset: float = 0
         self.stars: list = []
         self.particles: list = []
+        self.buff_levels: dict = {}
+        self.unlocked_buffs: list = []
         self._init_visual_elements()
 
     def _init_visual_elements(self) -> None:
@@ -61,6 +63,10 @@ class RewardSelector:
             'panel_border': (50, 80, 140),
             'option_selected_bg': (25, 35, 65),
             'option_unselected_bg': (18, 20, 40),
+            'upgraded': (200, 180, 255),
+            'upgraded_glow': (180, 150, 220),
+            'new_buff': (100, 255, 150),
+            'upgraded_bg': (30, 25, 45),
         }
 
     def generate_options(self, cycle_count: int, unlocked_buffs: list) -> list:
@@ -86,12 +92,14 @@ class RewardSelector:
 
         return options
 
-    def show(self, options: list, callback: Callable) -> None:
+    def show(self, options: list, callback: Callable, buff_levels: dict = None, unlocked_buffs: list = None) -> None:
         self.visible = True
         self.options = options
         self.selected_index = 0
         self.on_select = callback
         self.animation_time = 0
+        self.buff_levels = buff_levels or {}
+        self.unlocked_buffs = unlocked_buffs or []
 
     def hide(self) -> None:
         self.visible = False
@@ -220,8 +228,24 @@ class RewardSelector:
         box_height = option_height
         box_rect = pygame.Rect(center_x - box_width // 2, y, box_width, box_height)
 
-        if is_selected:
+        buff_name = option['name']
+        level = self.buff_levels.get(buff_name, 0)
+        is_upgraded = buff_name in self.unlocked_buffs and level > 0
+
+        if is_upgraded:
+            glow_color = self.colors['upgraded_glow']
+            bg_color = self.colors['upgraded_bg']
+            border_color = self.colors['upgraded']
+        elif is_selected:
             glow_color = self.colors['selected_glow']
+            bg_color = self.colors['option_selected_bg']
+            border_color = self.colors['selected']
+        else:
+            glow_color = self.colors['title_glow']
+            bg_color = self.colors['option_unselected_bg']
+            border_color = self.colors['unselected']
+
+        if is_selected or is_upgraded:
             for i in range(4, 0, -1):
                 expand = i * 3
                 glow_rect = box_rect.inflate(expand * 2, expand * 2)
@@ -229,24 +253,24 @@ class RewardSelector:
                 pygame.draw.rect(glow_surf, (*glow_color, 30 // i), glow_surf.get_rect(), border_radius=10)
                 surface.blit(glow_surf, glow_rect)
 
-            pygame.draw.rect(surface, self.colors['option_selected_bg'], box_rect, border_radius=10)
-            border_surf = pygame.Surface((box_width, box_height), pygame.SRCALPHA)
-            pygame.draw.rect(border_surf, (*self.colors['selected'], 200),
-                           border_surf.get_rect(), width=2, border_radius=10)
-            surface.blit(border_surf, box_rect.topleft)
-        else:
-            pygame.draw.rect(surface, self.colors['option_unselected_bg'], box_rect, border_radius=10)
-            border_surf = pygame.Surface((box_width, box_height), pygame.SRCALPHA)
-            pygame.draw.rect(border_surf, (*self.colors['unselected'], 70),
-                           border_surf.get_rect(), width=1, border_radius=10)
-            surface.blit(border_surf, box_rect.topleft)
+        pygame.draw.rect(surface, bg_color, box_rect, border_radius=10)
+        border_surf = pygame.Surface((box_width, box_height), pygame.SRCALPHA)
+        alpha = 200 if is_selected or is_upgraded else 70
+        width = 2 if is_selected or is_upgraded else 1
+        pygame.draw.rect(border_surf, (*border_color, alpha),
+                       border_surf.get_rect(), width=width, border_radius=10)
+        surface.blit(border_surf, box_rect.topleft)
 
         arrow = ">" if is_selected else " "
-        name_text = option['name']
         
-        text_color = self.colors['selected'] if is_selected else self.colors['unselected']
-        full_text = f"{arrow} {name_text}"
-        text = self.option_font.render(full_text, True, text_color)
+        if is_upgraded:
+            name_text = f"{arrow} {buff_name} [Lv.{level}]"
+            text_color = self.colors['upgraded'] if is_selected else self.colors['unselected']
+        else:
+            name_text = f"{arrow} {buff_name}"
+            text_color = self.colors['selected'] if is_selected else self.colors['unselected']
+        
+        text = self.option_font.render(name_text, True, text_color)
         text_rect = text.get_rect(midleft=(box_rect.x + 25, box_rect.centery - 8))
         surface.blit(text, text_rect)
 
