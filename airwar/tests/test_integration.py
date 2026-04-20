@@ -290,7 +290,9 @@ class TestGameFlowIntegration:
         from airwar.scenes.game_scene import GameScene
         scene = GameScene()
         scene.enter(difficulty='medium')
-        scene.player.take_damage(999)
+        scene.game_controller.on_player_hit(999, scene.player)
+        for _ in range(91):
+            scene.game_controller.update(scene.player, False)
         assert scene.is_game_over() is True
 
     def test_enemy_collision_damages_player(self):

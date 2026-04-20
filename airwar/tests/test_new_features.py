@@ -300,7 +300,12 @@ class TestGameSceneCollisionIntegration:
         bullet.rect.x = enemy.rect.centerx - 4
         bullet.rect.y = enemy.rect.centery - 8
 
-        scene._check_player_bullets_vs_enemies()
+        scene.collision_controller.check_player_bullets_vs_enemies(
+            scene.player.get_bullets(),
+            scene.spawn_controller.enemies,
+            1,
+            0
+        )
 
         assert enemy.health < initial_health, f"Enemy should take damage from expanded hitbox collision. Initial: {initial_health}, Current: {enemy.health}"
 

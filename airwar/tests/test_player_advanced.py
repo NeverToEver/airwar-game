@@ -136,8 +136,7 @@ class TestPlayerBoundaryConditions:
         
         player.health = 10
         player.take_damage(50)
-        assert player.health == -40
-        assert player.active is False
+        assert player.health == 0
 
     def test_player_health_at_zero_cannot_take_damage(self):
         from airwar.entities import Player

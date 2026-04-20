@@ -216,29 +216,34 @@ class GameScene(Scene):
         游戏主更新流程:
         1. 更新游戏控制器 (生命值再生等)
         2. 更新玩家 (移动、射击)
-        3. 更新敌人生成
-        4. 更新敌人子弹
+        3. 更新所有子弹（玩家子弹 + 敌人子弹）
+        4. 更新敌人生成
         5. 更新所有实体
         6. 碰撞检测
         7. 检查里程碑奖励
         8. 清理无效实体
         """
-        has_regen = 'Regeneration' in self.reward_system.unlocked_buffs
-        self.game_controller.update(self.player, has_regen)
+        try:
+            has_regen = 'Regeneration' in self.reward_system.unlocked_buffs
+            self.game_controller.update(self.player, has_regen)
 
-        self.player.update()
-        self.player.auto_fire()
+            self.player.update()
+            self.player.auto_fire()
 
-        self._update_enemy_spawning()
-        self._update_enemy_bullets()
-        self._update_entities()
-        self._check_collisions()
-        self._check_milestones()
+            self._update_all_bullets()
+            self._update_enemy_spawning()
+            self._update_entities()
+            self._check_collisions()
+            self._check_milestones()
 
-        self.spawn_controller.cleanup()
-        self._cleanup_bullets()
+            self.spawn_controller.cleanup()
+            self._cleanup_bullets()
 
-        if not self.player.active:
+            if not self.player.active:
+                self.game_controller.state.running = False
+        except Exception as e:
+            import logging
+            logging.error(f"Game update error: {e}", exc_info=True)
             self.game_controller.state.running = False
 
     def _update_enemy_spawning(self) -> None:
@@ -259,7 +264,9 @@ class GameScene(Scene):
         if self.spawn_controller.boss:
             self._update_boss()
 
-    def _update_enemy_bullets(self) -> None:
+    def _update_all_bullets(self) -> None:
+        for bullet in self.player.get_bullets():
+            bullet.update()
         for bullet in self.spawn_controller.enemy_bullets:
             bullet.update()
 
@@ -269,60 +276,11 @@ class GameScene(Scene):
             return
         
         self._update_boss_movement(boss)
-        self._check_boss_player_collision(boss)
-        self._process_boss_damage(boss)
         self._handle_boss_escape(boss)
     
     def _update_boss_movement(self, boss) -> None:
         player_pos = (self.player.rect.centerx, self.player.rect.centery)
         boss.update(self.spawn_controller.enemies, player_pos=player_pos)
-    
-    def _check_boss_player_collision(self, boss) -> None:
-        if boss.is_entering() or not boss.active:
-            return
-        
-        if not boss.rect.colliderect(self.player.get_hitbox()):
-            return
-        
-        if self.game_controller.state.player_invincible:
-            return
-        
-        damage = self.reward_system.calculate_damage_taken(30)
-        self.player.take_damage(damage)
-        self._clear_enemy_bullets()
-        self.game_controller.on_player_hit(damage, self.player)
-    
-    def _process_boss_damage(self, boss) -> None:
-        if boss.is_entering() or not boss.active:
-            return
-        
-        for bullet in self.player.get_bullets():
-            if not self._is_valid_bullet_for_boss(bullet, boss):
-                continue
-            
-            score_reward = boss.take_damage(bullet.data.damage)
-            if score_reward > 0:
-                self._on_boss_hit(score_reward)
-    
-    def _is_valid_bullet_for_boss(self, bullet, boss) -> bool:
-        return (
-            bullet.active and 
-            boss.active and 
-            not boss.is_entering() and
-            bullet.get_rect().colliderect(boss.get_rect())
-        )
-    
-    def _on_boss_hit(self, score_reward: int) -> None:
-        self.game_controller.state.score += score_reward
-        self.game_controller.show_notification(f"+{score_reward} BOSS SCORE!")
-        
-        if self.reward_system.piercing_level <= 0:
-            pass
-        
-        if not self.spawn_controller.boss.active:
-            self.game_controller.on_boss_killed(self.spawn_controller.boss.data.score)
-            self.game_controller.cycle_count += 1
-            self.reward_system.apply_lifesteal(self.player, self.spawn_controller.boss.data.score)
     
     def _handle_boss_escape(self, boss) -> None:
         if not boss or boss.active:
@@ -334,31 +292,30 @@ class GameScene(Scene):
     def _update_entities(self) -> None:
         for enemy in self.spawn_controller.enemies:
             enemy.update(self.spawn_controller.enemies, self.reward_system.slow_factor)
-            enemy_hitbox = enemy.get_hitbox()
-            player_hitbox = self.player.get_hitbox()
-            if enemy_hitbox.colliderect(player_hitbox):
-                if not self.reward_system.try_dodge():
-                    self._clear_enemy_bullets()
-                    self.game_controller.on_player_hit(20, self.player)
 
     def _check_collisions(self) -> None:
-        if not self.collision_controller:
-            self.collision_controller = CollisionController()
-        
-        self.collision_controller.check_all_collisions(
-            player=self.player,
-            enemies=self.spawn_controller.enemies,
-            boss=self.spawn_controller.boss,
-            enemy_bullets=self.spawn_controller.enemy_bullets,
-            reward_system=self.reward_system,
-            player_invincible=self.game_controller.state.player_invincible,
-            score_multiplier=self.game_controller.state.score_multiplier,
-            on_enemy_killed=lambda score: self.game_controller.on_enemy_killed(score),
-            on_boss_killed=lambda score: self.game_controller.on_boss_killed(score),
-            on_boss_hit=lambda score: self._on_boss_hit(score),
-            on_player_hit=lambda damage, player: self.game_controller.on_player_hit(damage, player),
-            on_lifesteal=lambda player, score: self.reward_system.apply_lifesteal(player, score),
-        )
+        try:
+            if not self.collision_controller:
+                self.collision_controller = CollisionController()
+            
+            self.collision_controller.check_all_collisions(
+                player=self.player,
+                enemies=self.spawn_controller.enemies,
+                boss=self.spawn_controller.boss,
+                enemy_bullets=self.spawn_controller.enemy_bullets,
+                reward_system=self.reward_system,
+                player_invincible=self.game_controller.state.player_invincible,
+                score_multiplier=self.game_controller.state.score_multiplier,
+                on_enemy_killed=lambda score: self.game_controller.on_enemy_killed(score),
+                on_boss_killed=lambda score: self.game_controller.on_boss_killed(score),
+                on_boss_hit=lambda score: self._on_boss_hit(score),
+                on_player_hit=lambda damage, player: self.game_controller.on_player_hit(damage, player),
+                on_lifesteal=lambda player, score: self.reward_system.apply_lifesteal(player, score),
+                on_clear_bullets=lambda: self._clear_enemy_bullets(),
+            )
+        except Exception as e:
+            import logging
+            logging.error(f"Collision detection error: {e}", exc_info=True)
     
     def _on_boss_hit(self, score: int) -> None:
         self.game_controller.state.score += score
@@ -367,40 +324,6 @@ class GameScene(Scene):
             self.game_controller.cycle_count += 1
             self.reward_system.apply_lifesteal(self.player, self.spawn_controller.boss.data.score)
             self._clear_enemy_bullets()
-    
-    def _check_player_bullets_vs_enemies(self) -> Tuple[int, int]:
-        """检查玩家子弹与敌人的碰撞
-        
-        Returns:
-            Tuple[int, int]: (score_gained, enemies_killed)
-        """
-        if not self.collision_controller:
-            self.collision_controller = CollisionController()
-        
-        score_gained, enemies_killed = self.collision_controller.check_player_bullets_vs_enemies(
-            self.player.get_bullets(),
-            self.spawn_controller.enemies,
-            self.game_controller.state.score_multiplier,
-            self.reward_system.explosive_level
-        )
-        
-        return score_gained, enemies_killed
-    
-    def _check_enemy_bullets_vs_player(self) -> None:
-        if not self.collision_controller:
-            self.collision_controller = CollisionController()
-        
-        self.collision_controller.check_enemy_bullets_vs_player(
-            self.spawn_controller.enemy_bullets,
-            self.player.get_hitbox(),
-            lambda d: self.reward_system.calculate_damage_taken(d),
-            lambda d: (
-                self.player.take_damage(d),
-                self._clear_enemy_bullets(),
-                self.game_controller.on_player_hit(d, self.player)
-            )
-        )
-
 
     def _cleanup_bullets(self) -> None:
         for b in self.spawn_controller.enemy_bullets:
@@ -545,9 +468,14 @@ class GameScene(Scene):
         """判断游戏是否结束
         
         Returns:
-            bool: True表示玩家已死亡，游戏结束
+            bool: True表示游戏结束
         """
-        return not self.player.active if self.player else True
+        if not self.player:
+            return True
+        if not self.game_controller:
+            return True
+        from airwar.game.controllers.game_controller import GameplayState
+        return self.game_controller.state.gameplay_state == GameplayState.GAME_OVER
 
     def is_paused(self) -> bool:
         """判断游戏是否暂停

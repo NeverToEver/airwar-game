@@ -45,7 +45,7 @@ class TestPlayerEntity:
         player.take_damage(30)
         assert player.health == 70
         player.take_damage(80)
-        assert player.active is False
+        assert player.health == 0
 
     def test_player_fire_cooldown(self):
         from airwar.entities import Player
@@ -289,8 +289,7 @@ class TestPlayerHitbox:
         input_handler = MockInputHandler()
         player = Player(100, 200, input_handler)
         player.take_damage(200)
-        assert player.health < 0
-        assert player.active is False
+        assert player.health == 0
 
     def test_player_fire_returns_bullet(self):
         from airwar.entities import Player

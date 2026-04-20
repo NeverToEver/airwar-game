@@ -52,11 +52,13 @@ class DamageConstants:
     Attributes:
         BOSS_COLLISION_DAMAGE: Boss碰撞伤害值
         ENEMY_COLLISION_DAMAGE: 敌人碰撞伤害值
+        EXPLOSIVE_DAMAGE: 爆炸基础伤害值
         DEFAULT_REGEN_RATE: 默认生命恢复速率
         REGEN_THRESHOLD: 生命恢复阈值
     """
     BOSS_COLLISION_DAMAGE: int = 30
     ENEMY_COLLISION_DAMAGE: int = 20
+    EXPLOSIVE_DAMAGE: int = 30
     DEFAULT_REGEN_RATE: int = 2
     REGEN_THRESHOLD: int = 60
 
