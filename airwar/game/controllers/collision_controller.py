@@ -110,6 +110,7 @@ class CollisionController:
         enemies_killed = 0
 
         for bullet in player_bullets:
+            bullet.update()
             for enemy in enemies:
                 if bullet.active and enemy.active:
                     if bullet.get_rect().colliderect(enemy.get_rect()):
