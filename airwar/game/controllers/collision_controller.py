@@ -65,7 +65,7 @@ class CollisionController:
             self._events.append(CollisionEvent(type='enemy_killed', score=score_gained))
             on_enemy_killed(score_gained)
         
-        if self.check_enemy_bullets_vs_player(
+        if not player_invincible and self.check_enemy_bullets_vs_player(
             enemy_bullets,
             player,
             lambda d: reward_system.calculate_damage_taken(d),
@@ -90,7 +90,7 @@ class CollisionController:
                 if on_boss_killed:
                     on_boss_killed()
             
-            if self.check_boss_vs_player(
+            if not player_invincible and self.check_boss_vs_player(
                 boss,
                 player,
                 lambda d: reward_system.calculate_damage_taken(d),
