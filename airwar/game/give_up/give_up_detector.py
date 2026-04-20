@@ -19,7 +19,7 @@ class GiveUpDetector:
             self._on_k_pressed()
         elif not is_k_pressed and self._k_was_pressed:
             self._on_k_released()
-        elif is_k_pressed and self._progress > 0:
+        elif is_k_pressed:
             self._on_k_held(delta_time)
 
         self._k_was_pressed = is_k_pressed
