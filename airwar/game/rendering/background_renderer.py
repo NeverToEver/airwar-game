@@ -161,12 +161,13 @@ class BackgroundRenderer:
         for nebula in self.nebulas:
             nebula.update(self.screen_height)
 
-        for particle in self.particles[:]:
-            particle['x'] += particle['vx']
-            particle['y'] += particle['vy']
-            particle['life'] -= 1
-            if particle['life'] <= 0:
-                self.particles.remove(particle)
+        self.particles = [p for p in self.particles if self._update_particle(p)]
+
+    def _update_particle(self, particle: dict) -> bool:
+        particle['x'] += particle['vx']
+        particle['y'] += particle['vy']
+        particle['life'] -= 1
+        return particle['life'] > 0
 
     def spawn_particle(self, x: float, y: float, color: tuple) -> None:
         for _ in range(5):
