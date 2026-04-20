@@ -12,47 +12,35 @@ class TestConfigSettings:
         assert 'medium' in DIFFICULTY_SETTINGS
         assert 'hard' in DIFFICULTY_SETTINGS
 
-    def test_easy_difficulty_values(self):
+    @pytest.mark.parametrize('difficulty,expected', [
+        ('easy', {'enemy_health': 300, 'bullet_damage': 100, 'enemy_speed': 2.5, 'spawn_rate': 40}),
+        ('medium', {'enemy_health': 200, 'bullet_damage': 50, 'enemy_speed': 3.0, 'spawn_rate': 30}),
+        ('hard', {'enemy_health': 170, 'bullet_damage': 34, 'enemy_speed': 3.5, 'spawn_rate': 25}),
+    ])
+    def test_difficulty_values(self, difficulty, expected):
         from airwar.config import DIFFICULTY_SETTINGS
-        easy = DIFFICULTY_SETTINGS['easy']
-        assert easy['enemy_health'] == 300
-        assert easy['bullet_damage'] == 100
-        assert easy['enemy_speed'] == 2.5
-        assert easy['spawn_rate'] == 40
+        settings = DIFFICULTY_SETTINGS[difficulty]
+        for key, value in expected.items():
+            assert settings[key] == value, f'{difficulty}.{key}'
 
-    def test_medium_difficulty_values(self):
+    @pytest.mark.parametrize('difficulty', ['easy', 'medium', 'hard'])
+    def test_shots_to_kill_calculation(self, difficulty):
         from airwar.config import DIFFICULTY_SETTINGS
-        medium = DIFFICULTY_SETTINGS['medium']
-        assert medium['enemy_health'] == 200
-        assert medium['bullet_damage'] == 50
-        assert medium['enemy_speed'] == 3.0
-        assert medium['spawn_rate'] == 30
-
-    def test_hard_difficulty_values(self):
-        from airwar.config import DIFFICULTY_SETTINGS
-        hard = DIFFICULTY_SETTINGS['hard']
-        assert hard['enemy_health'] == 170
-        assert hard['bullet_damage'] == 34
-        assert hard['enemy_speed'] == 3.5
-        assert hard['spawn_rate'] == 25
-
-    def test_shots_to_kill_calculation(self):
-        from airwar.config import DIFFICULTY_SETTINGS
-        for diff, settings in DIFFICULTY_SETTINGS.items():
-            hp = settings['enemy_health']
-            dmg = settings['bullet_damage']
-            shots = hp / dmg
-            assert shots == int(shots), f'{diff}: {shots} should be integer'
+        settings = DIFFICULTY_SETTINGS[difficulty]
+        shots = settings['enemy_health'] / settings['bullet_damage']
+        assert shots == int(shots), f'{difficulty}: {shots} should be integer'
 
     def test_screen_dimensions(self):
         from airwar.config import SCREEN_WIDTH, SCREEN_HEIGHT
         assert SCREEN_WIDTH == 1400
         assert SCREEN_HEIGHT == 800
 
-    def test_player_speed_positive(self):
-        from airwar.config import PLAYER_SPEED, BULLET_SPEED
+    def test_speeds_positive(self):
+        from airwar.config import PLAYER_SPEED, BULLET_SPEED, FPS, PLAYER_FIRE_RATE
         assert PLAYER_SPEED > 0
         assert BULLET_SPEED > 0
+        assert FPS > 0
+        assert PLAYER_FIRE_RATE > 0
 
     def test_all_difficulty_settings_have_required_keys(self):
         from airwar.config import DIFFICULTY_SETTINGS
@@ -77,11 +65,3 @@ class TestConfigSettings:
             assert 'rate' in config
             assert 'interval' in config
             assert all(v > 0 for v in config.values())
-
-    def test_fps_positive(self):
-        from airwar.config import FPS
-        assert FPS > 0
-
-    def test_fire_rate_positive(self):
-        from airwar.config import PLAYER_FIRE_RATE
-        assert PLAYER_FIRE_RATE > 0

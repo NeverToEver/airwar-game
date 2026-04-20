@@ -30,7 +30,7 @@ class GameState:
     boss_kill_count: int = 0
     gameplay_state: GameplayState = GameplayState.PLAYING
     death_timer: int = 0
-    death_duration: int = 90
+    death_duration: int = 6
 
 
 class GameController:

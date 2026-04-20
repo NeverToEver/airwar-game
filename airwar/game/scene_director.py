@@ -2,16 +2,13 @@ from typing import Optional, List
 import pygame
 from airwar.scenes import SceneManager, GameScene, MenuScene
 from airwar.scenes.scene import PauseAction
-from airwar.ui.game_over_screen import GameOverScreen, ScreenAction
 from airwar.game.mother_ship import PersistenceManager, GameSaveData
 
 
 class SceneDirector:
-    def __init__(self, window, scene_manager: SceneManager, game_over_screen: GameOverScreen,
-                 user_db=None):
+    def __init__(self, window, scene_manager: SceneManager, user_db=None):
         self._window = window
         self._scene_manager = scene_manager
-        self._game_over_screen = game_over_screen
         self._user_db = user_db
         self._running = True
         self._current_user: Optional[str] = None
@@ -211,9 +208,32 @@ class SceneDirector:
         final_score = game_scene.score
         kills = game_scene.cycle_count
         high_score = self._update_user_stats(final_score, kills)
-        action = self._game_over_screen.show(
-            final_score, kills, self._current_user, high_score)
-        return action == ScreenAction.RETURN_TO_MENU
+
+        death_scene = self._scene_manager._scenes.get("death")
+        if not death_scene:
+            return False
+
+        death_scene.enter(score=final_score, kills=kills, username=self._current_user)
+
+        while death_scene.is_running():
+            events = pygame.event.get()
+            for event in events:
+                if event.type == pygame.QUIT:
+                    self._running = False
+                    death_scene.running = False
+                    break
+                if event.type == pygame.VIDEORESIZE:
+                    self._window.resize(event.w, event.h)
+                    self._handle_resize(event.w, event.h)
+                death_scene.handle_events(event)
+
+            death_scene.update()
+            death_scene.render(self._window.get_surface())
+            self._window.flip()
+            self._window.tick(60)
+
+        result = death_scene.get_result()
+        return result == 'return_to_menu'
 
     def _update_user_stats(self, score: int, kills: int) -> Optional[int]:
         if not self._current_user or not self._user_db:

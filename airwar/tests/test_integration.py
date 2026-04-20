@@ -291,9 +291,53 @@ class TestGameFlowIntegration:
         scene = GameScene()
         scene.enter(difficulty='medium')
         scene.game_controller.on_player_hit(999, scene.player)
-        for _ in range(91):
+        for _ in range(7):
             scene.game_controller.update(scene.player, False)
         assert scene.is_game_over() is True
+
+    def test_death_triggered_immediately_on_health_zero(self):
+        from airwar.scenes.game_scene import GameScene
+        from airwar.game.controllers.game_controller import GameplayState
+        scene = GameScene()
+        scene.enter(difficulty='medium')
+        scene.player.health = 50
+        scene.game_controller.on_player_hit(50, scene.player)
+        assert scene.player.health <= 0
+        assert scene.game_controller.state.gameplay_state == GameplayState.DYING
+
+    def test_death_triggered_when_health_goes_negative(self):
+        from airwar.scenes.game_scene import GameScene
+        from airwar.game.controllers.game_controller import GameplayState
+        scene = GameScene()
+        scene.enter(difficulty='medium')
+        scene.player.health = 10
+        scene.game_controller.on_player_hit(50, scene.player)
+        assert scene.player.health <= 0
+        assert scene.game_controller.state.gameplay_state == GameplayState.DYING
+
+    def test_death_menu_appears_within_100ms(self):
+        from airwar.scenes.game_scene import GameScene
+        scene = GameScene()
+        scene.enter(difficulty='medium')
+        scene.game_controller.on_player_hit(999, scene.player)
+        assert scene.is_game_over() is False
+        scene.game_controller.update(scene.player, False)
+        assert scene.is_game_over() is False
+        scene.game_controller.update(scene.player, False)
+        assert scene.is_game_over() is False
+        scene.game_controller.update(scene.player, False)
+        assert scene.is_game_over() is False
+        scene.game_controller.update(scene.player, False)
+        assert scene.is_game_over() is False
+        scene.game_controller.update(scene.player, False)
+        assert scene.is_game_over() is False
+        scene.game_controller.update(scene.player, False)
+        assert scene.is_game_over() is True
+
+    def test_death_timer_reduced_from_90_to_6_frames(self):
+        from airwar.game.controllers.game_controller import GameState
+        state = GameState()
+        assert state.death_duration == 6
 
     def test_enemy_collision_damages_player(self):
         from airwar.scenes.game_scene import GameScene
