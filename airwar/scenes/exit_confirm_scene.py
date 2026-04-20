@@ -1,6 +1,7 @@
 import pygame
 import math
 from .scene import Scene, ExitConfirmAction
+from airwar.utils.responsive import ResponsiveHelper
 
 
 class ExitConfirmScene(Scene):
@@ -16,10 +17,14 @@ class ExitConfirmScene(Scene):
         self.particles = []
         self.stars = []
 
+        self.base_option_spacing = 70
+        self.base_box_width = 350
+        self.base_box_height = 60
+
         pygame.font.init()
         self.title_font = pygame.font.Font(None, 80)
         self.option_font = pygame.font.Font(None, 44)
-        self.hint_font = pygame.font.Font(None, 28)
+        self.hint_font = pygame.font.Font(None, 26)
         self.desc_font = pygame.font.Font(None, 24)
 
         self._init_particles()
@@ -156,12 +161,12 @@ class ExitConfirmScene(Scene):
         main_text = font.render(text, True, color)
         surface.blit(main_text, main_text.get_rect(center=pos))
 
-    def _draw_option_box(self, surface: pygame.Surface, text: str, y: int, is_selected: bool) -> None:
+    def _draw_option_box(self, surface: pygame.Surface, text: str, y: int, is_selected: bool, scale: float = 1.0) -> None:
         width, height = surface.get_size()
         center_x = width // 2
 
-        box_width = 350
-        box_height = 60
+        box_width = ResponsiveHelper.scale(self.base_box_width, scale)
+        box_height = ResponsiveHelper.scale(self.base_box_height, scale)
         box_rect = pygame.Rect(center_x - box_width // 2, y - box_height // 2, box_width, box_height)
 
         if is_selected:
@@ -212,7 +217,7 @@ class ExitConfirmScene(Scene):
             pygame.draw.circle(dot_surf, (*color, alpha), (size, size), size)
             surface.blit(dot_surf, (x - size, title_y - size))
 
-    def _draw_success_indicator(self, surface: pygame.Surface, center_x: int, y: int) -> None:
+    def _draw_success_indicator(self, surface: pygame.Surface, center_x: int, y: int, scale: float = 1.0) -> None:
         if self.saved:
             check_text = "✓ GAME SAVED"
             check_surface = self.hint_font.render(check_text, True, self.colors['success'])
@@ -228,6 +233,7 @@ class ExitConfirmScene(Scene):
         self._draw_particles(surface)
 
         width, height = surface.get_size()
+        scale = ResponsiveHelper.get_scale_factor(width, height)
         center_x = width // 2
 
         title_y = height // 3 + self.glow_offset * 0.3
@@ -242,23 +248,23 @@ class ExitConfirmScene(Scene):
         self._draw_icon_decoration(surface)
 
         if self.saved:
-            self._draw_success_indicator(surface, center_x, title_y + 50)
+            self._draw_success_indicator(surface, center_x, title_y + ResponsiveHelper.scale(50, scale), scale)
 
-        option_spacing = 70
-        start_y = height // 2 + 30
+        option_spacing = ResponsiveHelper.scale(self.base_option_spacing, scale)
+        start_y = height // 2 + ResponsiveHelper.scale(30, scale)
         for i, option in enumerate(self.options):
-            self._draw_option_box(surface, option, start_y + i * option_spacing, i == self.selected_index)
+            self._draw_option_box(surface, option, start_y + i * option_spacing, i == self.selected_index, scale)
 
         blink = (self.animation_time // 30) % 2 == 0
         hint_text = "PRESS ENTER TO CONFIRM" if blink else "                    "
         hint = self.hint_font.render(hint_text, True, self.colors['hint'])
-        surface.blit(hint, hint.get_rect(center=(center_x, height - 120)))
+        surface.blit(hint, hint.get_rect(center=(center_x, height - ResponsiveHelper.scale(120, scale))))
 
         controls = self.desc_font.render("W/S or UP/DOWN to select", True, (60, 60, 100))
-        surface.blit(controls, controls.get_rect(center=(center_x, height - 80)))
+        surface.blit(controls, controls.get_rect(center=(center_x, height - ResponsiveHelper.scale(80, scale))))
 
         esc_hint = self.desc_font.render("ESC to return to menu", True, (70, 70, 110))
-        surface.blit(esc_hint, esc_hint.get_rect(center=(center_x, height - 50)))
+        surface.blit(esc_hint, esc_hint.get_rect(center=(center_x, height - ResponsiveHelper.scale(50, scale))))
 
     def get_result(self) -> ExitConfirmAction:
         return self.result

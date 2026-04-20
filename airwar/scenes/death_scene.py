@@ -1,6 +1,7 @@
 import pygame
 import math
 from .scene import Scene
+from airwar.utils.responsive import ResponsiveHelper
 
 
 class DeathScene(Scene):
@@ -16,11 +17,16 @@ class DeathScene(Scene):
         self.stars = []
         self.ripples = []
 
+        self.base_option_spacing = 65
+        self.base_box_width = 400
+        self.base_box_height = 55
+        self.base_score_spacing = 30
+
         pygame.font.init()
         self.title_font = pygame.font.Font(None, 80)
         self.score_font = pygame.font.Font(None, 48)
         self.option_font = pygame.font.Font(None, 42)
-        self.hint_font = pygame.font.Font(None, 28)
+        self.hint_font = pygame.font.Font(None, 26)
         self.desc_font = pygame.font.Font(None, 22)
 
         self.options = ['RETURN TO MAIN MENU', 'QUIT GAME']
@@ -169,12 +175,12 @@ class DeathScene(Scene):
         main_text = font.render(text, True, color)
         surface.blit(main_text, main_text.get_rect(center=pos))
 
-    def _draw_option_box(self, surface: pygame.Surface, text: str, y: int, is_selected: bool) -> None:
+    def _draw_option_box(self, surface: pygame.Surface, text: str, y: int, is_selected: bool, scale: float = 1.0) -> None:
         width, height = surface.get_size()
         center_x = width // 2
 
-        box_width = 400
-        box_height = 55
+        box_width = ResponsiveHelper.scale(self.base_box_width, scale)
+        box_height = ResponsiveHelper.scale(self.base_box_height, scale)
         box_rect = pygame.Rect(center_x - box_width // 2, y - box_height // 2, box_width, box_height)
 
         if is_selected:
@@ -231,6 +237,7 @@ class DeathScene(Scene):
         self._draw_ripples(surface)
 
         width, height = surface.get_size()
+        scale = ResponsiveHelper.get_scale_factor(width, height)
 
         title_y = height // 3 + self.glow_offset * 0.3
         self._draw_glow_text(surface, "GAME OVER", self.title_font,
@@ -240,23 +247,23 @@ class DeathScene(Scene):
         self._draw_icon_decoration(surface)
 
         score_text = self.score_font.render(f"SCORE: {self.score}", True, self.colors['score'])
-        surface.blit(score_text, score_text.get_rect(center=(width // 2, height // 2 - 30)))
+        surface.blit(score_text, score_text.get_rect(center=(width // 2, height // 2 - ResponsiveHelper.scale(30, scale))))
 
         kills_text = self.score_font.render(f"KILLS: {self.kills}", True, self.colors['kills'])
-        surface.blit(kills_text, kills_text.get_rect(center=(width // 2, height // 2 + 20)))
+        surface.blit(kills_text, kills_text.get_rect(center=(width // 2, height // 2 + ResponsiveHelper.scale(20, scale))))
 
-        option_spacing = 65
-        start_y = height // 2 + 100
+        option_spacing = ResponsiveHelper.scale(self.base_option_spacing, scale)
+        start_y = height // 2 + ResponsiveHelper.scale(100, scale)
         for i, option in enumerate(self.options):
-            self._draw_option_box(surface, option, start_y + i * option_spacing, i == self.selected_index)
+            self._draw_option_box(surface, option, start_y + i * option_spacing, i == self.selected_index, scale)
 
         blink = (self.animation_time // 30) % 2 == 0
         hint_text = "PRESS ENTER TO CONFIRM" if blink else "                "
         hint = self.hint_font.render(hint_text, True, self.colors['hint'])
-        surface.blit(hint, hint.get_rect(center=(width // 2, height - 100)))
+        surface.blit(hint, hint.get_rect(center=(width // 2, height - ResponsiveHelper.scale(100, scale))))
 
         controls = self.desc_font.render("W/S or UP/DOWN to select", True, (50, 50, 80))
-        surface.blit(controls, controls.get_rect(center=(width // 2, height - 70)))
+        surface.blit(controls, controls.get_rect(center=(width // 2, height - ResponsiveHelper.scale(70, scale))))
 
     def get_result(self):
         return self.result

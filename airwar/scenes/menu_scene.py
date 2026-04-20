@@ -1,6 +1,7 @@
 import pygame
 import math
 from .scene import Scene
+from airwar.utils.responsive import ResponsiveHelper
 
 
 class MenuScene(Scene):
@@ -16,15 +17,27 @@ class MenuScene(Scene):
         self.particles = []
         self.stars = []
 
+        self.base_panel_width = 400
+        self.base_panel_height = 280
+        self.base_option_height = 70
+        self.base_option_gap = 12
+        self.base_title_y = 100
+        self.base_option_font_size = 44
+        self.base_hint_font_size = 28
+        self.base_desc_font_size = 24
+
         pygame.font.init()
-        self.title_font = pygame.font.Font(None, 110)
-        self.option_font = pygame.font.Font(None, 44)
-        self.hint_font = pygame.font.Font(None, 28)
-        self.desc_font = pygame.font.Font(None, 24)
+        self._init_fonts(1.0)
 
         self._init_particles()
         self._init_stars()
         self._init_colors()
+
+    def _init_fonts(self, scale: float) -> None:
+        self.title_font = pygame.font.Font(None, ResponsiveHelper.font_size(110, scale))
+        self.option_font = pygame.font.Font(None, ResponsiveHelper.font_size(self.base_option_font_size, scale))
+        self.hint_font = pygame.font.Font(None, ResponsiveHelper.font_size(self.base_hint_font_size, scale))
+        self.desc_font = pygame.font.Font(None, ResponsiveHelper.font_size(self.base_desc_font_size, scale))
 
     def _init_particles(self) -> None:
         import random
@@ -154,12 +167,13 @@ class MenuScene(Scene):
 
     def _draw_panel(self, surface: pygame.Surface) -> None:
         width, height = surface.get_size()
-        
-        panel_width = 400
-        panel_height = 280
+        scale = ResponsiveHelper.get_scale_factor(width, height)
+
+        panel_width = ResponsiveHelper.scale(self.base_panel_width, scale)
+        panel_height = ResponsiveHelper.scale(self.base_panel_height, scale)
         panel_x = width // 2 - panel_width // 2
-        panel_y = height // 2 - panel_height // 2 + 30
-        
+        panel_y = height // 2 - panel_height // 2 + ResponsiveHelper.scale(30, scale)
+
         panel_rect = pygame.Rect(panel_x, panel_y, panel_width, panel_height)
 
         for i in range(4, 0, -1):
@@ -179,11 +193,14 @@ class MenuScene(Scene):
 
     def _draw_option_item(self, surface: pygame.Surface, diff: str, index: int, 
                           center_x: int, start_y: int, is_selected: bool) -> None:
-        option_height = 70
-        option_gap = 12
+        width, height = surface.get_size()
+        scale = ResponsiveHelper.get_scale_factor(width, height)
+
+        option_height = ResponsiveHelper.scale(self.base_option_height, scale)
+        option_gap = ResponsiveHelper.scale(self.base_option_gap, scale)
         y = start_y + index * (option_height + option_gap)
         
-        box_width = 360
+        box_width = ResponsiveHelper.scale(360, scale)
         box_height = option_height
         box_rect = pygame.Rect(center_x - box_width // 2, y, box_width, box_height)
 
@@ -218,40 +235,47 @@ class MenuScene(Scene):
 
     def _draw_title_section(self, surface: pygame.Surface) -> None:
         width, height = surface.get_size()
-        
-        title_y = 100 + self.glow_offset * 0.5
+        scale = ResponsiveHelper.get_scale_factor(width, height)
+
+        title_y = ResponsiveHelper.scale(self.base_title_y, scale) + self.glow_offset * 0.5
         title_text = "AIR WAR"
         self._draw_glow_text(surface, title_text, self.title_font,
                            (width // 2, title_y), self.colors['title'], self.colors['title_glow'], 5)
 
     def _draw_bottom_hints(self, surface: pygame.Surface) -> None:
         width, height = surface.get_size()
-        
+        scale = ResponsiveHelper.get_scale_factor(width, height)
+
         if (self.animation_time // 30) % 2 == 0:
             hint_color = (110, 110, 160)
         else:
             hint_color = (140, 140, 180)
         start_text = self.hint_font.render("PRESS ENTER TO START", True, hint_color)
-        surface.blit(start_text, start_text.get_rect(center=(width // 2, height - 70)))
+        surface.blit(start_text, start_text.get_rect(center=(width // 2, height - ResponsiveHelper.scale(70, scale))))
 
         controls = self.desc_font.render("W / S to select", True, (60, 60, 100))
-        surface.blit(controls, controls.get_rect(center=(width // 2, height - 45)))
+        surface.blit(controls, controls.get_rect(center=(width // 2, height - ResponsiveHelper.scale(45, scale))))
 
     def render(self, surface: pygame.Surface) -> None:
+        width, height = surface.get_size()
+        scale = ResponsiveHelper.get_scale_factor(width, height)
+        self._init_fonts(scale)
+
         self._draw_gradient_background(surface)
         self._draw_stars(surface)
         self._draw_particles(surface)
-        width, height = surface.get_size()
 
         self._draw_title_section(surface)
         self._draw_panel(surface)
 
-        panel_width = 400
-        panel_height = 280
+        panel_width = ResponsiveHelper.scale(self.base_panel_width, scale)
+        panel_height = ResponsiveHelper.scale(self.base_panel_height, scale)
         center_x = width // 2
-        panel_y = height // 2 - panel_height // 2 + 30
+        panel_y = height // 2 - panel_height // 2 + ResponsiveHelper.scale(30, scale)
         
-        option_section_height = 70 * 3 + 12 * 2
+        option_height = ResponsiveHelper.scale(self.base_option_height, scale)
+        option_gap = ResponsiveHelper.scale(self.base_option_gap, scale)
+        option_section_height = option_height * 3 + option_gap * 2
         start_y = panel_y + (panel_height - option_section_height) // 2
         
         for i, diff in enumerate(self.difficulty_options):

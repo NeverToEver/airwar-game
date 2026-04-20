@@ -1,6 +1,7 @@
 import pygame
 import math
 from .scene import Scene, PauseAction
+from airwar.utils.responsive import ResponsiveHelper
 
 
 class PauseScene(Scene):
@@ -14,10 +15,14 @@ class PauseScene(Scene):
         self.particles = []
         self.stars = []
 
+        self.base_option_spacing = 70
+        self.base_box_width = 350
+        self.base_box_height = 60
+
         pygame.font.init()
         self.title_font = pygame.font.Font(None, 100)
         self.option_font = pygame.font.Font(None, 48)
-        self.hint_font = pygame.font.Font(None, 28)
+        self.hint_font = pygame.font.Font(None, 26)
         self.desc_font = pygame.font.Font(None, 24)
 
         self._init_particles()
@@ -153,12 +158,12 @@ class PauseScene(Scene):
         main_text = font.render(text, True, color)
         surface.blit(main_text, main_text.get_rect(center=pos))
 
-    def _draw_option_box(self, surface: pygame.Surface, text: str, y: int, is_selected: bool) -> None:
+    def _draw_option_box(self, surface: pygame.Surface, text: str, y: int, is_selected: bool, scale: float = 1.0) -> None:
         width, height = surface.get_size()
         center_x = width // 2
 
-        box_width = 350
-        box_height = 60
+        box_width = ResponsiveHelper.scale(self.base_box_width, scale)
+        box_height = ResponsiveHelper.scale(self.base_box_height, scale)
         box_rect = pygame.Rect(center_x - box_width // 2, y - box_height // 2, box_width, box_height)
 
         if is_selected:
@@ -215,6 +220,7 @@ class PauseScene(Scene):
         self._draw_particles(surface)
 
         width, height = surface.get_size()
+        scale = ResponsiveHelper.get_scale_factor(width, height)
 
         title_y = height // 3 + self.glow_offset * 0.3
         self._draw_glow_text(surface, "PAUSED", self.title_font,
@@ -223,21 +229,21 @@ class PauseScene(Scene):
         self._draw_decorative_lines(surface)
         self._draw_icon_decoration(surface)
 
-        option_spacing = 70
-        start_y = height // 2 + 20
+        option_spacing = ResponsiveHelper.scale(self.base_option_spacing, scale)
+        start_y = height // 2 + ResponsiveHelper.scale(20, scale)
         for i, option in enumerate(self.options):
-            self._draw_option_box(surface, option, start_y + i * option_spacing, i == self.selected_index)
+            self._draw_option_box(surface, option, start_y + i * option_spacing, i == self.selected_index, scale)
 
         blink = (self.animation_time // 30) % 2 == 0
         hint_text = "PRESS ENTER TO CONFIRM" if blink else "                "
         hint = self.hint_font.render(hint_text, True, self.colors['hint'])
-        surface.blit(hint, hint.get_rect(center=(width // 2, height - 120)))
+        surface.blit(hint, hint.get_rect(center=(width // 2, height - ResponsiveHelper.scale(120, scale))))
 
         controls = self.desc_font.render("W/S or UP/DOWN to select", True, (60, 60, 100))
-        surface.blit(controls, controls.get_rect(center=(width // 2, height - 80)))
+        surface.blit(controls, controls.get_rect(center=(width // 2, height - ResponsiveHelper.scale(80, scale))))
 
         esc_hint = self.desc_font.render("ESC to resume", True, (70, 70, 110))
-        surface.blit(esc_hint, esc_hint.get_rect(center=(width // 2, height - 50)))
+        surface.blit(esc_hint, esc_hint.get_rect(center=(width // 2, height - ResponsiveHelper.scale(50, scale))))
 
     def get_result(self) -> PauseAction:
         return self.result
