@@ -174,7 +174,7 @@ class Player(Entity):
             return
         self.health -= damage
         if self.health <= 0:
-            self.active = False
+            self.health = 0
 
     def heal(self, amount: int) -> None:
         self.health = min(self.max_health, self.health + amount)

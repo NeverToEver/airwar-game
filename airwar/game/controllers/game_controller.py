@@ -1,6 +1,13 @@
 from dataclasses import dataclass, field
 from typing import List, Optional
+from enum import Enum
 from airwar.config import DIFFICULTY_SETTINGS
+
+
+class GameplayState(Enum):
+    PLAYING = "playing"
+    DYING = "dying"
+    GAME_OVER = "game_over"
 
 
 @dataclass
@@ -21,6 +28,9 @@ class GameState:
     entrance_duration: int = 60
     kill_count: int = 0
     boss_kill_count: int = 0
+    gameplay_state: GameplayState = GameplayState.PLAYING
+    death_timer: int = 0
+    death_duration: int = 90
 
 
 class GameController:
@@ -53,6 +63,13 @@ class GameController:
 
         if self.state.notification_timer > 0:
             self.state.notification_timer -= 1
+
+        if self.state.gameplay_state == GameplayState.DYING:
+            self.state.death_timer -= 1
+            if self.state.death_timer <= 0:
+                self.state.gameplay_state = GameplayState.GAME_OVER
+                self.state.running = False
+                player.active = False
 
         self._update_invincibility()
 
@@ -92,8 +109,14 @@ class GameController:
             'alpha': 350,
             'pulse': 0
         })
-        self.state.player_invincible = True
-        self.state.invincibility_timer = 90
+        
+        if player.health <= 0:
+            self.state.gameplay_state = GameplayState.DYING
+            self.state.death_timer = self.state.death_duration
+            self.state.player_invincible = True
+        else:
+            self.state.player_invincible = True
+            self.state.invincibility_timer = 90
 
     def on_enemy_killed(self, score_gained: int) -> None:
         self.state.kill_count += 1
