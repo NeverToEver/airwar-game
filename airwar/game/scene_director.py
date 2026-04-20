@@ -116,8 +116,14 @@ class SceneDirector:
                 if result == "main_menu":
                     self._clear_saved_game()
                     return "main_menu"
-                if result == "quit":
-                    self._save_game_on_quit(current_scene)
+                elif result == "save_and_quit":
+                    self._save_and_quit(current_scene)
+                    return "quit"
+                elif result == "quit_without_saving":
+                    self._quit_without_saving()
+                    return "quit"
+                elif result == "quit":
+                    self._save_and_quit(current_scene)
                     return "quit"
                 escape_handled = result is True
 
@@ -168,8 +174,12 @@ class SceneDirector:
                         return "resume"
                     elif action == PauseAction.MAIN_MENU:
                         return "main_menu"
+                    elif action == PauseAction.SAVE_AND_QUIT:
+                        return "save_and_quit"
+                    elif action == PauseAction.QUIT_WITHOUT_SAVING:
+                        return "quit_without_saving"
                     elif action == PauseAction.QUIT:
-                        return "quit"
+                        return "save_and_quit"
         return "none"
 
     def _show_pause_menu(self, game_scene: GameScene) -> PauseAction:
@@ -250,3 +260,30 @@ class SceneDirector:
     def _clear_saved_game(self) -> None:
         persistence_manager = PersistenceManager()
         persistence_manager.delete_save()
+
+    def _save_and_quit(self, game_scene: GameScene) -> None:
+        """保存游戏并退出
+
+        将当前游戏状态保存到文件，然后退出游戏。
+        保存内容包括分数、击杀数、buff效果、玩家生命值等所有进度数据。
+
+        Args:
+            game_scene: 当前游戏场景实例
+        """
+        if not game_scene or not game_scene._mother_ship_integrator:
+            return
+
+        save_data = game_scene._mother_ship_integrator.create_save_data()
+        if save_data:
+            if not game_scene._mother_ship_integrator.is_docked():
+                save_data.is_in_mothership = False
+            persistence_manager = PersistenceManager()
+            persistence_manager.save_game(save_data)
+
+    def _quit_without_saving(self) -> None:
+        """清除存档并退出，不保存当前进度
+
+        删除已存在的存档文件，确保下次进入游戏时从头开始。
+        用于玩家明确选择不保存当前进度的场景。
+        """
+        self._clear_saved_game()

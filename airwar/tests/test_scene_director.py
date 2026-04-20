@@ -8,12 +8,16 @@ class TestPauseAction:
         from airwar.scenes.scene import PauseAction
         assert PauseAction.RESUME is not None
         assert PauseAction.MAIN_MENU is not None
+        assert PauseAction.SAVE_AND_QUIT is not None
+        assert PauseAction.QUIT_WITHOUT_SAVING is not None
         assert PauseAction.QUIT is not None
 
     def test_pause_action_values(self):
         from airwar.scenes.scene import PauseAction
         assert PauseAction.RESUME.value == "resume"
         assert PauseAction.MAIN_MENU.value == "main_menu"
+        assert PauseAction.SAVE_AND_QUIT.value == "save_and_quit"
+        assert PauseAction.QUIT_WITHOUT_SAVING.value == "quit_without_saving"
         assert PauseAction.QUIT.value == "quit"
 
 
@@ -49,7 +53,38 @@ class TestPauseSceneResult:
         scene.selected_index = 2
         scene._select_option()
 
-        assert scene.result == PauseAction.QUIT
+        assert scene.result == PauseAction.SAVE_AND_QUIT
+
+    def test_pause_scene_returns_save_and_quit(self):
+        from airwar.scenes.pause_scene import PauseScene
+        from airwar.scenes.scene import PauseAction
+
+        scene = PauseScene()
+        scene.enter()
+        scene.selected_index = 2
+        scene._select_option()
+
+        assert scene.result == PauseAction.SAVE_AND_QUIT
+
+    def test_pause_scene_returns_quit_without_saving(self):
+        from airwar.scenes.pause_scene import PauseScene
+        from airwar.scenes.scene import PauseAction
+
+        scene = PauseScene()
+        scene.enter()
+        scene.selected_index = 3
+        scene._select_option()
+
+        assert scene.result == PauseAction.QUIT_WITHOUT_SAVING
+
+    def test_pause_scene_has_four_options(self):
+        from airwar.scenes.pause_scene import PauseScene
+
+        scene = PauseScene()
+        scene.enter()
+
+        assert len(scene.options) == 4
+        assert scene.options == ['RESUME', 'MAIN MENU', 'SAVE AND QUIT', 'QUIT WITHOUT SAVING']
 
     def test_pause_scene_escape_returns_resume(self):
         from airwar.scenes.pause_scene import PauseScene
