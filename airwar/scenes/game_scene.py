@@ -206,28 +206,6 @@ class GameScene(Scene):
 
         self._update_game()
 
-    def _update_entrance(self) -> None:
-        """更新入口动画
-        
-        控制玩家飞船从屏幕顶部移动到屏幕底部的动画效果。
-        使用线性插值计算飞船位置。
-        """
-        from airwar.config import get_screen_width, get_screen_height
-        screen_width = get_screen_width()
-        screen_height = get_screen_height()
-
-        self.game_controller.state.entrance_timer += 1
-        progress = self.game_controller.state.entrance_timer / self.game_controller.state.entrance_duration
-
-        if progress >= 1.0:
-            self.game_controller.state.entrance_animation = False
-            self.player.rect.y = screen_height - PlayerConstants.SCREEN_BOTTOM_OFFSET
-        else:
-            target_y = screen_height - PlayerConstants.SCREEN_BOTTOM_OFFSET
-            start_y = PlayerConstants.INITIAL_Y
-            self.player.rect.y = int(start_y + (target_y - start_y) * progress)
-            self.player.rect.x = screen_width // 2 - PlayerConstants.INITIAL_X_OFFSET
-
     def _update_game(self) -> None:
         """更新游戏逻辑
         
@@ -256,6 +234,7 @@ class GameScene(Scene):
 
             self.spawn_controller.cleanup()
             self._cleanup_bullets()
+            self.player.cleanup_inactive_bullets()
 
             if not self.player.active:
                 self.game_controller.state.running = False
@@ -263,6 +242,28 @@ class GameScene(Scene):
             import logging
             logging.error(f"Game update error: {e}", exc_info=True)
             self.game_controller.state.running = False
+
+    def _update_entrance(self) -> None:
+        """更新入口动画
+        
+        控制玩家飞船从屏幕顶部移动到屏幕底部的动画效果。
+        使用线性插值计算飞船位置。
+        """
+        from airwar.config import get_screen_width, get_screen_height
+        screen_width = get_screen_width()
+        screen_height = get_screen_height()
+
+        self.game_controller.state.entrance_timer += 1
+        progress = self.game_controller.state.entrance_timer / self.game_controller.state.entrance_duration
+
+        if progress >= 1.0:
+            self.game_controller.state.entrance_animation = False
+            self.player.rect.y = screen_height - PlayerConstants.SCREEN_BOTTOM_OFFSET
+        else:
+            target_y = screen_height - PlayerConstants.SCREEN_BOTTOM_OFFSET
+            start_y = PlayerConstants.INITIAL_Y
+            self.player.rect.y = int(start_y + (target_y - start_y) * progress)
+            self.player.rect.x = screen_width // 2 - PlayerConstants.INITIAL_X_OFFSET
 
     def _update_enemy_spawning(self) -> None:
         spawn_needed = self.spawn_controller.update(

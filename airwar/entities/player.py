@@ -166,8 +166,10 @@ class Player(Entity):
         return self._bullets
 
     def remove_bullet(self, bullet: Bullet) -> None:
-        if bullet in self._bullets:
-            self._bullets.remove(bullet)
+        bullet.active = False
+
+    def cleanup_inactive_bullets(self) -> None:
+        self._bullets = [b for b in self._bullets if b.active]
 
     def take_damage(self, damage: int) -> None:
         if self.is_shielded:

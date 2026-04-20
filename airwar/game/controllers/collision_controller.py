@@ -124,22 +124,27 @@ class CollisionController:
         enemies_killed = 0
 
         for bullet in player_bullets:
+            if not bullet.active:
+                continue
+
             for enemy in enemies:
-                if bullet.active and enemy.active:
-                    if bullet.get_rect().colliderect(enemy.get_rect()):
-                        damage = bullet.data.damage
-                        enemy.take_damage(damage)
+                if not enemy.active:
+                    continue
 
-                        if explosive_level > 0:
-                            self._handle_explosive_damage(bullet, enemies, explosive_level)
+                if bullet.get_rect().colliderect(enemy.get_rect()):
+                    damage = bullet.data.damage
+                    enemy.take_damage(damage)
 
-                        if not enemy.active:
-                            enemies_killed += 1
-                            score_gained += enemy.data.score * score_multiplier
+                    if explosive_level > 0:
+                        self._handle_explosive_damage(bullet, enemies, explosive_level)
 
-                        if bullet.data.owner == "player":
-                            bullet.active = False
-                        break
+                    if not enemy.active:
+                        enemies_killed += 1
+                        score_gained += enemy.data.score * score_multiplier
+
+                    if bullet.data.owner == "player":
+                        bullet.active = False
+                    break
 
         return score_gained, enemies_killed
 
@@ -152,16 +157,17 @@ class CollisionController:
         from airwar.config import EXPLOSION_RADIUS
         from airwar.game.constants import GAME_CONSTANTS
         
-        bullet_pos = (bullet.rect.centerx, bullet.rect.centery)
-        explosion_radius = EXPLOSION_RADIUS * explosive_level
+        bullet_x = bullet.rect.centerx
+        bullet_y = bullet.rect.centery
+        explosion_radius_sq = (EXPLOSION_RADIUS * explosive_level) ** 2
         
         for enemy in enemies:
             if enemy.active:
-                enemy_pos = (enemy.rect.centerx, enemy.rect.centery)
-                distance = ((bullet_pos[0] - enemy_pos[0]) ** 2 + 
-                          (bullet_pos[1] - enemy_pos[1]) ** 2) ** 0.5
+                dx = bullet_x - enemy.rect.centerx
+                dy = bullet_y - enemy.rect.centery
+                distance_sq = dx * dx + dy * dy
                 
-                if distance <= explosion_radius:
+                if distance_sq <= explosion_radius_sq:
                     explosion_damage = GAME_CONSTANTS.DAMAGE.EXPLOSIVE_DAMAGE * explosive_level
                     enemy.take_damage(explosion_damage)
 
@@ -171,18 +177,20 @@ class CollisionController:
         boss: 'Boss',
         piercing_level: int
     ) -> Tuple[int, bool]:
+        if not boss or not boss.active or boss.is_entering():
+            return 0, False
+
         score_gained = 0
         boss_killed = False
 
-        if boss and boss.active and not boss.is_entering():
-            for bullet in player_bullets:
-                if bullet.active and bullet.get_rect().colliderect(boss.get_rect()):
-                    score_reward = boss.take_damage(bullet.data.damage)
-                    if score_reward > 0:
-                        score_gained += score_reward
-                        boss_killed = True
-                    if piercing_level <= 0:
-                        bullet.active = False
+        for bullet in player_bullets:
+            if bullet.active and bullet.get_rect().colliderect(boss.get_rect()):
+                score_reward = boss.take_damage(bullet.data.damage)
+                if score_reward > 0:
+                    score_gained += score_reward
+                    boss_killed = True
+                if piercing_level <= 0:
+                    bullet.active = False
 
         return score_gained, boss_killed
 
@@ -193,16 +201,13 @@ class CollisionController:
         try_dodge_func: Callable,
         on_player_hit_func: Callable
     ) -> bool:
-        player_damaged = False
-
         for enemy in enemies:
             if enemy.active and player_hitbox.colliderect(enemy.get_rect()):
                 if not try_dodge_func():
                     on_player_hit_func(20)
-                    player_damaged = True
-                    break
+                    return True
 
-        return player_damaged
+        return False
 
     def check_enemy_bullets_vs_player(
         self,
@@ -211,17 +216,15 @@ class CollisionController:
         calculate_damage_func: Callable,
         on_player_hit_func: Callable
     ) -> bool:
-        player_damaged = False
         player_hitbox = player.get_hitbox()
 
         for eb in enemy_bullets:
             if eb.active and eb.rect.colliderect(player_hitbox):
                 damage = calculate_damage_func(eb.data.damage)
                 on_player_hit_func(damage, player)
-                player_damaged = True
-                break
+                return True
 
-        return player_damaged
+        return False
 
     def check_boss_vs_player(
         self,
@@ -230,13 +233,11 @@ class CollisionController:
         calculate_damage_func: Callable,
         on_player_hit_func: Callable
     ) -> bool:
-        player_damaged = False
-        player_hitbox = player.get_hitbox()
-
         if boss and boss.active and not boss.is_entering():
+            player_hitbox = player.get_hitbox()
             if boss.get_rect().colliderect(player_hitbox):
                 damage = calculate_damage_func(30)
                 on_player_hit_func(damage, player)
-                player_damaged = True
+                return True
 
-        return player_damaged
+        return False
