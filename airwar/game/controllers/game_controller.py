@@ -82,6 +82,7 @@ class GameController:
         return base * (self.cycle_multiplier ** cycle_bonus) * self.difficulty_threshold_multiplier
 
     def on_player_hit(self, damage: int, player) -> None:
+        player.take_damage(damage)
         center_x = player.rect.centerx
         center_y = player.rect.centery
         self.state.ripple_effects.append({
