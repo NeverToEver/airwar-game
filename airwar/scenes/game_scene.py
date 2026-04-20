@@ -620,7 +620,7 @@ class GameScene(Scene):
 
         self.game_controller.state.score = save_data.score
         self.game_controller.state.kill_count = save_data.kill_count
-        self.game_controller.milestone_index = save_data.cycle_count % self.game_controller.max_cycles
+        self.game_controller.milestone_index = save_data.cycle_count * 5
         self.game_controller.cycle_count = save_data.cycle_count
 
         self.player.health = save_data.player_health
