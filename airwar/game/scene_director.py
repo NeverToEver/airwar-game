@@ -1,7 +1,7 @@
 from typing import Optional, List
 import pygame
 from airwar.scenes import SceneManager, GameScene, MenuScene
-from airwar.scenes.scene import PauseAction
+from airwar.scenes.scene import PauseAction, ExitConfirmAction
 from airwar.game.mother_ship import PersistenceManager, GameSaveData
 
 
@@ -32,6 +32,10 @@ class SceneDirector:
             if result == "quit":
                 break
             if result == "main_menu":
+                self._pending_save_data = None
+                continue
+            if result == "restart":
+                self._pending_save_data = None
                 continue
 
     def stop(self) -> None:
@@ -115,13 +119,12 @@ class SceneDirector:
                     return "main_menu"
                 elif result == "save_and_quit":
                     self._save_and_quit(current_scene)
-                    return "quit"
+                    return self._show_exit_confirm(saved=True)
                 elif result == "quit_without_saving":
-                    self._quit_without_saving()
-                    return "quit"
+                    return self._show_exit_confirm(saved=False)
                 elif result == "quit":
                     self._save_and_quit(current_scene)
-                    return "quit"
+                    return self._show_exit_confirm(saved=True)
                 escape_handled = result is True
 
             self._handle_scene_events(events, escape_handled)
@@ -203,6 +206,49 @@ class SceneDirector:
 
         result = pause_scene.get_result()
         return result if result else PauseAction.RESUME
+
+    def _show_exit_confirm(self, saved: bool) -> str:
+        """显示退出确认菜单
+
+        在玩家选择保存退出或不保存退出后显示，
+        允许玩家选择返回主菜单、开始新游戏或真正退出游戏。
+
+        Args:
+            saved: 是否已经保存了游戏进度
+
+        Returns:
+            str: 'main_menu' 返回主菜单, 'restart' 重新开始, 'quit' 退出游戏
+        """
+        exit_scene = self._scene_manager._scenes.get("exit_confirm")
+        if not exit_scene:
+            return "quit"
+
+        exit_scene.enter(saved=saved, difficulty=self._selected_difficulty)
+
+        while exit_scene.is_running():
+            events = pygame.event.get()
+            for event in events:
+                if event.type == pygame.QUIT:
+                    self._running = False
+                    return "quit"
+                if event.type == pygame.VIDEORESIZE:
+                    self._window.resize(event.w, event.h)
+                    self._handle_resize(event.w, event.h)
+                exit_scene.handle_events(event)
+            exit_scene.update()
+            exit_scene.render(self._window.get_surface())
+            self._window.flip()
+            self._window.tick(60)
+
+        result = exit_scene.get_result()
+        if result == ExitConfirmAction.RETURN_TO_MENU:
+            self._clear_saved_game()
+            return "main_menu"
+        elif result == ExitConfirmAction.START_NEW_GAME:
+            self._clear_saved_game()
+            return "restart"
+        else:
+            return "quit"
 
     def _handle_game_over(self, game_scene: GameScene) -> bool:
         final_score = game_scene.score

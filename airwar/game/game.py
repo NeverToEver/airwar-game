@@ -1,4 +1,4 @@
-from airwar.scenes import SceneManager, GameScene, MenuScene, PauseScene, LoginScene, DeathScene
+from airwar.scenes import SceneManager, GameScene, MenuScene, PauseScene, LoginScene, DeathScene, ExitConfirmScene
 from airwar.utils.database import UserDB
 from airwar.window import create_window
 from airwar.game.scene_director import SceneDirector
@@ -28,6 +28,7 @@ class Game:
         self._scene_manager.register("game", GameScene())
         self._scene_manager.register("pause", PauseScene())
         self._scene_manager.register("death", DeathScene())
+        self._scene_manager.register("exit_confirm", ExitConfirmScene())
 
     def run(self) -> None:
         try:
