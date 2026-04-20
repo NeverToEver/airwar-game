@@ -92,13 +92,13 @@ class ResponsiveHelper:
 
 ## 7. Implementation Checklist
 
-- [ ] Create `airwar/utils/responsive.py`
-- [ ] Update MenuScene with responsive scaling
-- [ ] Update PauseScene with responsive scaling
-- [ ] Update ExitConfirmScene with responsive scaling
-- [ ] Update DeathScene with responsive scaling
-- [ ] Update LoginScene with responsive scaling
-- [ ] Update scene tests if needed
+- [x] Create `airwar/utils/responsive.py`
+- [x] Update MenuScene with responsive scaling
+- [x] Update PauseScene with responsive scaling
+- [x] Update ExitConfirmScene with responsive scaling
+- [x] Update DeathScene with responsive scaling
+- [x] Update LoginScene with responsive scaling
+- [x] Update scene tests if needed
 - [ ] Manual verification at 800x600, 1280x720, fullscreen
 
 ## 8. Files to Modify
