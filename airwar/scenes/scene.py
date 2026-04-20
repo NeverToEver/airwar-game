@@ -12,6 +12,12 @@ class PauseAction(Enum):
     QUIT = "quit"
 
 
+class ExitConfirmAction(Enum):
+    RETURN_TO_MENU = "return_to_menu"
+    START_NEW_GAME = "start_new_game"
+    QUIT_GAME = "quit_game"
+
+
 class Scene(ABC):
     @abstractmethod
     def enter(self, **kwargs) -> None:

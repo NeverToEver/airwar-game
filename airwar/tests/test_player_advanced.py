@@ -184,6 +184,7 @@ class TestPlayerBulletManagement:
         player._bullets.append(bullet)
         assert len(player.get_bullets()) == 1
         player.remove_bullet(bullet)
+        player.cleanup_inactive_bullets()
         assert len(player.get_bullets()) == 0
 
     def test_player_remove_nonexistent_bullet(self):
