@@ -23,6 +23,26 @@ from airwar.game.constants import PlayerConstants, GAME_CONSTANTS
 
 
 class GameScene(Scene):
+    """游戏场景主控制器
+    
+    职责:
+    - 管理游戏主循环 (update/render)
+    - 协调各游戏子系统 (GameController, SpawnController, CollisionController等)
+    - 处理游戏入口/退出/暂停/恢复
+    - 管理游戏存档和恢复
+    
+    依赖子系统:
+    - GameController: 游戏逻辑和状态管理
+    - SpawnController: 敌人生成和Bullet管理
+    - CollisionController: 碰撞检测
+    - RewardSystem: 奖励和Buff系统
+    - HealthSystem: 生命值管理
+    - GameRenderer: 游戏渲染
+    - MotherShip系统: 母舰交互
+    
+    不直接暴露内部状态，通过属性和方法提供受控的访问接口。
+    """
+    
     def __init__(self):
         self.game_controller: GameController = None
         self.game_renderer: GameRenderer = None
@@ -37,6 +57,19 @@ class GameScene(Scene):
         self._mother_ship_integrator = None
 
     def enter(self, **kwargs) -> None:
+        """初始化游戏场景
+        
+        Args:
+            difficulty: 游戏难度 ('easy', 'medium', 'hard')
+            username: 玩家名称
+            
+        初始化所有游戏子系统:
+        - GameController: 游戏状态和逻辑
+        - SpawnController: 敌人生成系统
+        - CollisionController: 碰撞检测
+        - Player: 玩家飞船
+        - MotherShip系统: 母舰交互系统
+        """
         from airwar.config import DIFFICULTY_SETTINGS, get_screen_width, get_screen_height
         from airwar.input import PygameInputHandler
 
@@ -105,6 +138,15 @@ class GameScene(Scene):
         pass
 
     def handle_events(self, event: pygame.event.Event) -> None:
+        """处理输入事件
+        
+        Args:
+            event: pygame事件对象
+            
+        处理:
+        - 空格键发射子弹
+        - 奖励选择器输入
+        """
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE:
                 if not self.game_controller.state.paused and not self.reward_selector.visible:
@@ -113,6 +155,14 @@ class GameScene(Scene):
         self.reward_selector.handle_input(event)
 
     def update(self, *args, **kwargs) -> None:
+        """游戏主更新循环
+        
+        游戏更新顺序:
+        1. 入口动画 (如果正在播放)
+        2. 母舰系统更新
+        3. 停靠状态处理
+        4. 游戏逻辑更新 (如果未暂停)
+        """
         self.reward_selector.update()
 
         if self.game_controller.state.entrance_animation:
@@ -138,6 +188,11 @@ class GameScene(Scene):
         self._update_game()
 
     def _update_entrance(self) -> None:
+        """更新入口动画
+        
+        控制玩家飞船从屏幕顶部移动到屏幕底部的动画效果。
+        使用线性插值计算飞船位置。
+        """
         from airwar.config import get_screen_width, get_screen_height
         screen_width = get_screen_width()
         screen_height = get_screen_height()
@@ -155,6 +210,17 @@ class GameScene(Scene):
             self.player.rect.x = screen_width // 2 - PlayerConstants.INITIAL_X_OFFSET
 
     def _update_game(self) -> None:
+        """更新游戏逻辑
+        
+        游戏主更新流程:
+        1. 更新游戏控制器 (生命值再生等)
+        2. 更新玩家 (移动、射击)
+        3. 更新敌人生成
+        4. 更新所有实体
+        5. 碰撞检测
+        6. 检查里程碑奖励
+        7. 清理无效实体
+        """
         has_regen = 'Regeneration' in self.reward_system.unlocked_buffs
         self.game_controller.update(self.player, has_regen)
 
@@ -351,10 +417,28 @@ class GameScene(Scene):
             self.game_controller.state.paused = True
 
     def _on_reward_selected(self, reward: dict) -> None:
+        """处理奖励选择回调
+        
+        Args:
+            reward: 选择的奖励配置字典
+        """
         self.game_controller.on_reward_selected(reward, self.player)
         self.reward_selector.visible = False
 
     def render(self, surface: pygame.Surface) -> None:
+        """渲染游戏场景
+        
+        Args:
+            surface: pygame渲染表面
+            
+        渲染顺序:
+        1. 游戏背景和实体 (玩家、敌人、Boss)
+        2. 玩家子弹
+        3. 敌人子弹
+        4. HUD (分数、生命值等)
+        5. 奖励选择器 (如果可见)
+        6. 母舰 (如果激活)
+        """
         entities = GameEntities(
             player=self.player,
             enemies=self.spawn_controller.enemies,
@@ -401,78 +485,116 @@ class GameScene(Scene):
             surface, self.reward_system, self.player)
 
     @property
-    def enemies(self) -> list:
-        return self.spawn_controller.enemies if self.spawn_controller else []
-
-    @property
     def score(self) -> int:
+        """获取当前分数
+        
+        Returns:
+            int: 当前游戏分数
+        """
         return self.game_controller.state.score if self.game_controller else 0
 
     @score.setter
     def score(self, value: int) -> None:
+        """设置当前分数
+        
+        Args:
+            value: 新的分数值
+        """
         if self.game_controller:
             self.game_controller.state.score = value
 
     @property
     def cycle_count(self) -> int:
+        """获取当前周期计数
+        
+        Returns:
+            int: 已完成的Boss周期数
+        """
         return self.game_controller.cycle_count if self.game_controller else 0
 
     @cycle_count.setter
     def cycle_count(self, value: int) -> None:
+        """设置周期计数
+        
+        Args:
+            value: 新的周期计数
+        """
         if self.game_controller:
             self.game_controller.cycle_count = value
-
-    @property
-    def kills(self) -> int:
-        return self.game_controller.cycle_count if self.game_controller else 0
-
-    @kills.setter
-    def kills(self, value: int) -> None:
-        if self.game_controller:
-            self.game_controller.cycle_count = value
-
-    @property
-    def milestone_index(self) -> int:
-        return self.game_controller.milestone_index if self.game_controller else 0
-
-    @milestone_index.setter
-    def milestone_index(self, value: int) -> None:
-        if self.game_controller:
-            self.game_controller.milestone_index = value
 
     @property
     def boss(self):
+        """获取当前Boss实例
+        
+        Returns:
+            Boss对象，如果不存在则返回None
+        """
         return self.spawn_controller.boss if self.spawn_controller else None
 
     def is_game_over(self) -> bool:
+        """判断游戏是否结束
+        
+        Returns:
+            bool: True表示玩家已死亡，游戏结束
+        """
         return not self.player.active if self.player else True
 
     def is_paused(self) -> bool:
+        """判断游戏是否暂停
+        
+        Returns:
+            bool: True表示游戏已暂停
+        """
         return self.game_controller.state.paused if self.game_controller else False
 
     def pause(self) -> None:
+        """暂停游戏
+        
+        如果奖励选择器可见则不会暂停。
+        """
         if self.game_controller and not self.reward_selector.visible:
             self.game_controller.state.paused = True
 
     def resume(self) -> None:
+        """继续游戏"""
         if self.game_controller:
             self.game_controller.state.paused = False
 
     @property
     def paused(self) -> bool:
+        """获取游戏暂停状态
+        
+        Returns:
+            bool: True表示游戏暂停
+        """
         return self.game_controller.state.paused if self.game_controller else False
 
     @paused.setter
     def paused(self, value: bool) -> None:
+        """设置游戏暂停状态
+        
+        Args:
+            value: True暂停游戏，False继续游戏
+        """
         if self.game_controller:
             self.game_controller.state.paused = value
 
     @property
     def unlocked_buffs(self) -> list:
+        """获取已解锁的Buff列表
+        
+        Returns:
+            list: 已解锁的Buff名称列表
+        """
         return self.reward_system.unlocked_buffs if self.reward_system else []
 
     @unlocked_buffs.setter
     def unlocked_buffs(self, value: list) -> None:
+        """设置已解锁的Buff列表
+        
+        Args:
+            value: Buff名称列表
+        """
         if self.reward_system:
             self.reward_system.unlocked_buffs = value
 
@@ -489,68 +611,40 @@ class GameScene(Scene):
         return self.game_controller.get_next_threshold()
 
     @property
-    def entrance_animation(self) -> bool:
-        return self.game_controller.state.entrance_animation if self.game_controller else False
-
-    @entrance_animation.setter
-    def entrance_animation(self, value: bool) -> None:
-        if self.game_controller:
-            self.game_controller.state.entrance_animation = value
-
-    @property
-    def enemy_spawner(self):
-        return self.spawn_controller.enemy_spawner if self.spawn_controller else None
-
-    @property
-    def notification(self) -> str:
-        return self.game_controller.state.notification if self.game_controller else None
-
-    @notification.setter
-    def notification(self, value: str) -> None:
-        if self.game_controller:
-            self.game_controller.state.notification = value
-
-    @property
     def difficulty(self) -> str:
+        """获取游戏难度
+        
+        Returns:
+            str: 游戏难度 ('easy', 'medium', 'hard')
+        """
         return self.game_controller.state.difficulty if self.game_controller else 'medium'
 
     @difficulty.setter
     def difficulty(self, value: str) -> None:
+        """设置游戏难度
+        
+        Args:
+            value: 游戏难度 ('easy', 'medium', 'hard')
+        """
         if self.game_controller:
             self.game_controller.state.difficulty = value
 
-    @property
-    def entrance_timer(self) -> int:
-        return self.game_controller.state.entrance_timer if self.game_controller else 0
-
-    @entrance_timer.setter
-    def entrance_timer(self, value: int) -> None:
-        if self.game_controller:
-            self.game_controller.state.entrance_timer = value
-
-    @property
-    def running(self) -> bool:
-        return self.game_controller.state.running if self.game_controller else False
-
-    @running.setter
-    def running(self, value: bool) -> None:
-        if self.game_controller:
-            self.game_controller.state.running = value
-
-    @property
-    def notification_timer(self) -> int:
-        return self.game_controller.state.notification_timer if self.game_controller else 0
-
-    @notification_timer.setter
-    def notification_timer(self, value: int) -> None:
-        if self.game_controller:
-            self.game_controller.state.notification_timer = value
-
-    @property
-    def entrance_duration(self) -> int:
-        return self.game_controller.state.entrance_duration if self.game_controller else 60
-
     def restore_from_save(self, save_data) -> None:
+        """从存档数据恢复游戏状态
+        
+        Args:
+            save_data: 存档数据对象，包含:
+                - score: 当前分数
+                - kill_count: 击杀数
+                - cycle_count: 当前周期数
+                - player_health: 玩家生命值
+                - player_max_health: 玩家最大生命值
+                - unlocked_buffs: 已解锁的buff列表
+                - buff_levels: buff等级字典
+                - difficulty: 游戏难度
+                - username: 玩家名称
+                - is_in_mothership: 是否在母舰状态
+        """
         if not save_data or not self.game_controller or not self.player:
             return
 
@@ -572,6 +666,11 @@ class GameScene(Scene):
             self._restore_to_mothership_state()
 
     def _restore_buff_levels(self, buff_levels: dict) -> None:
+        """恢复Buff等级
+        
+        Args:
+            buff_levels: Buff等级字典
+        """
         if not buff_levels:
             return
         self.reward_system.piercing_level = buff_levels.get('piercing_level', 0)
@@ -582,6 +681,7 @@ class GameScene(Scene):
         self.reward_system.rapid_fire_level = buff_levels.get('rapid_fire_level', 0)
 
     def _restore_to_mothership_state(self) -> None:
+        """恢复母舰状态"""
         if self._mother_ship_integrator:
             self._mother_ship_integrator.reset_to_idle_with_mothership_visible()
         self.game_controller.state.entrance_animation = False

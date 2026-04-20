@@ -163,7 +163,7 @@ class TestRewardSystem:
         from airwar.scenes.game_scene import GameScene
         scene = GameScene()
         scene.enter(difficulty='medium')
-        scene.milestone_index = 4
+        scene.game_controller.milestone_index = 4
         reward = {'name': 'Speed Boost', 'desc': '+15% move speed', 'icon': 'SPD'}
         scene._on_reward_selected(reward)
         assert scene.cycle_count == 1
@@ -173,7 +173,7 @@ class TestRewardSystem:
         scene = GameScene()
         scene.enter(difficulty='medium')
         scene.cycle_count = 10
-        scene.milestone_index = 4
+        scene.game_controller.milestone_index = 4
         reward = {'name': 'Speed Boost', 'desc': '+15% move speed', 'icon': 'SPD'}
         scene._check_milestones()
         assert scene.reward_selector.visible is False
@@ -218,7 +218,7 @@ class TestMilestoneSystem:
         from airwar.scenes.game_scene import GameScene
         scene = GameScene()
         scene.enter(difficulty='medium')
-        scene.milestone_index = 1
+        scene.game_controller.milestone_index = 1
         threshold = scene._get_next_threshold()
         assert threshold == 3750
 
@@ -228,9 +228,9 @@ class TestEntranceAnimation:
         from airwar.scenes.game_scene import GameScene
         scene = GameScene()
         scene.enter(difficulty='medium')
-        assert scene.entrance_animation is True
-        assert scene.entrance_timer == 0
-        assert scene.entrance_duration == 60
+        assert scene.game_controller.state.entrance_animation is True
+        assert scene.game_controller.state.entrance_timer == 0
+        assert scene.game_controller.state.entrance_duration == 60
         assert scene.player.rect.y == -80
 
     def test_entrance_animation_ends_after_duration(self):
@@ -239,7 +239,7 @@ class TestEntranceAnimation:
         scene.enter(difficulty='medium')
         for _ in range(60):
             scene.update()
-        assert scene.entrance_animation is False
+        assert scene.game_controller.state.entrance_animation is False
 
     def test_entrance_animation_progresses_player_position(self):
         from airwar.scenes.game_scene import GameScene
@@ -254,12 +254,12 @@ class TestEntranceAnimation:
         from airwar.scenes.game_scene import GameScene
         scene = GameScene()
         scene.enter(difficulty='medium')
-        initial_enemy_count = len(scene.enemies)
-        scene.enemy_spawner.spawn_timer = 1000
-        scene.enemy_spawner.spawn_rate = 1
+        initial_enemy_count = len(scene.spawn_controller.enemies)
+        scene.spawn_controller.enemy_spawner.spawn_timer = 1000
+        scene.spawn_controller.enemy_spawner.spawn_rate = 1
         for _ in range(10):
             scene.update()
-        assert len(scene.enemies) == initial_enemy_count
+        assert len(scene.spawn_controller.enemies) == initial_enemy_count
 
 
 class TestGameFlowIntegration:
@@ -268,12 +268,12 @@ class TestGameFlowIntegration:
         scene = GameScene()
         scene.enter(difficulty='hard')
         assert scene.player is not None
-        assert scene.enemy_spawner is not None
-        assert scene.enemies == []
-        assert scene.running is True
+        assert scene.spawn_controller.enemy_spawner is not None
+        assert scene.spawn_controller.enemies == []
+        assert scene.game_controller.state.running is True
         assert scene.paused is False
         assert scene.score == 0
-        assert scene.kills == 0
+        assert scene.cycle_count == 0
         assert scene.difficulty == 'hard'
 
     def test_game_scene_pause_toggle(self):
@@ -300,11 +300,11 @@ class TestGameFlowIntegration:
         scene.enter(difficulty='medium')
         scene.player.health = 100
         scene.unlocked_buffs = []
-        scene.player_invincible = False
+        scene.game_controller.state.player_invincible = False
         enemy = Enemy(scene.player.rect.x - 50, scene.player.rect.y - 60, EnemyData())
         enemy.rect.x = scene.player.rect.x
         enemy.rect.y = scene.player.rect.y
-        scene.enemies.append(enemy)
+        scene.spawn_controller.enemies.append(enemy)
         scene.update()
         assert scene.player.health <= 100
 
@@ -316,8 +316,8 @@ class TestNotificationSystem:
         scene.enter(difficulty='medium')
         reward = {'name': 'Power Shot', 'desc': '+25% bullet damage', 'icon': 'DMG'}
         scene._on_reward_selected(reward)
-        assert scene.notification == "REWARD: Power Shot"
-        assert scene.notification_timer == 90
+        assert scene.game_controller.state.notification == "REWARD: Power Shot"
+        assert scene.game_controller.state.notification_timer == 90
 
     def test_notification_timer_decrements(self):
         from airwar.scenes.game_scene import GameScene
