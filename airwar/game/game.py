@@ -1,7 +1,6 @@
-from airwar.scenes import SceneManager, GameScene, MenuScene, PauseScene, LoginScene
+from airwar.scenes import SceneManager, GameScene, MenuScene, PauseScene, LoginScene, DeathScene
 from airwar.utils.database import UserDB
 from airwar.window import create_window
-from airwar.ui import GameOverScreen
 from airwar.game.scene_director import SceneDirector
 from airwar.config import SCREEN_WIDTH, SCREEN_HEIGHT
 
@@ -16,11 +15,9 @@ class Game:
         )
         self._scene_manager = SceneManager()
         self._db = UserDB()
-        self._game_over_screen = GameOverScreen(self._window)
         self._director = SceneDirector(
             self._window,
             self._scene_manager,
-            self._game_over_screen,
             self._db
         )
         self._register_scenes()
@@ -30,6 +27,7 @@ class Game:
         self._scene_manager.register("menu", MenuScene())
         self._scene_manager.register("game", GameScene())
         self._scene_manager.register("pause", PauseScene())
+        self._scene_manager.register("death", DeathScene())
 
     def run(self) -> None:
         try:

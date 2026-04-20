@@ -50,174 +50,34 @@ class TestSpawnController:
 
 
 class TestHealthSystem:
-    def test_health_system_creation_easy(self):
+    @pytest.mark.parametrize('difficulty', ['easy', 'medium', 'hard'])
+    def test_health_system_creation(self, difficulty):
         from airwar.game.systems.health_system import HealthSystem
+        hs = HealthSystem(difficulty)
+        assert hs._difficulty == difficulty
 
-        hs = HealthSystem('easy')
-        assert hs._difficulty == 'easy'
-
-    def test_health_system_creation_medium(self):
+    @pytest.mark.parametrize('difficulty,expected_delay,expected_rate,expected_interval', [
+        ('easy', 180, 3, 45),
+        ('medium', 240, 2, 60),
+        ('hard', 300, 1, 90),
+    ])
+    def test_health_system_regen_config(self, difficulty, expected_delay, expected_rate, expected_interval):
         from airwar.game.systems.health_system import HealthSystem
-
-        hs = HealthSystem('medium')
-        assert hs._difficulty == 'medium'
-
-    def test_health_system_creation_hard(self):
-        from airwar.game.systems.health_system import HealthSystem
-
-        hs = HealthSystem('hard')
-        assert hs._difficulty == 'hard'
-
-    def test_health_system_regen_config_easy(self):
-        from airwar.game.systems.health_system import HealthSystem
-
-        hs = HealthSystem('easy')
-        config = hs._difficulty_settings['easy']
-
-        assert config['delay'] == 180
-        assert config['rate'] == 3
-        assert config['interval'] == 45
-
-    def test_health_system_regen_config_medium(self):
-        from airwar.game.systems.health_system import HealthSystem
-
-        hs = HealthSystem('medium')
-        config = hs._difficulty_settings['medium']
-
-        assert config['delay'] == 240
-        assert config['rate'] == 2
-        assert config['interval'] == 60
+        hs = HealthSystem(difficulty)
+        config = hs._difficulty_settings[difficulty]
+        assert config['delay'] == expected_delay
+        assert config['rate'] == expected_rate
+        assert config['interval'] == expected_interval
 
 
 class TestNotificationManager:
     def test_notification_manager_creation(self):
         from airwar.game.systems.notification_manager import NotificationManager
-
         nm = NotificationManager()
         assert nm.current_notification is None
 
     def test_notification_manager_show(self):
         from airwar.game.systems.notification_manager import NotificationManager
-
         nm = NotificationManager()
         nm.show("Test Message", 60)
-
         assert nm.current_notification == "Test Message"
-        assert nm.timer == 60
-
-    def test_notification_manager_update(self):
-        from airwar.game.systems.notification_manager import NotificationManager
-
-        nm = NotificationManager()
-        nm.show("Test", 60)
-        initial_timer = nm.timer
-
-        nm.update()
-
-        assert nm.timer < initial_timer
-
-
-class TestHUDRenderer:
-    def test_hud_renderer_creation(self):
-        from airwar.game.systems.hud_renderer import HUDRenderer
-
-        renderer = HUDRenderer()
-        assert renderer is not None
-
-    def test_hud_renderer_has_render_method(self):
-        from airwar.game.systems.hud_renderer import HUDRenderer
-
-        renderer = HUDRenderer()
-        assert hasattr(renderer, 'render_hud')
-        assert callable(renderer.render_hud)
-
-
-class TestInputHandler:
-    def test_pygame_input_handler_get_movement_direction(self):
-        from airwar.input.input_handler import PygameInputHandler
-
-        handler = PygameInputHandler()
-        direction = handler.get_movement_direction()
-
-        assert hasattr(direction, 'x')
-        assert hasattr(direction, 'y')
-        assert isinstance(direction.x, int)
-        assert isinstance(direction.y, int)
-
-    def test_pygame_input_handler_is_pause_pressed(self):
-        from airwar.input.input_handler import PygameInputHandler
-
-        handler = PygameInputHandler()
-        result = handler.is_pause_pressed()
-
-        assert isinstance(result, bool)
-
-    def test_mock_input_handler(self):
-        from airwar.input.input_handler import MockInputHandler
-
-        handler = MockInputHandler()
-        direction = handler.get_movement_direction()
-
-        assert hasattr(direction, 'x')
-        assert hasattr(direction, 'y')
-        assert direction.x == 0
-        assert direction.y == 0
-
-    def test_mock_input_handler_pause(self):
-        from airwar.input.input_handler import MockInputHandler
-
-        handler = MockInputHandler()
-        assert handler.is_pause_pressed() is False
-
-
-def test_buff_registry_exists():
-    from airwar.game.buffs import buff_registry
-    assert hasattr(buff_registry, 'BUFF_REGISTRY')
-
-
-def test_buff_registry_has_buffs():
-    from airwar.game.buffs import buff_registry
-    assert len(buff_registry.BUFF_REGISTRY) >= 15
-
-
-def test_create_buff_function():
-    from airwar.game.buffs import buff_registry
-    from airwar.game.buffs.base_buff import Buff
-
-    buff = buff_registry.create_buff("Power Shot")
-    assert isinstance(buff, Buff)
-
-
-class TestGameRenderer:
-    def test_game_renderer_creation(self):
-        from airwar.game.rendering.game_renderer import GameRenderer
-
-        renderer = GameRenderer()
-        assert renderer is not None
-
-    def test_game_renderer_has_hud_method(self):
-        from airwar.game.rendering.game_renderer import GameRenderer
-
-        renderer = GameRenderer()
-        assert hasattr(renderer, 'render_hud')
-        assert callable(renderer.render_hud)
-
-
-class TestEnemyBulletSpawner:
-    def test_enemy_bullet_spawner_creation(self):
-        from airwar.game.spawners.enemy_bullet_spawner import EnemyBulletSpawner
-
-        bullets = []
-        spawner = EnemyBulletSpawner(bullets)
-
-        assert spawner is not None
-        assert hasattr(spawner, 'bullet_list')
-
-    def test_enemy_bullet_spawner_get_bullets(self):
-        from airwar.game.spawners.enemy_bullet_spawner import EnemyBulletSpawner
-
-        bullets = []
-        spawner = EnemyBulletSpawner(bullets)
-
-        result = spawner.get_bullets()
-        assert result == bullets

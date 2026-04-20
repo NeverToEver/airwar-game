@@ -21,6 +21,7 @@ from airwar.game.mother_ship import (
     GameIntegrator,
 )
 from airwar.game.constants import PlayerConstants, GAME_CONSTANTS
+from airwar.game.give_up import GiveUpDetector, GiveUpUI
 
 
 class GameScene(Scene):
@@ -56,6 +57,8 @@ class GameScene(Scene):
         self.player: Player = None
         self.reward_selector: RewardSelector = RewardSelector()
         self._mother_ship_integrator = None
+        self._give_up_detector = None
+        self._give_up_ui = None
 
     def enter(self, **kwargs) -> None:
         """初始化游戏场景
@@ -105,6 +108,7 @@ class GameScene(Scene):
 
         self._setup_reward_selector()
         self._init_mother_ship_system(screen_width, screen_height)
+        self._init_give_up_system(screen_width, screen_height)
 
     def _setup_reward_selector(self) -> None:
         self.reward_selector.show = lambda options, callback: self._show_reward_selection(options, callback)
@@ -128,6 +132,10 @@ class GameScene(Scene):
             mother_ship=mother_ship,
         )
         self._mother_ship_integrator.attach_game_scene(self)
+
+    def _init_give_up_system(self, screen_width: int, screen_height: int) -> None:
+        self._give_up_detector = GiveUpDetector(self._on_give_up_complete)
+        self._give_up_ui = GiveUpUI(screen_width, screen_height)
 
     def _show_reward_selection(self, options: list, callback) -> None:
         self.reward_selector.visible = True
@@ -185,6 +193,16 @@ class GameScene(Scene):
 
         if self.game_controller.state.paused or self.reward_selector.visible:
             return
+
+        if self._can_use_give_up():
+            self._give_up_detector.update(1/60)
+            if self._give_up_detector.is_active():
+                self._give_up_ui.show()
+                self._give_up_ui.update_progress(self._give_up_detector.get_progress())
+            else:
+                self._give_up_ui.hide()
+        else:
+            self._give_up_ui.hide()
 
         self._update_game()
 
@@ -325,6 +343,17 @@ class GameScene(Scene):
             self.reward_system.apply_lifesteal(self.player, self.spawn_controller.boss.data.score)
             self._clear_enemy_bullets()
 
+    def _can_use_give_up(self) -> bool:
+        from airwar.game.controllers.game_controller import GameplayState
+        return (
+            self.game_controller.state.gameplay_state == GameplayState.PLAYING
+            and not self.game_controller.state.paused
+            and not self.reward_selector.visible
+        )
+
+    def _on_give_up_complete(self) -> None:
+        self.game_controller.on_player_hit(9999, self.player)
+
     def _cleanup_bullets(self) -> None:
         for b in self.spawn_controller.enemy_bullets:
             if not b.active:
@@ -388,6 +417,9 @@ class GameScene(Scene):
 
         if self._mother_ship_integrator:
             self._mother_ship_integrator.render(surface)
+
+        if self._give_up_detector and self._give_up_detector.is_active():
+            self._give_up_ui.render(surface)
 
     def _render_player_bullets(self, surface: pygame.Surface) -> None:
         for bullet in self.player.get_bullets():
