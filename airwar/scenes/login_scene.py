@@ -3,6 +3,7 @@ import math
 import random
 from .scene import Scene
 from airwar.utils.database import UserDB
+from airwar.utils.responsive import ResponsiveHelper
 
 
 class LoginScene(Scene):
@@ -21,6 +22,13 @@ class LoginScene(Scene):
         self.cursor_timer = 0
         self.particles = []
         self.stars = []
+
+        self.base_panel_width = 460
+        self.base_panel_height = 500
+        self.base_input_width = 380
+        self.base_input_height = 65
+        self.base_btn_width = 165
+        self.base_btn_height = 58
 
         pygame.font.init()
 
@@ -81,24 +89,26 @@ class LoginScene(Scene):
             })
 
     def _reset_rects(self, width, height):
-        self.panel_width = 460
-        self.panel_height = 500
+        scale = ResponsiveHelper.get_scale_factor(width, height)
+
+        self.panel_width = ResponsiveHelper.scale(self.base_panel_width, scale)
+        self.panel_height = ResponsiveHelper.scale(self.base_panel_height, scale)
         self.panel_x = width // 2 - self.panel_width // 2
-        self.panel_y = height // 2 - self.panel_height // 2 - 30
+        self.panel_y = height // 2 - self.panel_height // 2 - ResponsiveHelper.scale(30, scale)
 
-        self.input_width = 380
-        self.input_height = 65
+        self.input_width = ResponsiveHelper.scale(self.base_input_width, scale)
+        self.input_height = ResponsiveHelper.scale(self.base_input_height, scale)
         self.input_x = width // 2 - self.input_width // 2
-        self.username_input_y = self.panel_y + 160
-        self.password_input_y = self.panel_y + 280
+        self.username_input_y = self.panel_y + ResponsiveHelper.scale(160, scale)
+        self.password_input_y = self.panel_y + ResponsiveHelper.scale(280, scale)
 
-        btn_width = 165
-        btn_height = 58
-        btn_gap = 30
-        btn_y = self.password_input_y + 140
+        btn_width = ResponsiveHelper.scale(self.base_btn_width, scale)
+        btn_height = ResponsiveHelper.scale(self.base_btn_height, scale)
+        btn_gap = ResponsiveHelper.scale(30, scale)
+        btn_y = self.password_input_y + ResponsiveHelper.scale(140, scale)
         self.login_btn = pygame.Rect(width // 2 - btn_width - btn_gap // 2, btn_y, btn_width, btn_height)
         self.register_btn = pygame.Rect(width // 2 + btn_gap // 2, btn_y, btn_width, btn_height)
-        self.quit_btn = pygame.Rect(width // 2 - 75, btn_y + 75, 150, 50)
+        self.quit_btn = pygame.Rect(width // 2 - ResponsiveHelper.scale(75, scale), btn_y + ResponsiveHelper.scale(75, scale), ResponsiveHelper.scale(150, scale), ResponsiveHelper.scale(50, scale))
 
     def exit(self) -> None:
         pass
@@ -281,6 +291,7 @@ class LoginScene(Scene):
             self._render_message(surface, width, height)
 
     def _render_panel(self, surface, width, height):
+        scale = ResponsiveHelper.get_scale_factor(width, height)
         panel_rect = pygame.Rect(self.panel_x, self.panel_y, self.panel_width, self.panel_height)
 
         for i in range(4, 0, -1):
@@ -299,13 +310,16 @@ class LoginScene(Scene):
         surface.blit(border_surf, panel_rect.topleft)
 
         pygame.draw.line(surface, self.colors['panel_border'],
-                        (self.panel_x + 25, self.panel_y + 85),
-                        (self.panel_x + self.panel_width - 25, self.panel_y + 85), width=1)
+                        (self.panel_x + ResponsiveHelper.scale(25, scale), self.panel_y + ResponsiveHelper.scale(85, scale)),
+                        (self.panel_x + self.panel_width - ResponsiveHelper.scale(25, scale), self.panel_y + ResponsiveHelper.scale(85, scale)), width=1)
 
     def _render_title(self, surface, width):
+        height = surface.get_height()
+        scale = ResponsiveHelper.get_scale_factor(width, height)
         title_text = "LOGIN" if self.mode == 'login' else "REGISTER"
 
         glow_offset = math.sin(self.animation_time * 0.05) * 3
+        title_y = self.panel_y + ResponsiveHelper.scale(45, scale)
 
         for blur, alpha, color in [(6, 18, (50, 120, 180)), (4, 30, (70, 160, 220)), (2, 45, (100, 200, 255))]:
             glow_surf = self.title_font.render(title_text, True, color)
@@ -314,15 +328,15 @@ class LoginScene(Scene):
                 for offset_y in range(-blur, blur + 1, 2):
                     if offset_x * offset_x + offset_y * offset_y <= blur * blur:
                         glow_rect = glow_surf.get_rect(
-                            center=(width // 2 + offset_x, int(self.panel_y + 45 + glow_offset) + offset_y))
+                            center=(width // 2 + offset_x, int(title_y + glow_offset) + offset_y))
                         surface.blit(glow_surf, glow_rect)
 
         title_shadow = self.title_font.render(title_text, True, (20, 60, 100))
         surface.blit(title_shadow, title_shadow.get_rect(
-            center=(width // 2 + 2, int(self.panel_y + 45 + glow_offset) + 2)))
+            center=(width // 2 + 2, int(title_y + glow_offset) + 2)))
 
         title = self.title_font.render(title_text, True, self.colors['title'])
-        surface.blit(title, title.get_rect(center=(width // 2, int(self.panel_y + 45 + glow_offset))))
+        surface.blit(title, title.get_rect(center=(width // 2, int(title_y + glow_offset))))
 
     def _render_inputs(self, surface):
         self.username_input_rect = pygame.Rect(self.input_x, self.username_input_y,
@@ -363,27 +377,31 @@ class LoginScene(Scene):
         surface.blit(border_surf, rect.topleft)
 
     def _draw_input_label(self, surface, rect, label, is_active):
-        label_y = rect.y - 32
+        width, height = surface.get_size()
+        scale = ResponsiveHelper.get_scale_factor(width, height)
+        label_y = rect.y - ResponsiveHelper.scale(32, scale)
         label_surf = self.input_font.render(label, True,
                                           self.colors['title_glow'] if is_active else self.colors['input_hint'])
-        surface.blit(label_surf, (rect.x + 10, label_y))
+        surface.blit(label_surf, (rect.x + ResponsiveHelper.scale(10, scale), label_y))
 
     def _draw_input_content(self, surface, rect, text, is_username):
+        width, height = surface.get_size()
+        scale = ResponsiveHelper.get_scale_factor(width, height)
         display_text = text if text else ""
         if not is_username and display_text:
             display_text = '*' * len(display_text)
         text_surf = self.input_font.render(display_text, True, self.colors['input_text'])
-        text_rect = text_surf.get_rect(midleft=(rect.x + 20, rect.y + rect.height // 2))
+        text_rect = text_surf.get_rect(midleft=(rect.x + ResponsiveHelper.scale(20, scale), rect.y + rect.height // 2))
         surface.blit(text_surf, text_rect)
         if not text:
             placeholder = "Enter username..." if is_username else "Enter password..."
             ph_surf = self.input_font.render(placeholder, True, (60, 70, 100))
-            ph_rect = ph_surf.get_rect(midleft=(rect.x + 20, rect.y + rect.height // 2))
+            ph_rect = ph_surf.get_rect(midleft=(rect.x + ResponsiveHelper.scale(20, scale), rect.y + rect.height // 2))
             surface.blit(ph_surf, ph_rect)
         if self.cursor_visible:
-            cursor_x = text_rect.right + 3 if text else rect.x + 20
+            cursor_x = text_rect.right + 3 if text else rect.x + ResponsiveHelper.scale(20, scale)
             pygame.draw.line(surface, self.colors['title'],
-                           (cursor_x, rect.y + 15), (cursor_x, rect.y + rect.height - 15), 2)
+                           (cursor_x, rect.y + ResponsiveHelper.scale(15, scale)), (cursor_x, rect.y + rect.height - ResponsiveHelper.scale(15, scale)), 2)
 
     def _render_buttons(self, surface):
         self._render_button(surface, self.login_btn, "LOGIN", self.colors['button_login'], True)
@@ -428,9 +446,10 @@ class LoginScene(Scene):
         surface.blit(hint_surf, hint_surf.get_rect(center=(width // 2, height - 50)))
 
     def _render_message(self, surface, width, height):
+        scale = ResponsiveHelper.get_scale_factor(width, height)
         msg_color = self.colors['error'] if "Invalid" in self.message or "min" in self.message or "exists" in self.message else self.colors['success']
         msg_surf = self.input_font.render(self.message, True, msg_color)
-        msg_y = self.password_input_y + self.input_height + 70
+        msg_y = self.password_input_y + self.input_height + ResponsiveHelper.scale(70, scale)
         surface.blit(msg_surf, msg_surf.get_rect(center=(width // 2, msg_y)))
 
     def get_username(self) -> str:
