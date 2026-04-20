@@ -46,9 +46,9 @@ class CollisionController:
         reward_system: any,
         player_invincible: bool,
         score_multiplier: int,
-        on_enemy_killed: Callable,
-        on_boss_killed: Callable,
-        on_boss_hit: Callable,
+        on_enemy_killed: Callable[[int], None],
+        on_boss_killed: Callable[[int], None],
+        on_boss_hit: Callable[[int], None],
         on_player_hit: Callable,
         on_lifesteal: Callable,
     ) -> None:
@@ -61,10 +61,9 @@ class CollisionController:
             reward_system.explosive_level
         )
         
-        for i in range(enemies_killed):
-            self._events.append(CollisionEvent(type='enemy_killed'))
-            if on_enemy_killed:
-                on_enemy_killed()
+        if enemies_killed > 0 and on_enemy_killed:
+            self._events.append(CollisionEvent(type='enemy_killed', score=score_gained))
+            on_enemy_killed(score_gained)
         
         if self.check_enemy_bullets_vs_player(
             enemy_bullets,

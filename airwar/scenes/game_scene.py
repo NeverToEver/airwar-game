@@ -1,4 +1,5 @@
 import pygame
+from typing import Tuple
 from .scene import Scene
 from airwar.entities import Player, EnemySpawner, Boss, BossData
 from airwar.game.systems.health_system import HealthSystem
@@ -346,8 +347,8 @@ class GameScene(Scene):
             reward_system=self.reward_system,
             player_invincible=self.game_controller.state.player_invincible,
             score_multiplier=self.game_controller.state.score_multiplier,
-            on_enemy_killed=lambda: None,
-            on_boss_killed=lambda: self.game_controller.on_boss_killed(self.spawn_controller.boss.data.score if self.spawn_controller.boss else 0),
+            on_enemy_killed=lambda score: self.game_controller.on_enemy_killed(score),
+            on_boss_killed=lambda score: self.game_controller.on_boss_killed(score),
             on_boss_hit=lambda score: self._on_boss_hit(score),
             on_player_hit=lambda damage, player: self.game_controller.on_player_hit(damage, player),
             on_lifesteal=lambda player, score: self.reward_system.apply_lifesteal(player, score),
@@ -361,7 +362,12 @@ class GameScene(Scene):
             self.reward_system.apply_lifesteal(self.player, self.spawn_controller.boss.data.score)
             self._clear_enemy_bullets()
     
-    def _check_player_bullets_vs_enemies(self) -> None:
+    def _check_player_bullets_vs_enemies(self) -> Tuple[int, int]:
+        """检查玩家子弹与敌人的碰撞
+        
+        Returns:
+            Tuple[int, int]: (score_gained, enemies_killed)
+        """
         if not self.collision_controller:
             self.collision_controller = CollisionController()
         
@@ -372,9 +378,7 @@ class GameScene(Scene):
             self.reward_system.explosive_level
         )
         
-        for _ in range(enemies_killed):
-            self.game_controller.on_enemy_killed(score_gained)
-            self.reward_system.apply_lifesteal(self.player, 0)
+        return score_gained, enemies_killed
     
     def _check_enemy_bullets_vs_player(self) -> None:
         if not self.collision_controller:
