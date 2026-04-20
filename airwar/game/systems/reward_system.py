@@ -89,25 +89,49 @@ class RewardSystem:
     def piercing_level(self) -> int:
         return self.buff_levels.get('Piercing', 0)
 
+    @piercing_level.setter
+    def piercing_level(self, value: int) -> None:
+        self.buff_levels['Piercing'] = value
+
     @property
     def spread_level(self) -> int:
         return self.buff_levels.get('Spread Shot', 0)
+
+    @spread_level.setter
+    def spread_level(self, value: int) -> None:
+        self.buff_levels['Spread Shot'] = value
 
     @property
     def explosive_level(self) -> int:
         return self.buff_levels.get('Explosive', 0)
 
+    @explosive_level.setter
+    def explosive_level(self, value: int) -> None:
+        self.buff_levels['Explosive'] = value
+
     @property
     def armor_level(self) -> int:
         return self.buff_levels.get('Armor', 0)
+
+    @armor_level.setter
+    def armor_level(self, value: int) -> None:
+        self.buff_levels['Armor'] = value
 
     @property
     def evasion_level(self) -> int:
         return self.buff_levels.get('Evasion', 0)
 
+    @evasion_level.setter
+    def evasion_level(self, value: int) -> None:
+        self.buff_levels['Evasion'] = value
+
     @property
     def rapid_fire_level(self) -> int:
         return self.buff_levels.get('Rapid Fire', 0)
+
+    @rapid_fire_level.setter
+    def rapid_fire_level(self, value: int) -> None:
+        self.buff_levels['Rapid Fire'] = value
 
     def generate_options(self, cycle_count: int, unlocked_buffs: list) -> List[Dict]:
         options = []
