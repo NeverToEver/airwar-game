@@ -214,17 +214,17 @@ class TutorialScene(Scene):
     def _draw_title(self, surface: pygame.Surface, width: int, scale: float) -> None:
         title_y = ResponsiveHelper.scale(self.base_title_y, scale) + self.animation_time * 0.02
         
-        title_glow = math.sin(self.animation_time * 0.03) * 3
+        title_glow_offset = math.sin(self.animation_time * 0.03) * 3
         
         for i in range(5, 0, -1):
             alpha = int(120 / i)
             glow_surf = self.title_font.render("AIR WAR", True, self.colors['title_glow'])
             glow_surf.set_alpha(alpha)
-            glow_rect = glow_surf.get_rect(center=(width // 2, int(title_y + glow_glow + i)))
+            glow_rect = glow_surf.get_rect(center=(width // 2, int(title_y + title_glow_offset + i)))
             surface.blit(glow_surf, glow_rect)
             
         main_title = self.title_font.render("AIR WAR", True, self.colors['title'])
-        surface.blit(main_title, main_title.get_rect(center=(width // 2, int(title_y + glow_glow))))
+        surface.blit(main_title, main_title.get_rect(center=(width // 2, int(title_y + title_glow_offset))))
         
         subtitle_y = title_y + ResponsiveHelper.scale(55, scale)
         subtitle = self.subtitle_font.render("新手教程指南", True, self.colors['title_glow'])
