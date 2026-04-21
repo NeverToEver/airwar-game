@@ -222,6 +222,7 @@ class GameScene(Scene):
         try:
             has_regen = 'Regeneration' in self.reward_system.unlocked_buffs
             self.game_controller.update(self.player, has_regen)
+            self.game_renderer.update_death_animation()
 
             self.player.update()
             self.player.auto_fire()
