@@ -359,4 +359,5 @@ class TutorialScene(Scene):
         return not self.running
         
     def is_running(self) -> bool:
+        print(f"[TUTORIAL SCENE] is_running() called, returning={self.running}")
         return self.running

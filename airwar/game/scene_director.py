@@ -102,9 +102,13 @@ class SceneDirector:
         self._scene_manager.switch("tutorial")
         tutorial_scene = self._scene_manager.get_current_scene()
         
+        print(f"[TUTORIAL DEBUG] Starting tutorial, is_running={tutorial_scene.is_running()}")
+        
         while tutorial_scene.is_running():
+            print(f"[TUTORIAL DEBUG] Loop iteration, is_running={tutorial_scene.is_running()}")
             events = self._poll_events()
             if not self._check_quit(events):
+                print("[TUTORIAL DEBUG] Quit detected, returning")
                 return
             self._handle_resize_if_needed(events)
             
@@ -113,10 +117,14 @@ class SceneDirector:
                     print(f"[TUTORIAL DEBUG] KEYDOWN: key={event.key}, ESC={pygame.K_ESCAPE}")
                 tutorial_scene.handle_events(event)
             
+            print(f"[TUTORIAL DEBUG] After events, is_running={tutorial_scene.is_running()}")
+            
             tutorial_scene.update()
             tutorial_scene.render(self._window.get_surface())
             self._window.flip()
             self._window.tick(60)
+        
+        print("[TUTORIAL DEBUG] Tutorial loop exited")
 
     def _run_game_flow(self) -> str:
         self._scene_manager.switch("game",
