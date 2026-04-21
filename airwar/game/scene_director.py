@@ -111,6 +111,9 @@ class SceneDirector:
             for event in events:
                 tutorial_scene.handle_events(event)
             
+            if tutorial_scene.should_quit():
+                return
+            
             tutorial_scene.update()
             tutorial_scene.render(self._window.get_surface())
             self._window.flip()
