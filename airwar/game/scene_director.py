@@ -107,7 +107,12 @@ class SceneDirector:
             if not self._check_quit(events):
                 return
             self._handle_resize_if_needed(events)
-            self._handle_scene_events(events)
+            
+            for event in events:
+                if event.type == pygame.KEYDOWN:
+                    print(f"[TUTORIAL DEBUG] KEYDOWN: key={event.key}, ESC={pygame.K_ESCAPE}")
+                tutorial_scene.handle_events(event)
+            
             tutorial_scene.update()
             tutorial_scene.render(self._window.get_surface())
             self._window.flip()
