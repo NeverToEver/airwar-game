@@ -2,7 +2,7 @@ import pygame
 from dataclasses import dataclass
 from typing import List
 from airwar.game.systems.hud_renderer import HUDRenderer
-from airwar.game.controllers.game_controller import GameState
+from airwar.game.controllers.game_controller import GameState, GameplayState
 from airwar.game.rendering.background_renderer import BackgroundRenderer
 
 
@@ -17,9 +17,12 @@ class GameRenderer:
     def __init__(self, hud_renderer: HUDRenderer = None):
         self.hud_renderer = hud_renderer or HUDRenderer()
         self.background_renderer: BackgroundRenderer = None
+        self._death_animation = None
+        self._screen_diagonal = 0
 
     def init_background(self, screen_width: int, screen_height: int) -> None:
         self.background_renderer = BackgroundRenderer(screen_width, screen_height)
+        self._screen_diagonal = int((screen_width ** 2 + screen_height ** 2) ** 0.5)
 
     def render(self, surface: pygame.Surface, state: GameState, entities: GameEntities) -> None:
         if self.background_renderer:
@@ -79,6 +82,9 @@ class GameRenderer:
 
         self.hud_renderer.render_ripples(surface, state.ripple_effects)
 
+        if state.gameplay_state == GameplayState.DYING:
+            self._render_death_animation(surface, state, entities)
+
     def render_hud(
         self,
         surface,
@@ -107,3 +113,20 @@ class GameRenderer:
 
     def render_buff_stats_panel(self, surface, reward_system, player) -> None:
         self.hud_renderer.render_buff_stats_panel(surface, reward_system, player)
+
+    def _render_death_animation(self, surface, state, entities):
+        from airwar.game.death_animation import DeathAnimation
+        if self._death_animation is None or not self._death_animation.is_active():
+            self._death_animation = DeathAnimation()
+            self._death_animation._screen_diagonal = self._screen_diagonal
+            if entities.player:
+                self._death_animation.trigger(
+                    entities.player.rect.centerx,
+                    entities.player.rect.centery
+                )
+        self._death_animation.render(surface)
+
+    def update_death_animation(self) -> bool:
+        if self._death_animation is not None:
+            return self._death_animation.update()
+        return False
