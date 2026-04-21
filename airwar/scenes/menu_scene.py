@@ -8,7 +8,13 @@ class MenuScene(Scene):
     def enter(self, **kwargs) -> None:
         self.running = True
         self.difficulty = 'medium'
-        self.difficulty_options = ['easy', 'medium', 'hard']
+        self.difficulty_options = ['easy', 'medium', 'hard', 'tutorial']
+        self.option_names = {
+            'easy': 'EASY',
+            'medium': 'MEDIUM',
+            'hard': 'HARD',
+            'tutorial': 'TUTORIAL'
+        }
         self.selected_index = 1
         self.animation_time = 0
         self.glow_offset = 0
@@ -18,7 +24,7 @@ class MenuScene(Scene):
         self.stars = []
 
         self.base_panel_width = 400
-        self.base_panel_height = 280
+        self.base_panel_height = 360
         self.base_option_height = 70
         self.base_option_gap = 12
         self.base_title_y = 100
@@ -97,7 +103,9 @@ class MenuScene(Scene):
             elif event.key in (pygame.K_DOWN, pygame.K_s):
                 self.selected_index = (self.selected_index + 1) % len(self.difficulty_options)
             elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
-                self.difficulty = self.difficulty_options[self.selected_index]
+                selected_option = self.difficulty_options[self.selected_index]
+                if selected_option != 'tutorial':
+                    self.difficulty = selected_option
                 self.selection_confirmed = True
                 self.running = False
 
@@ -226,7 +234,7 @@ class MenuScene(Scene):
             surface.blit(border_surf, box_rect.topleft)
 
         arrow = ">" if is_selected else " "
-        diff_text = diff.upper()
+        diff_text = self.option_names.get(diff, diff.upper())
         text_color = self.colors['selected'] if is_selected else self.colors['unselected']
         
         text = self.option_font.render(f"  {arrow}  {diff_text}", True, text_color)
@@ -285,6 +293,9 @@ class MenuScene(Scene):
 
     def get_difficulty(self) -> str:
         return self.difficulty
+
+    def get_selected_option(self) -> str:
+        return self.difficulty_options[self.selected_index]
 
     def is_selection_confirmed(self) -> bool:
         return self.selection_confirmed
