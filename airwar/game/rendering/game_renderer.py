@@ -20,17 +20,27 @@ class GameRenderer:
         self.background_renderer: BackgroundRenderer = None
         self._death_animation = None
         self._screen_diagonal = 0
+        self._was_in_dying_state = False
 
     def init_background(self, screen_width: int, screen_height: int) -> None:
         self.background_renderer = BackgroundRenderer(screen_width, screen_height)
         self._screen_diagonal = int((screen_width ** 2 + screen_height ** 2) ** 0.5)
 
     def render(self, surface: pygame.Surface, state: GameState, entities: GameEntities) -> None:
-        if self.background_renderer:
-            self.background_renderer.update()
-            self.background_renderer.draw(surface)
+        is_dying = state.gameplay_state == GameplayState.DYING
+        is_game_over = state.gameplay_state == GameplayState.GAME_OVER
+
+        if not is_dying and not is_game_over:
+            if self.background_renderer:
+                self.background_renderer.update()
+                self.background_renderer.draw(surface)
+            else:
+                surface.fill((10, 10, 30))
         else:
-            surface.fill((10, 10, 30))
+            if self.background_renderer:
+                self.background_renderer.draw(surface)
+            else:
+                surface.fill((10, 10, 30))
 
         if state.entrance_animation:
             self._render_entrance(surface, state, entities)
@@ -70,21 +80,34 @@ class GameRenderer:
         surface.blit(self._fade_surface, (0, 0))
 
     def _render_game(self, surface, state, entities):
-        if not state.player_invincible or (state.invincibility_timer // 5) % 2 == 0:
+        is_dying = state.gameplay_state == GameplayState.DYING
+
+        if is_dying:
             if entities.player:
                 entities.player.render(surface)
 
-        for enemy in entities.enemies:
-            enemy.render(surface)
+            for enemy in entities.enemies:
+                enemy.render(surface)
 
-        if entities.boss:
-            entities.boss.render(surface)
-            self.hud_renderer.render_boss_health_bar(surface, entities.boss)
+            if entities.boss:
+                entities.boss.render(surface)
 
-        self.hud_renderer.render_ripples(surface, state.ripple_effects)
+            self.hud_renderer.render_ripples(surface, state.ripple_effects)
 
-        if state.gameplay_state == GameplayState.DYING:
             self._render_death_animation(surface, state, entities)
+        else:
+            if not state.player_invincible or (state.invincibility_timer // 5) % 2 == 0:
+                if entities.player:
+                    entities.player.render(surface)
+
+            for enemy in entities.enemies:
+                enemy.render(surface)
+
+            if entities.boss:
+                entities.boss.render(surface)
+                self.hud_renderer.render_boss_health_bar(surface, entities.boss)
+
+            self.hud_renderer.render_ripples(surface, state.ripple_effects)
 
     def render_hud(
         self,
@@ -116,7 +139,9 @@ class GameRenderer:
         self.hud_renderer.render_buff_stats_panel(surface, reward_system, player)
 
     def _render_death_animation(self, surface, state, entities):
-        if self._death_animation is None or not self._death_animation.is_active():
+        is_dying = state.gameplay_state == GameplayState.DYING
+
+        if is_dying and not self._was_in_dying_state:
             self._death_animation = DeathAnimation()
             if entities.player:
                 self._death_animation.trigger(
@@ -124,7 +149,13 @@ class GameRenderer:
                     entities.player.rect.centery,
                     self._screen_diagonal
                 )
-        self._death_animation.render(surface)
+            self._was_in_dying_state = True
+
+        if self._death_animation is not None and self._death_animation.is_active():
+            self._death_animation.render(surface)
+        elif not is_dying:
+            self._death_animation = None
+            self._was_in_dying_state = False
 
     def update_death_animation(self) -> bool:
         if self._death_animation is not None:
