@@ -55,12 +55,26 @@ class DamageConstants:
         EXPLOSIVE_DAMAGE: 爆炸基础伤害值
         DEFAULT_REGEN_RATE: 默认生命恢复速率
         REGEN_THRESHOLD: 生命恢复阈值
+        INSTANT_KILL: 即死伤害值（投降功能使用）
     """
     BOSS_COLLISION_DAMAGE: int = 30
     ENEMY_COLLISION_DAMAGE: int = 20
     EXPLOSIVE_DAMAGE: int = 30
     DEFAULT_REGEN_RATE: int = 2
     REGEN_THRESHOLD: int = 60
+    INSTANT_KILL: int = 9999
+
+
+@dataclass(frozen=True)
+class TimingConstants:
+    """时间相关常量
+    
+    Attributes:
+        FIXED_DELTA_TIME: 固定帧时间步长（约16.67ms @60fps）
+        NOTIFICATION_DURATION: 通知显示持续时间（帧）
+    """
+    FIXED_DELTA_TIME: float = 1 / 60
+    NOTIFICATION_DURATION: int = 90
 
 
 @dataclass(frozen=True)
@@ -106,6 +120,7 @@ class GameConstants:
         DAMAGE: 伤害相关常量
         ANIMATION: 动画相关常量
         BALANCE: 游戏平衡相关常量
+        TIMING: 时间相关常量
     
     Methods:
         get_difficulty_multiplier(difficulty: str) -> float:
@@ -117,6 +132,7 @@ class GameConstants:
     DAMAGE: DamageConstants = field(default_factory=DamageConstants)
     ANIMATION: AnimationConstants = field(default_factory=AnimationConstants)
     BALANCE: GameBalanceConstants = field(default_factory=GameBalanceConstants)
+    TIMING: TimingConstants = field(default_factory=TimingConstants)
     
     def get_difficulty_multiplier(self, difficulty: str) -> float:
         """获取难度对应的分数倍率

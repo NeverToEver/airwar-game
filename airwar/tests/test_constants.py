@@ -4,6 +4,7 @@ from airwar.game.constants import (
     DamageConstants,
     AnimationConstants,
     GameBalanceConstants,
+    TimingConstants,
     GameConstants,
     GAME_CONSTANTS
 )
@@ -26,6 +27,13 @@ class TestDamageConstants:
         assert DamageConstants.ENEMY_COLLISION_DAMAGE == 20
         assert DamageConstants.DEFAULT_REGEN_RATE == 2
         assert DamageConstants.REGEN_THRESHOLD == 60
+        assert DamageConstants.INSTANT_KILL == 9999
+
+
+class TestTimingConstants:
+    def test_timing_constants_values(self):
+        assert TimingConstants.FIXED_DELTA_TIME == pytest.approx(1/60)
+        assert TimingConstants.NOTIFICATION_DURATION == 90
 
 
 class TestAnimationConstants:
@@ -87,6 +95,9 @@ class TestGameConstantsInstance:
     
     def test_game_constants_has_balance_constants(self):
         assert isinstance(GAME_CONSTANTS.BALANCE, GameBalanceConstants)
+
+    def test_game_constants_has_timing_constants(self):
+        assert isinstance(GAME_CONSTANTS.TIMING, TimingConstants)
     
     def test_game_constants_singleton(self):
         from airwar.game.constants import GAME_CONSTANTS as CONSTANTS2

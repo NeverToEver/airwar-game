@@ -73,7 +73,16 @@ class GameController:
 
         self._update_invincibility()
 
+    def is_playing(self) -> bool:
+        return self.state.gameplay_state == GameplayState.PLAYING
+
+    def is_game_over(self) -> bool:
+        return self.state.gameplay_state == GameplayState.GAME_OVER
+
     def _update_invincibility(self) -> None:
+        if self.state.gameplay_state == GameplayState.DYING:
+            return
+        
         if self.state.player_invincible:
             self.state.invincibility_timer -= 1
             if self.state.invincibility_timer <= 0:
@@ -114,6 +123,7 @@ class GameController:
             self.state.gameplay_state = GameplayState.DYING
             self.state.death_timer = self.state.death_duration
             self.state.player_invincible = True
+            self.state.invincibility_timer = 0
         else:
             self.state.player_invincible = True
             self.state.invincibility_timer = 90

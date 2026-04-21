@@ -120,8 +120,25 @@ class DeathAnimation:
         if not self._active:
             return
 
+        self._render_flicker(surface)
         self._render_glow(surface)
         self._render_sparks(surface)
+
+    def _render_flicker(self, surface) -> None:
+        """渲染闪烁效果（战机位置的红白交替闪烁）"""
+        if not self._should_show_flicker():
+            return
+
+        flicker_step = (self._timer - self.FLICKER_START_FRAME) // self.FLICKER_INTERVAL
+        is_visible = flicker_step % 2 == 0
+
+        if is_visible:
+            alpha = self.FLICKER_ALPHA_HIGH if flicker_step % 4 == 0 else self.FLICKER_ALPHA_LOW
+            color = self.FLICKER_COLOR if flicker_step % 4 == 0 else (255, 255, 255)
+            flicker_surf = pygame.Surface((60, 60), pygame.SRCALPHA)
+            flicker_surf.set_alpha(alpha)
+            pygame.draw.circle(flicker_surf, color, (30, 30), 25)
+            surface.blit(flicker_surf, (int(self._center_x - 30), int(self._center_y - 30)))
 
     def is_active(self) -> bool:
         """检查动画是否处于活跃状态"""
