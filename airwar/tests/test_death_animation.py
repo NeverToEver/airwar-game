@@ -243,3 +243,47 @@ class TestGlowEffect:
         assert progress > 0.0 and progress < 1.0
         animation._timer = 180
         assert animation._get_glow_progress() == 0.0
+
+
+class TestTriggerAcceptsScreenDiagonal:
+    def test_trigger_accepts_screen_diagonal_parameter(self):
+        from airwar.game.death_animation import DeathAnimation
+        animation = DeathAnimation()
+        animation.trigger(100, 200, screen_diagonal=1000)
+        assert animation._screen_diagonal == 1000
+
+    def test_trigger_defaults_screen_diagonal_to_zero(self):
+        from airwar.game.death_animation import DeathAnimation
+        animation = DeathAnimation()
+        animation.trigger(100, 200)
+        assert animation._screen_diagonal == 0
+
+
+class TestSparkRendering:
+    def test_render_does_not_raise_with_sparks(self):
+        from airwar.game.death_animation import DeathAnimation
+        pygame.init()
+        surface = pygame.Surface((800, 600))
+        animation = DeathAnimation()
+        animation.trigger(400, 300, screen_diagonal=1000)
+        for _ in range(10):
+            animation.update()
+        animation.render(surface)
+        pygame.quit()
+
+    def test_render_handles_empty_sparks_list(self):
+        from airwar.game.death_animation import DeathAnimation
+        pygame.init()
+        surface = pygame.Surface((800, 600))
+        animation = DeathAnimation()
+        animation.trigger(400, 300)
+        animation.render(surface)
+        pygame.quit()
+
+    def test_render_does_nothing_when_inactive(self):
+        from airwar.game.death_animation import DeathAnimation
+        pygame.init()
+        surface = pygame.Surface((800, 600))
+        animation = DeathAnimation()
+        animation.render(surface)
+        pygame.quit()

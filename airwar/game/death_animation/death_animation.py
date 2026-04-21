@@ -1,9 +1,13 @@
-import random
 import math
+import random
 from typing import List
+
+import pygame
 
 
 class SparkParticle:
+    """火花粒子类，用于死亡动画中的爆炸效果"""
+
     def __init__(
         self,
         x: float,
@@ -13,7 +17,7 @@ class SparkParticle:
         life: int,
         max_life: int,
         size: float
-    ):
+    ) -> None:
         self.x = x
         self.y = y
         self.vx = vx
@@ -24,6 +28,14 @@ class SparkParticle:
 
 
 class DeathAnimation:
+    """玩家死亡动画组件
+
+    管理死亡时的三种视觉效果：
+    1. 闪烁效果 (0-60帧)：战机位置的红白交替闪烁
+    2. 火花效果 (0-180帧)：从战机位置随机爆发的粒子
+    3. 光晕效果 (60-180帧)：从中心扩散到全屏的白色光晕
+    """
+
     ANIMATION_DURATION = 200
     FLICKER_START_FRAME = 0
     FLICKER_END_FRAME = 60
@@ -49,7 +61,7 @@ class DeathAnimation:
     GLOW_COLOR = (255, 255, 255)
     FLICKER_COLOR = (255, 50, 50)
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._active = False
         self._timer = 0
         self._center_x = 0
@@ -58,15 +70,28 @@ class DeathAnimation:
         self._screen_diagonal = 0
         self._frame_since_last_spark = 0
 
-    def trigger(self, x: int, y: int) -> None:
+    def trigger(self, x: int, y: int, screen_diagonal: int = 0) -> None:
+        """触发死亡动画
+
+        Args:
+            x: 死亡位置X坐标
+            y: 死亡位置Y坐标
+            screen_diagonal: 屏幕对角线长度，用于光晕效果渲染
+        """
         self._active = True
         self._timer = 0
         self._center_x = x
         self._center_y = y
         self._sparks = []
         self._frame_since_last_spark = 0
+        self._screen_diagonal = screen_diagonal
 
     def update(self) -> bool:
+        """更新动画状态
+
+        Returns:
+            True 如果动画仍在进行，False 如果动画已结束
+        """
         if not self._active:
             return False
 
@@ -87,15 +112,23 @@ class DeathAnimation:
         return True
 
     def render(self, surface) -> None:
+        """渲染死亡动画效果
+
+        Args:
+            surface: pygame渲染表面
+        """
         if not self._active:
             return
 
+        self._render_glow(surface)
         self._render_sparks(surface)
 
     def is_active(self) -> bool:
+        """检查动画是否处于活跃状态"""
         return self._active
 
     def _generate_sparks(self) -> None:
+        """生成新的火花粒子"""
         if len(self._sparks) >= self.SPARK_MAX_COUNT:
             return
 
@@ -118,6 +151,7 @@ class DeathAnimation:
             ))
 
     def _update_sparks(self) -> None:
+        """更新所有火花粒子的位置和生命周期"""
         for spark in self._sparks:
             spark.x += spark.vx
             spark.y += spark.vy
@@ -126,27 +160,57 @@ class DeathAnimation:
         self._sparks = [s for s in self._sparks if s.life > 0]
 
     def _render_sparks(self, surface) -> None:
-        pass
+        """渲染火花粒子效果"""
+        for spark in self._sparks:
+            life_ratio = spark.life / spark.max_life
+            alpha = int(255 * life_ratio)
+
+            if alpha < 10:
+                continue
+
+            color_base = (255, int(200 * life_ratio), int(50 * life_ratio))
+
+            glow_radius = int(spark.size * 2)
+            if glow_radius > 0:
+                glow_surf = pygame.Surface((glow_radius * 2, glow_radius * 2), pygame.SRCALPHA)
+                glow_alpha = int(alpha * 0.3)
+                pygame.draw.circle(
+                    glow_surf,
+                    (*color_base, glow_alpha),
+                    (glow_radius, glow_radius),
+                    glow_radius
+                )
+                surface.blit(glow_surf, (int(spark.x) - glow_radius, int(spark.y) - glow_radius))
+
+            pygame.draw.circle(
+                surface,
+                color_base,
+                (int(spark.x), int(spark.y)),
+                max(1, int(spark.size * life_ratio))
+            )
 
     def _should_show_flicker(self) -> bool:
+        """检查当前帧是否应该显示闪烁效果"""
         if self._timer < self.FLICKER_START_FRAME or self._timer >= self.FLICKER_END_FRAME:
             return False
         flicker_step = (self._timer - self.FLICKER_START_FRAME) // self.FLICKER_INTERVAL
         return flicker_step % 2 == 0
 
     def _should_show_glow(self) -> bool:
+        """检查当前帧是否应该显示光晕效果"""
         return self._timer >= self.GLOW_START_FRAME and self._timer < self.GLOW_END_FRAME
 
     def _get_glow_progress(self) -> float:
+        """获取光晕扩散进度 (0.0 - 1.0)"""
         if self._timer < self.GLOW_START_FRAME or self._timer >= self.GLOW_END_FRAME:
             return 0.0
         return (self._timer - self.GLOW_START_FRAME) / (self.GLOW_END_FRAME - self.GLOW_START_FRAME)
 
     def _render_glow(self, surface) -> None:
+        """渲染扩散光晕效果"""
         if not self._should_show_glow():
             return
 
-        import pygame
         progress = self._get_glow_progress()
         max_radius = self._screen_diagonal
         radius = int(max_radius * progress)
