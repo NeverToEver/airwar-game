@@ -86,10 +86,30 @@ class SceneDirector:
                     back_to_login = True
                     break
                 if ms.is_selection_confirmed():
-                    self._selected_difficulty = ms.get_difficulty()
-                    break
+                    selected_option = ms.get_selected_option()
+                    if selected_option == 'tutorial':
+                        self._run_tutorial_flow()
+                    else:
+                        self._selected_difficulty = ms.get_difficulty()
+                        break
 
         return not back_to_login
+
+    def _run_tutorial_flow(self) -> None:
+        """运行教程流程"""
+        self._scene_manager.switch("tutorial")
+        tutorial_scene = self._scene_manager.get_current_scene()
+        
+        while tutorial_scene.is_running():
+            events = self._poll_events()
+            if not self._check_quit(events):
+                return
+            self._handle_resize_if_needed(events)
+            self._handle_scene_events(events)
+            tutorial_scene.update()
+            tutorial_scene.render(self._window.get_surface())
+            self._window.flip()
+            self._window.tick(60)
 
     def _run_game_flow(self) -> str:
         self._scene_manager.switch("game",
