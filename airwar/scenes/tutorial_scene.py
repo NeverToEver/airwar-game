@@ -6,7 +6,7 @@ from airwar.utils.responsive import ResponsiveHelper
 
 
 class TutorialScene(Scene):
-    """新手教程场景，展示游戏操作指南"""
+    """Tutorial scene showing game controls guide"""
 
     def __init__(self):
         self.running = True
