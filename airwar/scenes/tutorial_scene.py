@@ -6,66 +6,42 @@ from airwar.utils.responsive import ResponsiveHelper
 
 
 class TutorialScene(Scene):
-    """Tutorial scene showing game controls guide"""
-
-    def __init__(self):
+    def enter(self, **kwargs) -> None:
         self.running = True
-        self.back_requested = False
+        self.want_to_quit = False
         self.animation_time = 0
-        self.glow_offset = 0
         self.particles = []
         self.stars = []
 
-        self.base_panel_width = 400
-        self.base_panel_height = 480
-        self.base_option_height = 65
-        self.base_option_gap = 10
-        self.base_title_y = 80
-        self.base_option_font_size = 32
-        self.base_hint_font_size = 24
-        self.base_desc_font_size = 20
+        self.base_panel_width = 500
+        self.base_panel_height = 580
 
         pygame.font.init()
-        self._init_fonts(1.0)
+        self.title_font = pygame.font.Font(None, 90)
+        self.section_font = pygame.font.Font(None, 36)
+        self.content_font = pygame.font.Font(None, 28)
+        self.hint_font = pygame.font.Font(None, 24)
+
         self._init_colors()
-
-    def _init_fonts(self, scale: float) -> None:
-        self.title_font = pygame.font.Font(None, ResponsiveHelper.font_size(90, scale))
-        self.option_font = pygame.font.Font(None, ResponsiveHelper.font_size(self.base_option_font_size, scale))
-        self.hint_font = pygame.font.Font(None, ResponsiveHelper.font_size(self.base_hint_font_size, scale))
-        self.desc_font = pygame.font.Font(None, ResponsiveHelper.font_size(self.base_desc_font_size, scale))
-
-    def _init_colors(self) -> None:
-        self.colors = {
-            'bg': (8, 8, 25),
-            'bg_gradient': (15, 15, 50),
-            'title': (255, 255, 255),
-            'title_glow': (100, 200, 255),
-            'selected': (0, 255, 150),
-            'selected_glow': (0, 200, 255),
-            'unselected': (90, 90, 130),
-            'hint': (70, 70, 110),
-            'particle': (100, 180, 255),
-            'panel': (15, 20, 40),
-            'panel_border': (50, 80, 140),
-            'option_selected_bg': (25, 35, 65),
-            'option_unselected_bg': (18, 20, 40),
-        }
-
-    def enter(self, **kwargs) -> None:
-        self.running = True
-        self.back_requested = False
-        self.animation_time = 0
-        self.glow_offset = 0
         self._init_particles()
         self._init_stars()
 
-    def exit(self) -> None:
-        pass
+    def _init_colors(self) -> None:
+        self.colors = {
+            'bg': (5, 5, 20),
+            'bg_gradient': (12, 12, 45),
+            'panel': (15, 20, 40),
+            'panel_border': (50, 80, 140),
+            'title': (255, 255, 255),
+            'title_glow': (100, 200, 255),
+            'section_bg': (20, 28, 55),
+            'content_text': (200, 210, 240),
+            'hint': (70, 75, 120),
+            'particle': (100, 180, 255),
+            'highlight': (0, 255, 150),
+        }
 
     def _init_particles(self) -> None:
-        import random
-        self.particles = []
         for _ in range(40):
             self.particles.append({
                 'x': random.random(),
@@ -78,8 +54,6 @@ class TutorialScene(Scene):
             })
 
     def _init_stars(self) -> None:
-        import random
-        self.stars = []
         for _ in range(100):
             self.stars.append({
                 'x': random.random(),
@@ -90,26 +64,59 @@ class TutorialScene(Scene):
                 'twinkle_offset': random.random() * math.pi * 2,
             })
 
+    def _reset_rects(self, width, height):
+        scale = ResponsiveHelper.get_scale_factor(width, height)
+
+        self.panel_width = ResponsiveHelper.scale(self.base_panel_width, scale)
+        self.panel_height = ResponsiveHelper.scale(self.base_panel_height, scale)
+        self.panel_x = width // 2 - self.panel_width // 2
+        self.panel_y = height // 2 - self.panel_height // 2
+
+        btn_width = ResponsiveHelper.scale(180, scale)
+        btn_height = ResponsiveHelper.scale(55, scale)
+        btn_gap = ResponsiveHelper.scale(30, scale)
+        btn_y = self.panel_y + self.panel_height - ResponsiveHelper.scale(90, scale)
+        
+        self.back_btn = pygame.Rect(
+            width // 2 - btn_width // 2, 
+            btn_y, 
+            btn_width, 
+            btn_height
+        )
+
+    def exit(self) -> None:
+        pass
+
     def handle_events(self, event: pygame.event.Event) -> None:
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_ESCAPE:
-                self.back_requested = True
-                self.running = False
-            elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
-                self.back_requested = True
-                self.running = False
-        elif event.type == pygame.KEYUP:
-            if event.key == pygame.K_ESCAPE:
-                self.back_requested = True
-                self.running = False
-            elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
-                self.back_requested = True
-                self.running = False
+            self._handle_keyboard_event(event)
+        elif event.type == pygame.MOUSEMOTION:
+            self._handle_mouse_motion(event)
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            self._handle_mouse_event(event)
+
+    def _handle_mouse_motion(self, event) -> None:
+        pass
+
+    def _handle_keyboard_event(self, event: pygame.event.Event) -> None:
+        if event.key == pygame.K_ESCAPE:
+            self.want_to_quit = True
+            self.running = False
+        elif event.key == pygame.K_RETURN:
+            self.want_to_quit = True
+            self.running = False
+        elif event.key == pygame.K_SPACE:
+            self.want_to_quit = True
+            self.running = False
+
+    def _handle_mouse_event(self, event: pygame.event.Event) -> None:
+        mx, my = event.pos
+        if self.back_btn.collidepoint(mx, my):
+            self.want_to_quit = True
+            self.running = False
 
     def update(self, *args, **kwargs) -> None:
-        import random
         self.animation_time += 1
-        self.glow_offset = math.sin(self.animation_time * 0.05) * 12
 
         for star in self.stars:
             star['y'] += star.get('speed', 0.008) * 0.008
@@ -126,11 +133,11 @@ class TutorialScene(Scene):
 
     def _draw_gradient_background(self, surface: pygame.Surface) -> None:
         width, height = surface.get_size()
-        for y in range(height):
+        for y in range(0, height, 3):
             ratio = y / height
-            r = int(self.colors['bg'][0] * (1 - ratio) + self.colors['bg_gradient'][0] * ratio)
-            g = int(self.colors['bg'][1] * (1 - ratio) + self.colors['bg_gradient'][1] * ratio)
-            b = int(self.colors['bg'][2] * (1 - ratio) + self.colors['bg_gradient'][2] * ratio)
+            r = int(self.colors['bg'][0] * (1 - ratio * 0.6) + self.colors['bg_gradient'][0] * ratio * 0.6)
+            g = int(self.colors['bg'][1] * (1 - ratio * 0.6) + self.colors['bg_gradient'][1] * ratio * 0.6)
+            b = int(self.colors['bg'][2] * (1 - ratio * 0.6) + self.colors['bg_gradient'][2] * ratio * 0.6)
             pygame.draw.line(surface, (r, g, b), (0, y), (width, y))
 
     def _draw_stars(self, surface: pygame.Surface) -> None:
@@ -140,7 +147,7 @@ class TutorialScene(Scene):
             y = int(star['y'] * height)
             twinkle = math.sin(self.animation_time * star['twinkle_speed'] + star['twinkle_offset'])
             brightness = int(star['brightness'] * (0.5 + 0.5 * twinkle))
-            pygame.draw.circle(surface, (brightness, brightness, brightness + 30), (x, y), int(star['size']))
+            pygame.draw.circle(surface, (brightness, brightness, brightness + 40), (x, y), int(star['size']))
 
     def _draw_particles(self, surface: pygame.Surface) -> None:
         width, height = surface.get_size()
@@ -158,154 +165,156 @@ class TutorialScene(Scene):
                                  (size * 2, size * 2), i)
             surface.blit(particle_surf, (x - size * 2, y - size * 2))
 
-    def _draw_glow_text(self, surface: pygame.Surface, text: str, font: pygame.font.Font,
-                        pos: tuple, color: tuple, glow_color: tuple, glow_radius: int = 2) -> None:
-        for i in range(glow_radius, 0, -1):
-            alpha = int(120 / i)
-            glow_surf = font.render(text, True, glow_color)
-            glow_surf.set_alpha(alpha)
-            glow_rect = glow_surf.get_rect(center=(pos[0], pos[1] + i))
-            surface.blit(glow_surf, glow_rect)
-
-        main_text = font.render(text, True, color)
-        surface.blit(main_text, main_text.get_rect(center=pos))
-
-    def _draw_panel(self, surface: pygame.Surface) -> None:
-        width, height = surface.get_size()
-        scale = ResponsiveHelper.get_scale_factor(width, height)
-
-        panel_width = ResponsiveHelper.scale(self.base_panel_width, scale)
-        panel_height = ResponsiveHelper.scale(self.base_panel_height, scale)
-        panel_x = width // 2 - panel_width // 2
-        panel_y = height // 2 - panel_height // 2
-
-        panel_rect = pygame.Rect(panel_x, panel_y, panel_width, panel_height)
-
-        for i in range(4, 0, -1):
-            expand = i * 4
-            glow_surf = pygame.Surface((panel_width + expand * 2, panel_height + expand * 2), pygame.SRCALPHA)
-            alpha = max(5, 25 // i)
-            pygame.draw.rect(glow_surf, (*self.colors['title_glow'], alpha),
-                          glow_surf.get_rect(), border_radius=18)
-            surface.blit(glow_surf, (panel_x - expand, panel_y - expand))
-
-        pygame.draw.rect(surface, self.colors['panel'], panel_rect, border_radius=15)
-
-        border_surf = pygame.Surface((panel_width, panel_height), pygame.SRCALPHA)
-        pygame.draw.rect(border_surf, (*self.colors['panel_border'], 140),
-                       border_surf.get_rect(), width=2, border_radius=15)
-        surface.blit(border_surf, panel_rect.topleft)
-
-    def _draw_option_item(self, surface: pygame.Surface, key: str, desc: str,
-                          center_x: int, y_pos: int, is_highlight: bool) -> None:
-        width, height = surface.get_size()
-        scale = ResponsiveHelper.get_scale_factor(width, height)
-
-        option_height = ResponsiveHelper.scale(self.base_option_height, scale)
-
-        box_width = ResponsiveHelper.scale(350, scale)
-        box_height = option_height
-        box_rect = pygame.Rect(center_x - box_width // 2, y_pos, box_width, box_height)
-
-        if is_highlight:
-            glow_color = self.colors['selected_glow']
-            for i in range(4, 0, -1):
-                expand = i * 3
-                glow_rect = box_rect.inflate(expand * 2, expand * 2)
-                glow_surf = pygame.Surface((glow_rect.width, glow_rect.height), pygame.SRCALPHA)
-                pygame.draw.rect(glow_surf, (*glow_color, 35 // i), glow_surf.get_rect(), border_radius=10)
-                surface.blit(glow_surf, glow_rect)
-
-            pygame.draw.rect(surface, self.colors['option_selected_bg'], box_rect, border_radius=10)
-            border_surf = pygame.Surface((box_width, box_height), pygame.SRCALPHA)
-            pygame.draw.rect(border_surf, (*self.colors['selected'], 200),
-                           border_surf.get_rect(), width=2, border_radius=10)
-            surface.blit(border_surf, box_rect.topleft)
-        else:
-            pygame.draw.rect(surface, self.colors['option_unselected_bg'], box_rect, border_radius=10)
-            border_surf = pygame.Surface((box_width, box_height), pygame.SRCALPHA)
-            pygame.draw.rect(border_surf, (*self.colors['unselected'], 80),
-                           border_surf.get_rect(), width=1, border_radius=10)
-            surface.blit(border_surf, box_rect.topleft)
-
-        text_color = self.colors['selected'] if is_highlight else self.colors['unselected']
-        key_text = self.option_font.render(key, True, self.colors['title'])
-        desc_text = self.desc_font.render(desc, True, text_color)
-        surface.blit(key_text, key_text.get_rect(midleft=(box_rect.x + 15, box_rect.centery)))
-        surface.blit(desc_text, desc_text.get_rect(midright=(box_rect.right - 15, box_rect.centery)))
-
-    def _draw_title_section(self, surface: pygame.Surface) -> None:
-        width, height = surface.get_size()
-        scale = ResponsiveHelper.get_scale_factor(width, height)
-
-        title_y = ResponsiveHelper.scale(self.base_title_y, scale) + self.glow_offset * 0.5
-        title_text = "AIR WAR"
-        self._draw_glow_text(surface, title_text, self.title_font,
-                           (width // 2, title_y), self.colors['title'], self.colors['title_glow'], 5)
-
-    def _draw_content(self, surface: pygame.Surface) -> None:
-        width, height = surface.get_size()
-        scale = ResponsiveHelper.get_scale_factor(width, height)
-
-        panel_width = ResponsiveHelper.scale(self.base_panel_width, scale)
-        panel_height = ResponsiveHelper.scale(self.base_panel_height, scale)
-        center_x = width // 2
-        panel_y = height // 2 - panel_height // 2
-
-        option_height = ResponsiveHelper.scale(self.base_option_height, scale)
-        option_gap = ResponsiveHelper.scale(self.base_option_gap, scale)
-
-        controls = [
-            ("W / UP", "Move Up", True),
-            ("S / DOWN", "Move Down", False),
-            ("A / LEFT", "Move Left", False),
-            ("D / RIGHT", "Move Right", False),
-            ("SPACE", "Shoot", False),
-            ("H (Hold)", "Dock Mother Ship", False),
-            ("ESC", "Pause", False),
-            ("K (Hold)", "Give Up", False),
-        ]
-
-        option_section_height = option_height * len(controls) + option_gap * (len(controls) - 1)
-        start_y = panel_y + (panel_height - option_section_height) // 2
-
-        for i, (key, desc, highlight) in enumerate(controls):
-            y_pos = start_y + i * (option_height + option_gap)
-            self._draw_option_item(surface, key, desc, center_x, y_pos, highlight)
-
-    def _draw_bottom_hints(self, surface: pygame.Surface) -> None:
-        width, height = surface.get_size()
-        scale = ResponsiveHelper.get_scale_factor(width, height)
-
-        if (self.animation_time // 30) % 2 == 0:
-            hint_color = (110, 110, 160)
-        else:
-            hint_color = (140, 140, 180)
-        start_text = self.hint_font.render("ESC / ENTER / SPACE TO EXIT", True, hint_color)
-        surface.blit(start_text, start_text.get_rect(center=(width // 2, height - ResponsiveHelper.scale(50, scale))))
-
-        controls = self.desc_font.render("TUTORIAL MODE", True, (60, 60, 100))
-        surface.blit(controls, controls.get_rect(center=(width // 2, height - ResponsiveHelper.scale(30, scale))))
-
     def render(self, surface: pygame.Surface) -> None:
         width, height = surface.get_size()
-        scale = ResponsiveHelper.get_scale_factor(width, height)
-        self._init_fonts(scale)
-
         self._draw_gradient_background(surface)
         self._draw_stars(surface)
         self._draw_particles(surface)
 
-        self._draw_title_section(surface)
-        self._draw_panel(surface)
-        self._draw_content(surface)
-        self._draw_bottom_hints(surface)
+        self._reset_rects(width, height)
 
-    def is_back_requested(self) -> bool:
-        return self.back_requested
+        self._render_panel(surface)
+        self._render_title(surface)
+        self._render_content(surface)
+        self._render_back_button(surface)
+        self._render_hints(surface)
+
+    def _render_panel(self, surface) -> None:
+        panel_rect = pygame.Rect(self.panel_x, self.panel_y, self.panel_width, self.panel_height)
+
+        for i in range(4, 0, -1):
+            expand = i * 4
+            glow_surf = pygame.Surface((self.panel_width + expand * 2, self.panel_height + expand * 2), pygame.SRCALPHA)
+            alpha = max(5, 30 // i)
+            pygame.draw.rect(glow_surf, (*self.colors['title_glow'], alpha),
+                          glow_surf.get_rect(), border_radius=18)
+            surface.blit(glow_surf, (self.panel_x - expand, self.panel_y - expand))
+
+        pygame.draw.rect(surface, self.colors['panel'], panel_rect, border_radius=15)
+
+        border_surf = pygame.Surface((self.panel_width, self.panel_height), pygame.SRCALPHA)
+        pygame.draw.rect(border_surf, (*self.colors['panel_border'], 150),
+                       border_surf.get_rect(), width=2, border_radius=15)
+        surface.blit(border_surf, panel_rect.topleft)
+
+        pygame.draw.line(surface, self.colors['panel_border'],
+                        (self.panel_x + 25, self.panel_y + 85),
+                        (self.panel_x + self.panel_width - 25, self.panel_y + 85), width=1)
+
+    def _render_title(self, surface) -> None:
+        glow_offset = math.sin(self.animation_time * 0.05) * 3
+        title_y = self.panel_y + 45
+
+        for blur, alpha, color in [(6, 18, (50, 120, 180)), (4, 30, (70, 160, 220)), (2, 45, (100, 200, 255))]:
+            glow_surf = self.title_font.render("TUTORIAL", True, color)
+            glow_surf.set_alpha(alpha)
+            for offset_x in range(-blur, blur + 1, 2):
+                for offset_y in range(-blur, blur + 1, 2):
+                    if offset_x * offset_x + offset_y * offset_y <= blur * blur:
+                        glow_rect = glow_surf.get_rect(
+                            center=(surface.get_width() // 2 + offset_x, int(title_y + glow_offset) + offset_y))
+                        surface.blit(glow_surf, glow_rect)
+
+        title_shadow = self.title_font.render("TUTORIAL", True, (20, 60, 100))
+        surface.blit(title_shadow, title_shadow.get_rect(
+            center=(surface.get_width() // 2 + 2, int(title_y + glow_offset) + 2)))
+
+        title = self.title_font.render("TUTORIAL", True, self.colors['title'])
+        surface.blit(title, title.get_rect(center=(surface.get_width() // 2, int(title_y + glow_offset))))
+
+    def _render_content(self, surface) -> None:
+        sections = [
+            ("CONTROLS", [
+                ("W / UP", "Move Upward"),
+                ("S / DOWN", "Move Downward"),
+                ("A / LEFT", "Move Left"),
+                ("D / RIGHT", "Move Right"),
+                ("SPACE", "Fire Weapons"),
+            ]),
+            ("MOTHER SHIP", [
+                ("H (Hold)", "Dock / Enter"),
+                ("H (Hold)", "Take Off"),
+            ]),
+            ("OTHER", [
+                ("ESC", "Return to Menu"),
+                ("K (Hold)", "Give Up Game"),
+            ]),
+        ]
+
+        start_y = self.panel_y + 110
+        section_gap = 130
+
+        for sec_idx, (section_title, items) in enumerate(sections):
+            section_y = start_y + sec_idx * section_gap
+
+            title_surf = self.section_font.render(section_title, True, self.colors['title_glow'])
+            surface.blit(title_surf, (self.panel_x + 25, section_y))
+
+            content_rect = pygame.Rect(
+                self.panel_x + 25,
+                section_y + 35,
+                self.panel_width - 50,
+                80
+            )
+            pygame.draw.rect(surface, self.colors['section_bg'], content_rect, border_radius=8)
+            border_surf = pygame.Surface((content_rect.width, content_rect.height), pygame.SRCALPHA)
+            pygame.draw.rect(border_surf, (*self.colors['panel_border'], 100),
+                          border_surf.get_rect(), width=1, border_radius=8)
+            surface.blit(border_surf, content_rect.topleft)
+
+            item_y = section_y + 45
+            item_gap = 18
+
+            for item_idx, (key, desc) in enumerate(items):
+                key_surf = self.content_font.render(key, True, self.colors['highlight'])
+                desc_surf = self.content_font.render(desc, True, self.colors['content_text'])
+                surface.blit(key_surf, (content_rect.x + 15, item_y + item_idx * item_gap))
+                surface.blit(desc_surf, (content_rect.right - 15 - desc_surf.get_width(), item_y + item_idx * item_gap))
+
+    def _render_back_button(self, surface) -> None:
+        mouse_pos = pygame.mouse.get_pos()
+        hover = self.back_btn.collidepoint(mouse_pos)
+
+        btn_color = (30, 70, 130) if hover else (20, 50, 100)
+
+        if hover:
+            for i in range(4, 0, -1):
+                expand = i * 3
+                glow_surf = pygame.Surface((self.back_btn.width + expand * 2, self.back_btn.height + expand * 2), pygame.SRCALPHA)
+                alpha = max(3, 20 // i)
+                pygame.draw.rect(glow_surf, (*self.colors['title_glow'], alpha),
+                              glow_surf.get_rect(), border_radius=12)
+                surface.blit(glow_surf, (self.back_btn.x - expand, self.back_btn.y - expand))
+
+        pygame.draw.rect(surface, btn_color, self.back_btn, border_radius=10)
+
+        border_surf = pygame.Surface((self.back_btn.width, self.back_btn.height), pygame.SRCALPHA)
+        pygame.draw.rect(border_surf, (*self.colors['title_glow'], 120 if hover else 100),
+                        border_surf.get_rect(), width=2, border_radius=10)
+        surface.blit(border_surf, self.back_btn.topleft)
+
+        text_surf = self.section_font.render("BACK", True, (245, 250, 255))
+        text_rect = text_surf.get_rect(center=self.back_btn.center)
+        surface.blit(text_surf, text_rect)
+
+    def _render_hints(self, surface) -> None:
+        width = surface.get_width()
+        height = surface.get_height()
+
+        if (self.animation_time // 30) % 2 == 0:
+            hint_color = (70, 75, 120)
+        else:
+            hint_color = (100, 105, 150)
+
+        hints = "ESC / ENTER / SPACE to return"
+        hint_surf = self.hint_font.render(hints, True, hint_color)
+        surface.blit(hint_surf, hint_surf.get_rect(center=(width // 2, height - 40)))
 
     def is_ready(self) -> bool:
         return not self.running
+
+    def should_quit(self) -> bool:
+        return self.want_to_quit
 
     def is_running(self) -> bool:
         return self.running
