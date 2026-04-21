@@ -88,25 +88,24 @@ class TutorialScene(Scene):
             })
             
     def handle_events(self, event: pygame.event.Event) -> None:
-        print(f"[TUTORIAL SCENE] handle_events: type={event.type}, pygame.KEYDOWN={pygame.KEYDOWN}")
         if event.type == pygame.KEYDOWN:
-            print(f"[TUTORIAL SCENE] KEYDOWN: key={event.key}, ESC={pygame.K_ESCAPE}, RETURN={pygame.K_RETURN}, SPACE={pygame.K_SPACE}")
-            print(f"[TUTORIAL SCENE] Key match check: ESC={event.key == pygame.K_ESCAPE}")
             if event.key == pygame.K_ESCAPE:
-                print("[TUTORIAL SCENE] ESC pressed! Setting running=False")
                 self.back_requested = True
                 self.running = False
             elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
-                print("[TUTORIAL SCENE] ENTER/SPACE pressed! Setting running=False")
                 self.back_requested = True
                 self.running = False
-            else:
-                print(f"[TUTORIAL SCENE] Unrecognized key: {event.key}")
+        elif event.type == pygame.KEYUP:
+            if event.key == pygame.K_ESCAPE:
+                self.back_requested = True
+                self.running = False
+            elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
+                self.back_requested = True
+                self.running = False
         elif event.type == pygame.MOUSEMOTION:
             self._handle_mouse_motion(event.pos)
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if self.button_hover:
-                print("[TUTORIAL SCENE] Button clicked! Setting running=False")
                 self.back_requested = True
                 self.running = False
                 
