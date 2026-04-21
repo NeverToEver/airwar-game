@@ -4,6 +4,7 @@ from typing import List
 from airwar.game.systems.hud_renderer import HUDRenderer
 from airwar.game.controllers.game_controller import GameState, GameplayState
 from airwar.game.rendering.background_renderer import BackgroundRenderer
+from airwar.game.death_animation import DeathAnimation
 
 
 @dataclass
@@ -115,14 +116,13 @@ class GameRenderer:
         self.hud_renderer.render_buff_stats_panel(surface, reward_system, player)
 
     def _render_death_animation(self, surface, state, entities):
-        from airwar.game.death_animation import DeathAnimation
         if self._death_animation is None or not self._death_animation.is_active():
             self._death_animation = DeathAnimation()
-            self._death_animation._screen_diagonal = self._screen_diagonal
             if entities.player:
                 self._death_animation.trigger(
                     entities.player.rect.centerx,
-                    entities.player.rect.centery
+                    entities.player.rect.centery,
+                    self._screen_diagonal
                 )
         self._death_animation.render(surface)
 
