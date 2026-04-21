@@ -108,6 +108,16 @@ class MenuScene(Scene):
                     self.difficulty = selected_option
                 self.selection_confirmed = True
                 self.running = False
+        elif event.type == pygame.KEYUP:
+            if event.key == pygame.K_ESCAPE:
+                self.back_requested = True
+                self.running = False
+            elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
+                selected_option = self.difficulty_options[self.selected_index]
+                if selected_option != 'tutorial':
+                    self.difficulty = selected_option
+                self.selection_confirmed = True
+                self.running = False
 
     def update(self, *args, **kwargs) -> None:
         import random
