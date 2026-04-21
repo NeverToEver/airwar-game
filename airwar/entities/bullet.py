@@ -5,6 +5,8 @@ from airwar.utils.sprites import draw_bullet
 
 
 class Bullet(Entity):
+    _trail_surface_cache: dict = {}
+
     def __init__(self, x: float, y: float, data: BulletData):
         super().__init__(x, y, 10, 10)
         self.data = data
@@ -48,8 +50,13 @@ class Bullet(Entity):
         if (self.data.bullet_type == "laser" or self.data.is_laser) and self._trail:
             for i, trail_rect in enumerate(self._trail):
                 alpha = int(100 * (i / len(self._trail)))
-                trail_surface = pygame.Surface((trail_rect.width, trail_rect.height), pygame.SRCALPHA)
-                trail_surface.fill((255, 0, 100, alpha))
+                cache_key = (trail_rect.width, trail_rect.height, alpha)
+                if cache_key not in Bullet._trail_surface_cache:
+                    trail_surface = pygame.Surface((trail_rect.width, trail_rect.height), pygame.SRCALPHA)
+                    trail_surface.fill((255, 0, 100, alpha))
+                    Bullet._trail_surface_cache[cache_key] = trail_surface
+                else:
+                    trail_surface = Bullet._trail_surface_cache[cache_key]
                 surface.blit(trail_surface, trail_rect)
 
     def set_sprite(self, sprite: pygame.Surface) -> None:

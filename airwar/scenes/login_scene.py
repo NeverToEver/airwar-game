@@ -4,6 +4,7 @@ import random
 from .scene import Scene
 from airwar.utils.database import UserDB
 from airwar.utils.responsive import ResponsiveHelper
+from airwar.scenes.ui.background import BackgroundRenderer
 
 
 class LoginScene(Scene):
@@ -37,9 +38,9 @@ class LoginScene(Scene):
         self.button_font = pygame.font.Font(None, 36)
         self.hint_font = pygame.font.Font(None, 26)
 
+        self._background_renderer = BackgroundRenderer()
         self._init_colors()
         self._init_particles()
-        self._init_stars()
 
     def _init_colors(self) -> None:
         self.colors = {
@@ -74,18 +75,6 @@ class LoginScene(Scene):
                 'alpha': random.randint(80, 180),
                 'pulse_speed': random.uniform(0.02, 0.06),
                 'pulse_offset': random.random() * math.pi * 2,
-            })
-
-    def _init_stars(self) -> None:
-        self.stars = []
-        for _ in range(120):
-            self.stars.append({
-                'x': random.random(),
-                'y': random.random(),
-                'size': random.uniform(0.5, 2.5),
-                'brightness': random.randint(40, 160),
-                'twinkle_speed': random.uniform(0.02, 0.07),
-                'twinkle_offset': random.random() * math.pi * 2,
             })
 
     def _reset_rects(self, width, height):
@@ -219,11 +208,8 @@ class LoginScene(Scene):
             self.cursor_timer = 0
             self.cursor_visible = not self.cursor_visible
 
-        for star in self.stars:
-            star['y'] += star['speed'] * 0.008 if hasattr(star, 'speed') else 0.008
-            if star['y'] > 1:
-                star['y'] = 0
-                star['x'] = random.random()
+        self._background_renderer._animation_time = self.animation_time
+        self._background_renderer.update()
 
         for p in self.particles[:]:
             p['y'] -= p['speed'] * 0.003
@@ -238,24 +224,6 @@ class LoginScene(Scene):
                     p['y'] = 1.1
                     p['x'] = random.random()
                     p['alpha'] = random.randint(80, 180)
-
-    def _draw_gradient_background(self, surface: pygame.Surface) -> None:
-        width, height = surface.get_size()
-        for y in range(0, height, 3):
-            ratio = y / height
-            r = int(self.colors['bg'][0] * (1 - ratio * 0.6) + self.colors['bg_gradient'][0] * ratio * 0.6)
-            g = int(self.colors['bg'][1] * (1 - ratio * 0.6) + self.colors['bg_gradient'][1] * ratio * 0.6)
-            b = int(self.colors['bg'][2] * (1 - ratio * 0.6) + self.colors['bg_gradient'][2] * ratio * 0.6)
-            pygame.draw.line(surface, (r, g, b), (0, y), (width, y))
-
-    def _draw_stars(self, surface: pygame.Surface) -> None:
-        width, height = surface.get_size()
-        for star in self.stars:
-            x = int(star['x'] * width)
-            y = int(star['y'] * height)
-            twinkle = math.sin(self.animation_time * star['twinkle_speed'] + star['twinkle_offset'])
-            brightness = int(star['brightness'] * (0.5 + 0.5 * twinkle))
-            pygame.draw.circle(surface, (brightness, brightness, brightness + 40), (x, y), int(star['size']))
 
     def _draw_particles(self, surface: pygame.Surface) -> None:
         width, height = surface.get_size()
@@ -275,8 +243,7 @@ class LoginScene(Scene):
 
     def render(self, surface: pygame.Surface) -> None:
         width, height = surface.get_size()
-        self._draw_gradient_background(surface)
-        self._draw_stars(surface)
+        self._background_renderer.render(surface, self.colors)
         self._draw_particles(surface)
 
         self._reset_rects(width, height)
