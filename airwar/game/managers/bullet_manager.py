@@ -125,9 +125,13 @@ class BulletManager:
 
     def _cleanup_enemy_bullets(self) -> None:
         """清理敌人子弹列表中的非活跃子弹"""
-        active_bullets = [
-            bullet for bullet in self._spawn_controller.enemy_bullets
-            if bullet.active
-        ]
-        self._spawn_controller.enemy_bullets.clear()
-        self._spawn_controller.enemy_bullets.extend(active_bullets)
+        if not self._spawn_controller.enemy_bullets:
+            return
+
+        bullets = self._spawn_controller.enemy_bullets
+        i = 0
+        while i < len(bullets):
+            if not bullets[i].active:
+                bullets.pop(i)
+            else:
+                i += 1

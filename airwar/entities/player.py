@@ -169,7 +169,15 @@ class Player(Entity):
         bullet.active = False
 
     def cleanup_inactive_bullets(self) -> None:
-        self._bullets = [b for b in self._bullets if b.active]
+        if not self._bullets:
+            return
+
+        i = 0
+        while i < len(self._bullets):
+            if not self._bullets[i].active:
+                self._bullets.pop(i)
+            else:
+                i += 1
 
     def take_damage(self, damage: int) -> None:
         if self.is_shielded:

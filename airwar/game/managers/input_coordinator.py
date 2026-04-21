@@ -50,10 +50,6 @@ class InputCoordinator:
         self._give_up_ui = give_up_ui
 
     def handle_events(self, event: pygame.event.Event) -> None:
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_SPACE:
-                if self._can_fire():
-                    self._player.fire()
         self._reward_selector.handle_input(event)
 
     def _can_fire(self) -> bool:

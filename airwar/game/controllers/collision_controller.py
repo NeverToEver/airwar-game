@@ -29,13 +29,25 @@ class CollisionEvent:
 class CollisionController:
     def __init__(self):
         self._events: List[CollisionEvent] = []
-    
+        self._explosion_callback: Optional[Callable[[float, float, int], None]] = None
+
     @property
     def events(self) -> List[CollisionEvent]:
         return self._events.copy()
-    
+
     def clear_events(self) -> None:
         self._events.clear()
+
+    def set_explosion_callback(
+        self,
+        callback: Callable[[float, float, int], None]
+    ) -> None:
+        """Set explosion callback function
+
+        Args:
+            callback: Callback function with signature (x, y, radius) -> None
+        """
+        self._explosion_callback = callback
     
     def check_all_collisions(
         self,
@@ -131,7 +143,7 @@ class CollisionController:
                 if not enemy.active:
                     continue
 
-                if bullet.get_rect().colliderect(enemy.get_rect()):
+                if bullet.get_rect().colliderect(enemy.get_hitbox()):
                     damage = bullet.data.damage
                     enemy.take_damage(damage)
 
@@ -156,20 +168,27 @@ class CollisionController:
     ) -> None:
         from airwar.config import EXPLOSION_RADIUS
         from airwar.game.constants import GAME_CONSTANTS
-        
+
         bullet_x = bullet.rect.centerx
         bullet_y = bullet.rect.centery
         explosion_radius_sq = (EXPLOSION_RADIUS * explosive_level) ** 2
-        
+        explosion_radius = EXPLOSION_RADIUS * explosive_level
+
+        explosion_triggered = False
+
         for enemy in enemies:
             if enemy.active:
                 dx = bullet_x - enemy.rect.centerx
                 dy = bullet_y - enemy.rect.centery
                 distance_sq = dx * dx + dy * dy
-                
+
                 if distance_sq <= explosion_radius_sq:
                     explosion_damage = GAME_CONSTANTS.DAMAGE.EXPLOSIVE_DAMAGE * explosive_level
                     enemy.take_damage(explosion_damage)
+
+                    if not explosion_triggered and self._explosion_callback:
+                        self._explosion_callback(bullet_x, bullet_y, explosion_radius)
+                        explosion_triggered = True
 
     def check_player_bullets_vs_boss(
         self,
