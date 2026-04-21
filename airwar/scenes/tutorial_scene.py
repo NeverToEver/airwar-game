@@ -88,21 +88,25 @@ class TutorialScene(Scene):
             })
             
     def handle_events(self, event: pygame.event.Event) -> None:
+        print(f"[TUTORIAL SCENE] handle_events: type={event.type}, pygame.KEYDOWN={pygame.KEYDOWN}")
         if event.type == pygame.KEYDOWN:
-            print(f"[TUTORIAL SCENE] KEYDOWN received: key={event.key}")
+            print(f"[TUTORIAL SCENE] KEYDOWN: key={event.key}, ESC={pygame.K_ESCAPE}, RETURN={pygame.K_RETURN}, SPACE={pygame.K_SPACE}")
+            print(f"[TUTORIAL SCENE] Key match check: ESC={event.key == pygame.K_ESCAPE}")
             if event.key == pygame.K_ESCAPE:
-                print("[TUTORIAL SCENE] ESC pressed, setting running=False")
+                print("[TUTORIAL SCENE] ESC pressed! Setting running=False")
                 self.back_requested = True
                 self.running = False
             elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
-                print("[TUTORIAL SCENE] ENTER/SPACE pressed, setting running=False")
+                print("[TUTORIAL SCENE] ENTER/SPACE pressed! Setting running=False")
                 self.back_requested = True
                 self.running = False
+            else:
+                print(f"[TUTORIAL SCENE] Unrecognized key: {event.key}")
         elif event.type == pygame.MOUSEMOTION:
             self._handle_mouse_motion(event.pos)
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if self.button_hover:
-                print("[TUTORIAL SCENE] Button clicked, setting running=False")
+                print("[TUTORIAL SCENE] Button clicked! Setting running=False")
                 self.back_requested = True
                 self.running = False
                 
@@ -359,9 +363,4 @@ class TutorialScene(Scene):
         return not self.running
         
     def is_running(self) -> bool:
-        import traceback
-        print(f"[TUTORIAL SCENE] is_running() called, returning={self.running}")
-        print("[TUTORIAL SCENE] Call stack:")
-        for line in traceback.format_stack()[-5:-1]:
-            print(line.strip())
         return self.running

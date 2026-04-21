@@ -103,21 +103,30 @@ class SceneDirector:
         tutorial_scene = self._scene_manager.get_current_scene()
         
         print(f"[TUTORIAL DEBUG] Starting tutorial, is_running={tutorial_scene.is_running()}")
+        print(f"[TUTORIAL DEBUG] TutorialScene id={id(tutorial_scene)}")
         
+        frame_count = 0
         while tutorial_scene.is_running():
-            print(f"[TUTORIAL DEBUG] Loop iteration, is_running={tutorial_scene.is_running()}")
+            frame_count += 1
+            if frame_count % 60 == 0:
+                print(f"[TUTORIAL DEBUG] Frame {frame_count}, still running...")
+            
             events = self._poll_events()
+            
+            print(f"[TUTORIAL DEBUG] Frame {frame_count}: got {len(events)} events")
+            for event in events:
+                if event.type == pygame.KEYDOWN:
+                    print(f"[TUTORIAL DEBUG] KEYDOWN event: key={event.key}, mod={event.mod}")
+            
             if not self._check_quit(events):
                 print("[TUTORIAL DEBUG] Quit detected, returning")
                 return
             self._handle_resize_if_needed(events)
             
             for event in events:
-                if event.type == pygame.KEYDOWN:
-                    print(f"[TUTORIAL DEBUG] KEYDOWN: key={event.key}, ESC={pygame.K_ESCAPE}")
                 tutorial_scene.handle_events(event)
             
-            print(f"[TUTORIAL DEBUG] After events, is_running={tutorial_scene.is_running()}")
+            print(f"[TUTORIAL DEBUG] After events, is_running={tutorial_scene.is_running()}, running={tutorial_scene.running}")
             
             tutorial_scene.update()
             tutorial_scene.render(self._window.get_surface())
