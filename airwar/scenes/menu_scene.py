@@ -91,7 +91,22 @@ class MenuScene(Scene):
         }
 
     def exit(self) -> None:
-        pass
+        """Clean up when exiting the menu scene."""
+        self.running = False
+        self.selection_confirmed = False
+        self.back_requested = False
+
+    def reset(self) -> None:
+        """Reset the menu scene to initial state."""
+        self.running = True
+        self.difficulty = 'medium'
+        self.selected_index = 1
+        self.animation_time = 0
+        self.glow_offset = 0
+        self.selection_confirmed = False
+        self.back_requested = False
+        self._init_particles()
+        self._init_stars()
 
     def handle_events(self, event: pygame.event.Event) -> None:
         if event.type == pygame.KEYDOWN:
@@ -102,16 +117,6 @@ class MenuScene(Scene):
                 self.selected_index = (self.selected_index - 1) % len(self.difficulty_options)
             elif event.key in (pygame.K_DOWN, pygame.K_s):
                 self.selected_index = (self.selected_index + 1) % len(self.difficulty_options)
-            elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
-                selected_option = self.difficulty_options[self.selected_index]
-                if selected_option != 'tutorial':
-                    self.difficulty = selected_option
-                self.selection_confirmed = True
-                self.running = False
-        elif event.type == pygame.KEYUP:
-            if event.key == pygame.K_ESCAPE:
-                self.back_requested = True
-                self.running = False
             elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
                 selected_option = self.difficulty_options[self.selected_index]
                 if selected_option != 'tutorial':

@@ -89,8 +89,7 @@ class SceneDirector:
                     selected_option = ms.get_selected_option()
                     if selected_option == 'tutorial':
                         self._run_tutorial_flow()
-                        ms.selection_confirmed = False
-                        ms.running = True
+                        self._scene_manager.switch("menu")
                     else:
                         self._selected_difficulty = ms.get_difficulty()
                         break
@@ -98,26 +97,35 @@ class SceneDirector:
         return not back_to_login
 
     def _run_tutorial_flow(self) -> None:
-        """运行教程流程"""
+        """Run the tutorial flow."""
         self._scene_manager.switch("tutorial")
         tutorial_scene = self._scene_manager.get_current_scene()
+        pygame.event.set_grab(True)
         
-        while tutorial_scene.is_running():
-            events = self._poll_events()
-            if not self._check_quit(events):
-                return
-            self._handle_resize_if_needed(events)
-            
-            for event in events:
-                tutorial_scene.handle_events(event)
-            
-            if tutorial_scene.should_quit():
-                return
-            
-            tutorial_scene.update()
-            tutorial_scene.render(self._window.get_surface())
-            self._window.flip()
-            self._window.tick(60)
+        try:
+            while tutorial_scene.is_running() and self._running:
+                events = self._poll_events()
+                
+                if not self._check_quit(events):
+                    return
+                self._handle_resize_if_needed(events)
+                
+                for event in events:
+                    tutorial_scene.handle_events(event)
+                
+                tutorial_scene.update()
+                tutorial_scene.render(self._window.get_surface())
+                self._window.flip()
+                self._window.tick(60)
+                
+                if tutorial_scene.should_quit():
+                    break
+        finally:
+            pygame.event.set_grab(False)
+            tutorial_scene.exit()
+            self._window.get_surface().fill((0, 0, 0))
+            pygame.display.flip()
+            pygame.time.delay(100)
 
     def _run_game_flow(self) -> str:
         self._scene_manager.switch("game",
