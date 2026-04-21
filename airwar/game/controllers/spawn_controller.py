@@ -75,7 +75,15 @@ class SpawnController:
         self._handle_boss_cleanup()
 
     def cleanup_enemies(self) -> None:
-        self.enemies = [e for e in self.enemies if e.active]
+        if not self.enemies:
+            return
+
+        i = 0
+        while i < len(self.enemies):
+            if not self.enemies[i].active:
+                self.enemies.pop(i)
+            else:
+                i += 1
 
     def _handle_boss_cleanup(self) -> None:
         if self.boss and not self.boss.active:

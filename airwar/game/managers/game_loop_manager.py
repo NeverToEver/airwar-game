@@ -76,6 +76,21 @@ class GameLoopManager:
         self._boss_manager = boss_manager
         self._collision_controller = collision_controller
 
+        self._init_explosion_system()
+
+    def _init_explosion_system(self) -> None:
+        """Initialize explosion animation system"""
+        from airwar.game.explosion_animation import ExplosionManager
+
+        self._explosion_manager = ExplosionManager()
+        self._collision_controller.set_explosion_callback(
+            self._on_explosion
+        )
+
+    def _on_explosion(self, x: float, y: float, radius: int) -> None:
+        """Explosion callback handler"""
+        self._explosion_manager.trigger(x, y, radius)
+
     def update_entrance(self, player: PlayerProtocol) -> bool:
         state = self._game_controller.state
         state.entrance_timer += 1
@@ -114,9 +129,11 @@ class GameLoopManager:
 
         if self._game_controller.state.gameplay_state == GameplayState.DYING:
             self._game_renderer.update_death_animation()
+            self._explosion_manager.update()
             return
 
         self._game_renderer.update_death_animation()
+        self._explosion_manager.update()
         player.update()
         player.auto_fire()
 
@@ -184,3 +201,19 @@ class GameLoopManager:
 
     def is_game_running(self) -> bool:
         return self._game_controller.state.running
+
+    def render_explosions(self, surface) -> None:
+        """Render all active explosion effects
+
+        Args:
+            surface: PyGame rendering surface
+        """
+        self._explosion_manager.render(surface)
+
+    def get_explosion_stats(self) -> dict:
+        """Get explosion system statistics
+
+        Returns:
+            dict: Statistics about the explosion system
+        """
+        return self._explosion_manager.get_stats()

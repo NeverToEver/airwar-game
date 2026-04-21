@@ -272,6 +272,7 @@ class GameScene(Scene):
         if self._mother_ship_integrator:
             self._mother_ship_integrator.render(surface)
 
+        self._game_loop_manager.render_explosions(surface)
         self._input_coordinator.render_give_up(surface)
 
     @property
