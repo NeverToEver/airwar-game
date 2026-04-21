@@ -24,7 +24,7 @@ class MenuScene(Scene):
         self.stars = []
 
         self.base_panel_width = 400
-        self.base_panel_height = 360
+        self.base_panel_height = 460
         self.base_option_height = 70
         self.base_option_gap = 12
         self.base_title_y = 100
@@ -283,7 +283,7 @@ class MenuScene(Scene):
         
         option_height = ResponsiveHelper.scale(self.base_option_height, scale)
         option_gap = ResponsiveHelper.scale(self.base_option_gap, scale)
-        option_section_height = option_height * 3 + option_gap * 2
+        option_section_height = option_height * len(self.difficulty_options) + option_gap * (len(self.difficulty_options) - 1)
         start_y = panel_y + (panel_height - option_section_height) // 2
         
         for i, diff in enumerate(self.difficulty_options):

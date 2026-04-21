@@ -227,34 +227,34 @@ class TutorialScene(Scene):
         surface.blit(main_title, main_title.get_rect(center=(width // 2, int(title_y + title_glow_offset))))
         
         subtitle_y = title_y + ResponsiveHelper.scale(55, scale)
-        subtitle = self.subtitle_font.render("新手教程指南", True, self.colors['title_glow'])
+        subtitle = self.subtitle_font.render("TUTORIAL GUIDE", True, self.colors['title_glow'])
         surface.blit(subtitle, subtitle.get_rect(center=(width // 2, subtitle_y)))
         
     def _draw_content_sections(self, surface: pygame.Surface, width: int, scale: float) -> None:
         sections = [
             {
-                'title': '🎮 基础控制',
+                'title': '🎮  BASIC CONTROLS',
                 'items': [
-                    ('↑ / W', '向上移动'),
-                    ('↓ / S', '向下移动'),
-                    ('← / A', '向左移动'),
-                    ('→ / D', '向右移动'),
-                    ('空格键', '射击（自动射击）'),
+                    ('↑ / W', 'Move Up'),
+                    ('↓ / S', 'Move Down'),
+                    ('← / A', 'Move Left'),
+                    ('→ / D', 'Move Right'),
+                    ('SPACE', 'Shoot (Auto-fire)'),
                 ]
             },
             {
-                'title': '🚀 母舰系统',
+                'title': '🚀  MOTHER SHIP',
                 'items': [
-                    ('H（长按）', '停靠/进入母舰系统'),
-                    ('-', '母舰内可选择增益效果'),
-                    ('-', '长按H键可重新起飞'),
+                    ('H (Hold)', 'Dock / Enter Mother Ship'),
+                    ('-', 'Select power-ups inside'),
+                    ('-', 'Hold H to take off'),
                 ]
             },
             {
-                'title': '⚠️ 其他功能',
+                'title': '⚠️  OTHER FUNCTIONS',
                 'items': [
-                    ('ESC', '暂停游戏'),
-                    ('K（长按3秒）', '主动放弃游戏'),
+                    ('ESC', 'Pause Game'),
+                    ('K (Hold 3s)', 'Give Up Game'),
                 ]
             },
         ]
@@ -346,7 +346,7 @@ class TutorialScene(Scene):
                        border_surf.get_rect(), width=2, border_radius=10)
         surface.blit(border_surf, btn_rect.topleft)
         
-        btn_text = self.button_font.render("返回主菜单", True, (245, 250, 255))
+        btn_text = self.button_font.render("BACK TO MENU", True, (245, 250, 255))
         surface.blit(btn_text, btn_text.get_rect(center=(btn_x + btn_width // 2, btn_y + btn_height // 2)))
         
     def _draw_hints(self, surface: pygame.Surface, width: int, scale: float) -> None:
@@ -358,7 +358,7 @@ class TutorialScene(Scene):
         else:
             hint_color = (140, 140, 180)
             
-        hints = self.hint_font.render("↑↓ 选择    ENTER 确认", True, hint_color)
+        hints = self.hint_font.render("↑↓ Select    ENTER/ESC to Return", True, hint_color)
         surface.blit(hints, hints.get_rect(center=(width // 2, hint_y)))
         
     def is_back_requested(self) -> bool:
