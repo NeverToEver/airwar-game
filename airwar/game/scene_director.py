@@ -89,6 +89,8 @@ class SceneDirector:
                     selected_option = ms.get_selected_option()
                     if selected_option == 'tutorial':
                         self._run_tutorial_flow()
+                        ms.selection_confirmed = False
+                        ms.running = True
                     else:
                         self._selected_difficulty = ms.get_difficulty()
                         break
