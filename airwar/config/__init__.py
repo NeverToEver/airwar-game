@@ -1,5 +1,6 @@
 from .settings import *
 from .game_config import GameConfig, get_screen_width, get_screen_height, set_screen_size
+from airwar.configs.tutorial import TUTORIAL_COLORS, TUTORIAL_FONTS, TUTORIAL_STEPS
 
 __all__ = [
     'SCREEN_WIDTH', 'SCREEN_HEIGHT', 'FPS',
@@ -12,4 +13,5 @@ __all__ = [
     'WHITE', 'BLACK', 'RED', 'GREEN', 'BLUE',
     'ASSETS_PATH', 'IMAGES_PATH', 'SOUNDS_PATH',
     'EXPLOSION_RADIUS',
+    'TUTORIAL_COLORS', 'TUTORIAL_FONTS', 'TUTORIAL_STEPS',
 ]

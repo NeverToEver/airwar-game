@@ -53,7 +53,7 @@ class TestMenuScene:
         scene.enter()
         assert scene.difficulty == 'medium'
         assert scene.selected_index == 1
-        assert scene.difficulty_options == ['easy', 'medium', 'hard']
+        assert scene.difficulty_options == ['easy', 'medium', 'hard', 'tutorial']
 
     def test_menu_scene_is_ready_initially_false(self):
         from airwar.scenes import MenuScene
