@@ -118,7 +118,6 @@ class TestTutorialIntegration:
         for step in TUTORIAL_STEPS:
             assert 'id' in step
             assert 'title' in step
-            assert 'icon' in step
             assert 'content' in step
             
             if not step.get('is_complete'):

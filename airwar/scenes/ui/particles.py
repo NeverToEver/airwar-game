@@ -1,0 +1,95 @@
+import pygame
+import math
+import random
+
+
+class ParticleSystem:
+    """粒子系统 — 使用 Flyweight 模式缓存粒子纹理"""
+
+    _texture_cache = {}
+
+    def __init__(self):
+        self._particles = []
+        self._animation_time = 0
+        self._init_cache()
+
+    def _init_cache(self):
+        """预创建常用尺寸的粒子纹理"""
+        for base_size in [8, 12, 16, 20]:
+            for color_key in ['particle', 'particle_alt']:
+                key = (base_size, color_key)
+                if key not in self._texture_cache:
+                    surf = pygame.Surface((base_size * 4, base_size * 4), pygame.SRCALPHA)
+                    color = (100, 180, 255) if color_key == 'particle' else (255, 150, 150)
+                    for i in range(base_size * 2, 0, -2):
+                        layer_alpha = int(180 * (base_size * 2 - i) / (base_size * 2) * 0.4)
+                        pygame.draw.circle(
+                            surf,
+                            (*color, layer_alpha),
+                            (base_size * 2, base_size * 2),
+                            i
+                        )
+                    self._texture_cache[key] = surf
+
+    def _init_particles(self, count: int = 40, color_key: str = 'particle'):
+        """初始化粒子数据"""
+        self._particles = []
+        for _ in range(count):
+            self._particles.append({
+                'x': random.random(),
+                'y': random.random(),
+                'size': random.uniform(1.5, 3.5),
+                'speed': random.uniform(0.3, 0.9),
+                'alpha': random.randint(80, 180),
+                'pulse_speed': random.uniform(0.02, 0.05),
+                'pulse_offset': random.random() * math.pi * 2,
+                'color_key': color_key,
+            })
+
+    def update(self, direction: float = -1):
+        """更新粒子状态"""
+        self._animation_time += 1
+        for p in self._particles[:]:
+            p['y'] += p['speed'] * 0.003 * direction
+            if p['y'] < -0.1:
+                p['y'] = 1.1
+                p['x'] = random.random()
+                p['alpha'] = random.randint(80, 180)
+
+    def render(self, surface: pygame.Surface, color: tuple):
+        """渲染粒子"""
+        width, height = surface.get_size()
+
+        for p in self._particles:
+            x = int(p['x'] * width)
+            y = int(p['y'] * height)
+            pulse = math.sin(self._animation_time * p['pulse_speed'] + p['pulse_offset'])
+            alpha = int(p['alpha'] * (0.6 + 0.4 * pulse))
+            size = int(p['size'] * (0.7 + 0.3 * pulse))
+            size = max(4, min(size, 24))
+
+            base_size = 8
+            if size > 18:
+                base_size = 20
+            elif size > 14:
+                base_size = 16
+            elif size > 10:
+                base_size = 12
+
+            cache_key = (base_size, p.get('color_key', 'particle'))
+            if cache_key in self._texture_cache:
+                particle_surf = self._texture_cache[cache_key].copy()
+                particle_surf.set_alpha(alpha)
+                surface.blit(particle_surf, (x - base_size * 2, y - base_size * 2))
+            else:
+                particle_surf = pygame.Surface((size * 4, size * 4), pygame.SRCALPHA)
+                for i in range(size * 2, 0, -2):
+                    layer_alpha = int(alpha * (size * 2 - i) / (size * 2) * 0.4)
+                    pygame.draw.circle(particle_surf, (*color, layer_alpha),
+                                     (size * 2, size * 2), i)
+                surface.blit(particle_surf, (x - size * 2, y - size * 2))
+
+    def reset(self, count: int = 40, color_key: str = 'particle'):
+        """重置粒子系统"""
+        self._animation_time = 0
+        self._init_particles(count, color_key)

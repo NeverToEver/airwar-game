@@ -2,6 +2,9 @@ import pygame
 import math
 from .scene import Scene, ExitConfirmAction
 from airwar.utils.responsive import ResponsiveHelper
+from airwar.scenes.ui.background import BackgroundRenderer
+from airwar.scenes.ui.particles import ParticleSystem
+from airwar.scenes.ui.effects import EffectsRenderer
 
 
 class ExitConfirmScene(Scene):
@@ -14,8 +17,6 @@ class ExitConfirmScene(Scene):
         self.difficulty = kwargs.get('difficulty', 'medium')
         self.animation_time = 0
         self.glow_offset = 0
-        self.particles = []
-        self.stars = []
 
         self.base_option_spacing = 70
         self.base_box_width = 350
@@ -27,36 +28,12 @@ class ExitConfirmScene(Scene):
         self.hint_font = pygame.font.Font(None, 26)
         self.desc_font = pygame.font.Font(None, 24)
 
-        self._init_particles()
-        self._init_stars()
+        self._background_renderer = BackgroundRenderer()
+        self._particle_system = ParticleSystem()
+        self._effects_renderer = EffectsRenderer()
+        self._particle_system.reset(25, 'particle')
+
         self._init_colors()
-
-    def _init_particles(self) -> None:
-        import random
-        self.particles = []
-        for _ in range(25):
-            self.particles.append({
-                'x': random.random(),
-                'y': random.random(),
-                'size': random.uniform(1.5, 3.0),
-                'speed': random.uniform(0.2, 0.6),
-                'alpha': random.randint(60, 150),
-                'pulse_speed': random.uniform(0.02, 0.05),
-                'pulse_offset': random.random() * math.pi * 2,
-            })
-
-    def _init_stars(self) -> None:
-        import random
-        self.stars = []
-        for _ in range(80):
-            self.stars.append({
-                'x': random.random(),
-                'y': random.random(),
-                'size': random.uniform(0.5, 2.0),
-                'brightness': random.randint(50, 150),
-                'twinkle_speed': random.uniform(0.03, 0.08),
-                'twinkle_offset': random.random() * math.pi * 2,
-            })
 
     def _init_colors(self) -> None:
         self.colors = {
@@ -98,56 +75,14 @@ class ExitConfirmScene(Scene):
             self.result = ExitConfirmAction.QUIT_GAME
 
     def update(self, *args, **kwargs) -> None:
-        import random
         self.animation_time += 1
         self.glow_offset = math.sin(self.animation_time * 0.05) * 8
 
-        for star in self.stars:
-            star['y'] += star.get('speed', 0.005) * 0.005
-            if star['y'] > 1:
-                star['y'] = 0
-                star['x'] = random.random()
+        self._background_renderer._animation_time = self.animation_time
+        self._background_renderer.update()
 
-        for p in self.particles[:]:
-            p['y'] -= p['speed'] * 0.002
-            if p['y'] < -0.1:
-                p['y'] = 1.1
-                p['x'] = random.random()
-                p['alpha'] = random.randint(60, 150)
-
-    def _draw_gradient_background(self, surface: pygame.Surface) -> None:
-        width, height = surface.get_size()
-        for y in range(height):
-            ratio = y / height
-            r = int(self.colors['bg'][0] * (1 - ratio) + self.colors['bg_gradient'][0] * ratio)
-            g = int(self.colors['bg'][1] * (1 - ratio) + self.colors['bg_gradient'][1] * ratio)
-            b = int(self.colors['bg'][2] * (1 - ratio) + self.colors['bg_gradient'][2] * ratio)
-            pygame.draw.line(surface, (r, g, b), (0, y), (width, y))
-
-    def _draw_stars(self, surface: pygame.Surface) -> None:
-        width, height = surface.get_size()
-        for star in self.stars:
-            x = int(star['x'] * width)
-            y = int(star['y'] * height)
-            twinkle = math.sin(self.animation_time * star['twinkle_speed'] + star['twinkle_offset'])
-            brightness = int(star['brightness'] * (0.5 + 0.5 * twinkle))
-            pygame.draw.circle(surface, (brightness, brightness, brightness + 30), (x, y), int(star['size']))
-
-    def _draw_particles(self, surface: pygame.Surface) -> None:
-        width, height = surface.get_size()
-        for p in self.particles:
-            x = int(p['x'] * width)
-            y = int(p['y'] * height)
-            pulse = math.sin(self.animation_time * p['pulse_speed'] + p['pulse_offset'])
-            alpha = int(p['alpha'] * (0.6 + 0.4 * pulse))
-            size = int(p['size'] * (0.7 + 0.3 * pulse))
-
-            particle_surf = pygame.Surface((size * 4, size * 4), pygame.SRCALPHA)
-            for i in range(size * 2, 0, -2):
-                layer_alpha = int(alpha * (size * 2 - i) / (size * 2) * 0.4)
-                pygame.draw.circle(particle_surf, (*self.colors['particle'], layer_alpha),
-                                 (size * 2, size * 2), i)
-            surface.blit(particle_surf, (x - size * 2, y - size * 2))
+        self._particle_system._animation_time = self.animation_time
+        self._particle_system.update(direction=-1)
 
     def _draw_glow_text(self, surface: pygame.Surface, text: str, font: pygame.font.Font,
                         pos: tuple, color: tuple, glow_color: tuple, glow_radius: int = 3) -> None:
@@ -228,9 +163,8 @@ class ExitConfirmScene(Scene):
             surface.blit(check_surface, check_rect)
 
     def render(self, surface: pygame.Surface) -> None:
-        self._draw_gradient_background(surface)
-        self._draw_stars(surface)
-        self._draw_particles(surface)
+        self._background_renderer.render(surface, self.colors)
+        self._particle_system.render(surface, self.colors['particle'])
 
         width, height = surface.get_size()
         scale = ResponsiveHelper.get_scale_factor(width, height)

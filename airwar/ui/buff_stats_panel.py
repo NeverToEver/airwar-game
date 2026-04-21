@@ -157,6 +157,8 @@ class BuffStatsAggregator:
 
 
 class BuffStatsPanel:
+    _panel_surface_cache: dict = {}
+
     def __init__(self):
         pygame.font.init()
         self._panel_width = 160
@@ -228,11 +230,15 @@ class BuffStatsPanel:
             if panel_y < 50:
                 panel_y = 50
 
-            panel_surface = self._create_panel_surface(self._panel_width, panel_height)
-
-            self._render_header(panel_surface)
-            self._render_buff_items(panel_surface, buff_entries)
-            self._render_summary(panel_surface, summary)
+            cache_key = (self._panel_width, panel_height, tuple(sorted(reward_system.unlocked_buffs)))
+            if cache_key not in BuffStatsPanel._panel_surface_cache:
+                panel_surface = self._create_panel_surface(self._panel_width, panel_height)
+                self._render_header(panel_surface)
+                self._render_buff_items(panel_surface, buff_entries)
+                self._render_summary(panel_surface, summary)
+                BuffStatsPanel._panel_surface_cache[cache_key] = panel_surface
+            else:
+                panel_surface = BuffStatsPanel._panel_surface_cache[cache_key]
 
             surface.blit(panel_surface, (panel_x, panel_y))
 
