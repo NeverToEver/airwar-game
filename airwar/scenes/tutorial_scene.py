@@ -359,5 +359,9 @@ class TutorialScene(Scene):
         return not self.running
         
     def is_running(self) -> bool:
+        import traceback
         print(f"[TUTORIAL SCENE] is_running() called, returning={self.running}")
+        print("[TUTORIAL SCENE] Call stack:")
+        for line in traceback.format_stack()[-5:-1]:
+            print(line.strip())
         return self.running
