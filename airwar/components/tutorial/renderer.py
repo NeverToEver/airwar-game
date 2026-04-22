@@ -516,7 +516,7 @@ class TutorialRenderer:
     ) -> None:
         """Render a single button with hover effect."""
         if is_exit:
-            bg_color = self._tokens.colors.DANGER_BUTTON_SELECTED_BG if is_hover else self._tokens.colors.DANGER_BUTTON_UNSELECTED_BG
+            bg_color = self._tokens.colors.DANGER_BUTTON_SELECTED_PRIMARY if is_hover else self._tokens.colors.DANGER_BUTTON_UNSELECTED_PRIMARY
             border_color = self._tokens.colors.DANGER_BUTTON_SELECTED_GLOW if is_hover else self._tokens.colors.DANGER_BUTTON_SELECTED_PRIMARY
             text_color = self._tokens.colors.BUTTON_SELECTED_TEXT
         else:
