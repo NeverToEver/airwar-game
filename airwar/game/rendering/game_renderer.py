@@ -117,15 +117,13 @@ class GameRenderer:
         player_health: int,
         player_max_health: int,
         kills: int,
-        next_threshold: float,
-        cycle_count: int,
-        max_cycles: int,
+        next_progress: int,
         boss_kills: int = 0
     ) -> None:
         self.hud_renderer.render_hud(
             surface, score, difficulty,
             player_health, player_max_health, kills,
-            next_threshold, cycle_count, max_cycles,
+            next_progress,
             boss_kills=boss_kills
         )
 

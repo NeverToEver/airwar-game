@@ -62,7 +62,6 @@ class GameController:
         self.max_delta = settings['max_delta']
         self.max_threshold = 50000
         self.difficulty_multiplier = settings['difficulty_multiplier']
-        self._previous_threshold = 0
 
     def update(self, player, has_regen: bool = False) -> None:
         self.health_system.update(player, has_regen)
@@ -97,9 +96,6 @@ class GameController:
                 self.state.player_invincible = False
 
     def _check_milestones(self) -> Optional[float]:
-        if self.cycle_count >= self.max_cycles:
-            return None
-
         threshold = self._get_next_threshold()
         if self.state.score >= threshold:
             return threshold
@@ -114,6 +110,19 @@ class GameController:
 
     def get_current_threshold(self, index: int) -> float:
         return self._get_threshold_for_index(index)
+
+    def get_previous_threshold(self) -> float:
+        if self.milestone_index > 0:
+            return self._get_threshold_for_index(self.milestone_index - 1)
+        return 0.0
+
+    def get_next_progress(self) -> int:
+        previous = self.get_previous_threshold()
+        next_threshold = self._get_threshold_for_index(self.milestone_index)
+        if next_threshold == previous:
+            return 0
+        progress = (self.state.score - previous) / (next_threshold - previous) * 100
+        return max(0, min(100, int(progress)))
 
     def _calculate_threshold(self, milestone_index: int) -> float:
         threshold = 0.0
@@ -173,7 +182,7 @@ class GameController:
     def on_reward_selected(self, reward: dict, player) -> None:
         notification = self.reward_system.apply_reward(reward, player)
         self.milestone_index += 1
-        self.cycle_count = self.difficulty_manager.get_boss_kill_count() // 2
+        self.cycle_count = self.milestone_index
 
         self.state.notification = notification
         self.state.notification_timer = 90

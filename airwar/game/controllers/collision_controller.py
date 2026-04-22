@@ -196,7 +196,7 @@ class CollisionController:
         boss: 'Boss',
         piercing_level: int
     ) -> Tuple[int, bool]:
-        if not boss or not boss.active or boss.is_entering():
+        if not boss or not boss.active:
             return 0, False
 
         score_gained = 0

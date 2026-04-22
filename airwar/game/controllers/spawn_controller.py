@@ -62,19 +62,19 @@ class SpawnController:
             return True
         return False
 
-    def spawn_boss(self, cycle_count: int, bullet_damage: int) -> Boss:
+    def spawn_boss(self, boss_kill_count: int, bullet_damage: int) -> Boss:
         screen_width = get_screen_width()
-        base_health = 2000 * (1 + cycle_count * 0.5)
+        base_health = 2000 * (1 + boss_kill_count * 0.5)
         escape_time = int(base_health / bullet_damage * 45)
         escape_time = max(1200, min(escape_time, 3600))
 
         boss_data = BossData(
             health=base_health,
-            speed=1.5 + cycle_count * 0.1,
-            score=5000 + cycle_count * 1000,
+            speed=1.5 + boss_kill_count * 0.1,
+            score=400 + boss_kill_count * 100,
             width=120,
             height=100,
-            fire_rate=60 - cycle_count * 3,
+            fire_rate=60 - boss_kill_count * 3,
             phase=1,
             escape_time=escape_time
         )

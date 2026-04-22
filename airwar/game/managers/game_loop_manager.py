@@ -159,7 +159,7 @@ class GameLoopManager:
 
         if spawn_needed:
             boss = self._spawn_controller.spawn_boss(
-                self._game_controller.cycle_count,
+                self._game_controller.state.boss_kill_count,
                 self._reward_system.base_bullet_damage
             )
             self._game_controller.show_notification(

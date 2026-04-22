@@ -81,9 +81,7 @@ class UIManager:
             player.health,
             player.max_health,
             state.kill_count,
-            self._game_controller.get_next_threshold(),
-            self._game_controller.cycle_count,
-            self._game_controller.milestone_index + self._game_controller.max_cycles,
+            self._game_controller.get_next_progress(),
             boss_kills=getattr(state, 'boss_kill_count', 0),
         )
 
