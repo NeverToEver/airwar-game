@@ -97,8 +97,9 @@ class MilestoneManager:
         Args:
             player: 玩家对象
         """
+        boss_kill_count = self._game_controller.difficulty_manager.get_boss_kill_count()
         options = self._reward_system.generate_options(
-            self._game_controller.cycle_count,
+            boss_kill_count,
             self._reward_system.unlocked_buffs
         )
         self._show_reward_selection(options, player)

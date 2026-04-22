@@ -66,6 +66,7 @@ class BossManager:
         self._game_controller = game_controller
         self._reward_system = reward_system
         self._bullet_manager = bullet_manager
+        self._player = None
 
     def update(self, player) -> None:
         """更新 Boss 状态
@@ -75,6 +76,7 @@ class BossManager:
         Args:
             player: 玩家对象，用于计算追踪位置
         """
+        self._player = player
         boss = self._spawn_controller.boss
         if not boss:
             return
@@ -132,8 +134,8 @@ class BossManager:
         """
         self._game_controller.cycle_count += 1
         boss = self._spawn_controller.boss
-        if boss:
-            self._reward_system.apply_lifesteal(self._spawn_controller.player, boss.data.score)
+        if boss and self._player:
+            self._reward_system.apply_lifesteal(self._player, boss.data.score)
         self._bullet_manager.clear_enemy_bullets()
 
     @property

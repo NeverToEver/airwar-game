@@ -30,6 +30,7 @@ from airwar.game.managers import (
     UIManager,
     GameLoopManager,
 )
+from airwar.game.systems.difficulty_coefficient_panel import DifficultyCoefficientPanel
 from airwar.config import DIFFICULTY_SETTINGS, get_screen_width, get_screen_height
 from airwar.input import PygameInputHandler
 
@@ -128,6 +129,9 @@ class GameScene(Scene):
             self.game_controller,
             self.reward_system,
         )
+        self._difficulty_coefficient_panel = DifficultyCoefficientPanel(
+            self.game_controller.difficulty_manager
+        )
         self._game_loop_manager = GameLoopManager(
             self.game_controller,
             self.game_renderer,
@@ -215,6 +219,7 @@ class GameScene(Scene):
             return
 
         self._input_coordinator.update_give_up()
+        self._difficulty_coefficient_panel.update()
         self._game_loop_manager.update_game(self.player)
         self._game_loop_manager.check_collisions(
             self.player,
@@ -265,6 +270,7 @@ class GameScene(Scene):
         self._ui_manager.render_hud(surface, self.player)
         self._ui_manager.render_notification(surface)
         self._ui_manager.render_buff_stats_panel(surface, self.player)
+        self._difficulty_coefficient_panel.render(surface)
 
         if self.reward_selector.visible:
             self.reward_selector.render(surface)

@@ -133,7 +133,7 @@ class RewardSystem:
     def rapid_fire_level(self, value: int) -> None:
         self.buff_levels['Rapid Fire'] = value
 
-    def generate_options(self, cycle_count: int, unlocked_buffs: list) -> List[Dict]:
+    def generate_options(self, boss_kill_count: int, unlocked_buffs: list) -> List[Dict]:
         options = []
         categories = list(REWARD_POOL.keys())
 
@@ -141,8 +141,8 @@ class RewardSystem:
             cat = random.choice(categories)
             rewards = REWARD_POOL[cat]
 
-            if cat == 'offense' and cycle_count > 2:
-                rewards = [r for r in rewards if r['name'] not in ['Spread Shot']]
+            if cat == 'offense' and boss_kill_count < 2:
+                rewards = [r for r in rewards if r['name'] not in ['Explosive']]
 
             reward = random.choice(rewards)
             attempts = 0

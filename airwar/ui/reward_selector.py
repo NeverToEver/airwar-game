@@ -69,7 +69,7 @@ class RewardSelector:
             'upgraded_bg': (30, 25, 45),
         }
 
-    def generate_options(self, cycle_count: int, unlocked_buffs: list) -> list:
+    def generate_options(self, boss_kill_count: int, unlocked_buffs: list) -> list:
         from airwar.game.systems.reward_system import REWARD_POOL
         import random
         options = []
@@ -79,8 +79,8 @@ class RewardSelector:
             cat = random.choice(categories)
             rewards = REWARD_POOL[cat]
 
-            if cat == 'offense' and cycle_count > 2:
-                rewards = [r for r in rewards if r['name'] not in ['Spread Shot', 'Explosive']]
+            if cat == 'offense' and boss_kill_count < 2:
+                rewards = [r for r in rewards if r['name'] not in ['Explosive']]
 
             reward = random.choice(rewards)
             attempts = 0
