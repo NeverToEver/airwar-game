@@ -1,6 +1,6 @@
 # Air War - 飞机大战
 
-**版本**: 3.6 | **更新**: 2026-04-22 | **状态**: 活跃维护
+**版本**: 3.7 | **更新**: 2026-04-22 | **状态**: 活跃维护
 
 一款采用赛博朋克视觉风格的街机射击游戏，支持 Roguelike 增益系统、死亡动画效果和完整的游戏保存机制。
 
@@ -100,28 +100,54 @@ pytest airwar/tests/ -q
 
 ### 增益系统 (Roguelike)
 
-每达成里程碑分数时，从奖励池中选择增益效果：
+每达成里程碑分数时，从奖励池中选择 3 个增益效果：
 
 #### 攻击类增益
 
-| 增益 | 效果 |
-|------|------|
-| Power Shot | 子弹伤害 +25% |
-| Rapid Fire | 射击间隔 -20% |
-| Piercing | 子弹穿透 1 个敌人 |
-| Spread Shot | 同时发射 3 颗子弹 |
-| Explosive | 范围伤害 30 点 (击杀 2 个 Boss 后解锁) |
+| 增益 | 效果 | 解锁条件 |
+|------|------|----------|
+| Power Shot | 子弹伤害 +25% | 默认 |
+| Rapid Fire | 射击间隔 -20% | 默认 |
+| Piercing | 子弹穿透敌人 | 默认 |
+| Spread Shot | 同时发射 3 颗子弹 | 默认 |
+| Shotgun | 发射霰弹枪样式弹幕 | 默认 |
+| Laser | 激活激光束攻击 | 默认 |
+| Explosive | 子弹造成范围爆炸伤害 | 击杀 2 个 Boss 后 |
 
 #### 防御类增益
 
 | 增益 | 效果 |
 |------|------|
-| Extra Life | 最大生命 +50 |
-| Regeneration | 每秒回复 2 点生命 |
+| Extra Life | 最大生命 +50，立即回复 +30 |
+| Regeneration | 被动回复生命 |
 | Lifesteal | 击杀回复生命 |
 | Shield | 抵挡下一次攻击 |
 | Armor | 受到伤害 -15% |
 | Evasion | 20% 闪避几率 |
+| Barrier | 获得 50 点临时生命 |
+
+#### 实用类增益
+
+| 增益 | 效果 |
+|------|------|
+| Speed Boost | 移动速度 +15% |
+| Magnet | 得分道具拾取范围 +30% |
+| Slow Field | 敌人移动速度 -20% |
+
+### 里程碑阈值
+
+每达成里程碑分数时触发奖励选择，阈值根据难度动态计算：
+
+| 难度 | 初始增量 | 最大增量 | 难度倍率 |
+|------|----------|----------|----------|
+| 简单 | 500 | 1500 | 0.8x |
+| 普通 | 500 | 2000 | 1.0x |
+| 困难 | 500 | 3000 | 1.5x |
+
+阈值计算公式：
+```
+threshold[n] = Σ(min(initial_delta × i, max_delta)) × difficulty_multiplier
+```
 
 ### Boss 机制
 
@@ -266,7 +292,7 @@ pytest airwar/tests/ --cov=airwar --cov-report=html
 
 ## 已知问题
 
-> ⚠️ **待修复 (v3.7)**
+> ⚠️ **待修复 (v3.8)**
 >
 > 当 `cycle >= 3` 时，击杀 Boss 触发奖励选择后，可能出现一次性显示过多奖励选项的问题。
 >
@@ -282,6 +308,25 @@ pytest airwar/tests/ --cov=airwar --cov-report=html
 ---
 
 ## 重构历史
+
+### v3.7 (2026-04-22) - 奖励系统代码审查修复
+
+**Bug 修复**:
+
+| 问题 | 修复内容 |
+|------|----------|
+| MAJ-1 | 合并重复的阈值计算方法 (`_get_threshold_for_index`) |
+| MAJ-2 | 将 `max_delta` 和 `difficulty_multiplier` 迁移到配置文件 |
+| MIN-2 | 添加 `difficulty` 参数验证 (`VALID_DIFFICULTIES`) |
+
+**配置更新** (`airwar/config/settings.py`):
+- 在 `DIFFICULTY_SETTINGS` 中添加 `max_delta` 和 `difficulty_multiplier` 配置
+- 新增 `VALID_DIFFICULTIES` 验证集合
+
+**代码重构** (`airwar/game/controllers/game_controller.py`):
+- 消除 `_get_next_threshold()` 和 `get_current_threshold()` 的重复代码
+- 统一使用 `_get_threshold_for_index()` 公共方法
+- 从配置文件读取难度相关参数
 
 ### v3.6 (2026-04-22) - 难度系数显示面板
 
@@ -389,6 +434,6 @@ class NewBuff(Buff):
 
 ---
 
-**文档版本**: 5.3
+**文档版本**: 5.4
 **最后更新**: 2026-04-22
 **维护者**: AI Assistant (Trae IDE)
