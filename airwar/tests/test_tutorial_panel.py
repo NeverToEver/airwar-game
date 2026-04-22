@@ -7,7 +7,7 @@ Following the F.I.R.S.T. principles: Fast, Independent, Repeatable, Self-Validat
 
 import pytest
 from airwar.components.tutorial import TutorialPanel
-from airwar.configs.tutorial import PanelConfig
+from airwar.config.tutorial import PanelConfig
 
 
 class TestTutorialPanel:

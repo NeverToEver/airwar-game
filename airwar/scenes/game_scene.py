@@ -4,11 +4,11 @@ from .scene import Scene
 from airwar.entities import Player, EnemySpawner, Boss, BossData
 from airwar.game.systems.health_system import HealthSystem
 from airwar.game.systems.reward_system import RewardSystem
-from airwar.game.systems.hud_renderer import HUDRenderer
+from airwar.game.rendering.hud_renderer import HUDRenderer
 from airwar.game.systems.notification_manager import NotificationManager
-from airwar.game.controllers.game_controller import GameController, GameplayState
-from airwar.game.controllers.spawn_controller import SpawnController
-from airwar.game.controllers.collision_controller import CollisionController
+from airwar.game.managers.game_controller import GameController, GameplayState
+from airwar.game.managers.spawn_controller import SpawnController
+from airwar.game.managers.collision_controller import CollisionController
 from airwar.game.rendering.game_renderer import GameRenderer
 from airwar.ui.reward_selector import RewardSelector
 from airwar.game.mother_ship import (
@@ -21,7 +21,8 @@ from airwar.game.mother_ship import (
     GameIntegrator,
 )
 from airwar.game.constants import PlayerConstants, GAME_CONSTANTS
-from airwar.game.give_up import GiveUpDetector, GiveUpUI
+from airwar.ui.give_up_ui import GiveUpUI
+from airwar.game.give_up import GiveUpDetector
 from airwar.game.managers import (
     BulletManager,
     BossManager,
@@ -30,7 +31,6 @@ from airwar.game.managers import (
     UIManager,
     GameLoopManager,
 )
-from airwar.game.systems.difficulty_coefficient_panel import DifficultyCoefficientPanel
 from airwar.config import DIFFICULTY_SETTINGS, get_screen_width, get_screen_height
 from airwar.input import PygameInputHandler
 
@@ -129,9 +129,6 @@ class GameScene(Scene):
             self.game_controller,
             self.reward_system,
         )
-        self._difficulty_coefficient_panel = DifficultyCoefficientPanel(
-            self.game_controller.difficulty_manager
-        )
         self._game_loop_manager = GameLoopManager(
             self.game_controller,
             self.game_renderer,
@@ -178,6 +175,10 @@ class GameScene(Scene):
             event: pygame事件对象
         """
         self._input_coordinator.handle_events(event)
+        
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_l:
+            if self.game_renderer.integrated_hud:
+                self.game_renderer.integrated_hud.toggle()
 
     def update(self, *args, **kwargs) -> None:
         """游戏主更新循环
@@ -219,7 +220,6 @@ class GameScene(Scene):
             return
 
         self._input_coordinator.update_give_up()
-        self._difficulty_coefficient_panel.update()
         self._game_loop_manager.update_game(self.player)
         self._game_loop_manager.check_collisions(
             self.player,
@@ -270,7 +270,6 @@ class GameScene(Scene):
         self._ui_manager.render_hud(surface, self.player)
         self._ui_manager.render_notification(surface)
         self._ui_manager.render_buff_stats_panel(surface, self.player)
-        self._difficulty_coefficient_panel.render(surface)
 
         if self.reward_selector.visible:
             self.reward_selector.render(surface)

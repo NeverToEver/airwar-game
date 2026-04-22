@@ -2,9 +2,10 @@ import pygame
 import math
 from .scene import Scene
 from airwar.utils.responsive import ResponsiveHelper
-from airwar.scenes.ui.background import BackgroundRenderer
-from airwar.scenes.ui.particles import ParticleSystem
-from airwar.scenes.ui.effects import EffectsRenderer
+from airwar.ui.menu_background import MenuBackground
+from airwar.ui.particles import ParticleSystem
+from airwar.ui.effects import EffectsRenderer
+from airwar.config.design_tokens import get_design_tokens
 
 
 class MenuScene(Scene):
@@ -24,22 +25,24 @@ class MenuScene(Scene):
         self.selection_confirmed = False
         self.back_requested = False
 
-        self.base_panel_width = 400
-        self.base_panel_height = 460
-        self.base_option_height = 70
-        self.base_option_gap = 12
-        self.base_title_y = 100
-        self.base_option_font_size = 44
-        self.base_hint_font_size = 28
-        self.base_desc_font_size = 24
+        self._tokens = get_design_tokens()
+
+        self.base_panel_width = self._tokens.spacing.PANEL_WIDTH
+        self.base_panel_height = self._tokens.spacing.PANEL_HEIGHT
+        self.base_option_height = self._tokens.spacing.OPTION_HEIGHT
+        self.base_option_gap = self._tokens.spacing.OPTION_GAP
+        self.base_title_y = self._tokens.components.TITLE_Y
+        self.base_option_font_size = self._tokens.typography.OPTION_SIZE
+        self.base_hint_font_size = self._tokens.typography.CAPTION_SIZE
+        self.base_desc_font_size = self._tokens.typography.SMALL_SIZE
 
         pygame.font.init()
         self._init_fonts(1.0)
 
-        self._background_renderer = BackgroundRenderer()
+        self._background_renderer = MenuBackground()
         self._particle_system = ParticleSystem()
         self._effects_renderer = EffectsRenderer()
-        self._particle_system.reset(40, 'particle')
+        self._particle_system.reset(self._tokens.components.PARTICLE_COUNT, 'particle')
         self._init_colors()
 
     def _init_fonts(self, scale: float) -> None:
@@ -49,21 +52,22 @@ class MenuScene(Scene):
         self.desc_font = pygame.font.Font(None, ResponsiveHelper.font_size(self.base_desc_font_size, scale))
 
     def _init_colors(self) -> None:
+        colors = self._tokens.colors
         self.colors = {
-            'bg': (8, 8, 25),
-            'bg_gradient': (15, 15, 50),
-            'title': (255, 255, 255),
-            'title_glow': (100, 200, 255),
-            'selected': (0, 255, 150),
-            'selected_glow': (0, 200, 255),
-            'unselected': (90, 90, 130),
-            'hint': (70, 70, 110),
+            'bg': colors.BACKGROUND_PRIMARY,
+            'bg_gradient': colors.BACKGROUND_SECONDARY,
+            'title': colors.TEXT_PRIMARY,
+            'title_glow': colors.HUD_AMBER_BRIGHT,
+            'selected': colors.HUD_AMBER,
+            'selected_glow': colors.HUD_AMBER_BRIGHT,
+            'unselected': colors.TEXT_MUTED,
+            'hint': colors.TEXT_HINT,
             'back': (220, 110, 110),
-            'particle': (100, 180, 255),
-            'panel': (15, 20, 40),
-            'panel_border': (50, 80, 140),
-            'option_selected_bg': (25, 35, 65),
-            'option_unselected_bg': (18, 20, 40),
+            'particle': colors.PARTICLE_PRIMARY,
+            'panel': colors.BACKGROUND_PANEL,
+            'panel_border': colors.PANEL_BORDER,
+            'option_selected_bg': colors.BUTTON_SELECTED_BG,
+            'option_unselected_bg': colors.BUTTON_UNSELECTED_BG,
         }
 
     def exit(self) -> None:
@@ -81,7 +85,7 @@ class MenuScene(Scene):
         self.glow_offset = 0
         self.selection_confirmed = False
         self.back_requested = False
-        self._background_renderer = BackgroundRenderer()
+        self._background_renderer = MenuBackground()
         self._particle_system.reset(40, 'particle')
 
     def handle_events(self, event: pygame.event.Event) -> None:
@@ -102,7 +106,7 @@ class MenuScene(Scene):
 
     def update(self, *args, **kwargs) -> None:
         self.animation_time += 1
-        self.glow_offset = math.sin(self.animation_time * 0.05) * 12
+        self.glow_offset = math.sin(self.animation_time * self._tokens.animation.GLOW_SPEED) * 12
 
         self._background_renderer._animation_time = self.animation_time
         self._background_renderer.update()
@@ -111,7 +115,10 @@ class MenuScene(Scene):
         self._particle_system.update(direction=-1)
 
     def _draw_glow_text(self, surface: pygame.Surface, text: str, font: pygame.font.Font,
-                        pos: tuple, color: tuple, glow_color: tuple, glow_radius: int = 2) -> None:
+                        pos: tuple, color: tuple, glow_color: tuple, glow_radius: int = None) -> None:
+        if glow_radius is None:
+            glow_radius = self._tokens.animation.GLOW_RADIUS_TITLE
+
         for i in range(glow_radius, 0, -1):
             alpha = int(120 / i)
             glow_surf = font.render(text, True, glow_color)
@@ -203,15 +210,16 @@ class MenuScene(Scene):
         width, height = surface.get_size()
         scale = ResponsiveHelper.get_scale_factor(width, height)
 
-        if (self.animation_time // 30) % 2 == 0:
+        blink_interval = self._tokens.animation.BLINK_INTERVAL
+        if (self.animation_time // blink_interval) % 2 == 0:
             hint_color = (110, 110, 160)
         else:
             hint_color = (140, 140, 180)
         start_text = self.hint_font.render("PRESS ENTER TO START", True, hint_color)
-        surface.blit(start_text, start_text.get_rect(center=(width // 2, height - ResponsiveHelper.scale(70, scale))))
+        surface.blit(start_text, start_text.get_rect(center=(width // 2, height - ResponsiveHelper.scale(self._tokens.components.HINT_Y_OFFSET, scale))))
 
         controls = self.desc_font.render("W / S to select", True, (60, 60, 100))
-        surface.blit(controls, controls.get_rect(center=(width // 2, height - ResponsiveHelper.scale(45, scale))))
+        surface.blit(controls, controls.get_rect(center=(width // 2, height - ResponsiveHelper.scale(self._tokens.components.CONTROLS_Y_OFFSET, scale))))
 
     def render(self, surface: pygame.Surface) -> None:
         width, height = surface.get_size()

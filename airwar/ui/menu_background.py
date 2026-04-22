@@ -1,27 +1,33 @@
 import pygame
 import math
 import random
+from airwar.config.design_tokens import get_design_tokens
 
 
-class BackgroundRenderer:
+class MenuBackground:
     """背景渲染器 — 负责渐变背景和星星效果"""
 
     def __init__(self):
         self._stars = []
         self._animation_time = 0
         self._gradient_cache = {}
+        self._tokens = get_design_tokens()
         self._init_stars()
 
     def _init_stars(self):
         """初始化星星数据"""
         self._stars = []
-        for _ in range(100):
+        star_count = self._tokens.components.STAR_COUNT
+        for _ in range(star_count):
             self._stars.append({
                 'x': random.random(),
                 'y': random.random(),
                 'size': random.uniform(0.5, 2.0),
                 'brightness': random.randint(50, 150),
-                'twinkle_speed': random.uniform(0.03, 0.08),
+                'twinkle_speed': random.uniform(
+                    self._tokens.animation.TWINKLE_SPEED_MIN,
+                    self._tokens.animation.TWINKLE_SPEED_MAX
+                ),
                 'twinkle_offset': random.random() * math.pi * 2,
             })
 
@@ -45,8 +51,9 @@ class BackgroundRenderer:
     def update(self):
         """更新动画状态"""
         self._animation_time += 1
+        star_speed = self._tokens.animation.STAR_SPEED
         for star in self._stars:
-            star['y'] += 0.008
+            star['y'] += star_speed
             if star['y'] > 1:
                 star['y'] = 0
                 star['x'] = random.random()
@@ -61,9 +68,10 @@ class BackgroundRenderer:
         surface.blit(gradient, (0, 0))
 
         width, height = surface.get_size()
+        star_color = self._tokens.colors.star_color
         for star in self._stars:
             x = int(star['x'] * width)
             y = int(star['y'] * height)
             twinkle = math.sin(self._animation_time * star['twinkle_speed'] + star['twinkle_offset'])
             brightness = int(star['brightness'] * (0.5 + 0.5 * twinkle))
-            pygame.draw.circle(surface, (brightness, brightness, brightness + 30), (x, y), int(star['size']))
+            pygame.draw.circle(surface, star_color(brightness), (x, y), int(star['size']))

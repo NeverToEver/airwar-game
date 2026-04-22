@@ -5,12 +5,12 @@ import pygame
 
 class TestCollisionController:
     def test_collision_controller_creation(self):
-        from airwar.game.controllers.collision_controller import CollisionController
+        from airwar.game.managers.collision_controller import CollisionController
         controller = CollisionController()
         assert controller is not None
 
     def test_check_player_bullets_vs_enemies(self):
-        from airwar.game.controllers.collision_controller import CollisionController
+        from airwar.game.managers.collision_controller import CollisionController
         from airwar.entities import Bullet, BulletData, Enemy, EnemyData
         import pygame
         
@@ -29,7 +29,7 @@ class TestCollisionController:
         assert enemies_killed >= 0
 
     def test_check_player_bullets_vs_enemies_no_collision(self):
-        from airwar.game.controllers.collision_controller import CollisionController
+        from airwar.game.managers.collision_controller import CollisionController
         from airwar.entities import Bullet, BulletData, Enemy, EnemyData
         
         controller = CollisionController()
@@ -47,7 +47,7 @@ class TestCollisionController:
         assert enemies_killed == 0
 
     def test_check_player_bullets_vs_boss(self):
-        from airwar.game.controllers.collision_controller import CollisionController
+        from airwar.game.managers.collision_controller import CollisionController
         from airwar.entities import Bullet, BulletData, Boss, BossData
         
         controller = CollisionController()
@@ -64,7 +64,7 @@ class TestCollisionController:
         assert score_gained >= 0
 
     def test_check_player_vs_enemies_dodge(self):
-        from airwar.game.controllers.collision_controller import CollisionController
+        from airwar.game.managers.collision_controller import CollisionController
         from airwar.entities import Enemy, EnemyData
         
         controller = CollisionController()
@@ -81,7 +81,7 @@ class TestCollisionController:
         assert player_damaged is False
 
     def test_check_player_vs_enemies_no_dodge(self):
-        from airwar.game.controllers.collision_controller import CollisionController
+        from airwar.game.managers.collision_controller import CollisionController
         from airwar.entities import Enemy, EnemyData
         import pygame
         
@@ -104,7 +104,7 @@ class TestCollisionController:
         assert len(hit_called) == 1
 
     def test_check_enemy_bullets_vs_player(self):
-        from airwar.game.controllers.collision_controller import CollisionController
+        from airwar.game.managers.collision_controller import CollisionController
         from airwar.entities import Bullet, BulletData
         import pygame
         
@@ -136,7 +136,7 @@ class TestCollisionController:
         assert len(hit_called) == 1
 
     def test_check_boss_vs_player(self):
-        from airwar.game.controllers.collision_controller import CollisionController
+        from airwar.game.managers.collision_controller import CollisionController
         from airwar.entities import Boss, BossData
         import pygame
         
@@ -167,7 +167,7 @@ class TestCollisionController:
         assert len(hit_called) == 1
 
     def test_check_boss_vs_player_not_entering(self):
-        from airwar.game.controllers.collision_controller import CollisionController
+        from airwar.game.managers.collision_controller import CollisionController
         from airwar.entities import Boss, BossData
         import pygame
         
@@ -309,7 +309,7 @@ class TestExceptionHandling:
 
 class TestEdgeCases:
     def test_empty_enemy_list(self):
-        from airwar.game.controllers.collision_controller import CollisionController
+        from airwar.game.managers.collision_controller import CollisionController
         from airwar.entities import Bullet, BulletData
         
         controller = CollisionController()
@@ -323,7 +323,7 @@ class TestEdgeCases:
         assert enemies_killed == 0
 
     def test_empty_bullet_list(self):
-        from airwar.game.controllers.collision_controller import CollisionController
+        from airwar.game.managers.collision_controller import CollisionController
         from airwar.entities import Enemy, EnemyData
         
         controller = CollisionController()
@@ -337,7 +337,7 @@ class TestEdgeCases:
         assert enemies_killed == 0
 
     def test_inactive_bullet(self):
-        from airwar.game.controllers.collision_controller import CollisionController
+        from airwar.game.managers.collision_controller import CollisionController
         from airwar.entities import Bullet, BulletData, Enemy, EnemyData
         
         controller = CollisionController()
@@ -353,7 +353,7 @@ class TestEdgeCases:
         assert enemies_killed == 0
 
     def test_inactive_enemy(self):
-        from airwar.game.controllers.collision_controller import CollisionController
+        from airwar.game.managers.collision_controller import CollisionController
         from airwar.entities import Bullet, BulletData, Enemy, EnemyData
         
         controller = CollisionController()
@@ -369,7 +369,7 @@ class TestEdgeCases:
         assert enemies_killed == 0
 
     def test_none_boss(self):
-        from airwar.game.controllers.collision_controller import CollisionController
+        from airwar.game.managers.collision_controller import CollisionController
         from airwar.entities import Bullet, BulletData
         
         controller = CollisionController()

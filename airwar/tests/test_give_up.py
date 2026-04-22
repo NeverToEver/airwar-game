@@ -104,14 +104,14 @@ class TestGiveUpDetector:
 
 class TestGiveUpUI:
     def test_give_up_ui_creation(self):
-        from airwar.game.give_up import GiveUpUI
+        from airwar.ui.give_up_ui import GiveUpUI
         ui = GiveUpUI(1400, 800)
         assert ui is not None
         assert ui._visible is False
         assert ui._progress == 0.0
 
     def test_give_up_ui_show(self):
-        from airwar.game.give_up import GiveUpUI
+        from airwar.ui.give_up_ui import GiveUpUI
         ui = GiveUpUI(1400, 800)
         ui.show()
         assert ui._visible is True
@@ -119,7 +119,7 @@ class TestGiveUpUI:
         assert ui._animation_time == 0
 
     def test_give_up_ui_hide(self):
-        from airwar.game.give_up import GiveUpUI
+        from airwar.ui.give_up_ui import GiveUpUI
         ui = GiveUpUI(1400, 800)
         ui._visible = True
         ui._progress = 0.5
@@ -128,21 +128,21 @@ class TestGiveUpUI:
         assert ui._progress == 0.0
 
     def test_give_up_ui_update_progress(self):
-        from airwar.game.give_up import GiveUpUI
+        from airwar.ui.give_up_ui import GiveUpUI
         ui = GiveUpUI(1400, 800)
         ui.show()
         ui.update_progress(0.5)
         assert ui._progress == 0.5
 
     def test_give_up_ui_update_animation_time(self):
-        from airwar.game.give_up import GiveUpUI
+        from airwar.ui.give_up_ui import GiveUpUI
         ui = GiveUpUI(1400, 800)
         ui._animation_time = 10
         ui.update_progress(0.1)
         assert ui._animation_time == 11
 
     def test_give_up_ui_render_invisible(self):
-        from airwar.game.give_up import GiveUpUI
+        from airwar.ui.give_up_ui import GiveUpUI
         ui = GiveUpUI(1400, 800)
         surface = MagicMock()
         ui._visible = False
@@ -151,7 +151,7 @@ class TestGiveUpUI:
         surface.blit.assert_not_called()
 
     def test_give_up_ui_render_zero_progress(self):
-        from airwar.game.give_up import GiveUpUI
+        from airwar.ui.give_up_ui import GiveUpUI
         ui = GiveUpUI(1400, 800)
         surface = MagicMock()
         ui._visible = True
@@ -160,7 +160,7 @@ class TestGiveUpUI:
         surface.blit.assert_not_called()
 
     def test_give_up_ui_render_visible(self):
-        from airwar.game.give_up import GiveUpUI
+        from airwar.ui.give_up_ui import GiveUpUI
         pygame.init()
         ui = GiveUpUI(1400, 800)
         surface = pygame.display.set_mode((1400, 800))
@@ -182,7 +182,7 @@ class TestGiveUpIntegration:
 
     def test_can_use_give_up_playing_state(self):
         from airwar.scenes.game_scene import GameScene
-        from airwar.game.controllers.game_controller import GameplayState
+        from airwar.game.managers.game_controller import GameplayState
         scene = GameScene()
         scene.enter(difficulty='medium')
         scene.game_controller.state.gameplay_state = GameplayState.PLAYING
@@ -192,7 +192,7 @@ class TestGiveUpIntegration:
 
     def test_cannot_use_give_up_paused_state(self):
         from airwar.scenes.game_scene import GameScene
-        from airwar.game.controllers.game_controller import GameplayState
+        from airwar.game.managers.game_controller import GameplayState
         scene = GameScene()
         scene.enter(difficulty='medium')
         scene.game_controller.state.gameplay_state = GameplayState.PLAYING
@@ -202,7 +202,7 @@ class TestGiveUpIntegration:
 
     def test_cannot_use_give_up_game_over_state(self):
         from airwar.scenes.game_scene import GameScene
-        from airwar.game.controllers.game_controller import GameplayState
+        from airwar.game.managers.game_controller import GameplayState
         scene = GameScene()
         scene.enter(difficulty='medium')
         scene.game_controller.state.gameplay_state = GameplayState.GAME_OVER
@@ -212,7 +212,7 @@ class TestGiveUpIntegration:
 
     def test_cannot_use_give_up_reward_selector_visible(self):
         from airwar.scenes.game_scene import GameScene
-        from airwar.game.controllers.game_controller import GameplayState
+        from airwar.game.managers.game_controller import GameplayState
         scene = GameScene()
         scene.enter(difficulty='medium')
         scene.game_controller.state.gameplay_state = GameplayState.PLAYING

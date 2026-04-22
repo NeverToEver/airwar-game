@@ -2,7 +2,7 @@ import pytest
 import pygame
 from unittest.mock import Mock, MagicMock
 from airwar.game.systems.difficulty_manager import DifficultyManager
-from airwar.game.systems.difficulty_coefficient_panel import DifficultyCoefficientPanel
+from airwar.ui.difficulty_coefficient_panel import DifficultyCoefficientPanel
 
 
 class TestDifficultyCoefficientPanel:

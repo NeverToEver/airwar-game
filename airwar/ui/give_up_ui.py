@@ -1,5 +1,6 @@
 import pygame
 import math
+from airwar.config.design_tokens import get_design_tokens
 
 
 class GiveUpUI:
@@ -10,18 +11,21 @@ class GiveUpUI:
         self._screen_height = screen_height
         self._animation_time = 0
 
+        self._tokens = get_design_tokens()
+        colors = self._tokens.colors
+
         self._bar_width = 250
         self._bar_height = 16
         self._corner_radius = 8
         self._border_width = 2
 
         self._bg_color = (40, 10, 10)
-        self._progress_color = (255, 60, 60)
-        self._border_color = (200, 80, 80)
-        self._text_color = (255, 100, 100)
+        self._progress_color = colors.HEALTH_DANGER
+        self._border_color = colors.WARNING
+        self._text_color = colors.HEALTH_DANGER
 
         pygame.font.init()
-        self._font = pygame.font.Font(None, 32)
+        self._font = pygame.font.Font(None, self._tokens.typography.BODY_SIZE)
 
     def show(self) -> None:
         self._visible = True

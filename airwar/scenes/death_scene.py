@@ -2,9 +2,10 @@ import pygame
 import math
 from .scene import Scene
 from airwar.utils.responsive import ResponsiveHelper
-from airwar.scenes.ui.background import BackgroundRenderer
-from airwar.scenes.ui.particles import ParticleSystem
-from airwar.scenes.ui.effects import EffectsRenderer
+from airwar.ui.menu_background import MenuBackground
+from airwar.ui.particles import ParticleSystem
+from airwar.ui.effects import EffectsRenderer
+from airwar.config.design_tokens import get_design_tokens
 
 
 class DeathScene(Scene):
@@ -18,38 +19,45 @@ class DeathScene(Scene):
         self.glow_offset = 0
         self.ripples = []
 
+        self._tokens = get_design_tokens()
+
         self.base_option_spacing = 65
-        self.base_box_width = 400
+        self.base_box_width = self._tokens.spacing.BOX_WIDTH
         self.base_box_height = 55
         self.base_score_spacing = 30
 
         pygame.font.init()
-        self.title_font = pygame.font.Font(None, 80)
-        self.score_font = pygame.font.Font(None, 48)
-        self.option_font = pygame.font.Font(None, 42)
-        self.hint_font = pygame.font.Font(None, 26)
-        self.desc_font = pygame.font.Font(None, 22)
+        tokens = self._tokens
+        self.title_font = pygame.font.Font(None, tokens.typography.SUBHEADING_SIZE)
+        self.score_font = pygame.font.Font(None, tokens.typography.OPTION_SIZE)
+        self.option_font = pygame.font.Font(None, tokens.typography.BODY_SIZE)
+        self.hint_font = pygame.font.Font(None, tokens.typography.HUD_SIZE)
+        self.desc_font = pygame.font.Font(None, tokens.typography.TINY_SIZE)
 
         self.options = ['RETURN TO MAIN MENU', 'QUIT GAME']
         self.selected_index = 0
 
-        self._background_renderer = BackgroundRenderer()
+        self._background_renderer = MenuBackground()
         self._particle_system = ParticleSystem()
         self._effects_renderer = EffectsRenderer()
-        self._particle_system.reset(30, 'particle')
+        self._particle_system.reset(tokens.components.PARTICLE_PARTICLE_ALT_COUNT, 'particle')
 
+        self._init_colors()
+
+    def _init_colors(self) -> None:
+        colors = self._tokens.colors
         self.colors = {
-            'bg': (5, 5, 20),
-            'bg_gradient': (20, 10, 40),
-            'title': (255, 80, 80),
-            'title_glow': (255, 50, 50),
-            'score': (255, 255, 255),
-            'kills': (200, 200, 100),
-            'selected': (100, 255, 150),
-            'selected_glow': (80, 200, 120),
-            'unselected': (80, 80, 110),
-            'hint': (60, 60, 100),
-            'particle': (255, 100, 100),
+            'bg': colors.BACKGROUND_PRIMARY,
+            'bg_gradient': colors.BACKGROUND_SECONDARY,
+            'title': colors.HEALTH_DANGER,
+            'title_glow': colors.HEALTH_DANGER,
+            'score': colors.TEXT_PRIMARY,
+            'kills': colors.PROGRESS_COLOR,
+            'selected': colors.BUTTON_SELECTED_PRIMARY,
+            'selected_glow': colors.BUTTON_SELECTED_GLOW,
+            'unselected': colors.TEXT_MUTED,
+            'hint': colors.TEXT_HINT,
+            'particle': colors.PARTICLE_ALT,
         }
 
     def exit(self) -> None:
@@ -73,7 +81,7 @@ class DeathScene(Scene):
 
     def update(self, *args, **kwargs) -> None:
         self.animation_time += 1
-        self.glow_offset = math.sin(self.animation_time * 0.03) * 10
+        self.glow_offset = math.sin(self.animation_time * self._tokens.animation.GLOW_SPEED * 0.6) * 10
 
         self._background_renderer._animation_time = self.animation_time
         self._background_renderer.update()
@@ -88,9 +96,10 @@ class DeathScene(Scene):
                 self.ripples.remove(ripple)
 
     def _draw_ripples(self, surface: pygame.Surface) -> None:
+        colors = self._tokens.colors
         for ripple in self.ripples:
             ripple_surf = pygame.Surface((int(ripple['radius'] * 2), int(ripple['radius'] * 2)), pygame.SRCALPHA)
-            pygame.draw.circle(ripple_surf, (255, 80, 80, ripple['alpha']),
+            pygame.draw.circle(ripple_surf, (*colors.HEALTH_DANGER, ripple['alpha']),
                              (int(ripple['radius']), int(ripple['radius'])),
                              int(ripple['radius']), 2)
             surface.blit(ripple_surf,
@@ -98,7 +107,10 @@ class DeathScene(Scene):
                          ripple['y'] - int(ripple['radius'])))
 
     def _draw_glow_text(self, surface: pygame.Surface, text: str, font: pygame.font.Font,
-                        pos: tuple, color: tuple, glow_color: tuple, glow_radius: int = 3) -> None:
+                        pos: tuple, color: tuple, glow_color: tuple, glow_radius: int = None) -> None:
+        if glow_radius is None:
+            glow_radius = self._tokens.animation.GLOW_RADIUS_TITLE
+
         for i in range(glow_radius, 0, -1):
             alpha = int(80 / i)
             glow_surf = font.render(text, True, glow_color)
@@ -110,6 +122,7 @@ class DeathScene(Scene):
         surface.blit(main_text, main_text.get_rect(center=pos))
 
     def _draw_option_box(self, surface: pygame.Surface, text: str, y: int, is_selected: bool, scale: float = 1.0) -> None:
+        colors = self._tokens.colors
         width, height = surface.get_size()
         center_x = width // 2
 
@@ -125,10 +138,10 @@ class DeathScene(Scene):
                 pygame.draw.rect(glow_surf, (*glow_color, 40 // i), glow_surf.get_rect())
                 surface.blit(glow_surf, glow_rect)
 
-            pygame.draw.rect(surface, (30, 25, 45), box_rect, border_radius=12)
+            pygame.draw.rect(surface, colors.BUTTON_SELECTED_BG, box_rect, border_radius=12)
             pygame.draw.rect(surface, self.colors['selected'], box_rect, 3, border_radius=12)
         else:
-            pygame.draw.rect(surface, (20, 18, 35), box_rect, border_radius=12)
+            pygame.draw.rect(surface, colors.BUTTON_UNSELECTED_BG, box_rect, border_radius=12)
             pygame.draw.rect(surface, self.colors['unselected'], box_rect, 2, border_radius=12)
 
         arrow = ">> " if is_selected else "   "
@@ -190,7 +203,8 @@ class DeathScene(Scene):
         for i, option in enumerate(self.options):
             self._draw_option_box(surface, option, start_y + i * option_spacing, i == self.selected_index, scale)
 
-        blink = (self.animation_time // 30) % 2 == 0
+        blink_interval = self._tokens.animation.BLINK_INTERVAL
+        blink = (self.animation_time // blink_interval) % 2 == 0
         hint_text = "PRESS ENTER TO CONFIRM" if blink else "                "
         hint = self.hint_font.render(hint_text, True, self.colors['hint'])
         surface.blit(hint, hint.get_rect(center=(width // 2, height - ResponsiveHelper.scale(100, scale))))

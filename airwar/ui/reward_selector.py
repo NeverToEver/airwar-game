@@ -18,7 +18,13 @@ class RewardSelector:
         self._init_visual_elements()
 
     def _init_visual_elements(self) -> None:
+        from airwar.config.design_tokens import get_design_tokens
         import random
+
+        self._tokens = get_design_tokens()
+        tokens = self._tokens
+        colors = tokens.colors
+
         self.stars = []
         for _ in range(80):
             self.stars.append({
@@ -26,47 +32,47 @@ class RewardSelector:
                 'y': random.random(),
                 'size': random.uniform(0.5, 2.0),
                 'brightness': random.randint(50, 150),
-                'twinkle_speed': random.uniform(0.03, 0.08),
+                'twinkle_speed': random.uniform(tokens.animation.TWINKLE_SPEED_MIN, tokens.animation.TWINKLE_SPEED_MAX),
                 'twinkle_offset': random.random() * math.pi * 2,
             })
-        
+
         self.particles = []
         for _ in range(30):
             self.particles.append({
                 'x': random.random(),
                 'y': random.random(),
                 'size': random.uniform(1.5, 3.0),
-                'speed': random.uniform(0.2, 0.6),
+                'speed': random.uniform(tokens.animation.PARTICLE_SPEED_MIN * 0.5, tokens.animation.PARTICLE_SPEED_MAX * 0.6),
                 'alpha': random.randint(80, 150),
                 'pulse_speed': random.uniform(0.02, 0.05),
                 'pulse_offset': random.random() * math.pi * 2,
             })
 
         pygame.font.init()
-        self.title_font = pygame.font.Font(None, 56)
-        self.option_font = pygame.font.Font(None, 36)
-        self.hint_font = pygame.font.Font(None, 24)
-        
+        self.title_font = pygame.font.Font(None, tokens.typography.SUBHEADING_SIZE)
+        self.option_font = pygame.font.Font(None, tokens.typography.BODY_SIZE)
+        self.hint_font = pygame.font.Font(None, tokens.typography.SMALL_SIZE)
+
         self.colors = {
-            'bg': (8, 8, 25),
-            'bg_gradient': (12, 12, 45),
-            'title': (255, 255, 255),
-            'title_glow': (100, 200, 255),
-            'selected': (0, 255, 150),
-            'selected_glow': (0, 200, 255),
-            'unselected': (90, 90, 130),
+            'bg': colors.BACKGROUND_PRIMARY,
+            'bg_gradient': colors.BACKGROUND_SECONDARY,
+            'title': colors.TEXT_PRIMARY,
+            'title_glow': colors.HUD_AMBER_BRIGHT,
+            'selected': colors.HUD_AMBER,
+            'selected_glow': colors.HUD_AMBER_BRIGHT,
+            'unselected': colors.TEXT_MUTED,
             'desc_selected': (140, 200, 140),
             'desc_unselected': (80, 85, 120),
-            'hint': (70, 75, 110),
-            'particle': (100, 180, 255),
-            'panel': (15, 20, 40),
-            'panel_border': (50, 80, 140),
-            'option_selected_bg': (25, 35, 65),
-            'option_unselected_bg': (18, 20, 40),
-            'upgraded': (200, 180, 255),
-            'upgraded_glow': (180, 150, 220),
-            'new_buff': (100, 255, 150),
-            'upgraded_bg': (30, 25, 45),
+            'hint': colors.TEXT_HINT,
+            'particle': colors.PARTICLE_PRIMARY,
+            'panel': colors.BACKGROUND_PANEL,
+            'panel_border': colors.PANEL_BORDER,
+            'option_selected_bg': colors.BUTTON_SELECTED_BG,
+            'option_unselected_bg': colors.BUTTON_UNSELECTED_BG,
+            'upgraded': colors.BUTTON_SELECTED_GLOW,
+            'upgraded_glow': colors.HUD_AMBER_BRIGHT,
+            'new_buff': colors.SUCCESS,
+            'upgraded_bg': colors.BUTTON_SELECTED_BG,
         }
 
     def generate_options(self, boss_kill_count: int, unlocked_buffs: list) -> list:
@@ -126,7 +132,7 @@ class RewardSelector:
     def update(self) -> None:
         if self.visible:
             self.animation_time += 1
-            self.glow_offset = math.sin(self.animation_time * 0.05) * 8
+            self.glow_offset = math.sin(self.animation_time * self._tokens.animation.GLOW_SPEED) * 8
             self._update_stars()
             self._update_particles()
 

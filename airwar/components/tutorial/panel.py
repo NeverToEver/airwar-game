@@ -7,7 +7,7 @@ Following the Single Responsibility Principle - it only handles layout calculati
 """
 
 from typing import Tuple, Dict
-from airwar.configs.tutorial import PanelConfig
+from airwar.config.tutorial import PanelConfig
 from airwar.utils.responsive import ResponsiveHelper
 
 

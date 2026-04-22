@@ -19,8 +19,8 @@ Usage:
 from typing import TYPE_CHECKING, Optional, Callable
 
 if TYPE_CHECKING:
-    from airwar.game.controllers.spawn_controller import SpawnController
-    from airwar.game.controllers.game_controller import GameController
+    from airwar.game.managers.spawn_controller import SpawnController
+    from airwar.game.managers.game_controller import GameController
     from airwar.game.systems.reward_system import RewardSystem
     from airwar.game.managers import BulletManager
 

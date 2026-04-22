@@ -122,7 +122,7 @@ class GameLoopManager:
             return False
 
     def _update_core(self, player: PlayerProtocol) -> None:
-        from airwar.game.controllers.game_controller import GameplayState
+        from airwar.game.managers.game_controller import GameplayState
 
         has_regen = 'Regeneration' in self._reward_system.unlocked_buffs
         self._game_controller.update(player, has_regen)
