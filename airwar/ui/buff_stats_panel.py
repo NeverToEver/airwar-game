@@ -1,6 +1,9 @@
 from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass
 import pygame
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -111,7 +114,11 @@ class BuffStatsAggregator:
                     color=self._get_buff_color(buff_name, reward_system),
                     category=self._get_buff_category(buff_name)
                 ))
-            except Exception:
+            except (AttributeError, TypeError, KeyError) as e:
+                logger.debug(f"Failed to format buff '{buff_name}': {e}")
+                continue
+            except Exception as e:
+                logger.warning(f"Unexpected error processing buff '{buff_name}': {e}")
                 continue
 
         return entries
@@ -150,14 +157,23 @@ class BuffStatsAggregator:
             if reward_system.spread_level > 0:
                 summary['SPD'] = f"Lv.{reward_system.spread_level}"
 
-        except Exception:
-            pass
+        except (AttributeError, TypeError) as e:
+            logger.debug(f"Failed to calculate summary stats: {e}")
+        except Exception as e:
+            logger.warning(f"Unexpected error calculating summary stats: {e}")
 
         return summary
 
 
 class BuffStatsPanel:
+    _MAX_CACHE_SIZE = 50
     _panel_surface_cache: dict = {}
+
+    @classmethod
+    def _add_to_cache(cls, key, surface):
+        if len(cls._panel_surface_cache) >= cls._MAX_CACHE_SIZE:
+            cls._panel_surface_cache.clear()
+        cls._panel_surface_cache[key] = surface
 
     def __init__(self):
         pygame.font.init()
@@ -236,14 +252,16 @@ class BuffStatsPanel:
                 self._render_header(panel_surface)
                 self._render_buff_items(panel_surface, buff_entries)
                 self._render_summary(panel_surface, summary)
-                BuffStatsPanel._panel_surface_cache[cache_key] = panel_surface
+                self._add_to_cache(cache_key, panel_surface)
             else:
                 panel_surface = BuffStatsPanel._panel_surface_cache[cache_key]
 
             surface.blit(panel_surface, (panel_x, panel_y))
 
-        except Exception:
-            return
+        except (AttributeError, TypeError) as e:
+            logger.debug(f"Failed to render buff stats panel: {e}")
+        except Exception as e:
+            logger.warning(f"Unexpected error rendering buff stats panel: {e}")
 
     def _render_header(self, surface: pygame.Surface) -> None:
         title = self._title_font.render("ACTIVE BUFFS", True, self._title_color)

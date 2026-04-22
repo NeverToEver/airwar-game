@@ -3,6 +3,26 @@ import pygame
 from airwar.ui.buff_stats_panel import BuffStatsPanel
 
 
+class HUDLayout:
+    SCORE_POS = (15, 15)
+    PROGRESS_POS = (15, 45)
+    DIFFICULTY_OFFSET_X = -110
+    DIFFICULTY_Y = 15
+    HEALTH_OFFSET_X = -160
+    HEALTH_Y = 45
+    KILLS_OFFSET_X = -120
+    KILLS_Y = 75
+    BOSS_OFFSET_X = -120
+    BOSS_Y = 100
+    HEALTH_DANGER_RATIO = 0.3
+    HEALTH_NORMAL = (100, 255, 150)
+    HEALTH_DANGER = (255, 80, 80)
+    SCORE_COLOR = (255, 255, 255)
+    PROGRESS_COLOR = (200, 200, 100)
+    KILLS_COLOR = (180, 180, 180)
+    BOSS_COLOR = (255, 100, 100)
+
+
 class HUDRenderer:
     def __init__(self):
         pygame.font.init()
@@ -14,26 +34,26 @@ class HUDRenderer:
     def render_hud(self, surface: pygame.Surface, score: int, difficulty: str,
                   player_health: int, player_max_health: int, kills: int,
                   next_progress: int, boss_kills: int = 0) -> None:
-        score_text = self.hud_font.render(f"SCORE: {score}", True, (255, 255, 255))
-        surface.blit(score_text, (15, 15))
+        score_text = self.hud_font.render(f"SCORE: {score}", True, HUDLayout.SCORE_COLOR)
+        surface.blit(score_text, HUDLayout.SCORE_POS)
 
-        progress_text = self.hud_font.render(f"NEXT: {next_progress}%", True, (200, 200, 100))
-        surface.blit(progress_text, (15, 45))
+        progress_text = self.hud_font.render(f"NEXT: {next_progress}%", True, HUDLayout.PROGRESS_COLOR)
+        surface.blit(progress_text, HUDLayout.PROGRESS_POS)
 
-        diff_text = self.hud_font.render(f"{difficulty.upper()}", True, (200, 200, 100))
-        surface.blit(diff_text, (surface.get_width() - 110, 15))
+        diff_text = self.hud_font.render(f"{difficulty.upper()}", True, HUDLayout.PROGRESS_COLOR)
+        surface.blit(diff_text, (surface.get_width() + HUDLayout.DIFFICULTY_OFFSET_X, HUDLayout.DIFFICULTY_Y))
 
-        health_color = (100, 255, 150)
-        if player_health < player_max_health * 0.3:
-            health_color = (255, 80, 80)
+        health_color = HUDLayout.HEALTH_NORMAL
+        if player_health < player_max_health * HUDLayout.HEALTH_DANGER_RATIO:
+            health_color = HUDLayout.HEALTH_DANGER
         health_text = self.hud_font.render(f"HP: {player_health}/{player_max_health}", True, health_color)
-        surface.blit(health_text, (surface.get_width() - 160, 45))
+        surface.blit(health_text, (surface.get_width() + HUDLayout.HEALTH_OFFSET_X, HUDLayout.HEALTH_Y))
 
-        kills_text = self.hud_font.render(f"KILLS: {kills}", True, (180, 180, 180))
-        surface.blit(kills_text, (surface.get_width() - 120, 75))
+        kills_text = self.hud_font.render(f"KILLS: {kills}", True, HUDLayout.KILLS_COLOR)
+        surface.blit(kills_text, (surface.get_width() + HUDLayout.KILLS_OFFSET_X, HUDLayout.KILLS_Y))
 
-        boss_text = self.hud_font.render(f"BOSS: {boss_kills}", True, (255, 100, 100))
-        surface.blit(boss_text, (surface.get_width() - 120, 100))
+        boss_text = self.hud_font.render(f"BOSS: {boss_kills}", True, HUDLayout.BOSS_COLOR)
+        surface.blit(boss_text, (surface.get_width() + HUDLayout.BOSS_OFFSET_X, HUDLayout.BOSS_Y))
 
     def render_buffs(self, surface: pygame.Surface, unlocked_buffs: List[str],
                      get_buff_color) -> None:
@@ -127,5 +147,8 @@ class HUDRenderer:
                 surface.get_width(),
                 surface.get_height()
             )
-        except Exception:
-            return
+        except (AttributeError, TypeError) as e:
+            pass
+        except Exception as e:
+            import logging
+            logging.warning(f"Failed to render buff stats panel: {e}")
