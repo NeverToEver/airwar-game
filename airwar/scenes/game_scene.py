@@ -191,6 +191,10 @@ class GameScene(Scene):
         """
         self.reward_selector.update()
 
+        if self.game_renderer and self.game_renderer.integrated_hud:
+            unlocked_buffs = getattr(self.reward_system, 'unlocked_buffs', [])
+            self.game_renderer.integrated_hud.update_scroll(len(unlocked_buffs))
+
         if self._game_loop_manager.is_entrance_playing():
             self._game_loop_manager.update_entrance(self.player)
             if self._mother_ship_integrator:

@@ -9,6 +9,9 @@ class IntegratedHUD:
         self._setup_layout()
         self._is_expanded = False
         self._current_width = int(self.panel_width * self._tokens.components.HUD_PANEL_COLLAPSED_RATIO)
+        self._buff_scroll_offset = 0.0
+        self._buff_scroll_speed = self._tokens.components.BUFF_SCROLL_SPEED
+        self._buff_visible_count = self._tokens.components.BUFF_SCROLL_VISIBLE_COUNT
 
     def _setup_layout(self):
         colors = self._tokens.colors
@@ -29,6 +32,15 @@ class IntegratedHUD:
 
         self.bg_color = (*colors.BACKGROUND_PANEL, 230)
         self.border_color = (*colors.PANEL_BORDER, 180)
+
+    def update_scroll(self, buff_count: int = 0):
+        if not self._is_expanded or buff_count <= self._buff_visible_count:
+            self._buff_scroll_offset = 0.0
+            return
+        
+        self._buff_scroll_offset += self._buff_scroll_speed
+        if self._buff_scroll_offset >= buff_count:
+            self._buff_scroll_offset = 0.0
 
     def toggle(self):
         self._is_expanded = not self._is_expanded
@@ -353,14 +365,14 @@ class IntegratedHUD:
         surface.blit(label, (content_x, start_y))
 
         current_y = start_y + 26
-        shown_buffs = set()
-        max_buffs = 6
 
-        for buff in buffs:
-            if buff in shown_buffs or len(shown_buffs) >= max_buffs:
-                continue
-            shown_buffs.add(buff)
+        if not buffs:
+            return current_y + 24
 
+        should_scroll = len(buffs) > self._buff_visible_count and self._is_expanded
+        visible_buffs = buffs[:self._buff_visible_count] if not should_scroll else self._get_visible_buffs(buffs)
+
+        for idx, buff in enumerate(visible_buffs):
             buff_color = get_buff_color(buff)
 
             brightness = (buff_color[0] * 299 + buff_color[1] * 587 + buff_color[2] * 114) / 1000
@@ -405,10 +417,25 @@ class IntegratedHUD:
 
             current_y += buff_height + 8
 
-        if len(buffs) > max_buffs:
+        if should_scroll:
             more_font = pygame.font.Font(None, self.more_font_size)
-            more_text = more_font.render(f"+{len(buffs) - max_buffs} more", True, colors.TEXT_MUTED)
+            total_buffs = len(buffs)
+            more_text = more_font.render(f"{total_buffs} total", True, colors.TEXT_MUTED)
             surface.blit(more_text, (content_x, current_y + 4))
 
         return current_y + 24
+
+    def _get_visible_buffs(self, buffs):
+        if not buffs or not self._is_expanded:
+            return buffs[:self._buff_visible_count]
+
+        total_buffs = len(buffs)
+        start_idx = int(self._buff_scroll_offset) % total_buffs
+        
+        visible = []
+        for i in range(self._buff_visible_count):
+            idx = (start_idx + i) % total_buffs
+            visible.append(buffs[idx])
+        
+        return visible
 

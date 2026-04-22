@@ -168,6 +168,9 @@ class UIComponents:
         (255, 255, 220),
     ]
 
+    BUFF_SCROLL_SPEED = 0.02
+    BUFF_SCROLL_VISIBLE_COUNT = 6
+
 
 class DesignTokens:
     def __init__(self):
