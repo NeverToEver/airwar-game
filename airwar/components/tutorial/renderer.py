@@ -210,9 +210,9 @@ class TutorialRenderer:
         box_width = ResponsiveHelper.scale(540, scale)
         center_x = width // 2
 
-        title_area_end = panel_y + ResponsiveHelper.scale(110, scale)
-        button_area_start = panel_y + panel_height - ResponsiveHelper.scale(120, scale)
-        available_height = button_area_start - title_area_end
+        title_area_end = panel_y + ResponsiveHelper.scale(100, scale)
+        note_area_start = panel_y + panel_height - ResponsiveHelper.scale(175, scale)
+        available_height = note_area_start - title_area_end - ResponsiveHelper.scale(10, scale)
         max_items = (available_height + option_gap) // (option_height + option_gap)
         visible_items = min(len(content), max_items)
 
@@ -412,25 +412,15 @@ class TutorialRenderer:
         surface.blit(sub_surface, sub_rect)
 
     def _render_note_and_warning(self, surface: pygame.Surface, step: Dict, scale: float) -> None:
-        """Render note and warning text."""
+        """Render note and warning text in dedicated area."""
         width, height = surface.get_size()
         panel_height = ResponsiveHelper.scale(self._base_panel_height, scale)
         panel_y = height // 2 - panel_height // 2
-        panel_width = ResponsiveHelper.scale(self._base_panel_width, scale)
 
-        content = step.get('content', [])
-        option_height = ResponsiveHelper.scale(self._base_option_height, scale)
-        option_gap = ResponsiveHelper.scale(self._base_option_gap, scale)
-        title_area_end = panel_y + ResponsiveHelper.scale(110, scale)
-        button_area_start = panel_y + panel_height - ResponsiveHelper.scale(120, scale)
-        available_height = button_area_start - title_area_end
-        max_items = (available_height + option_gap) // (option_height + option_gap)
-        visible_items = min(len(content), max_items)
-
-        note_font_size = ResponsiveHelper.font_size(20, scale)
+        note_font_size = ResponsiveHelper.font_size(18, scale)
         note_font = pygame.font.Font(None, note_font_size)
 
-        y_offset = button_area_start - ResponsiveHelper.scale(50, scale)
+        y_offset = panel_y + panel_height - ResponsiveHelper.scale(175, scale)
 
         if 'note' in step:
             note_color = self._colors['hint']
@@ -439,7 +429,7 @@ class TutorialRenderer:
                 center=(width // 2, y_offset)
             )
             surface.blit(note_surface, note_rect)
-            y_offset += ResponsiveHelper.scale(24, scale)
+            y_offset += ResponsiveHelper.scale(22, scale)
 
         if 'warning' in step:
             warning_color = self._tokens.colors.WARNING if self._tokens else (255, 100, 80)
@@ -465,7 +455,7 @@ class TutorialRenderer:
 
         button_width = ResponsiveHelper.scale(self._base_button_width, scale)
         button_height = ResponsiveHelper.scale(self._base_button_height, scale)
-        button_y = panel_y + panel_height - ResponsiveHelper.scale(80, scale)
+        button_y = panel_y + panel_height - ResponsiveHelper.scale(75, scale)
 
         button_font_size = ResponsiveHelper.font_size(28, scale)
         button_font = pygame.font.Font(None, button_font_size)
@@ -474,16 +464,6 @@ class TutorialRenderer:
         is_last = step.get('is_complete', False)
 
         mouse_pos = pygame.mouse.get_pos()
-
-        if not is_first:
-            prev_x = width // 2 - button_width - ResponsiveHelper.scale(15, scale)
-            prev_rect = pygame.Rect(prev_x, button_y, button_width, button_height)
-            prev_hover = prev_rect.collidepoint(mouse_pos)
-
-            self._render_button(
-                surface, prev_rect, "Previous",
-                button_font, prev_hover, is_first, is_last
-            )
 
         if is_last:
             exit_x = width // 2 - button_width // 2
@@ -494,8 +474,26 @@ class TutorialRenderer:
                 surface, exit_rect, "Return to Menu",
                 button_font, exit_hover, is_first, is_last
             )
+        elif is_first:
+            next_x = width // 2 - button_width // 2
+            next_rect = pygame.Rect(next_x, button_y, button_width, button_height)
+            next_hover = next_rect.collidepoint(mouse_pos)
+
+            self._render_button(
+                surface, next_rect, "Next",
+                button_font, next_hover, is_first, is_last
+            )
         else:
-            next_x = width // 2 + ResponsiveHelper.scale(15, scale)
+            prev_x = width // 2 - button_width - ResponsiveHelper.scale(20, scale)
+            prev_rect = pygame.Rect(prev_x, button_y, button_width, button_height)
+            prev_hover = prev_rect.collidepoint(mouse_pos)
+
+            self._render_button(
+                surface, prev_rect, "Previous",
+                button_font, prev_hover, is_first, is_last
+            )
+
+            next_x = width // 2 + ResponsiveHelper.scale(20, scale)
             next_rect = pygame.Rect(next_x, button_y, button_width, button_height)
             next_hover = next_rect.collidepoint(mouse_pos)
 
