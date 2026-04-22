@@ -5,7 +5,7 @@
 本次会话完成了以下工作：
 
 1. **Bug 修复** - 修复 Boss 被击杀时的回调参数问题
-2. **新功能** - 添加南都系数实时显示面板
+2. **新功能** - 添加难度系数实时显示面板
 3. **功能调整** - 更新 Explosive 天赋的解锁条件
 4. **代码优化** - 修复 Minor 问题，提升代码质量
 
@@ -37,7 +37,7 @@ if boss_killed:
 
 ---
 
-## 2. 新功能：南都系数显示面板
+## 2. 新功能：难度系数显示面板
 
 ### 概述
 
@@ -154,7 +154,7 @@ _COLOR_THRESHOLDS = [
 | 文件 | 变更类型 | 说明 |
 |------|----------|------|
 | `airwar/game/controllers/collision_controller.py` | Bug 修复 | 传递 boss_score 参数 |
-| `airwar/game/systems/difficulty_coefficient_panel.py` | 新增 | 南都系数显示面板 |
+| `airwar/game/systems/difficulty_coefficient_panel.py` | 新增 | 难度系数显示面板 |
 | `airwar/game/systems/difficulty_manager.py` | 增强 | 添加 initial_multiplier 属性 |
 | `airwar/game/systems/reward_system.py` | 逻辑修改 | Explosive 解锁条件 |
 | `airwar/game/managers/milestone_manager.py` | 逻辑修改 | 传入 boss_kill_count |
