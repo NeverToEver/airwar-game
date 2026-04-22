@@ -29,6 +29,7 @@ class TutorialNavigator:
         }
         self._hovered_button = None
         self._animation_time = 0
+        self._selected_index = 0
 
     def reset(self) -> None:
         """
@@ -36,6 +37,7 @@ class TutorialNavigator:
         """
         self._current_index = 0
         self._hovered_button = None
+        self._selected_index = 0
 
     def next_step(self) -> bool:
         """
@@ -227,3 +229,51 @@ class TutorialNavigator:
             True if can go to next step, False if at last step
         """
         return not self.is_last_step()
+
+    def get_selected_index(self) -> int:
+        """
+        Get the currently selected content item index.
+        
+        Returns:
+            Selected item index
+        """
+        return self._selected_index
+
+    def set_selected_index(self, index: int) -> None:
+        """
+        Set the selected content item index.
+        
+        Args:
+            index: New selected index
+        """
+        self._selected_index = index
+
+    def move_selection_up(self, max_index: int) -> bool:
+        """
+        Move selection up by one.
+        
+        Args:
+            max_index: Maximum valid index for current content
+            
+        Returns:
+            True if selection moved, False if at top
+        """
+        if self._selected_index > 0:
+            self._selected_index -= 1
+            return True
+        return False
+
+    def move_selection_down(self, max_index: int) -> bool:
+        """
+        Move selection down by one.
+        
+        Args:
+            max_index: Maximum valid index for current content
+            
+        Returns:
+            True if selection moved, False if at bottom
+        """
+        if self._selected_index < max_index:
+            self._selected_index += 1
+            return True
+        return False

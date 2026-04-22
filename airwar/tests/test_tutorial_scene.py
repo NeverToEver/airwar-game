@@ -32,7 +32,7 @@ class TestTutorialScene:
         scene = TutorialScene()
         scene.enter()
         assert scene.get_current_step_index() == 0
-        assert scene.get_total_steps() == 4
+        assert scene.get_total_steps() == 5
         assert not scene.is_complete()
 
     def test_exit_does_not_crash(self):
@@ -56,7 +56,7 @@ class TestTutorialScene:
         scene = TutorialScene()
         scene.enter()
         
-        for _ in range(3):
+        for _ in range(4):
             right_event = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_RIGHT})
             scene.handle_events(right_event)
             scene.update()
@@ -72,7 +72,7 @@ class TestTutorialScene:
         scene = TutorialScene()
         scene.enter()
         
-        for _ in range(3):
+        for _ in range(4):
             right_event = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_RIGHT})
             scene.handle_events(right_event)
             scene.update()
@@ -175,7 +175,7 @@ class TestTutorialScene:
         scene = TutorialScene()
         scene.enter()
         
-        for _ in range(3):
+        for _ in range(4):
             right_event = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_RIGHT})
             scene.handle_events(right_event)
             scene.update()

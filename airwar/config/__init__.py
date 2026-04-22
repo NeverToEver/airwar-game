@@ -1,7 +1,8 @@
 from .settings import *
 from .game_config import GameConfig, get_screen_width, get_screen_height, set_screen_size
 from .difficulty_config import DIFFICULTY_CONFIGS, MOVEMENT_PATTERNS, BASE_ENEMY_PARAMS
-from airwar.config.tutorial import TUTORIAL_COLORS, TUTORIAL_FONTS, TUTORIAL_STEPS
+from airwar.config.tutorial import TUTORIAL_STEPS
+from airwar.config.design_tokens import get_design_tokens, get_colors, get_typography
 
 __all__ = [
     'SCREEN_WIDTH', 'SCREEN_HEIGHT', 'FPS',
@@ -16,5 +17,6 @@ __all__ = [
     'ASSETS_PATH', 'IMAGES_PATH', 'SOUNDS_PATH',
     'EXPLOSION_RADIUS',
     'VALID_DIFFICULTIES',
-    'TUTORIAL_COLORS', 'TUTORIAL_FONTS', 'TUTORIAL_STEPS',
+    'TUTORIAL_STEPS',
+    'get_design_tokens', 'get_colors', 'get_typography',
 ]
