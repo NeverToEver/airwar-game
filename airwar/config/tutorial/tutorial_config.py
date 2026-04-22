@@ -85,7 +85,6 @@ TUTORIAL_STEPS: List[Dict] = [
             {'key': 'Milestones', 'description': 'Score targets to unlock buffs'},
             {'key': 'Difficulty', 'description': 'Increases with boss kills'},
         ],
-        'warning': 'K key requires holding near Mother Ship',
     },
     {
         'id': 'ready',
