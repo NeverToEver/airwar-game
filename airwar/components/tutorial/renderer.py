@@ -31,11 +31,11 @@ class TutorialRenderer:
         self._background_renderer = None
         self._particle_system = None
 
-        self._base_panel_width = 400
-        self._base_panel_height = 460
-        self._base_option_height = 70
-        self._base_option_gap = 12
-        self._base_title_y = 60
+        self._base_panel_width = 600
+        self._base_panel_height = 550
+        self._base_option_height = 65
+        self._base_option_gap = 10
+        self._base_title_y = 55
         self._base_button_width = 160
         self._base_button_height = 48
 
@@ -207,11 +207,11 @@ class TutorialRenderer:
 
         option_height = ResponsiveHelper.scale(self._base_option_height, scale)
         option_gap = ResponsiveHelper.scale(self._base_option_gap, scale)
-        box_width = ResponsiveHelper.scale(360, scale)
+        box_width = ResponsiveHelper.scale(540, scale)
         center_x = width // 2
 
-        title_area_end = panel_y + ResponsiveHelper.scale(120, scale)
-        button_area_start = panel_y + panel_height - ResponsiveHelper.scale(130, scale)
+        title_area_end = panel_y + ResponsiveHelper.scale(110, scale)
+        button_area_start = panel_y + panel_height - ResponsiveHelper.scale(120, scale)
         available_height = button_area_start - title_area_end
         max_items = (available_height + option_gap) // (option_height + option_gap)
         visible_items = min(len(content), max_items)
@@ -421,8 +421,8 @@ class TutorialRenderer:
         content = step.get('content', [])
         option_height = ResponsiveHelper.scale(self._base_option_height, scale)
         option_gap = ResponsiveHelper.scale(self._base_option_gap, scale)
-        title_area_end = panel_y + ResponsiveHelper.scale(120, scale)
-        button_area_start = panel_y + panel_height - ResponsiveHelper.scale(130, scale)
+        title_area_end = panel_y + ResponsiveHelper.scale(110, scale)
+        button_area_start = panel_y + panel_height - ResponsiveHelper.scale(120, scale)
         available_height = button_area_start - title_area_end
         max_items = (available_height + option_gap) // (option_height + option_gap)
         visible_items = min(len(content), max_items)
@@ -556,7 +556,7 @@ class TutorialRenderer:
         else:
             hint_color = (140, 140, 180)
 
-        controls_text = "W/S or UP/DOWN to select  |  L/R to navigate steps  |  ESC to exit"
+        controls_text = "W/S or UP/DOWN to select  |  A/D or LEFT/RIGHT to navigate steps  |  ESC to exit"
         controls_surface = hint_font.render(controls_text, True, hint_color)
         controls_rect = controls_surface.get_rect(
             center=(width // 2, panel_y + panel_height - ResponsiveHelper.scale(20, scale))

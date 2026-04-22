@@ -26,10 +26,10 @@ class TutorialPanel:
         self._background_cache = None
         self._layout = None
 
-        self._base_panel_width = 400
-        self._base_panel_height = 460
-        self._base_option_height = 70
-        self._base_option_gap = 12
+        self._base_panel_width = 600
+        self._base_panel_height = 550
+        self._base_option_height = 65
+        self._base_option_gap = 10
         self._base_button_width = 160
         self._base_button_height = 48
 
@@ -202,16 +202,16 @@ class TutorialPanel:
         scale = ResponsiveHelper.get_scale_factor(layout['width'], layout['height'])
         padding = int(20 * scale)
 
-        title_area_height = int(120 * scale)
-        nav_area_height = int(130 * scale)
+        title_area_height = int(110 * scale)
+        nav_area_height = int(120 * scale)
 
         available_height = layout['height'] - padding * 2 - title_area_height - nav_area_height
         available_width = layout['width'] - padding * 2
 
         start_y = layout['y'] + padding + title_area_height
 
-        option_height = int(70 * scale)
-        option_gap = int(12 * scale)
+        option_height = int(65 * scale)
+        option_gap = int(10 * scale)
         max_items = (available_height + option_gap) // (option_height + option_gap)
         visible_items = min(item_count, max_items)
 
