@@ -142,7 +142,7 @@ class RewardSystem:
             rewards = REWARD_POOL[cat]
 
             if cat == 'offense' and cycle_count > 2:
-                rewards = [r for r in rewards if r['name'] not in ['Spread Shot', 'Explosive']]
+                rewards = [r for r in rewards if r['name'] not in ['Spread Shot']]
 
             reward = random.choice(rewards)
             attempts = 0

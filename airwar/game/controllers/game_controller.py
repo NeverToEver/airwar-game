@@ -44,10 +44,12 @@ class GameController:
         from airwar.game.systems.health_system import HealthSystem
         from airwar.game.systems.reward_system import RewardSystem
         from airwar.game.systems.notification_manager import NotificationManager
+        from airwar.game.systems.difficulty_manager import DifficultyManager
 
         self.health_system = HealthSystem(difficulty)
         self.reward_system = RewardSystem(difficulty)
         self.notification_manager = NotificationManager()
+        self.difficulty_manager = DifficultyManager(difficulty)
 
         self.cycle_count = 0
         self.milestone_index = 0
@@ -136,6 +138,7 @@ class GameController:
         self.state.kill_count += 1
         self.state.boss_kill_count += 1
         self.state.score += score_gained
+        self.difficulty_manager.on_boss_killed()
 
     def update_ripples(self) -> None:
         from airwar.config import RIPPLE_FADE_SPEED

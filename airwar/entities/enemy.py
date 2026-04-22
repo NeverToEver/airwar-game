@@ -37,6 +37,9 @@ class Enemy(Entity):
         self.entity_id = id(self)
         self._init_movement(data.enemy_type)
         self._sync_rects()
+        self._difficulty_multiplier = 1.0
+        self._fire_rate_modifier = 1.0
+        self._movement_enhancements = {}
 
     @property
     def collision_rect(self) -> pygame.Rect:
@@ -83,6 +86,14 @@ class Enemy(Entity):
             self.hover_amplitude = random.uniform(20, 40)
             self.start_x = self.rect.x
             
+        elif enemy_type == "spiral":
+            self.move_type = "spiral"
+            self.spiral_timer = 0
+            self.spiral_speed = random.uniform(2.0, 3.0)
+            self.spiral_radius = random.uniform(30, 50)
+            self.spiral_frequency = random.uniform(0.05, 0.08)
+            self.start_x = self.rect.x
+            
         else:
             self.move_type = "straight"
 
@@ -91,7 +102,7 @@ class Enemy(Entity):
         screen_width = get_screen_width()
         screen_height = get_screen_height()
         
-        base_speed = self.data.speed
+        base_speed = self.data.speed * self._difficulty_multiplier
         
         if self.move_type == "sine":
             self.move_timer += 1
@@ -134,6 +145,16 @@ class Enemy(Entity):
             self.rect.x = self.start_x + math.sin(self.hover_timer) * self.hover_amplitude
             self.rect.x = max(0, min(self.rect.x, screen_width - self.rect.width))
             self._sync_rects()
+
+        elif self.move_type == "spiral":
+            self.rect.y += base_speed * 0.5
+            self.spiral_timer += 1
+            spiral_x = math.cos(self.spiral_timer * self.spiral_frequency) * self.spiral_radius
+            spiral_y_offset = math.sin(self.spiral_timer * self.spiral_frequency * 2) * 10
+            self.rect.x = self.start_x + spiral_x
+            self.rect.y += spiral_y_offset * 0.1
+            self.rect.x = max(0, min(self.rect.x, screen_width - self.rect.width))
+            self._sync_rects()
             
         else:
             self.rect.y += base_speed
@@ -143,7 +164,8 @@ class Enemy(Entity):
             self.active = False
 
         self.fire_timer += 1
-        if self.fire_timer >= self.data.fire_rate:
+        fire_threshold = max(10, int(self.data.fire_rate / self._fire_rate_modifier))
+        if self.fire_timer >= fire_threshold:
             self.fire_timer = 0
             self._fire()
 
@@ -199,6 +221,16 @@ class Enemy(Entity):
     def set_bullet_spawner(self, spawner: IBulletSpawner) -> None:
         self._bullet_spawner = spawner
 
+    def set_difficulty(
+        self,
+        speed_mult: float,
+        fire_rate_modifier: float,
+        movement_enhancements: dict = None
+    ) -> None:
+        self._difficulty_multiplier = speed_mult
+        self._fire_rate_modifier = fire_rate_modifier
+        self._movement_enhancements = movement_enhancements or {}
+
     def render(self, surface: pygame.Surface) -> None:
         if not self._sprite:
             health_ratio = self.health / self.max_health if self.max_health > 0 else 1.0
@@ -233,11 +265,12 @@ class EnemySpawner:
         self.bullet_type = "single"
         self._bullet_spawner: Optional[IBulletSpawner] = None
         self._enemy_type_distribution = {
-            "straight": 0.30,
-            "sine": 0.25,
-            "zigzag": 0.20,
-            "dive": 0.15,
-            "hover": 0.10,
+            "straight": 0.25,
+            "sine": 0.20,
+            "zigzag": 0.18,
+            "dive": 0.14,
+            "hover": 0.13,
+            "spiral": 0.10,
         }
 
     def _select_enemy_type(self) -> str:
