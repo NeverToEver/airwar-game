@@ -68,11 +68,16 @@ conda-meta/
 # Visual Studio Code
 .vscode/
 .vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
 !.vscode/extensions.json
 *.code-workspace
+
+# Trae AI IDE
+.trae/
+.trae/*
+
+# IDE settings containing local paths (should not be committed)
+.vscode/settings.json
+.trae/settings.json
 
 # JetBrains IDEs (IntelliJ, PyCharm, etc.)
 .idea/
