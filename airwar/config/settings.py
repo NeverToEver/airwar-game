@@ -41,20 +41,28 @@ DIFFICULTY_SETTINGS = {
         'bullet_damage': 100,
         'enemy_speed': 2.5,
         'spawn_rate': 40,
+        'max_delta': 1500,
+        'difficulty_multiplier': 0.8,
     },
     'medium': {
         'enemy_health': 200,
         'bullet_damage': 50,
         'enemy_speed': 3,
         'spawn_rate': 30,
+        'max_delta': 2000,
+        'difficulty_multiplier': 1.0,
     },
     'hard': {
         'enemy_health': 170,
         'bullet_damage': 34,
         'enemy_speed': 3.5,
         'spawn_rate': 25,
+        'max_delta': 3000,
+        'difficulty_multiplier': 1.5,
     },
 }
+
+VALID_DIFFICULTIES = {'easy', 'medium', 'hard'}
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)

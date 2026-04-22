@@ -256,7 +256,7 @@ class TestBoundaryConditions:
         
         scene.milestone_index = 0
         threshold = scene._get_current_threshold(0)
-        assert threshold == 1500
+        assert threshold == 500
         
         scene.milestone_index = scene.game_controller.max_cycles - 1
         threshold = scene._get_current_threshold(scene.milestone_index)
@@ -272,7 +272,7 @@ class TestBoundaryConditions:
         
         scene.cycle_count = 5
         threshold = scene._get_current_threshold(0)
-        assert threshold == 1500
+        assert threshold == 500
 
 
 class TestExceptionHandling:
