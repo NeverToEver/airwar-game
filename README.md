@@ -85,137 +85,47 @@ graph TB
 
     subgraph airwar["airwar/"]
         subgraph core["核心模块"]
-            GAME[game/game.py]
-            DIRECTOR[game/scene_director.py]
-            CONSTANTS[game/constants.py]
         end
 
         subgraph scenes["场景层"]
-            LOGIN[scenes/login_scene.py]
-            MENU[scenes/menu_scene.py]
-            GAME_SCENE[scenes/game_scene.py]
-            PAUSE[scenes/pause_scene.py]
-            DEATH[scenes/death_scene.py]
-            EXIT_CONFIRM[scenes/exit_confirm_scene.py]
-            TUTORIAL[scenes/tutorial_scene.py]
         end
 
         subgraph entities["实体层"]
-            BASE[entities/base.py]
-            PLAYER[entities/player.py]
-            ENEMY[entities/enemy.py]
-            BULLET[entities/bullet.py]
-            INTERFACES[entities/interfaces.py]
         end
 
-        subgraph managers["管理器层"]
-            GC[game/managers/game_controller.py]
-            BM[game/managers/bullet_manager.py]
-            CC[game/managers/collision_controller.py]
-            GM[game/managers/game_loop_manager.py]
-            IC[game/managers/input_coordinator.py]
-            MM[game/managers/milestone_manager.py]
-            SC[game/managers/spawn_controller.py]
-            UM[game/managers/ui_manager.py]
-            BOSS[game/managers/boss_manager.py]
-        end
-
-        subgraph systems["系统层"]
-            DM[game/systems/difficulty_manager.py]
-            DS[game/systems/difficulty_strategies.py]
-            HS[game/systems/health_system.py]
-            RS[game/systems/reward_system.py]
-            MPG[game/systems/movement_pattern_generator.py]
-            NM[game/systems/notification_manager.py]
-        end
-
-        subgraph buffs["Buff 系统"]
-            BUFFS[game/buffs/buffs.py]
-            BASE_BUFF[game/buffs/base_buff.py]
-            BUFF_REG[game/buffs/buff_registry.py]
-        end
-
-        subgraph mother_ship["母舰系统"]
-            MS[game/mother_ship/mother_ship.py]
-            MS_STATE[game/mother_ship/mother_ship_state.py]
-            MS_PERSISTENCE[game/mother_ship/persistence_manager.py]
-            MS_INTEGRATOR[game/mother_ship/game_integrator.py]
+        subgraph logic["游戏逻辑层"]
+            MANAGERS[管理器层]
+            SYSTEMS[系统层]
+            BUFFS[Buff 系统]
+            MOTHER_SHIP[母舰系统]
         end
 
         subgraph rendering["渲染系统"]
-            GR[game/rendering/game_renderer.py]
-            HR[game/rendering/hud_renderer.py]
-            IHR[game/rendering/integrated_hud.py]
-            DI[game/rendering/difficulty_indicator.py]
         end
 
         subgraph animation["动画系统"]
-            EA[game/explosion_animation/]
-            DA[game/death_animation/death_animation.py]
-            GU[game/give_up/give_up_detector.py]
-        end
-
-        subgraph components["组件层"]
-            TUT[components/tutorial/]
-        end
-
-        subgraph config["配置层"]
-            SETTINGS[config/settings.py]
-            DESIGN[config/design_tokens.py]
-            DIFF[config/difficulty_config.py]
-            GAME_CFG[config/game_config.py]
-            TUT_CFG[config/tutorial/tutorial_config.py]
         end
 
         subgraph ui["UI 层"]
-            BSP[ui/buff_stats_panel.py]
-            RSP[ui/reward_selector.py]
-            GOU[ui/give_up_ui.py]
         end
 
-        subgraph utils["工具层"]
-            DB[utils/database.py]
-            SPRITES[utils/sprites.py]
-            RESP[utils/responsive.py]
-        end
-
-        subgraph input_layer["输入层"]
-            IH[input/input_handler.py]
-        end
-
-        subgraph window_layer["窗口层"]
-            WIN[window/window.py]
-        end
-
-        subgraph tests["测试层"]
-            TESTS[tests/]
-        end
-
-        subgraph data["数据层"]
-            DATA[data/]
+        subgraph support["支撑层"]
+            CONFIG[配置层]
+            UTILS[工具层]
+            INPUT[输入层]
+            WINDOW[窗口层]
         end
     end
 
     MAIN --> GAME
-    GAME --> DIRECTOR
-    DIRECTOR --> scenes
     scenes --> GAME_SCENE
     GAME_SCENE --> core
-    core --> managers
-    managers --> entities
-    managers --> systems
-    managers --> buffs
-    managers --> mother_ship
-    managers --> rendering
-    managers --> animation
-    scenes --> components
-    managers --> ui
-    core --> config
-    core --> utils
-    core --> input_layer
-    core --> window_layer
-    root --> tests
-    root --> data
+    core --> logic
+    logic --> entities
+    logic --> rendering
+    logic --> animation
+    scenes --> ui
+    core --> support
 ```
 
 ## 目录说明
