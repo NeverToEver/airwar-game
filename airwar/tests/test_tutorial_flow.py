@@ -9,7 +9,7 @@ import pytest
 import pygame
 from airwar.scenes.tutorial_scene import TutorialScene
 from airwar.components.tutorial import TutorialPanel, TutorialNavigator, TutorialRenderer
-from airwar.configs.tutorial import TUTORIAL_STEPS, TUTORIAL_COLORS
+from airwar.config.tutorial import TUTORIAL_STEPS, TUTORIAL_COLORS
 
 
 class TestTutorialIntegration:

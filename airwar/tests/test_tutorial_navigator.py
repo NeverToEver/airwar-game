@@ -7,7 +7,7 @@ Following the F.I.R.S.T. principles: Fast, Independent, Repeatable, Self-Validat
 
 import pytest
 from airwar.components.tutorial import TutorialNavigator
-from airwar.configs.tutorial import TUTORIAL_STEPS
+from airwar.config.tutorial import TUTORIAL_STEPS
 
 
 class TestTutorialNavigator:

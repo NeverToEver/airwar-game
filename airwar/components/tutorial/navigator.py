@@ -8,7 +8,7 @@ Following the Single Responsibility Principle - it only handles navigation logic
 
 from typing import Dict, List, Optional, Tuple
 import pygame
-from airwar.configs.tutorial import TUTORIAL_STEPS
+from airwar.config.tutorial import TUTORIAL_STEPS
 
 
 class TutorialNavigator:

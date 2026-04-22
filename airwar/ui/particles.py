@@ -1,6 +1,7 @@
 import pygame
 import math
 import random
+from airwar.config.design_tokens import get_design_tokens
 
 
 class ParticleSystem:
@@ -11,16 +12,18 @@ class ParticleSystem:
     def __init__(self):
         self._particles = []
         self._animation_time = 0
+        self._tokens = get_design_tokens()
         self._init_cache()
 
     def _init_cache(self):
         """预创建常用尺寸的粒子纹理"""
+        colors_config = self._tokens.colors
         for base_size in [8, 12, 16, 20]:
             for color_key in ['particle', 'particle_alt']:
                 key = (base_size, color_key)
                 if key not in self._texture_cache:
                     surf = pygame.Surface((base_size * 4, base_size * 4), pygame.SRCALPHA)
-                    color = (100, 180, 255) if color_key == 'particle' else (255, 150, 150)
+                    color = colors_config.PARTICLE_PRIMARY if color_key == 'particle' else colors_config.PARTICLE_ALT
                     for i in range(base_size * 2, 0, -2):
                         layer_alpha = int(180 * (base_size * 2 - i) / (base_size * 2) * 0.4)
                         pygame.draw.circle(
@@ -34,12 +37,13 @@ class ParticleSystem:
     def _init_particles(self, count: int = 40, color_key: str = 'particle'):
         """初始化粒子数据"""
         self._particles = []
+        animation_config = self._tokens.animation
         for _ in range(count):
             self._particles.append({
                 'x': random.random(),
                 'y': random.random(),
                 'size': random.uniform(1.5, 3.5),
-                'speed': random.uniform(0.3, 0.9),
+                'speed': random.uniform(animation_config.PARTICLE_SPEED_MIN, animation_config.PARTICLE_SPEED_MAX),
                 'alpha': random.randint(80, 180),
                 'pulse_speed': random.uniform(0.02, 0.05),
                 'pulse_offset': random.random() * math.pi * 2,

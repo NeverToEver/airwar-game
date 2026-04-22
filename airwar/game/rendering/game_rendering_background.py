@@ -103,7 +103,7 @@ class Nebula:
         surface.blit(nebula_surface, (int(self.x - self.radius - 10), int(self.y - self.radius - 10)))
 
 
-class BackgroundRenderer:
+class GameSceneBackground:
     _gradient_cache: dict = {}
     _particle_surface_cache: dict = {}
 
@@ -129,7 +129,7 @@ class BackgroundRenderer:
 
     def _generate_gradient(self) -> None:
         cache_key = (self.screen_width, self.screen_height)
-        if cache_key not in BackgroundRenderer._gradient_cache:
+        if cache_key not in GameSceneBackground._gradient_cache:
             gradient = pygame.Surface((self.screen_width, self.screen_height))
             for y in range(self.screen_height):
                 ratio = y / self.screen_height
@@ -137,8 +137,8 @@ class BackgroundRenderer:
                 g = int(5 + ratio * 8)
                 b = int(20 + ratio * 30)
                 pygame.draw.line(gradient, (r, g, b), (0, y), (self.screen_width, y))
-            BackgroundRenderer._gradient_cache[cache_key] = gradient
-        self._cached_gradient = BackgroundRenderer._gradient_cache[cache_key]
+            GameSceneBackground._gradient_cache[cache_key] = gradient
+        self._cached_gradient = GameSceneBackground._gradient_cache[cache_key]
 
     @classmethod
     def clear_all_caches(cls) -> None:

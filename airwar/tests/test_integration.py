@@ -327,7 +327,7 @@ class TestGameFlowIntegration:
 
     def test_death_triggered_immediately_on_health_zero(self):
         from airwar.scenes.game_scene import GameScene
-        from airwar.game.controllers.game_controller import GameplayState
+        from airwar.game.managers.game_controller import GameplayState
         scene = GameScene()
         scene.enter(difficulty='medium')
         scene.player.health = 50
@@ -337,7 +337,7 @@ class TestGameFlowIntegration:
 
     def test_death_triggered_when_health_goes_negative(self):
         from airwar.scenes.game_scene import GameScene
-        from airwar.game.controllers.game_controller import GameplayState
+        from airwar.game.managers.game_controller import GameplayState
         scene = GameScene()
         scene.enter(difficulty='medium')
         scene.player.health = 10
@@ -358,7 +358,7 @@ class TestGameFlowIntegration:
         assert scene.is_game_over() is True
 
     def test_death_duration_is_200_frames(self):
-        from airwar.game.controllers.game_controller import GameState
+        from airwar.game.managers.game_controller import GameState
         state = GameState()
         assert state.death_duration == 200
 

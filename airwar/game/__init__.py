@@ -1,13 +1,15 @@
 # Systems modules
 from airwar.game.systems.health_system import HealthSystem
 from airwar.game.systems.reward_system import RewardSystem
-from airwar.game.systems.hud_renderer import HUDRenderer
 from airwar.game.systems.notification_manager import NotificationManager
 
-# Controller modules
-from airwar.game.controllers.game_controller import GameController, GameState
-from airwar.game.controllers.spawn_controller import SpawnController
-from airwar.game.controllers.collision_controller import CollisionController
+# Rendering modules (includes HUD)
+from airwar.game.rendering import HUDRenderer
+
+# Controller modules (migrated to managers)
+from airwar.game.managers.game_controller import GameController, GameState
+from airwar.game.managers.spawn_controller import SpawnController
+from airwar.game.managers.collision_controller import CollisionController
 
 # Rendering modules
 from airwar.game.rendering.game_renderer import GameRenderer, GameEntities

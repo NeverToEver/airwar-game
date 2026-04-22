@@ -19,7 +19,7 @@ Usage:
 from typing import TYPE_CHECKING, Optional, Callable
 
 if TYPE_CHECKING:
-    from airwar.game.controllers.game_controller import GameController
+    from airwar.game.managers.game_controller import GameController
     from airwar.game.systems.reward_system import RewardSystem
     from airwar.ui.reward_selector import RewardSelector
 
@@ -80,7 +80,7 @@ class MilestoneManager:
         Returns:
             bool: True 表示触发了里程碑，False 表示未触发
         """
-        from airwar.game.controllers.game_controller import GameplayState
+        from airwar.game.managers.game_controller import GameplayState
 
         if self._game_controller.state.gameplay_state != GameplayState.PLAYING:
             return False

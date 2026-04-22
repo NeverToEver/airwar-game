@@ -36,7 +36,7 @@ class TestMilestoneManager:
 
     def test_check_and_trigger_returns_true_and_shows_reward_when_at_threshold(self):
         from airwar.game.managers import MilestoneManager
-        from airwar.game.controllers.game_controller import GameplayState
+        from airwar.game.managers.game_controller import GameplayState
         game_controller = MagicMock()
         game_controller.get_next_threshold.return_value = 1000
         game_controller.state.score = 1000
@@ -52,7 +52,7 @@ class TestMilestoneManager:
 
     def test_check_and_trigger_returns_true_and_shows_reward_when_above_threshold(self):
         from airwar.game.managers import MilestoneManager
-        from airwar.game.controllers.game_controller import GameplayState
+        from airwar.game.managers.game_controller import GameplayState
         game_controller = MagicMock()
         game_controller.get_next_threshold.return_value = 1000
         game_controller.state.score = 1500
@@ -68,7 +68,7 @@ class TestMilestoneManager:
 
     def test_check_and_trigger_returns_false_when_dying(self):
         from airwar.game.managers import MilestoneManager
-        from airwar.game.controllers.game_controller import GameplayState
+        from airwar.game.managers.game_controller import GameplayState
         game_controller = MagicMock()
         game_controller.get_next_threshold.return_value = 1000
         game_controller.state.score = 1500
@@ -84,7 +84,7 @@ class TestMilestoneManager:
 
     def test_check_and_trigger_returns_false_when_game_over(self):
         from airwar.game.managers import MilestoneManager
-        from airwar.game.controllers.game_controller import GameplayState
+        from airwar.game.managers.game_controller import GameplayState
         game_controller = MagicMock()
         game_controller.get_next_threshold.return_value = 1000
         game_controller.state.score = 1500

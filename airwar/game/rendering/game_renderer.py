@@ -1,9 +1,10 @@
 import pygame
 from dataclasses import dataclass
 from typing import List
-from airwar.game.systems.hud_renderer import HUDRenderer
-from airwar.game.controllers.game_controller import GameState, GameplayState
-from airwar.game.rendering.background_renderer import BackgroundRenderer
+from airwar.game.rendering.hud_renderer import HUDRenderer
+from airwar.game.rendering.integrated_hud import IntegratedHUD
+from airwar.game.managers.game_controller import GameState, GameplayState
+from airwar.game.rendering.game_rendering_background import GameSceneBackground
 from airwar.game.death_animation import DeathAnimation
 
 
@@ -15,15 +16,16 @@ class GameEntities:
 
 
 class GameRenderer:
-    def __init__(self, hud_renderer: HUDRenderer = None):
+    def __init__(self, hud_renderer: HUDRenderer = None, use_integrated_hud: bool = True):
         self.hud_renderer = hud_renderer or HUDRenderer()
-        self.background_renderer: BackgroundRenderer = None
+        self.integrated_hud = IntegratedHUD() if use_integrated_hud else None
+        self.background_renderer: GameSceneBackground = None
         self._death_animation = None
         self._screen_diagonal = 0
         self._was_in_dying_state = False
 
     def init_background(self, screen_width: int, screen_height: int) -> None:
-        self.background_renderer = BackgroundRenderer(screen_width, screen_height)
+        self.background_renderer = GameSceneBackground(screen_width, screen_height)
         self._screen_diagonal = int((screen_width ** 2 + screen_height ** 2) ** 0.5)
 
     def render(self, surface: pygame.Surface, state: GameState, entities: GameEntities) -> None:
@@ -118,23 +120,45 @@ class GameRenderer:
         player_max_health: int,
         kills: int,
         next_progress: int,
-        boss_kills: int = 0
+        boss_kills: int = 0,
+        unlocked_buffs: list = None,
+        get_buff_color=None,
+        current_coefficient: float = None,
+        initial_coefficient: float = None
     ) -> None:
-        self.hud_renderer.render_hud(
-            surface, score, difficulty,
-            player_health, player_max_health, kills,
-            next_progress,
-            boss_kills=boss_kills
-        )
+        if self.integrated_hud:
+            self.integrated_hud.render(
+                surface,
+                score,
+                difficulty,
+                player_health,
+                player_max_health,
+                kills,
+                next_progress,
+                boss_kills,
+                unlocked_buffs,
+                get_buff_color,
+                current_coefficient,
+                initial_coefficient
+            )
+        else:
+            self.hud_renderer.render_hud(
+                surface, score, difficulty,
+                player_health, player_max_health, kills,
+                next_progress,
+                boss_kills=boss_kills
+            )
 
     def render_notification(self, surface, notification: str, timer: int) -> None:
         self.hud_renderer.render_notification(surface, notification, timer)
 
     def render_buffs(self, surface, unlocked_buffs: list, get_buff_color) -> None:
-        self.hud_renderer.render_buffs(surface, unlocked_buffs, get_buff_color)
+        if not self.integrated_hud:
+            self.hud_renderer.render_buffs(surface, unlocked_buffs, get_buff_color)
 
     def render_buff_stats_panel(self, surface, reward_system, player) -> None:
-        self.hud_renderer.render_buff_stats_panel(surface, reward_system, player)
+        if not self.integrated_hud:
+            self.hud_renderer.render_buff_stats_panel(surface, reward_system, player)
 
     def _render_death_animation(self, surface, state, entities):
         is_dying = state.gameplay_state == GameplayState.DYING

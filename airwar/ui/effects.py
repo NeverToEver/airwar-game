@@ -1,4 +1,5 @@
 import pygame
+from airwar.config.design_tokens import get_design_tokens
 
 
 class EffectsRenderer:
@@ -6,6 +7,7 @@ class EffectsRenderer:
 
     def __init__(self):
         self._glow_cache = {}
+        self._tokens = get_design_tokens()
 
     def render_glow_text(
         self,
@@ -15,9 +17,12 @@ class EffectsRenderer:
         pos: tuple,
         color: tuple,
         glow_color: tuple,
-        glow_radius: int = 3
+        glow_radius: int = None
     ):
         """渲染发光文字"""
+        if glow_radius is None:
+            glow_radius = self._tokens.animation.GLOW_RADIUS_DEFAULT
+
         for i in range(glow_radius, 0, -1):
             alpha = int(100 / i)
             glow_surf = font.render(text, True, glow_color)
@@ -35,12 +40,17 @@ class EffectsRenderer:
         y: int,
         is_selected: bool,
         colors: dict,
-        option_width: int = 350,
-        option_height: int = 60,
+        option_width: int = None,
+        option_height: int = None,
         scale: float = 1.0
     ):
         """渲染选项框"""
         from airwar.utils.responsive import ResponsiveHelper
+
+        if option_width is None:
+            option_width = self._tokens.spacing.BOX_WIDTH
+        if option_height is None:
+            option_height = self._tokens.spacing.BOX_HEIGHT
 
         width = surface.get_width()
         center_x = width // 2
@@ -49,22 +59,23 @@ class EffectsRenderer:
         box_height = ResponsiveHelper.scale(option_height, scale)
         box_rect = pygame.Rect(center_x - box_width // 2, y - box_height // 2, box_width, box_height)
 
+        colors_config = self._tokens.colors
         if is_selected:
-            glow_color = colors.get('selected_glow', (0, 200, 255))
+            glow_color = colors.get('selected_glow', colors_config.HUD_AMBER_BRIGHT)
             for i in range(4, 0, -1):
                 glow_rect = box_rect.inflate(i * 4, i * 4)
                 glow_surf = pygame.Surface((glow_rect.width, glow_rect.height), pygame.SRCALPHA)
                 pygame.draw.rect(glow_surf, (*glow_color, 50 // i), glow_surf.get_rect())
                 surface.blit(glow_surf, glow_rect)
 
-            pygame.draw.rect(surface, (25, 35, 65), box_rect, border_radius=12)
-            pygame.draw.rect(surface, colors.get('selected', (0, 255, 150)), box_rect, 3, border_radius=12)
+            pygame.draw.rect(surface, colors_config.BUTTON_SELECTED_BG, box_rect, border_radius=12)
+            pygame.draw.rect(surface, colors.get('selected', colors_config.HUD_AMBER), box_rect, 3, border_radius=12)
         else:
-            pygame.draw.rect(surface, (18, 20, 40), box_rect, border_radius=12)
-            pygame.draw.rect(surface, colors.get('unselected', (90, 90, 130)), box_rect, 2, border_radius=12)
+            pygame.draw.rect(surface, colors_config.BUTTON_UNSELECTED_BG, box_rect, border_radius=12)
+            pygame.draw.rect(surface, colors.get('unselected', colors_config.TEXT_MUTED), box_rect, 2, border_radius=12)
 
         arrow = ">> " if is_selected else "   "
-        option_text = pygame.font.Font(None, 48).render(f"{arrow}{text}", True,
-            colors.get('selected', (0, 255, 150)) if is_selected else colors.get('unselected', (90, 90, 130)))
+        option_text = pygame.font.Font(None, self._tokens.typography.OPTION_SIZE).render(f"{arrow}{text}", True,
+            colors.get('selected', colors_config.HUD_AMBER) if is_selected else colors.get('unselected', colors_config.TEXT_MUTED))
         text_rect = option_text.get_rect(center=(center_x, y))
         surface.blit(option_text, text_rect)

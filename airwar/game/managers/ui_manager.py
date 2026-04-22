@@ -6,7 +6,7 @@ class GameRendererProtocol(Protocol):
     def render(self, surface, state, entities) -> None: ...
     def render_hud(
         self, surface, score, difficulty, player_health, player_max_health,
-        kills, next_progress: int, boss_kills=0
+        kills, next_progress: int, boss_kills=0, unlocked_buffs=None, get_buff_color=None
     ) -> None: ...
     def render_notification(self, surface, notification, timer) -> None: ...
     def render_buff_stats_panel(self, surface, reward_system, player) -> None: ...
@@ -29,6 +29,8 @@ class GameControllerProtocol(Protocol):
     def milestone_index(self) -> int: ...
     @property
     def max_cycles(self) -> int: ...
+    @property
+    def difficulty_manager(self): ...
 
 
 class PlayerProtocol(Protocol):
@@ -75,6 +77,20 @@ class UIManager:
 
     def render_hud(self, surface: pygame.Surface, player) -> None:
         state = self._game_controller.state
+
+        unlocked_buffs = getattr(self._reward_system, 'unlocked_buffs', [])
+
+        def get_buff_color(buff_name):
+            try:
+                from airwar.game.buffs.buff_registry import create_buff
+                return create_buff(buff_name).get_color()
+            except:
+                return (255, 200, 100)
+
+        difficulty_manager = self._game_controller.difficulty_manager
+        current_coefficient = difficulty_manager.get_current_multiplier()
+        initial_coefficient = difficulty_manager.initial_multiplier
+
         self._game_renderer.render_hud(
             surface,
             state.score,
@@ -84,6 +100,10 @@ class UIManager:
             state.kill_count,
             self._game_controller.get_next_progress(),
             boss_kills=getattr(state, 'boss_kill_count', 0),
+            unlocked_buffs=unlocked_buffs,
+            get_buff_color=get_buff_color,
+            current_coefficient=current_coefficient,
+            initial_coefficient=initial_coefficient
         )
 
     def render_notification(self, surface: pygame.Surface) -> None:

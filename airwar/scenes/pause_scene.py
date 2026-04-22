@@ -2,9 +2,10 @@ import pygame
 import math
 from .scene import Scene, PauseAction
 from airwar.utils.responsive import ResponsiveHelper
-from airwar.scenes.ui.background import BackgroundRenderer
-from airwar.scenes.ui.particles import ParticleSystem
-from airwar.scenes.ui.effects import EffectsRenderer
+from airwar.ui.menu_background import MenuBackground
+from airwar.ui.particles import ParticleSystem
+from airwar.ui.effects import EffectsRenderer
+from airwar.config.design_tokens import get_design_tokens
 
 
 class PauseScene(Scene):
@@ -16,32 +17,35 @@ class PauseScene(Scene):
         self.animation_time = 0
         self.glow_offset = 0
 
+        self._tokens = get_design_tokens()
+
         self.base_option_spacing = 70
-        self.base_box_width = 350
-        self.base_box_height = 60
+        self.base_box_width = self._tokens.spacing.BOX_WIDTH
+        self.base_box_height = self._tokens.spacing.BOX_HEIGHT
 
         pygame.font.init()
-        self.title_font = pygame.font.Font(None, 100)
-        self.option_font = pygame.font.Font(None, 48)
-        self.hint_font = pygame.font.Font(None, 26)
-        self.desc_font = pygame.font.Font(None, 24)
+        self.title_font = pygame.font.Font(None, self._tokens.typography.TITLE_SIZE)
+        self.option_font = pygame.font.Font(None, self._tokens.typography.OPTION_SIZE)
+        self.hint_font = pygame.font.Font(None, self._tokens.typography.SMALL_SIZE)
+        self.desc_font = pygame.font.Font(None, self._tokens.typography.TINY_SIZE)
 
-        self._background_renderer = BackgroundRenderer()
+        self._background_renderer = MenuBackground()
         self._particle_system = ParticleSystem()
         self._effects_renderer = EffectsRenderer()
-        self._particle_system.reset(25, 'particle')
+        self._particle_system.reset(self._tokens.components.PARTICLE_PARTICLE_ALT_COUNT, 'particle')
 
+        colors = self._tokens.colors
         self.colors = {
-            'bg': (8, 8, 25),
-            'bg_gradient': (15, 15, 50),
-            'overlay': (5, 5, 20, 180),
-            'title': (255, 255, 255),
-            'title_glow': (100, 200, 255),
-            'selected': (0, 255, 150),
-            'selected_glow': (0, 200, 255),
-            'unselected': (90, 90, 130),
-            'hint': (70, 70, 110),
-            'particle': (100, 180, 255),
+            'bg': colors.BACKGROUND_PRIMARY,
+            'bg_gradient': colors.BACKGROUND_SECONDARY,
+            'overlay': colors.BACKGROUND_OVERLAY,
+            'title': colors.TEXT_PRIMARY,
+            'title_glow': colors.HUD_AMBER_BRIGHT,
+            'selected': colors.HUD_AMBER,
+            'selected_glow': colors.HUD_AMBER_BRIGHT,
+            'unselected': colors.TEXT_MUTED,
+            'hint': colors.TEXT_HINT,
+            'particle': colors.PARTICLE_PRIMARY,
         }
 
     def exit(self) -> None:
@@ -72,7 +76,7 @@ class PauseScene(Scene):
 
     def update(self, *args, **kwargs) -> None:
         self.animation_time += 1
-        self.glow_offset = math.sin(self.animation_time * 0.05) * 8
+        self.glow_offset = math.sin(self.animation_time * self._tokens.animation.GLOW_SPEED) * 8
 
         self._background_renderer._animation_time = self.animation_time
         self._background_renderer.update()
@@ -81,7 +85,10 @@ class PauseScene(Scene):
         self._particle_system.update(direction=-1)
 
     def _draw_glow_text(self, surface: pygame.Surface, text: str, font: pygame.font.Font,
-                        pos: tuple, color: tuple, glow_color: tuple, glow_radius: int = 3) -> None:
+                        pos: tuple, color: tuple, glow_color: tuple, glow_radius: int = None) -> None:
+        if glow_radius is None:
+            glow_radius = self._tokens.animation.GLOW_RADIUS_DEFAULT
+
         for i in range(glow_radius, 0, -1):
             alpha = int(100 / i)
             glow_surf = font.render(text, True, glow_color)
@@ -157,7 +164,7 @@ class PauseScene(Scene):
 
         title_y = height // 3 + self.glow_offset * 0.3
         self._draw_glow_text(surface, "PAUSED", self.title_font,
-                           (width // 2, title_y), self.colors['title'], self.colors['title_glow'], 4)
+                           (width // 2, title_y), self.colors['title'], self.colors['title_glow'])
 
         self._draw_decorative_lines(surface)
         self._draw_icon_decoration(surface)
@@ -167,7 +174,8 @@ class PauseScene(Scene):
         for i, option in enumerate(self.options):
             self._draw_option_box(surface, option, start_y + i * option_spacing, i == self.selected_index, scale)
 
-        blink = (self.animation_time // 30) % 2 == 0
+        blink_interval = self._tokens.animation.BLINK_INTERVAL
+        blink = (self.animation_time // blink_interval) % 2 == 0
         hint_text = "PRESS ENTER TO CONFIRM" if blink else "                "
         hint = self.hint_font.render(hint_text, True, self.colors['hint'])
         surface.blit(hint, hint.get_rect(center=(width // 2, height - ResponsiveHelper.scale(120, scale))))

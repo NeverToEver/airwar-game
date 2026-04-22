@@ -1,6 +1,7 @@
 from typing import Optional, List
 import pygame
 from airwar.ui.buff_stats_panel import BuffStatsPanel
+from airwar.config.design_tokens import get_design_tokens
 
 
 class HUDLayout:
@@ -26,9 +27,12 @@ class HUDLayout:
 class HUDRenderer:
     def __init__(self):
         pygame.font.init()
-        self.hud_font = pygame.font.Font(None, 26)
-        self.buff_font = pygame.font.Font(None, 20)
-        self.notif_font = pygame.font.Font(None, 32)
+        self._tokens = get_design_tokens()
+        tokens = self._tokens
+
+        self.hud_font = pygame.font.Font(None, tokens.typography.HUD_SIZE)
+        self.buff_font = pygame.font.Font(None, tokens.typography.TINY_SIZE)
+        self.notif_font = pygame.font.Font(None, tokens.typography.CAPTION_SIZE)
         self._buff_stats_panel = BuffStatsPanel()
 
     def render_hud(self, surface: pygame.Surface, score: int, difficulty: str,
@@ -84,8 +88,9 @@ class HUDRenderer:
     def render_notification(self, surface: pygame.Surface, notification: str,
                            timer: int) -> None:
         if timer > 0 and notification:
+            colors = self._tokens.colors
             alpha = min(255, timer * 4)
-            color = (0, 255, 150) if alpha > 150 else (150, 255, 200)
+            color = colors.INFO if alpha > 150 else (150, 255, 200)
             text = self.notif_font.render(notification, True, color)
             text.set_alpha(alpha)
             x = surface.get_width() // 2 - text.get_width() // 2
@@ -96,8 +101,11 @@ class HUDRenderer:
         if not boss:
             return
 
-        bar_width = 400
-        bar_height = 28
+        colors = self._tokens.colors
+        components = self._tokens.components
+
+        bar_width = components.HEALTH_BAR_WIDTH
+        bar_height = components.HEALTH_BAR_HEIGHT
         x = (surface.get_width() - bar_width) // 2
         y = 15
 
@@ -105,11 +113,11 @@ class HUDRenderer:
         pygame.draw.rect(surface, (55, 55, 75), (x, y, bar_width, bar_height), border_radius=6)
 
         health_ratio = boss.health / boss.max_health
-        bar_color = (150, 50, 200) if health_ratio > 0.5 else (180, 100, 50) if health_ratio > 0.25 else (200, 50, 50)
+        bar_color = colors.BOSS_HEALTH_HIGH if health_ratio > 0.5 else colors.BOSS_HEALTH_MED if health_ratio > 0.25 else colors.BOSS_HEALTH_LOW
         pygame.draw.rect(surface, bar_color, (x, y, int(bar_width * health_ratio), bar_height), border_radius=6)
 
-        font = pygame.font.Font(None, 24)
-        boss_text = font.render("BOSS", True, (255, 255, 255))
+        font = pygame.font.Font(None, self._tokens.typography.SMALL_SIZE)
+        boss_text = font.render("BOSS", True, colors.TEXT_PRIMARY)
         text_rect = boss_text.get_rect(center=(x + bar_width // 2, y + bar_height // 2))
         surface.blit(boss_text, text_rect)
 
@@ -120,7 +128,7 @@ class HUDRenderer:
 
         progress = boss.get_survival_progress()
         if progress > 0.7:
-            warning_text = font.render("HURRY!", True, (255, 100, 100))
+            warning_text = font.render("HURRY!", True, colors.WARNING)
             warning_rect = warning_text.get_rect(left=x + 8, centery=y + bar_height // 2)
             surface.blit(warning_text, warning_rect)
 

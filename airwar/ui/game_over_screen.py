@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import Optional, Tuple
 import pygame
+from airwar.config.design_tokens import get_design_tokens
 
 
 class ScreenAction(Enum):
@@ -18,6 +19,7 @@ class GameOverScreen:
         self._button_click_animation = {}
         self._buttons = {}
         self._mouse_pos = (0, 0)
+        self._tokens = get_design_tokens()
 
     def show(self, score: int, kills: int, username: Optional[str] = None,
              high_score: Optional[int] = None) -> ScreenAction:
@@ -136,35 +138,39 @@ class GameOverScreen:
         import pygame
         pygame.font.init()
 
+        tokens = self._tokens
+        colors = tokens.colors
+
         scale = screen_width / 800
-        font_large = pygame.font.Font(None, int(72 * scale))
-        font_medium = pygame.font.Font(None, int(36 * scale))
-        font_small = pygame.font.Font(None, int(28 * scale))
-        font_button = pygame.font.Font(None, int(32 * scale))
+        font_large = pygame.font.Font(None, int(tokens.typography.HEADING_SIZE * scale))
+        font_medium = pygame.font.Font(None, int(tokens.typography.BODY_SIZE * scale))
+        font_small = pygame.font.Font(None, int(tokens.typography.CAPTION_SIZE * scale))
+        font_button = pygame.font.Font(None, int(tokens.typography.SMALL_SIZE * scale))
 
-        surface.fill((10, 10, 30))
+        surface.fill(colors.BACKGROUND_PRIMARY)
 
-        title = font_large.render("GAME OVER", True, (255, 80, 80))
+        title = font_large.render("GAME OVER", True, colors.HEALTH_DANGER)
         surface.blit(title, title.get_rect(center=(screen_width // 2, int(150 * scale))))
 
-        score_text = font_medium.render(f"SCORE: {score}", True, (255, 255, 255))
+        score_text = font_medium.render(f"SCORE: {score}", True, colors.TEXT_PRIMARY)
         surface.blit(score_text, score_text.get_rect(center=(screen_width // 2, int(280 * scale))))
 
-        kills_text = font_medium.render(f"KILLS: {kills}", True, (200, 200, 100))
+        kills_text = font_medium.render(f"KILLS: {kills}", True, colors.PROGRESS_COLOR)
         surface.blit(kills_text, kills_text.get_rect(center=(screen_width // 2, int(330 * scale))))
 
         if username and high_score is not None:
-            hs_text = font_small.render(f"HIGH SCORE: {high_score}", True, (100, 255, 150))
+            hs_text = font_small.render(f"HIGH SCORE: {high_score}", True, colors.SUCCESS)
             surface.blit(hs_text, hs_text.get_rect(center=(screen_width // 2, int(400 * scale))))
 
         self._render_button(surface, 'menu', "RETURN TO MAIN MENU", font_button, scale)
         self._render_button(surface, 'quit', "QUIT GAME", font_button, scale)
 
     def _render_button(self, surface, btn_key: str, text: str, font, scale: float):
+        colors = self._tokens.colors
         btn_rect = self._buttons[btn_key]
         is_hovered = btn_rect.collidepoint(self._mouse_pos)
         hover_scale = self._button_hover_scale[btn_key]
-        click_scale = 1.0 - (self._button_click_animation[btn_key] * 0.08)
+        click_scale = 1.0 - (self._button_click_animation[btn_key] * self._tokens.animation.CLICK_SCALE_FACTOR)
 
         final_scale = hover_scale * click_scale
         scaled_width = int(btn_rect.width * final_scale)
@@ -180,21 +186,21 @@ class GameOverScreen:
 
         if btn_key == 'menu':
             if is_hovered:
-                base_color = (50, 200, 120)
-                glow_color = (0, 255, 150)
-                text_color = (255, 255, 255)
+                base_color = colors.BUTTON_SELECTED_PRIMARY
+                glow_color = colors.BUTTON_SELECTED_GLOW
+                text_color = colors.BUTTON_SELECTED_TEXT
             else:
-                base_color = (40, 160, 100)
-                glow_color = (0, 200, 120)
-                text_color = (220, 255, 230)
+                base_color = colors.BUTTON_UNSELECTED_PRIMARY
+                glow_color = colors.BUTTON_UNSELECTED_GLOW
+                text_color = colors.BUTTON_UNSELECTED_TEXT
         else:
             if is_hovered:
-                base_color = (200, 80, 80)
-                glow_color = (255, 100, 100)
-                text_color = (255, 255, 255)
+                base_color = colors.DANGER_BUTTON_SELECTED_PRIMARY
+                glow_color = colors.DANGER_BUTTON_SELECTED_GLOW
+                text_color = colors.BUTTON_SELECTED_TEXT
             else:
-                base_color = (160, 60, 60)
-                glow_color = (200, 80, 80)
+                base_color = colors.DANGER_BUTTON_UNSELECTED_PRIMARY
+                glow_color = colors.DANGER_BUTTON_UNSELECTED_GLOW
                 text_color = (255, 220, 220)
 
         if is_hovered or self._button_click_animation[btn_key] > 0:

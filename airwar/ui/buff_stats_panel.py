@@ -176,7 +176,12 @@ class BuffStatsPanel:
         cls._panel_surface_cache[key] = surface
 
     def __init__(self):
+        from airwar.config.design_tokens import get_design_tokens
         pygame.font.init()
+
+        self._tokens = get_design_tokens()
+        colors = self._tokens.colors
+
         self._panel_width = 160
         self._panel_padding = 10
         self._item_height = 28
@@ -190,10 +195,10 @@ class BuffStatsPanel:
         self._value_font = pygame.font.Font(None, 14)
         self._summary_font = pygame.font.Font(None, 15)
 
-        self._bg_color = (15, 15, 30, 25)
-        self._border_color = (60, 60, 90, 80)
-        self._title_color = (180, 180, 210)
-        self._summary_bg_color = (20, 20, 40, 30)
+        self._bg_color = (*colors.BACKGROUND_PANEL, 25)
+        self._border_color = (*colors.PANEL_BORDER, 80)
+        self._title_color = colors.TEXT_SECONDARY
+        self._summary_bg_color = (*colors.BACKGROUND_PANEL, 30)
 
         self._aggregator = BuffStatsAggregator()
         self._cached_surface: Optional[pygame.Surface] = None

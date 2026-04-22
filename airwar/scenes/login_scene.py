@@ -4,7 +4,8 @@ import random
 from .scene import Scene
 from airwar.utils.database import UserDB
 from airwar.utils.responsive import ResponsiveHelper
-from airwar.scenes.ui.background import BackgroundRenderer
+from airwar.ui.menu_background import MenuBackground
+from airwar.config.design_tokens import get_design_tokens
 
 
 class LoginScene(Scene):
@@ -24,6 +25,8 @@ class LoginScene(Scene):
         self.particles = []
         self.stars = []
 
+        self._tokens = get_design_tokens()
+
         self.base_panel_width = 460
         self.base_panel_height = 500
         self.base_input_width = 380
@@ -32,36 +35,38 @@ class LoginScene(Scene):
         self.base_btn_height = 58
 
         pygame.font.init()
+        tokens = self._tokens
 
-        self.title_font = pygame.font.Font(None, 100)
-        self.input_font = pygame.font.Font(None, 42)
-        self.button_font = pygame.font.Font(None, 36)
-        self.hint_font = pygame.font.Font(None, 26)
+        self.title_font = pygame.font.Font(None, tokens.typography.TITLE_SIZE)
+        self.input_font = pygame.font.Font(None, tokens.typography.SUBHEADING_SIZE)
+        self.button_font = pygame.font.Font(None, tokens.typography.BODY_SIZE)
+        self.hint_font = pygame.font.Font(None, tokens.typography.HUD_SIZE)
 
-        self._background_renderer = BackgroundRenderer()
+        self._background_renderer = MenuBackground()
         self._init_colors()
         self._init_particles()
 
     def _init_colors(self) -> None:
+        colors = self._tokens.colors
         self.colors = {
-            'bg': (5, 5, 20),
-            'bg_gradient': (12, 12, 45),
-            'panel': (15, 20, 40),
-            'panel_border': (50, 80, 140),
-            'title': (255, 255, 255),
-            'title_glow': (100, 200, 255),
+            'bg': colors.BACKGROUND_PRIMARY,
+            'bg_gradient': colors.BACKGROUND_SECONDARY,
+            'panel': colors.BACKGROUND_PANEL,
+            'panel_border': colors.PANEL_BORDER,
+            'title': colors.TEXT_PRIMARY,
+            'title_glow': colors.HUD_AMBER_BRIGHT,
             'input_bg': (20, 28, 55),
             'input_active': (30, 45, 75),
-            'input_text': (230, 240, 255),
-            'input_hint': (90, 100, 140),
-            'hint': (70, 75, 120),
+            'input_text': colors.TEXT_SECONDARY,
+            'input_hint': colors.TEXT_MUTED,
+            'hint': colors.TEXT_HINT,
             'button_login': (20, 50, 100),
             'button_register': (40, 80, 60),
-            'button_quit': (80, 40, 40),
-            'button_hover': (30, 70, 130),
-            'error': (255, 100, 100),
-            'success': (100, 255, 150),
-            'particle': (100, 180, 255),
+            'button_quit': colors.DANGER_BUTTON_UNSELECTED_PRIMARY,
+            'button_hover': colors.BUTTON_SELECTED_GLOW,
+            'error': colors.HEALTH_DANGER,
+            'success': colors.SUCCESS,
+            'particle': colors.PARTICLE_PRIMARY,
         }
 
     def _init_particles(self) -> None:

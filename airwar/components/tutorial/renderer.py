@@ -11,7 +11,7 @@ import pygame
 import math
 import random
 from typing import Dict, List
-from airwar.configs.tutorial import (
+from airwar.config.tutorial import (
     TUTORIAL_COLORS,
     TUTORIAL_FONTS,
     TUTORIAL_STEPS,

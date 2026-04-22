@@ -24,3 +24,15 @@ from airwar.game.managers.milestone_manager import MilestoneManager
 from airwar.game.managers.input_coordinator import InputCoordinator
 from airwar.game.managers.ui_manager import UIManager
 from airwar.game.managers.game_loop_manager import GameLoopManager
+
+from airwar.game.managers.game_controller import GameController, GameState
+from airwar.game.managers.spawn_controller import SpawnController
+from airwar.game.managers.collision_controller import CollisionController, CollisionResult
+
+__all__ = [
+    'BulletManager', 'BossManager', 'MilestoneManager',
+    'InputCoordinator', 'UIManager', 'GameLoopManager',
+    'GameController', 'GameState',
+    'SpawnController',
+    'CollisionController', 'CollisionResult',
+]

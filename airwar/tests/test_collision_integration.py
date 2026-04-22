@@ -8,7 +8,7 @@
 """
 
 import pytest
-from airwar.game.controllers.collision_controller import CollisionController
+from airwar.game.managers.collision_controller import CollisionController
 
 
 class MockRect:
