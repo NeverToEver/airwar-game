@@ -93,13 +93,14 @@ class TestBossManager:
         boss.active = False
         boss.data.score = 1000
         spawn_controller.boss = boss
-        spawn_controller.player = MagicMock()
         game_controller = MagicMock()
         reward_system = MagicMock()
         bullet_manager = MagicMock()
+        player = MagicMock()
         manager = BossManager(spawn_controller, game_controller, reward_system, bullet_manager)
+        manager.update(player)
         manager.on_boss_hit(50)
-        reward_system.apply_lifesteal.assert_called_once()
+        reward_system.apply_lifesteal.assert_called_once_with(player, 1000)
         bullet_manager.clear_enemy_bullets.assert_called_once()
 
     def test_on_boss_hit_does_not_trigger_kill_when_boss_still_active(self):

@@ -73,6 +73,10 @@ class DifficultyManager:
     def get_current_multiplier(self) -> float:
         return self._current_multiplier
 
+    @property
+    def initial_multiplier(self) -> float:
+        return self._strategy.base_multiplier
+
     def get_speed_multiplier(self) -> float:
         return 1.0 + (self._current_multiplier - 1) * self._strategy.speed_bonus
 

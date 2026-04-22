@@ -110,9 +110,9 @@ class CollisionController:
                     on_boss_hit(boss_score)
             
             if boss_killed:
-                self._events.append(CollisionEvent(type='boss_killed'))
+                self._events.append(CollisionEvent(type='boss_killed', score=boss_score))
                 if on_boss_killed:
-                    on_boss_killed()
+                    on_boss_killed(boss_score)
             
             if not player_invincible and self.check_boss_vs_player(
                 boss,
