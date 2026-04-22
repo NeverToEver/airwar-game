@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import List, Optional
 from enum import Enum
-from airwar.config import DIFFICULTY_SETTINGS
+from airwar.config import DIFFICULTY_SETTINGS, VALID_DIFFICULTIES
 
 
 class GameplayState(Enum):
@@ -35,6 +35,9 @@ class GameState:
 
 class GameController:
     def __init__(self, difficulty: str, username: str):
+        if difficulty not in VALID_DIFFICULTIES:
+            raise ValueError(f"Invalid difficulty: {difficulty}")
+
         settings = DIFFICULTY_SETTINGS[difficulty]
         self.state = GameState()
         self.state.difficulty = difficulty
@@ -54,9 +57,12 @@ class GameController:
         self.cycle_count = 0
         self.milestone_index = 0
         self.max_cycles = 10
-        self.base_thresholds = [1000, 2500, 5000, 10000, 20000]
-        self.cycle_multiplier = 1.5
-        self.difficulty_threshold_multiplier = {'easy': 1.0, 'medium': 1.5, 'hard': 2.0}[difficulty]
+        self.initial_delta = 500
+        self.delta_growth = 500
+        self.max_delta = settings['max_delta']
+        self.max_threshold = 50000
+        self.difficulty_multiplier = settings['difficulty_multiplier']
+        self._previous_threshold = 0
 
     def update(self, player, has_regen: bool = False) -> None:
         self.health_system.update(player, has_regen)
@@ -99,15 +105,22 @@ class GameController:
             return threshold
         return None
 
+    def _get_threshold_for_index(self, index: int) -> float:
+        threshold = self._calculate_threshold(index)
+        return min(threshold, self.max_threshold * self.difficulty_multiplier)
+
     def _get_next_threshold(self) -> float:
-        base = self.base_thresholds[self.milestone_index % len(self.base_thresholds)]
-        cycle_bonus = self.milestone_index // len(self.base_thresholds)
-        return base * (self.cycle_multiplier ** cycle_bonus) * self.difficulty_threshold_multiplier
+        return self._get_threshold_for_index(self.milestone_index)
 
     def get_current_threshold(self, index: int) -> float:
-        base = self.base_thresholds[index % len(self.base_thresholds)]
-        cycle_bonus = index // len(self.base_thresholds)
-        return base * (self.cycle_multiplier ** cycle_bonus) * self.difficulty_threshold_multiplier
+        return self._get_threshold_for_index(index)
+
+    def _calculate_threshold(self, milestone_index: int) -> float:
+        threshold = 0.0
+        for i in range(milestone_index + 1):
+            delta = min(self.initial_delta * (i + 1), self.max_delta)
+            threshold += delta
+        return threshold * self.difficulty_multiplier
 
     def on_player_hit(self, damage: int, player) -> None:
         player.take_damage(damage)
@@ -160,8 +173,7 @@ class GameController:
     def on_reward_selected(self, reward: dict, player) -> None:
         notification = self.reward_system.apply_reward(reward, player)
         self.milestone_index += 1
-        if self.milestone_index % len(self.base_thresholds) == 0:
-            self.cycle_count += 1
+        self.cycle_count = self.difficulty_manager.get_boss_kill_count() // 2
 
         self.state.notification = notification
         self.state.notification_timer = 90

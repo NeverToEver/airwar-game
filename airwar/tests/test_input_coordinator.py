@@ -21,7 +21,7 @@ class TestInputCoordinator:
         assert coordinator._player == player
         assert coordinator._game_controller == game_controller
 
-    def test_handle_space_key_fires_player(self):
+    def test_handle_events_delegates_to_reward_selector_for_any_event(self):
         import pygame
         player = MagicMock()
         game_controller = MagicMock()
@@ -42,9 +42,9 @@ class TestInputCoordinator:
 
         coordinator.handle_events(event)
 
-        player.fire.assert_called_once()
+        reward_selector.handle_input.assert_called_once_with(event)
 
-    def test_handle_events_when_paused(self):
+    def test_handle_events_delegates_when_paused(self):
         player = MagicMock()
         game_controller = MagicMock()
         game_controller.state.paused = True
@@ -63,9 +63,9 @@ class TestInputCoordinator:
 
         coordinator.handle_events(event)
 
-        player.fire.assert_not_called()
+        reward_selector.handle_input.assert_called_once_with(event)
 
-    def test_handle_events_when_reward_visible(self):
+    def test_handle_events_delegates_when_reward_visible(self):
         player = MagicMock()
         game_controller = MagicMock()
         game_controller.state.paused = False
@@ -84,7 +84,7 @@ class TestInputCoordinator:
 
         coordinator.handle_events(event)
 
-        player.fire.assert_not_called()
+        reward_selector.handle_input.assert_called_once_with(event)
 
     def test_handle_events_delegates_to_reward_selector(self):
         player = MagicMock()

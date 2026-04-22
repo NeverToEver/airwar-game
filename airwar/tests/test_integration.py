@@ -164,6 +164,7 @@ class TestRewardSystem:
         scene = GameScene()
         scene.enter(difficulty='medium')
         scene.game_controller.milestone_index = 4
+        scene.game_controller.difficulty_manager._boss_kill_count = 2
         reward = {'name': 'Speed Boost', 'desc': '+15% move speed', 'icon': 'SPD'}
         scene._on_reward_selected(reward)
         assert scene.cycle_count == 1
@@ -210,9 +211,9 @@ class TestMilestoneSystem:
         scene = GameScene()
         scene.enter(difficulty='medium')
         threshold = scene._get_current_threshold(0)
-        assert threshold == 1500
-        threshold_cycle1 = scene._get_current_threshold(5)
-        assert threshold_cycle1 == 1500 * (1.5 ** 1)
+        assert threshold == 500
+        threshold_milestone1 = scene._get_current_threshold(1)
+        assert threshold_milestone1 == 1500
 
     def test_next_threshold_uses_milestone_index(self):
         from airwar.scenes.game_scene import GameScene
@@ -220,7 +221,7 @@ class TestMilestoneSystem:
         scene.enter(difficulty='medium')
         scene.game_controller.milestone_index = 1
         threshold = scene._get_next_threshold()
-        assert threshold == 3750
+        assert threshold == 1500
 
 
 class TestEntranceAnimation:
