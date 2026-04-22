@@ -1,7 +1,10 @@
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 from airwar.entities import Enemy, Boss, EnemySpawner, BossData, Bullet
 from airwar.entities.interfaces import IBulletSpawner
-from airwar.config import get_screen_width
+from airwar.config import get_screen_width, BASE_ENEMY_PARAMS
+
+if TYPE_CHECKING:
+    from airwar.game.systems.difficulty_manager import DifficultyManager
 
 
 class SpawnController:
@@ -22,10 +25,28 @@ class SpawnController:
         self._escape_penalty_multiplier = settings.get('escape_penalty_multiplier', 1.5)
         self.boss_killed = False
         self._bullet_spawner: Optional[IBulletSpawner] = None
+        self._difficulty_manager: Optional['DifficultyManager'] = None
 
     def set_bullet_spawner(self, spawner: IBulletSpawner) -> None:
         self._bullet_spawner = spawner
         self.enemy_spawner.set_bullet_spawner(spawner)
+
+    def set_difficulty_manager(self, manager: 'DifficultyManager') -> None:
+        self._difficulty_manager = manager
+
+    def get_current_params(self) -> dict:
+        if self._difficulty_manager:
+            return self._difficulty_manager.get_current_params()
+
+        return {
+            'speed': BASE_ENEMY_PARAMS['speed'],
+            'fire_rate': BASE_ENEMY_PARAMS['fire_rate'],
+            'aggression': BASE_ENEMY_PARAMS['aggression'],
+            'spawn_rate': BASE_ENEMY_PARAMS['spawn_rate'],
+            'multiplier': 1.0,
+            'boss_kills': 0,
+            'complexity': 1,
+        }
 
     def init_bullet_system(self) -> None:
         from airwar.game.spawners.enemy_bullet_spawner import EnemyBulletSpawner
