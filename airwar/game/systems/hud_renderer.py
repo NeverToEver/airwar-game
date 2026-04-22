@@ -13,17 +13,12 @@ class HUDRenderer:
 
     def render_hud(self, surface: pygame.Surface, score: int, difficulty: str,
                   player_health: int, player_max_health: int, kills: int,
-                  next_threshold: float, cycle_count: int, max_cycles: int,
-                  boss_kills: int = 0) -> None:
+                  next_progress: int, boss_kills: int = 0) -> None:
         score_text = self.hud_font.render(f"SCORE: {score}", True, (255, 255, 255))
         surface.blit(score_text, (15, 15))
 
-        progress = min(100, int(score / next_threshold * 100)) if next_threshold > 0 else 0
-        progress_text = self.hud_font.render(f"NEXT: {progress}%", True, (200, 200, 100))
+        progress_text = self.hud_font.render(f"NEXT: {next_progress}%", True, (200, 200, 100))
         surface.blit(progress_text, (15, 45))
-
-        cycle_text = self.hud_font.render(f"CYCLE: {cycle_count}/{max_cycles}", True, (150, 150, 200))
-        surface.blit(cycle_text, (15, 75))
 
         diff_text = self.hud_font.render(f"{difficulty.upper()}", True, (200, 200, 100))
         surface.blit(diff_text, (surface.get_width() - 110, 15))

@@ -167,17 +167,7 @@ class TestRewardSystem:
         scene.game_controller.difficulty_manager._boss_kill_count = 2
         reward = {'name': 'Speed Boost', 'desc': '+15% move speed', 'icon': 'SPD'}
         scene._on_reward_selected(reward)
-        assert scene.cycle_count == 1
-
-    def test_reward_max_cycles_limit(self):
-        from airwar.scenes.game_scene import GameScene
-        scene = GameScene()
-        scene.enter(difficulty='medium')
-        scene.cycle_count = 10
-        scene.game_controller.milestone_index = 4
-        reward = {'name': 'Speed Boost', 'desc': '+15% move speed', 'icon': 'SPD'}
-        scene._check_milestones()
-        assert scene.reward_selector.visible is False
+        assert scene.cycle_count == 5
 
 
 class TestDamageCalculation:
@@ -223,6 +213,41 @@ class TestMilestoneSystem:
         threshold = scene._get_next_threshold()
         assert threshold == 1500
 
+    def test_get_next_progress_initial_state(self):
+        from airwar.scenes.game_scene import GameScene
+        scene = GameScene()
+        scene.enter(difficulty='medium')
+        assert scene.game_controller.get_next_progress() == 0
+
+    def test_get_next_progress_half_way(self):
+        from airwar.scenes.game_scene import GameScene
+        scene = GameScene()
+        scene.enter(difficulty='medium')
+        scene.game_controller.state.score = 250
+        assert scene.game_controller.get_next_progress() == 50
+
+    def test_get_next_progress_at_threshold(self):
+        from airwar.scenes.game_scene import GameScene
+        scene = GameScene()
+        scene.enter(difficulty='medium')
+        scene.game_controller.state.score = 500
+        assert scene.game_controller.get_next_progress() == 100
+
+    def test_get_next_progress_over_threshold(self):
+        from airwar.scenes.game_scene import GameScene
+        scene = GameScene()
+        scene.enter(difficulty='medium')
+        scene.game_controller.state.score = 600
+        assert scene.game_controller.get_next_progress() == 100
+
+    def test_get_next_progress_after_reward_selection(self):
+        from airwar.scenes.game_scene import GameScene
+        scene = GameScene()
+        scene.enter(difficulty='medium')
+        scene._on_reward_selected({'name': 'Test', 'desc': 'Test', 'icon': 'T'})
+        scene.game_controller.state.score = 1000
+        assert scene.game_controller.get_next_progress() == 50
+
 
 class TestEntranceAnimation:
     def test_entrance_animation_initializes(self):
@@ -235,6 +260,8 @@ class TestEntranceAnimation:
         assert scene.player.rect.y == -80
 
     def test_entrance_animation_ends_after_duration(self):
+        import pygame
+        pygame.init()
         from airwar.scenes.game_scene import GameScene
         scene = GameScene()
         scene.enter(difficulty='medium')
@@ -252,6 +279,8 @@ class TestEntranceAnimation:
         assert scene.player.rect.y < SCREEN_HEIGHT - 100
 
     def test_entrance_animation_blocks_gameplay_during_animation(self):
+        import pygame
+        pygame.init()
         from airwar.scenes.game_scene import GameScene
         scene = GameScene()
         scene.enter(difficulty='medium')
@@ -334,6 +363,8 @@ class TestGameFlowIntegration:
         assert state.death_duration == 200
 
     def test_enemy_collision_damages_player(self):
+        import pygame
+        pygame.init()
         from airwar.scenes.game_scene import GameScene
         from airwar.entities import Enemy, EnemyData
         scene = GameScene()

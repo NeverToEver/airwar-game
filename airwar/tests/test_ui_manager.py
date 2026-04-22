@@ -65,10 +65,7 @@ class TestUIManager:
         game_controller.state.difficulty = 'hard'
         game_controller.state.kill_count = 50
         game_controller.state.boss_kill_count = 0
-        game_controller.get_next_threshold.return_value = 2000
-        game_controller.cycle_count = 2
-        game_controller.milestone_index = 0
-        game_controller.max_cycles = 5
+        game_controller.get_next_progress.return_value = 50
         reward_system = MagicMock()
 
         manager = UIManager(game_renderer, game_controller, reward_system)

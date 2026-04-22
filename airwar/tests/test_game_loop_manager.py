@@ -202,7 +202,7 @@ class TestGameLoopManager:
 
     def test_update_enemy_spawning_spawns_boss(self):
         game_controller = MagicMock()
-        game_controller.cycle_count = 1
+        game_controller.state.boss_kill_count = 1
         game_renderer = MagicMock()
         spawn_controller = MagicMock()
         spawn_controller.update.return_value = True

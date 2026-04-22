@@ -128,11 +128,9 @@ class BossManager:
         """处理 Boss 被击杀
 
         执行:
-        1. 增加周期计数
-        2. 应用吸血效果
-        3. 清空敌人子弹
+        1. 应用吸血效果
+        2. 清空敌人子弹
         """
-        self._game_controller.cycle_count += 1
         boss = self._spawn_controller.boss
         if boss and self._player:
             self._reward_system.apply_lifesteal(self._player, boss.data.score)
