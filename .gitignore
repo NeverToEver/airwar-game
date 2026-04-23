@@ -249,9 +249,8 @@ ssl/
 # Section 11: Game-specific Data (User Generated)
 # -----------------------------------------------------------------------------
 
-# User data files (should not be committed - contain personal info)
-airwar/data/users.json
-airwar/data/user_docking_save.json
+# User data directory (contains personal info and game saves)
+airwar/airwar/
 
 # Game save files
 *.sav
