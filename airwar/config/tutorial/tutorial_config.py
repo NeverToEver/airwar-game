@@ -18,16 +18,16 @@ class StepType(Enum):
 
 @dataclass
 class PanelConfig:
-    WIDTH: int = 400
-    HEIGHT: int = 460
+    WIDTH: int = 800
+    HEIGHT: int = 700
     BORDER_RADIUS: int = 15
     PADDING: int = 20
 
 
 @dataclass
 class ButtonConfig:
-    WIDTH: int = 160
-    HEIGHT: int = 48
+    WIDTH: int = 200
+    HEIGHT: int = 55
     BORDER_RADIUS: int = 10
     SPACING: int = 15
 
@@ -39,58 +39,46 @@ class ContentCardConfig:
     BORDER_RADIUS: int = 10
 
 
-TUTORIAL_STEPS: List[Dict] = [
-    {
-        'id': 'welcome',
-        'type': 'welcome',
-        'title': 'Welcome Commander',
-        'content': [
-            {'text': 'Welcome to Air War training program'},
-            {'text': 'Complete this tutorial to master basic operations'},
-            {'text': 'Use arrow keys or mouse to navigate'},
-        ],
-    },
-    {
-        'id': 'movement',
-        'type': 'key_list',
-        'title': 'Fighter Controls',
-        'content': [
-            {'key': 'W / UP', 'description': 'Move Up'},
-            {'key': 'S / DOWN', 'description': 'Move Down'},
-            {'key': 'A / LEFT', 'description': 'Move Left'},
-            {'key': 'D / RIGHT', 'description': 'Move Right'},
-            {'key': 'SPACE', 'description': 'Fire Weapon'},
-        ],
-        'note': 'Auto-fire enabled: hold SPACE for continuous fire',
-    },
-    {
-        'id': 'buff',
-        'type': 'key_list',
-        'title': 'Buff System',
-        'content': [
-            {'key': 'H (Hold)', 'description': 'Dock with Mother Ship'},
-            {'key': '1-4', 'description': 'Select power-up to purchase'},
-            {'key': 'Mouse Click', 'description': 'Confirm selection'},
-        ],
-        'note': 'Buffs last until next milestone or game over',
-    },
-    {
-        'id': 'mechanics',
-        'type': 'key_list',
-        'title': 'Game Mechanics',
-        'content': [
-            {'key': 'ESC', 'description': 'Pause game'},
-            {'key': 'L', 'description': 'Toggle HUD panel'},
-            {'key': 'K (Hold 3s)', 'description': 'Surrender (when docked)'},
-            {'key': 'Milestones', 'description': 'Score targets to unlock buffs'},
-            {'key': 'Difficulty', 'description': 'Increases with boss kills'},
-        ],
-    },
-    {
-        'id': 'ready',
-        'type': 'key_list',
-        'title': 'Ready to Begin',
-        'content': [],
-        'is_complete': True,
-    },
-]
+# Single-page tutorial content
+TUTORIAL_CONTENT: Dict = {
+    'title': 'TRAINING MANUAL',
+    'subtitle': 'Air War Commander Training Program',
+    'sections': [
+        {
+            'title': 'Movement',
+            'icon': '◈',
+            'items': [
+                {'key': 'W / ↑', 'desc': 'Move Up'},
+                {'key': 'S / ↓', 'desc': 'Move Down'},
+                {'key': 'A / ←', 'desc': 'Move Left'},
+                {'key': 'D / →', 'desc': 'Move Right'},
+                {'key': 'SPACE', 'desc': 'Fire (hold for auto-fire)'},
+            ],
+        },
+        {
+            'title': 'Special',
+            'icon': '◈',
+            'items': [
+                {'key': 'H (hold)', 'desc': 'Dock with Mother Ship to save'},
+                {'key': 'K (hold 3s)', 'desc': 'Surrender (when docked)'},
+            ],
+        },
+        {
+            'title': 'Interface',
+            'icon': '◈',
+            'items': [
+                {'key': 'ESC', 'desc': 'Pause game'},
+                {'key': 'L', 'desc': 'Toggle HUD panel'},
+                {'key': '1-4', 'desc': 'Select power-up at milestone'},
+            ],
+        },
+        {
+            'title': 'Progression',
+            'icon': '◈',
+            'items': [
+                {'key': 'Milestones', 'desc': 'Score targets unlock buffs'},
+                {'key': 'Boss Kills', 'desc': 'Increase difficulty'},
+            ],
+        },
+    ],
+}

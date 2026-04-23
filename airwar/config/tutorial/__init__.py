@@ -10,7 +10,7 @@ from .tutorial_config import (
     PanelConfig,
     ButtonConfig,
     ContentCardConfig,
-    TUTORIAL_STEPS,
+    TUTORIAL_CONTENT,
 )
 
 __all__ = [
@@ -18,5 +18,5 @@ __all__ = [
     'PanelConfig',
     'ButtonConfig',
     'ContentCardConfig',
-    'TUTORIAL_STEPS',
+    'TUTORIAL_CONTENT',
 ]

@@ -1,87 +1,112 @@
 """
 Test module for Tutorial System Integration.
 
-This module contains integration tests for the complete tutorial system flow.
+This module contains integration tests for the single-page tutorial system.
 Following the F.I.R.S.T. principles: Fast, Independent, Repeatable, Self-Validating, Timely.
 """
 
 import pytest
 import pygame
 from airwar.scenes.tutorial_scene import TutorialScene
-from airwar.scenes.tutorial import TutorialPanel, TutorialNavigator, TutorialRenderer
-from airwar.config.tutorial import TUTORIAL_STEPS
+from airwar.scenes.tutorial import TutorialRenderer
+from airwar.config.tutorial import TUTORIAL_CONTENT
 from airwar.config.design_tokens import get_design_tokens
 
 
 class TestTutorialIntegration:
-    def test_complete_tutorial_flow(self):
+    def test_tutorial_content_has_required_structure(self):
+        """Test that TUTORIAL_CONTENT has the expected structure."""
+        assert 'title' in TUTORIAL_CONTENT
+        assert 'subtitle' in TUTORIAL_CONTENT
+        assert 'sections' in TUTORIAL_CONTENT
+        assert len(TUTORIAL_CONTENT['sections']) == 4
+
+    def test_tutorial_sections_have_required_fields(self):
+        """Test that all sections have required fields."""
+        for section in TUTORIAL_CONTENT['sections']:
+            assert 'title' in section
+            assert 'icon' in section
+            assert 'items' in section
+            assert len(section['items']) > 0
+
+    def test_tutorial_items_have_key_and_desc(self):
+        """Test that all items have 'key' and 'desc' fields."""
+        for section in TUTORIAL_CONTENT['sections']:
+            for item in section['items']:
+                assert 'key' in item
+                assert 'desc' in item
+
+    def test_scene_renders_without_crashing(self):
+        """Test that the tutorial scene renders correctly."""
+        pygame.init()
+        surface = pygame.display.set_mode((1280, 720))
+
         scene = TutorialScene()
         scene.enter()
-        
-        assert scene.get_current_step_index() == 0
-        assert scene.get_current_step()['id'] == 'welcome'
-        
-        for i in range(1, len(TUTORIAL_STEPS)):
-            right_event = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_RIGHT})
-            scene.handle_events(right_event)
+
+        for _ in range(10):
             scene.update()
-            assert scene.get_current_step_index() == i
-        
-        assert scene.is_complete()
-        
+            scene.render(surface)
+
+        pygame.quit()
+
+    def test_escape_exits_scene(self):
+        """Test that ESC key exits the scene."""
+        scene = TutorialScene()
+        scene.enter()
+
+        assert scene.is_running()
+        assert not scene.should_quit()
+
         escape_event = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_ESCAPE})
         scene.handle_events(escape_event)
+
+        assert not scene.is_running()
         assert scene.should_quit()
 
-    def test_back_and_forth_navigation(self):
+    def test_enter_exits_scene(self):
+        """Test that ENTER key exits the scene."""
         scene = TutorialScene()
         scene.enter()
-        
-        scene.handle_events(pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_RIGHT}))
-        assert scene.get_current_step_index() == 1
-        
-        scene.handle_events(pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_LEFT}))
-        assert scene.get_current_step_index() == 0
-        
-        scene.handle_events(pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_RIGHT}))
-        scene.handle_events(pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_RIGHT}))
-        assert scene.get_current_step_index() == 2
 
-    def test_component_integration(self):
-        panel = TutorialPanel()
-        navigator = TutorialNavigator()
+        enter_event = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_RETURN})
+        scene.handle_events(enter_event)
+
+        assert not scene.is_running()
+        assert scene.should_quit()
+
+    def test_space_exits_scene(self):
+        """Test that SPACE key exits the scene."""
+        scene = TutorialScene()
+        scene.enter()
+
+        space_event = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_SPACE})
+        scene.handle_events(space_event)
+
+        assert not scene.is_running()
+        assert scene.should_quit()
+
+    def test_scene_reset(self):
+        """Test that scene can be reset."""
+        scene = TutorialScene()
+        scene.enter()
+
+        escape_event = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_ESCAPE})
+        scene.handle_events(escape_event)
+
+        scene.reset()
+
+        assert scene.is_running()
+        assert not scene.should_quit()
+
+    def test_renderer_initialization(self):
+        """Test that renderer initializes correctly."""
         renderer = TutorialRenderer()
-        
-        layout = panel.calculate_layout(1280, 720)
-        assert layout is not None
-        
-        step = navigator.get_current_step()
-        assert step is not None
-        assert 'id' in step
-        
-        progress = navigator.get_progress()
-        assert len(progress) == len(TUTORIAL_STEPS)
-
-    def test_tutorial_config_loaded(self):
-        assert len(TUTORIAL_STEPS) == 5
-        
-        step_ids = [step['id'] for step in TUTORIAL_STEPS]
-        assert 'welcome' in step_ids
-        assert 'movement' in step_ids
-        assert 'buff' in step_ids
-        assert 'mechanics' in step_ids
-        assert 'ready' in step_ids
-
-    def test_refactor_unchanged_behavior(self):
-        assert len(TUTORIAL_STEPS) == 5
-        assert TUTORIAL_STEPS[0]['id'] == 'welcome'
-        assert TUTORIAL_STEPS[0]['type'] == 'welcome'
-        assert TUTORIAL_STEPS[-1]['is_complete'] == True
-        assert TUTORIAL_STEPS[1]['id'] == 'movement'
-        assert TUTORIAL_STEPS[2]['id'] == 'buff'
-        assert TUTORIAL_STEPS[3]['id'] == 'mechanics'
+        renderer.reset()
+        assert renderer is not None
 
     def test_color_scheme_defined(self):
+        """Test that color scheme is properly defined."""
         tokens = get_design_tokens()
         colors = tokens.colors
         assert hasattr(colors, 'BACKGROUND_PRIMARY')
@@ -90,141 +115,33 @@ class TestTutorialIntegration:
         assert hasattr(colors, 'BUTTON_SELECTED_BG')
         assert hasattr(colors, 'BUTTON_UNSELECTED_BG')
 
-    def test_tutorial_scene_with_pygame_surface(self):
+    def test_scene_with_pygame_surface(self):
+        """Test complete scene lifecycle with pygame surface."""
         pygame.init()
         surface = pygame.display.set_mode((1280, 720))
-        
+
         scene = TutorialScene()
         scene.enter()
-        
+
         for _ in range(5):
             scene.update()
             scene.render(surface)
-        
+
+        assert scene.is_running()
+
         escape_event = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_ESCAPE})
         scene.handle_events(escape_event)
-        
-        pygame.quit()
-
-    def test_navigator_resets_scene_state(self):
-        scene = TutorialScene()
-        scene.enter()
-        
-        scene.handle_events(pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_RIGHT}))
-        scene.handle_events(pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_RIGHT}))
-        assert scene.get_current_step_index() == 2
-        
-        scene.enter()
-        assert scene.get_current_step_index() == 0
-
-    def test_all_step_content(self):
-        for step in TUTORIAL_STEPS:
-            assert 'id' in step
-            assert 'title' in step
-            assert 'content' in step
-            
-            if not step.get('is_complete'):
-                content = step['content']
-                if step.get('type') == 'welcome':
-                    for item in content:
-                        assert 'text' in item
-                else:
-                    assert len(content) > 0
-                    for item in content:
-                        assert 'key' in item
-                        assert 'description' in item
-
-    def test_scene_runs_without_crashing(self):
-        scene = TutorialScene()
-        scene.enter()
-        
-        for _ in range(100):
-            scene.update()
-            
-            if not scene.is_running():
-                break
-        
-        assert scene.get_current_step_index() >= 0
-
-    def test_mixed_input_events(self):
-        scene = TutorialScene()
-        scene.enter()
-        
-        events = [
-            pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_RIGHT}),
-            pygame.event.Event(pygame.MOUSEBUTTONDOWN, {'pos': (640, 360)}),
-            pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_LEFT}),
-        ]
-        
-        for event in events:
-            scene.handle_events(event)
-        
-        scene.update()
-
-    def test_render_with_components(self):
-        pygame.init()
-        surface = pygame.display.set_mode((1280, 720))
-
-        scene = TutorialScene()
-        panel = TutorialPanel()
-        navigator = TutorialNavigator()
-        renderer = TutorialRenderer()
-
-        scene.enter()
-
-        for _ in range(3):
-            scene.update()
-            navigator.update()
-
-            step = navigator.get_current_step()
-            progress = navigator.get_progress()
-            current_index = navigator.get_current_index()
-            selected_index = navigator.get_selected_index()
-            renderer.render(
-                surface, panel, step, progress, current_index, selected_index,
-                scene.colors, scene._tokens, scene._background_renderer,
-                scene._particle_system, scene._animation_time
-            )
+        assert scene.should_quit()
 
         pygame.quit()
 
-    def test_welcome_step_type(self):
-        welcome_step = TUTORIAL_STEPS[0]
-        assert welcome_step['id'] == 'welcome'
-        assert welcome_step['type'] == 'welcome'
-        assert welcome_step['title'] == 'Welcome Commander'
+    def test_all_control_keys_documented(self):
+        """Test that all major control keys are documented in tutorial."""
+        all_keys = set()
+        for section in TUTORIAL_CONTENT['sections']:
+            for item in section['items']:
+                all_keys.add(item['key'])
 
-    def test_mechanics_step_has_l_key(self):
-        mechanics_step = TUTORIAL_STEPS[3]
-        assert mechanics_step['id'] == 'mechanics'
-        
-        l_key_item = next((item for item in mechanics_step['content'] if item['key'] == 'L'), None)
-        assert l_key_item is not None
-        assert l_key_item['description'] == 'Toggle HUD panel'
-
-    def test_keyboard_navigation_up_down(self):
-        scene = TutorialScene()
-        scene.enter()
-        
-        scene.handle_events(pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_RIGHT}))
-        scene.handle_events(pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_RIGHT}))
-        assert scene.get_current_step_index() == 2
-        
-        scene.handle_events(pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_DOWN}))
-        scene.handle_events(pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_DOWN}))
-        
-        scene.handle_events(pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_UP}))
-        scene.handle_events(pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_UP}))
-
-    def test_progress_indicator_with_selection(self):
-        pygame.init()
-        surface = pygame.display.set_mode((1280, 720))
-        
-        scene = TutorialScene()
-        scene.enter()
-        
-        for i in range(5):
-            scene.update()
-            scene.render(surface)
-            
-        pygame.quit()
+        assert 'W / ↑' in all_keys or 'W' in str(all_keys)
+        assert 'SPACE' in all_keys
+        assert 'ESC' in all_keys

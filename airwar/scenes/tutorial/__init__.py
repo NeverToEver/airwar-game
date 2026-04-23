@@ -1,15 +1,11 @@
 """
 Tutorial System Components Module
 
-This module exports all tutorial-related components.
+This module exports the tutorial renderer component.
 """
 
-from .panel import TutorialPanel
-from .navigator import TutorialNavigator
 from .renderer import TutorialRenderer
 
 __all__ = [
-    'TutorialPanel',
-    'TutorialNavigator',
     'TutorialRenderer',
 ]
