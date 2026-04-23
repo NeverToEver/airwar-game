@@ -584,7 +584,8 @@ class GameScene(Scene, MouseInteractiveMixin):
 
         self.game_controller.state.score = save_data.score
         self.game_controller.state.kill_count = save_data.kill_count
-        self.game_controller.milestone_index = save_data.cycle_count * 5
+        self.game_controller.state.boss_kill_count = save_data.boss_kill_count
+        self.game_controller.milestone_index = save_data.cycle_count
         self.game_controller.cycle_count = save_data.cycle_count
 
         self.player.health = save_data.player_health
@@ -595,9 +596,13 @@ class GameScene(Scene, MouseInteractiveMixin):
 
         self.game_controller.state.difficulty = save_data.difficulty
         self.game_controller.state.username = save_data.username
+        self.game_controller.state.score_multiplier = {'easy': 1, 'medium': 2, 'hard': 3}.get(save_data.difficulty, 1)
 
         if save_data.is_in_mothership:
             self._restore_to_mothership_state()
+            self.game_controller.state.entrance_animation = False
+        else:
+            self.game_controller.state.entrance_animation = False
 
     def _restore_buff_levels(self, buff_levels: dict) -> None:
         """恢复Buff等级

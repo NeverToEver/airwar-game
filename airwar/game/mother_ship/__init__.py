@@ -5,7 +5,7 @@ from .interfaces import (
     IPersistenceManager,
     IMotherShipStateMachine,
 )
-from .mother_ship_state import MotherShipState, DockingProgress, GameSaveData
+from .mother_ship_state import MotherShipState, DockingProgress, GameSaveData, SaveDataCorruptedError
 from .event_bus import EventBus
 from .input_detector import InputDetector
 from .state_machine import MotherShipStateMachine
@@ -23,6 +23,7 @@ __all__ = [
     'MotherShipState',
     'DockingProgress',
     'GameSaveData',
+    'SaveDataCorruptedError',
     'EventBus',
     'InputDetector',
     'MotherShipStateMachine',

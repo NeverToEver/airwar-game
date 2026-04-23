@@ -369,44 +369,27 @@ class SceneDirector:
             return save_data
         return None
 
-    def _save_game_on_quit(self, game_scene: GameScene) -> None:
+    def _perform_save(self, game_scene: GameScene) -> bool:
         if not game_scene or not game_scene._mother_ship_integrator:
-            return
+            return False
 
         save_data = game_scene._mother_ship_integrator.create_save_data()
         if save_data:
             if not game_scene._mother_ship_integrator.is_docked():
                 save_data.is_in_mothership = False
             persistence_manager = PersistenceManager()
-            persistence_manager.save_game(save_data)
+            return persistence_manager.save_game(save_data)
+        return False
+
+    def _save_game_on_quit(self, game_scene: GameScene) -> None:
+        self._perform_save(game_scene)
 
     def _clear_saved_game(self) -> None:
         persistence_manager = PersistenceManager()
         persistence_manager.delete_save()
 
     def _save_and_quit(self, game_scene: GameScene) -> None:
-        """保存游戏并退出
-
-        将当前游戏状态保存到文件，然后退出游戏。
-        保存内容包括分数、击杀数、buff效果、玩家生命值等所有进度数据。
-
-        Args:
-            game_scene: 当前游戏场景实例
-        """
-        if not game_scene or not game_scene._mother_ship_integrator:
-            return
-
-        save_data = game_scene._mother_ship_integrator.create_save_data()
-        if save_data:
-            if not game_scene._mother_ship_integrator.is_docked():
-                save_data.is_in_mothership = False
-            persistence_manager = PersistenceManager()
-            persistence_manager.save_game(save_data)
+        self._perform_save(game_scene)
 
     def _quit_without_saving(self) -> None:
-        """清除存档并退出，不保存当前进度
-
-        删除已存在的存档文件，确保下次进入游戏时从头开始。
-        用于玩家明确选择不保存当前进度的场景。
-        """
         self._clear_saved_game()

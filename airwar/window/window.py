@@ -90,6 +90,9 @@ class Window:
         pygame.display.set_caption(title)
 
     def resize(self, width: int, height: int) -> None:
+        if self._is_fullscreen:
+            return
+        
         width = max(self._min_size[0], min(width, self._max_size[0]))
         height = max(self._min_size[1], min(height, self._max_size[1]))
         self._width = width

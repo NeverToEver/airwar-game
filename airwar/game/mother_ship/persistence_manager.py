@@ -1,18 +1,34 @@
 import json
 import os
+import logging
 from typing import Optional
 from .interfaces import IPersistenceManager
-from .mother_ship_state import GameSaveData
+from .mother_ship_state import GameSaveData, SaveDataCorruptedError
+
+
+logger = logging.getLogger(__name__)
 
 
 class PersistenceManager(IPersistenceManager):
-    SAVE_FILE_NAME = "user_docking_save.json"
-    SAVE_DIRECTORY = "airwar/data"
+    DEFAULT_SAVE_FILE_NAME = "user_docking_save.json"
+    DEFAULT_SAVE_DIRECTORY = "airwar/data"
 
-    def __init__(self):
+    def __init__(
+        self,
+        save_dir: Optional[str] = None,
+        save_file: Optional[str] = None
+    ):
+        self.SAVE_DIRECTORY = save_dir or self.DEFAULT_SAVE_DIRECTORY
+        self.SAVE_FILE_NAME = save_file or self.DEFAULT_SAVE_FILE_NAME
         self._save_path = os.path.join(self.SAVE_DIRECTORY, self.SAVE_FILE_NAME)
 
+    @property
+    def save_path(self) -> str:
+        return self._save_path
+
     def save_game(self, data: GameSaveData) -> bool:
+        logger.info(f"Saving game for user: {data.username}")
+
         try:
             os.makedirs(self.SAVE_DIRECTORY, exist_ok=True)
 
@@ -22,32 +38,67 @@ class PersistenceManager(IPersistenceManager):
             with open(self._save_path, 'w', encoding='utf-8') as f:
                 json.dump(save_dict, f, indent=2, ensure_ascii=False)
 
+            logger.info(f"Game saved successfully to {self._save_path}")
             return True
+
+        except PermissionError as e:
+            logger.error(f"Permission denied to save file: {self._save_path}")
+            return False
+        except OSError as e:
+            logger.error(f"IO error while saving game: {e}")
+            return False
         except Exception as e:
-            print(f"Failed to save game: {e}")
+            logger.critical(f"Unexpected error saving game: {e}")
             return False
 
     def load_game(self) -> Optional[GameSaveData]:
         if not self.has_saved_game():
+            logger.debug("No saved game found")
             return None
+
+        logger.info(f"Loading game from {self._save_path}")
 
         try:
             with open(self._save_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
 
-            return GameSaveData.from_dict(data)
+            save_data = GameSaveData.from_dict(data)
+            logger.info(f"Game loaded successfully for user: {save_data.username}")
+            return save_data
+
+        except SaveDataCorruptedError as e:
+            logger.error(f"Save data corrupted: {e}")
+            return None
+        except PermissionError as e:
+            logger.error(f"Permission denied to load file: {self._save_path}")
+            return None
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in save file: {e}")
+            return None
+        except OSError as e:
+            logger.error(f"IO error while loading game: {e}")
+            return None
         except Exception as e:
-            print(f"Failed to load game: {e}")
+            logger.critical(f"Unexpected error loading game: {e}")
             return None
 
     def has_saved_game(self) -> bool:
         return os.path.exists(self._save_path)
 
     def delete_save(self) -> bool:
+        logger.info(f"Deleting saved game at {self._save_path}")
+
         try:
             if os.path.exists(self._save_path):
                 os.remove(self._save_path)
+                logger.info("Saved game deleted successfully")
             return True
+        except PermissionError as e:
+            logger.error(f"Permission denied to delete save: {self._save_path}")
+            return False
+        except OSError as e:
+            logger.error(f"IO error while deleting save: {e}")
+            return False
         except Exception as e:
-            print(f"Failed to delete save: {e}")
+            logger.critical(f"Unexpected error deleting save: {e}")
             return False
