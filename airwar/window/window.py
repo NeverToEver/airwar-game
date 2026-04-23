@@ -15,6 +15,8 @@ class Window:
         self._resizable = resizable
         self._min_size = (800, 600)
         self._max_size = (1920, 1080)
+        self._is_fullscreen = False
+        self._windowed_size = (width, height)
 
     def init(self, width: Optional[int] = None, height: Optional[int] = None) -> None:
         pygame.init()
@@ -138,6 +140,27 @@ class Window:
         if self._clock:
             return self._clock.get_fps()
         return 0.0
+
+    def toggle_fullscreen(self) -> None:
+        if self._screen is None:
+            return
+        
+        if self._is_fullscreen:
+            self._width, self._height = self._windowed_size
+            flags = pygame.RESIZABLE if self._resizable else 0
+            self._screen = pygame.display.set_mode((self._width, self._height), flags)
+            self._is_fullscreen = False
+        else:
+            info = pygame.display.Info()
+            self._windowed_size = (self._width, self._height)
+            self._width = info.current_w
+            self._height = info.current_h
+            flags = pygame.FULLSCREEN | (pygame.RESIZABLE if self._resizable else 0)
+            self._screen = pygame.display.set_mode((self._width, self._height), flags)
+            self._is_fullscreen = True
+
+    def is_fullscreen(self) -> bool:
+        return self._is_fullscreen
 
 
 _window_instance: Optional[Window] = None
