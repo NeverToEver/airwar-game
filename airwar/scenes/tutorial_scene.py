@@ -12,7 +12,7 @@ import pygame
 import math
 from typing import Optional, Dict
 from .scene import Scene
-from airwar.components.tutorial import TutorialPanel, TutorialNavigator, TutorialRenderer
+from .tutorial import TutorialPanel, TutorialNavigator, TutorialRenderer
 from airwar.config.design_tokens import get_design_tokens
 from airwar.ui.menu_background import MenuBackground
 from airwar.ui.particles import ParticleSystem

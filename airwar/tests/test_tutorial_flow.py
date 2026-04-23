@@ -8,7 +8,7 @@ Following the F.I.R.S.T. principles: Fast, Independent, Repeatable, Self-Validat
 import pytest
 import pygame
 from airwar.scenes.tutorial_scene import TutorialScene
-from airwar.components.tutorial import TutorialPanel, TutorialNavigator, TutorialRenderer
+from airwar.scenes.tutorial import TutorialPanel, TutorialNavigator, TutorialRenderer
 from airwar.config.tutorial import TUTORIAL_STEPS
 from airwar.config.design_tokens import get_design_tokens
 
