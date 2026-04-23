@@ -2,6 +2,8 @@ import pygame
 import math
 from typing import List, Callable, Optional
 from airwar.utils.mouse_interaction import MouseSelectableMixin
+from airwar.config.design_tokens import ForestColors, MilitaryUI
+from airwar.ui.chamfered_panel import draw_chamfered_panel
 
 
 class RewardSelector(MouseSelectableMixin):
@@ -26,6 +28,7 @@ class RewardSelector(MouseSelectableMixin):
         self._tokens = get_design_tokens()
         tokens = self._tokens
         colors = tokens.colors
+        self.use_military_style = True
 
         self.stars = []
         for _ in range(80):
@@ -75,6 +78,31 @@ class RewardSelector(MouseSelectableMixin):
             'upgraded_glow': colors.HUD_AMBER_BRIGHT,
             'new_buff': colors.SUCCESS,
             'upgraded_bg': colors.BUTTON_SELECTED_BG,
+        }
+
+        self._init_military_colors()
+
+    def _init_military_colors(self) -> None:
+        self.military_colors = {
+            'bg': ForestColors.BG_PRIMARY,
+            'bg_gradient': ForestColors.BG_PANEL,
+            'title': ForestColors.TEXT_PRIMARY,
+            'title_glow': ForestColors.GOLD_GLOW,
+            'selected': ForestColors.GOLD_PRIMARY,
+            'selected_glow': ForestColors.GOLD_BRIGHT,
+            'unselected': ForestColors.TEXT_DIM,
+            'desc_selected': ForestColors.FOREST_GREEN,
+            'desc_unselected': ForestColors.TEXT_DIM,
+            'hint': ForestColors.TEXT_DIM,
+            'particle': ForestColors.GOLD_PRIMARY,
+            'panel': ForestColors.BG_PANEL,
+            'panel_border': ForestColors.BORDER_GLOW,
+            'option_selected_bg': ForestColors.BG_PANEL,
+            'option_unselected_bg': ForestColors.BG_PANEL_LIGHT,
+            'upgraded': ForestColors.GOLD_BRIGHT,
+            'upgraded_glow': ForestColors.GOLD_GLOW,
+            'new_buff': ForestColors.FOREST_GREEN,
+            'upgraded_bg': ForestColors.BG_PANEL,
         }
 
     def generate_options(self, boss_kill_count: int, unlocked_buffs: list) -> list:
@@ -302,38 +330,186 @@ class RewardSelector(MouseSelectableMixin):
 
     def _draw_bottom_hint(self, surface: pygame.Surface) -> None:
         width, height = surface.get_size()
-        
-        if (self.animation_time // 25) % 2 == 0:
-            hint_color = (90, 100, 140)
+
+        if self.use_military_style:
+            if (self.animation_time // 25) % 2 == 0:
+                hint_color = ForestColors.TEXT_DIM
+            else:
+                hint_color = ForestColors.TEXT_PRIMARY
+            hint = self.hint_font.render("Click or W/S to select, ENTER to confirm", True, hint_color)
         else:
-            hint_color = (120, 130, 170)
-        hint = self.hint_font.render("Click or W/S to select, ENTER to confirm", True, hint_color)
+            if (self.animation_time // 25) % 2 == 0:
+                hint_color = (90, 100, 140)
+            else:
+                hint_color = (120, 130, 170)
+            hint = self.hint_font.render("Click or W/S to select, ENTER to confirm", True, hint_color)
         surface.blit(hint, hint.get_rect(center=(width // 2, height - 50)))
 
     def render(self, surface: pygame.Surface) -> None:
         if not self.visible:
             return
 
-        self._draw_gradient_background(surface)
+        if self.use_military_style:
+            self._draw_military_background(surface)
+        else:
+            self._draw_gradient_background(surface)
         self._draw_stars(surface)
         self._draw_particles(surface)
-        
+
         width, height = surface.get_size()
-        
-        self._draw_title(surface)
-        self._draw_panel(surface)
+
+        if self.use_military_style:
+            self._draw_military_title(surface)
+        else:
+            self._draw_title(surface)
+
+        if self.use_military_style:
+            self._draw_military_panel(surface)
+        else:
+            self._draw_panel(surface)
 
         panel_width = 480
         panel_height = 320
         center_x = width // 2
         panel_y = height // 2 - panel_height // 2 + self.glow_offset * 0.3
-        
+
         option_section_height = 80 * 3 + 15 * 2
         start_y = panel_y + (panel_height - option_section_height) // 2 + 10
-        
+
         self.clear_option_rects()
         effective_index = self.get_effective_selected_index(self.selected_index)
         for i, option in enumerate(self.options):
-            self._draw_option_item(surface, option, i, center_x, start_y, i == effective_index)
+            if self.use_military_style:
+                self._draw_military_option_item(surface, option, i, center_x, start_y, i == effective_index)
+            else:
+                self._draw_option_item(surface, option, i, center_x, start_y, i == effective_index)
 
         self._draw_bottom_hint(surface)
+
+    def _draw_military_background(self, surface: pygame.Surface) -> None:
+        """Draw military style background with grid effect."""
+        width, height = surface.get_size()
+        # Fill with primary background
+        surface.fill(ForestColors.BG_PRIMARY)
+
+        # Draw grid overlay
+        spacing = MilitaryUI.GRID_SPACING
+        alpha = MilitaryUI.GRID_ALPHA
+        grid_color = (*ForestColors.GOLD_PRIMARY[:3], alpha)
+
+        for x in range(0, width, spacing):
+            pygame.draw.line(surface, grid_color, (x, 0), (x, height))
+        for y in range(0, height, spacing):
+            pygame.draw.line(surface, grid_color, (0, y), (width, y))
+
+    def _draw_military_title(self, surface: pygame.Surface) -> None:
+        """Draw title in military style."""
+        width, height = surface.get_size()
+        title_y = 130 + self.glow_offset * 0.5
+        title_text = "CHOOSE YOUR REWARD"
+
+        for blur, alpha, color in [(3, 15, ForestColors.GOLD_DIM), (2, 25, ForestColors.GOLD_PRIMARY)]:
+            glow_surf = self.title_font.render(title_text, True, color)
+            glow_surf.set_alpha(alpha)
+            for offset_x in range(-blur, blur + 1, 2):
+                for offset_y in range(-blur, blur + 1, 2):
+                    if offset_x * offset_x + offset_y * offset_y <= blur * blur:
+                        glow_rect = glow_surf.get_rect(center=(width // 2 + offset_x, title_y + offset_y))
+                        surface.blit(glow_surf, glow_rect)
+
+        title = self.title_font.render(title_text, True, ForestColors.GOLD_PRIMARY)
+        surface.blit(title, title.get_rect(center=(width // 2, title_y)))
+
+    def _draw_military_panel(self, surface: pygame.Surface) -> None:
+        """Draw panel in military style with chamfered corners."""
+        width, height = surface.get_size()
+
+        panel_width = 500
+        panel_height = 340
+        panel_x = width // 2 - panel_width // 2
+        panel_y = height // 2 - panel_height // 2 + self.glow_offset * 0.3
+
+        # Draw chamfered panel with glow
+        draw_chamfered_panel(
+            surface,
+            panel_x, panel_y,
+            panel_width, panel_height,
+            ForestColors.BG_PANEL,
+            ForestColors.BORDER_GLOW,
+            ForestColors.GOLD_GLOW,
+            MilitaryUI.CHAMFER_DEPTH
+        )
+
+    def _draw_military_option_item(self, surface: pygame.Surface, option: dict, index: int,
+                          center_x: int, start_y: int, is_selected: bool) -> None:
+        """Draw option item in military style with chamfered corners."""
+        option_height = 80
+        option_gap = 15
+        y = start_y + index * (option_height + option_gap)
+
+        box_width = 460
+        box_height = option_height
+        box_rect = pygame.Rect(center_x - box_width // 2, y, box_width, box_height)
+        self.append_option_rect(box_rect)
+
+        buff_name = option['name']
+        level = self.buff_levels.get(buff_name, 0)
+        is_upgraded = buff_name in self.unlocked_buffs and level > 0
+
+        if is_upgraded:
+            glow_color = ForestColors.GOLD_GLOW
+        elif is_selected:
+            glow_color = ForestColors.GOLD_GLOW
+        else:
+            glow_color = None
+
+        # Draw glow for selected/upgraded
+        if glow_color:
+            draw_chamfered_panel(
+                surface,
+                box_rect.x - 3, box_rect.y - 3,
+                box_width + 6, box_height + 6,
+                ForestColors.BG_PANEL,
+                glow_color,
+                glow_color,
+                10
+            )
+
+        # Draw chamfered box
+        if is_upgraded:
+            bg_color = ForestColors.BG_PANEL
+            border_color = ForestColors.GOLD_BRIGHT
+        elif is_selected:
+            bg_color = ForestColors.BG_PANEL
+            border_color = ForestColors.GOLD_PRIMARY
+        else:
+            bg_color = ForestColors.BG_PANEL_LIGHT
+            border_color = ForestColors.BORDER_DIM
+
+        draw_chamfered_panel(
+            surface,
+            box_rect.x, box_rect.y,
+            box_width, box_height,
+            bg_color,
+            border_color,
+            None,
+            8
+        )
+
+        arrow = ">" if is_selected else " "
+
+        if is_upgraded:
+            name_text = f"{arrow} {buff_name} [Lv.{level}]"
+            text_color = ForestColors.GOLD_BRIGHT if is_selected else ForestColors.TEXT_DIM
+        else:
+            name_text = f"{arrow} {buff_name}"
+            text_color = ForestColors.GOLD_PRIMARY if is_selected else ForestColors.TEXT_DIM
+
+        text = self.option_font.render(name_text, True, text_color)
+        text_rect = text.get_rect(midleft=(box_rect.x + 25, box_rect.centery - 8))
+        surface.blit(text, text_rect)
+
+        desc_color = ForestColors.FOREST_GREEN if is_selected else ForestColors.TEXT_DIM
+        desc = self.hint_font.render(option['desc'], True, desc_color)
+        desc_rect = desc.get_rect(midleft=(box_rect.x + 35, box_rect.centery + 16))
+        surface.blit(desc, desc_rect)

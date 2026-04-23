@@ -235,13 +235,7 @@ class MilitaryUI:
     CHAMFER_GLOW_WIDTH = 1
     CHAMFER_CORNER_RADIUS = 0
 
-    # Scanline effect
-    SCANLINE_ALPHA = 12
-    SCANLINE_SPACING = 3
-    SCANLINE_SPEED = 0.5  # pixels per frame at 60fps
-    SCANLINE_CYCLE_FRAMES = 120  # 2 seconds at 60fps
-
-    # Grid overlay
+    # Grid overlay (deprecated, kept for compatibility)
     GRID_ALPHA = 10
     GRID_SPACING = 40
 
@@ -271,6 +265,62 @@ class MilitaryUI:
     MILITARY_SMALL_SIZE = 14
 
 
+class ForestColors:
+    """Forest/Nature style color palette - soft and easy on eyes"""
+    # Primary accent (muted gold)
+    GOLD_PRIMARY = (180, 150, 90)
+    GOLD_DIM = (140, 120, 70)
+    GOLD_BRIGHT = (210, 180, 120)
+    GOLD_GLOW = (180, 150, 90, 60)
+
+    # Forest green accents
+    FOREST_GREEN = (60, 90, 60)
+    FOREST_GREEN_DIM = (45, 70, 45)
+    FOREST_GREEN_BRIGHT = (80, 120, 80)
+
+    # Background colors (dark forest)
+    BG_PRIMARY = (8, 10, 8)
+    BG_PANEL = (15, 18, 15)
+    BG_PANEL_LIGHT = (20, 25, 20)
+
+    # Border and glow
+    BORDER_GLOW = (180, 150, 90, 60)
+    BORDER_DIM = (100, 90, 70)
+    BORDER_FOREST = (60, 90, 60, 80)
+
+    # Danger indicators (muted)
+    DANGER_RED = (150, 60, 50)
+    DANGER_RED_DIM = (100, 40, 35)
+    WARNING_AMBER = (160, 110, 50)
+
+    # Text colors
+    TEXT_PRIMARY = (200, 190, 170)
+    TEXT_DIM = (130, 120, 100)
+    TEXT_BRIGHT = (220, 210, 190)
+
+    # Health bar colors
+    HEALTH_FULL = (80, 160, 80)
+    HEALTH_MEDIUM = (180, 150, 90)
+    HEALTH_LOW = (180, 80, 60)
+    HEALTH_CRITICAL = (200, 60, 50)
+
+    # Boss bar colors
+    BOSS_BAR_FULL = (180, 100, 60)
+    BOSS_BAR_EMPTY = (30, 28, 25)
+
+    # Segment bar
+    SEGMENT_FILL = (180, 150, 90)
+    SEGMENT_EMPTY = (25, 23, 20)
+    SEGMENT_BORDER = (70, 65, 50)
+
+    # Icon colors
+    ICON_POWER = (200, 170, 100)
+    ICON_DEFENSE = (80, 140, 100)
+    ICON_SPEED = (80, 150, 160)
+    ICON_LASER = (180, 120, 150)
+    ICON_MISSILE = (180, 130, 90)
+
+
 class DesignTokens:
     def __init__(self):
         self.colors = Colors
@@ -280,6 +330,7 @@ class DesignTokens:
         self.components = UIComponents
         self.military = MilitaryColors
         self.military_ui = MilitaryUI
+        self.forest = ForestColors
 
     def get_font(self, size: int):
         return pygame.font.Font(pygame.font.get_default_font(), size)
