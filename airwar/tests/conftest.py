@@ -7,6 +7,15 @@ import shutil
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers", "smoke: Smoke tests - core functionality verification"
+    )
+    config.addinivalue_line(
+        "markers", "slow: Tests that take longer to run"
+    )
+
+
 @pytest.fixture
 def temp_db():
     fd, path = tempfile.mkstemp(suffix='.json')

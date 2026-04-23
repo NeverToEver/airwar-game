@@ -11,6 +11,7 @@ from airwar.game.constants import (
 
 
 class TestPlayerConstants:
+    @pytest.mark.smoke
     def test_player_constants_values(self):
         assert PlayerConstants.INITIAL_X_OFFSET == 25
         assert PlayerConstants.INITIAL_Y == -80
@@ -22,6 +23,7 @@ class TestPlayerConstants:
 
 
 class TestDamageConstants:
+    @pytest.mark.smoke
     def test_damage_constants_values(self):
         assert DamageConstants.BOSS_COLLISION_DAMAGE == 30
         assert DamageConstants.ENEMY_COLLISION_DAMAGE == 20
@@ -31,6 +33,7 @@ class TestDamageConstants:
 
 
 class TestTimingConstants:
+    @pytest.mark.smoke
     def test_timing_constants_values(self):
         assert TimingConstants.FIXED_DELTA_TIME == pytest.approx(1/60)
         assert TimingConstants.NOTIFICATION_DURATION == 90
@@ -53,12 +56,15 @@ class TestGameBalanceConstants:
 
 
 class TestGameConstants:
+    @pytest.mark.smoke
     def test_get_difficulty_multiplier_easy(self):
         assert GAME_CONSTANTS.get_difficulty_multiplier('easy') == 1.0
     
+    @pytest.mark.smoke
     def test_get_difficulty_multiplier_medium(self):
         assert GAME_CONSTANTS.get_difficulty_multiplier('medium') == 1.5
     
+    @pytest.mark.smoke
     def test_get_difficulty_multiplier_hard(self):
         assert GAME_CONSTANTS.get_difficulty_multiplier('hard') == 2.0
     
@@ -84,6 +90,7 @@ class TestGameConstants:
 
 
 class TestGameConstantsInstance:
+    @pytest.mark.smoke
     def test_game_constants_has_player_constants(self):
         assert isinstance(GAME_CONSTANTS.PLAYER, PlayerConstants)
     
@@ -99,6 +106,7 @@ class TestGameConstantsInstance:
     def test_game_constants_has_timing_constants(self):
         assert isinstance(GAME_CONSTANTS.TIMING, TimingConstants)
     
+    @pytest.mark.smoke
     def test_game_constants_singleton(self):
         from airwar.game.constants import GAME_CONSTANTS as CONSTANTS2
         assert GAME_CONSTANTS is CONSTANTS2

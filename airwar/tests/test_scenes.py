@@ -6,12 +6,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 class TestSceneManager:
+    @pytest.mark.smoke
     def test_scene_manager_creation(self):
         from airwar.scenes import SceneManager
         sm = SceneManager()
         assert sm._scenes == {}
         assert sm._current_scene is None
 
+    @pytest.mark.smoke
     def test_scene_manager_register(self):
         from airwar.scenes import SceneManager, MenuScene
         sm = SceneManager()
@@ -20,6 +22,7 @@ class TestSceneManager:
         assert 'menu' in sm._scenes
         assert sm._scenes['menu'] is scene
 
+    @pytest.mark.smoke
     def test_scene_manager_switch(self):
         from airwar.scenes import SceneManager, MenuScene
         sm = SceneManager()
@@ -39,6 +42,7 @@ class TestSceneManager:
 
 
 class TestSceneInterface:
+    @pytest.mark.smoke
     def test_scene_has_required_methods(self):
         from airwar.scenes import Scene
         required = ['enter', 'exit', 'handle_events', 'update', 'render']

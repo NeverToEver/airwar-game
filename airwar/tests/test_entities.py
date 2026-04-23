@@ -6,6 +6,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 class TestPlayerEntity:
+    @pytest.mark.smoke
     def test_player_creation(self):
         from airwar.entities import Player
         from airwar.input import MockInputHandler
@@ -60,6 +61,7 @@ class TestPlayerEntity:
 
 
 class TestEnemyEntity:
+    @pytest.mark.smoke
     def test_enemy_creation(self):
         from airwar.entities import Enemy, EnemyData
         enemy = Enemy(100, 0, EnemyData())
@@ -73,6 +75,7 @@ class TestEnemyEntity:
         assert enemy.health == 200
         assert enemy.max_health == 200
 
+    @pytest.mark.smoke
     def test_enemy_take_damage(self):
         from airwar.entities import Enemy, EnemyData
         enemy = Enemy(100, 0, EnemyData(health=100))
@@ -81,6 +84,7 @@ class TestEnemyEntity:
         enemy.take_damage(80)
         assert enemy.active is False
 
+    @pytest.mark.smoke
     def test_enemy_off_screen(self):
         from airwar.entities import Enemy, EnemyData
         from airwar.config import SCREEN_HEIGHT
@@ -91,6 +95,7 @@ class TestEnemyEntity:
 
 
 class TestBulletEntity:
+    @pytest.mark.smoke
     def test_bullet_creation(self):
         from airwar.entities import Bullet, BulletData
         bullet = Bullet(100, 100, BulletData())
@@ -98,6 +103,7 @@ class TestBulletEntity:
         assert bullet.rect.y == 100
         assert bullet.active is True
 
+    @pytest.mark.smoke
     def test_bullet_moves_up(self):
         from airwar.entities import Bullet, BulletData
         bullet = Bullet(100, 100, BulletData(speed=10))
@@ -113,6 +119,7 @@ class TestBulletEntity:
 
 
 class TestEnemySpawner:
+    @pytest.mark.smoke
     def test_spawner_creation(self):
         from airwar.entities import EnemySpawner
         spawner = EnemySpawner()
@@ -150,6 +157,7 @@ class TestEnemySpawner:
 
 
 class TestBossEntity:
+    @pytest.mark.smoke
     def test_boss_creation(self):
         from airwar.entities import Boss, BossData
         boss = Boss(100, 0, BossData())
@@ -165,6 +173,7 @@ class TestBossEntity:
         assert boss.health == 1000
         assert boss.max_health == 1000
 
+    @pytest.mark.smoke
     def test_boss_take_damage(self):
         from airwar.entities import Boss, BossData
         boss = Boss(100, 0, BossData(health=100, score=500))
@@ -174,6 +183,7 @@ class TestBossEntity:
         assert boss.active is False
         assert boss.health == -10
 
+    @pytest.mark.smoke
     def test_boss_enter_and_exit(self):
         from airwar.entities import Boss, BossData
         boss = Boss(100, 0, BossData())
@@ -182,6 +192,7 @@ class TestBossEntity:
             boss.update()
         assert boss.is_entering() is False
 
+    @pytest.mark.smoke
     def test_boss_escape_mechanism(self):
         from airwar.entities import Boss, BossData
         boss = Boss(100, 50, BossData(escape_time=60))
@@ -257,6 +268,7 @@ class TestBossEntity:
 
 
 class TestPlayerHitbox:
+    @pytest.mark.smoke
     def test_player_hitbox_smaller_than_sprite(self):
         from airwar.entities import Player
         from airwar.input import MockInputHandler
@@ -276,6 +288,7 @@ class TestPlayerHitbox:
         assert hitbox.width == 12
         assert hitbox.height == 16
 
+    @pytest.mark.smoke
     def test_player_health_cannot_exceed_max(self):
         from airwar.entities import Player
         from airwar.input import MockInputHandler
@@ -285,6 +298,7 @@ class TestPlayerHitbox:
         player.heal(50)
         assert player.health == 100
 
+    @pytest.mark.smoke
     def test_player_health_cannot_go_negative(self):
         from airwar.entities import Player
         from airwar.input import MockInputHandler
