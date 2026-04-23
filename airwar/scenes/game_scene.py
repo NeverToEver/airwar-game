@@ -33,12 +33,15 @@ from airwar.game.managers import (
 )
 from airwar.config import DIFFICULTY_SETTINGS, get_screen_width, get_screen_height
 from airwar.input import PygameInputHandler
+from airwar.utils.mouse_interaction import MouseInteractiveMixin
 
 
-class GameScene(Scene):
+class GameScene(Scene, MouseInteractiveMixin):
     """游戏场景主控制器，协调游戏主循环和各子系统。"""
     
     def __init__(self):
+        Scene.__init__(self)
+        MouseInteractiveMixin.__init__(self)
         self.game_controller: GameController = None
         self.game_renderer: GameRenderer = None
         self.health_system: HealthSystem = None
@@ -179,6 +182,12 @@ class GameScene(Scene):
         if event.type == pygame.KEYDOWN and event.key == pygame.K_l:
             if self.game_renderer.integrated_hud:
                 self.game_renderer.integrated_hud.toggle()
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1:
+                self._handle_mouse_click(event.pos)
+
+    def _handle_mouse_click(self, mouse_pos: tuple) -> None:
+        pass
 
     def update(self, *args, **kwargs) -> None:
         """游戏主更新循环
