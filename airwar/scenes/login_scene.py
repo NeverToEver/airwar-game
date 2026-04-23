@@ -6,6 +6,7 @@ from airwar.utils.database import UserDB
 from airwar.utils.responsive import ResponsiveHelper
 from airwar.ui.menu_background import MenuBackground
 from airwar.config.design_tokens import get_design_tokens
+from airwar.window.window import get_window
 
 
 class LoginScene(Scene):
@@ -64,6 +65,7 @@ class LoginScene(Scene):
             'button_register': (40, 80, 60),
             'button_quit': colors.DANGER_BUTTON_UNSELECTED_PRIMARY,
             'button_hover': colors.BUTTON_SELECTED_GLOW,
+            'button_fullscreen': (30, 60, 90),
             'error': colors.HEALTH_DANGER,
             'success': colors.SUCCESS,
             'particle': colors.PARTICLE_PRIMARY,
@@ -103,6 +105,10 @@ class LoginScene(Scene):
         self.login_btn = pygame.Rect(width // 2 - btn_width - btn_gap // 2, btn_y, btn_width, btn_height)
         self.register_btn = pygame.Rect(width // 2 + btn_gap // 2, btn_y, btn_width, btn_height)
         self.quit_btn = pygame.Rect(width // 2 - ResponsiveHelper.scale(75, scale), btn_y + ResponsiveHelper.scale(75, scale), ResponsiveHelper.scale(150, scale), ResponsiveHelper.scale(50, scale))
+
+        fullscreen_btn_width = ResponsiveHelper.scale(180, scale)
+        fullscreen_btn_height = ResponsiveHelper.scale(45, scale)
+        self.fullscreen_btn = pygame.Rect(width - ResponsiveHelper.scale(50, scale) - fullscreen_btn_width, height // 2 - fullscreen_btn_height // 2, fullscreen_btn_width, fullscreen_btn_height)
 
     def exit(self) -> None:
         pass
@@ -151,6 +157,9 @@ class LoginScene(Scene):
         elif self.quit_btn.collidepoint(mx, my):
             self.want_to_quit = True
             self.running = False
+        elif self.fullscreen_btn.collidepoint(mx, my):
+            window = get_window()
+            window.toggle_fullscreen()
 
     def _spawn_input_particles(self) -> None:
         for _ in range(5):
@@ -379,6 +388,10 @@ class LoginScene(Scene):
         self._render_button(surface, self.login_btn, "LOGIN", self.colors['button_login'], True)
         self._render_button(surface, self.register_btn, "REGISTER", self.colors['button_register'], False)
         self._render_button(surface, self.quit_btn, "QUIT", self.colors['button_quit'], False)
+        
+        window = get_window()
+        fullscreen_text = "Exit Fullscreen" if window.is_fullscreen() else "Enter Fullscreen"
+        self._render_button(surface, self.fullscreen_btn, fullscreen_text, self.colors['button_fullscreen'], False)
 
     def _render_button(self, surface, rect, text, color, is_primary):
         mouse_pos = pygame.mouse.get_pos()
