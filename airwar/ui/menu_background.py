@@ -1,42 +1,119 @@
 import pygame
 import math
 import random
-from airwar.config.design_tokens import get_design_tokens, MilitaryColors, MilitaryUI
+from airwar.config.design_tokens import get_design_tokens, ForestColors
 
 
 class MenuBackground:
-    """背景渲染器 — 负责渐变背景和星星效果"""
+    """雨林风格菜单背景渲染器
+
+    性能优化：
+    - 预渲染渐变背景到缓存
+    - 使用简单的半透明形状代替复杂图形
+    - 限制叶子/微粒数量
+    - 动画使用简单的数学计算
+    - 预渲染叶子/光斑表面到缓存
+    """
+
+    _gradient_cache = {}
+    _leaf_surface_cache = {}
+    _light_surface_cache = {}
 
     def __init__(self):
-        self._stars = []
         self._animation_time = 0
-        self._gradient_cache = {}
         self._tokens = get_design_tokens()
-        self._init_stars()
+        self._screen_size = None
+        # 远景叶子层
+        self._leaves_far = []
+        self._init_leaves_far()
+        # 近景微粒层
+        self._particles = []
+        self._init_particles()
+        # 光斑位置
+        self._light_spots = []
+        self._init_light_spots()
 
-    def _init_stars(self):
-        """初始化星星数据"""
-        self._stars = []
-        star_count = self._tokens.components.STAR_COUNT
-        for _ in range(star_count):
-            self._stars.append({
+    def _ensure_cached_surfaces(self, width: int, height: int):
+        """确保缓存的表面尺寸与屏幕尺寸匹配"""
+        if self._screen_size == (width, height):
+            return
+        self._screen_size = (width, height)
+        MenuBackground._leaf_surface_cache.clear()
+        MenuBackground._light_surface_cache.clear()
+
+    def _get_leaf_surface(self, size: float) -> pygame.Surface:
+        size_key = int(size * 100)
+        if size_key not in MenuBackground._leaf_surface_cache:
+            surf = pygame.Surface((int(size * 2), int(size * 3)), pygame.SRCALPHA)
+            pygame.draw.ellipse(surf, (15, 40, 15, 25), (0, 0, int(size * 2), int(size * 3)))
+            MenuBackground._leaf_surface_cache[size_key] = surf
+        return MenuBackground._leaf_surface_cache[size_key]
+
+    def _get_light_surface(self, width: float, height: int) -> pygame.Surface:
+        cache_key = (int(width * 100), height)
+        if cache_key not in MenuBackground._light_surface_cache:
+            surf = pygame.Surface((int(width * 2), height), pygame.SRCALPHA)
+            points = [
+                (width * 0.3, 0),
+                (width * 1.7, 0),
+                (width * 2, height),
+                (0, height)
+            ]
+            pygame.draw.polygon(surf, (160, 190, 100, 255), points)
+            MenuBackground._light_surface_cache[cache_key] = surf
+        return MenuBackground._light_surface_cache[cache_key]
+
+    def _init_leaves_far(self):
+        """初始化远景叶子"""
+        self._leaves_far = []
+        for _ in range(6):
+            self._leaves_far.append({
                 'x': random.random(),
                 'y': random.random(),
-                'size': random.uniform(0.5, 2.0),
-                'brightness': random.randint(50, 150),
-                'twinkle_speed': random.uniform(
-                    self._tokens.animation.TWINKLE_SPEED_MIN,
-                    self._tokens.animation.TWINKLE_SPEED_MAX
-                ),
-                'twinkle_offset': random.random() * math.pi * 2,
+                'size': random.uniform(0.1, 0.25),
+                'speed': random.uniform(0.0001, 0.0003),
+                'sway_phase': random.random() * math.tau,
+                'sway_amount': random.uniform(0.01, 0.03),
+                'alpha': random.randint(15, 30),
             })
+
+    def _init_particles(self):
+        """初始化浮动微粒"""
+        self._particles = []
+
+    def _init_light_spots(self):
+        """初始化光斑"""
+        self._light_spots = []
+
+    def update(self):
+        """更新动画状态"""
+        self._animation_time += 1
+        # 更新叶子位置
+        for leaf in self._leaves_far:
+            leaf['y'] += leaf['speed']
+            if leaf['y'] > 1.2:
+                leaf['y'] = -0.2
+                leaf['x'] = random.random()
+        # 更新微粒
+        for p in self._particles:
+            p['y'] -= p['speed']
+            p['x'] += p['drift_x']
+            if p['y'] < -0.1:
+                p['y'] = 1.1
+                p['x'] = random.random()
+        # 更新光斑
+        for spot in self._light_spots:
+            spot['y'] += spot['speed']
+            if spot['y'] > 1.2:
+                spot['y'] = -0.2
+                spot['x'] = random.uniform(0.1, 0.9)
 
     def _get_cached_gradient(self, surface: pygame.Surface, bg_color: tuple, gradient_color: tuple) -> pygame.Surface:
         """获取或创建渐变背景缓存"""
         width, height = surface.get_size()
         cache_key = (width, height, bg_color, gradient_color)
 
-        if cache_key not in self._gradient_cache:
+        if cache_key not in MenuBackground._gradient_cache:
             gradient = pygame.Surface((width, height))
             for y in range(0, height, 3):
                 ratio = y / height
@@ -44,22 +121,14 @@ class MenuBackground:
                 g = int(bg_color[1] * (1 - ratio) + gradient_color[1] * ratio)
                 b = int(bg_color[2] * (1 - ratio) + gradient_color[2] * ratio)
                 pygame.draw.line(gradient, (r, g, b), (0, y), (width, y))
-            self._gradient_cache[cache_key] = gradient
+            MenuBackground._gradient_cache[cache_key] = gradient
 
-        return self._gradient_cache[cache_key]
-
-    def update(self):
-        """更新动画状态"""
-        self._animation_time += 1
-        star_speed = self._tokens.animation.STAR_SPEED
-        for star in self._stars:
-            star['y'] += star_speed
-            if star['y'] > 1:
-                star['y'] = 0
-                star['x'] = random.random()
+        return MenuBackground._gradient_cache[cache_key]
 
     def render(self, surface: pygame.Surface, colors: dict):
         """渲染背景"""
+        # 先清除屏幕
+        surface.fill(colors['bg'])
         gradient = self._get_cached_gradient(
             surface,
             colors['bg'],
@@ -67,9 +136,10 @@ class MenuBackground:
         )
         surface.blit(gradient, (0, 0))
 
+        # 渲染星星/微粒
         width, height = surface.get_size()
         star_color = self._tokens.colors.star_color
-        for star in self._stars:
+        for star in getattr(self, '_stars', []):
             x = int(star['x'] * width)
             y = int(star['y'] * height)
             twinkle = math.sin(self._animation_time * star['twinkle_speed'] + star['twinkle_offset'])
@@ -77,47 +147,72 @@ class MenuBackground:
             pygame.draw.circle(surface, star_color(brightness), (x, y), int(star['size']))
 
     def render_military_style(self, surface: pygame.Surface, colors: dict):
-        """渲染军事风格背景（带网格和扫描线）
+        """渲染雨林风格背景
 
         Args:
             surface: 目标 surface
             colors: 颜色配置
         """
-        # 先渲染普通背景
-        self.render(surface, colors)
-
-        # 渲染网格线
-        self._render_grid_overlay(surface)
-
-        # 渲染扫描线
-        self._render_scanline_overlay(surface)
-
-    def _render_grid_overlay(self, surface: pygame.Surface):
-        """渲染网格覆盖层"""
         width, height = surface.get_size()
-        spacing = MilitaryUI.GRID_SPACING
-        alpha = MilitaryUI.GRID_ALPHA
+        bg_color = colors.get('bg', ForestColors.BG_PRIMARY)
+        bg_gradient = colors.get('bg_gradient', ForestColors.BG_PANEL)
 
-        grid_color = (*MilitaryColors.AMBER_PRIMARY[:3], alpha)
+        # 渲染渐变背景
+        gradient = self._get_cached_gradient(surface, bg_color, bg_gradient)
+        surface.blit(gradient, (0, 0))
 
-        # 垂直线
-        for x in range(0, width, spacing):
-            pygame.draw.line(surface, grid_color, (x, 0), (x, height))
+        # 渲染光斑层
+        self._render_light_spots(surface, width, height)
 
-        # 水平线
-        for y in range(0, height, spacing):
-            pygame.draw.line(surface, grid_color, (0, y), (width, y))
+        # 渲染远景叶子层
+        self._render_leaves(surface, width, height)
 
-    def _render_scanline_overlay(self, surface: pygame.Surface):
-        """渲染扫描线覆盖层"""
-        width, height = surface.get_size()
-        spacing = MilitaryUI.SCANLINE_SPACING
-        alpha = MilitaryUI.SCANLINE_ALPHA
+        # 渲染微粒层
+        self._render_particles(surface, width, height)
 
-        # 计算扫描线偏移（动画效果）
-        offset = (self._animation_time * MilitaryUI.SCANLINE_SPEED) % spacing
+    def _render_light_spots(self, surface: pygame.Surface, width: int, height: int) -> None:
+        """渲染光斑层 - 模拟树隙透光"""
+        self._ensure_cached_surfaces(width, height)
+        for spot in self._light_spots:
+            x = spot['x'] * width
+            y = spot['y'] * height
+            spot_width = spot['width'] * width
 
-        scanline_color = (*MilitaryColors.AMBER_PRIMARY[:3], alpha)
+            pulse = math.sin(self._animation_time * spot['pulse_speed'] + spot['pulse_offset'])
+            alpha = int(spot['alpha'] * (0.7 + 0.3 * pulse))
 
-        for y in range(int(offset), height, spacing):
-            pygame.draw.line(surface, scanline_color, (0, y), (width, y))
+            light_surf = self._get_light_surface(spot_width, height)
+            light_surf.set_alpha(alpha)
+            surface.blit(light_surf, (int(x - spot_width), 0))
+
+    def _render_leaves(self, surface: pygame.Surface, width: int, height: int) -> None:
+        """渲染远景叶子层"""
+        self._ensure_cached_surfaces(width, height)
+        for leaf in self._leaves_far:
+            x = leaf['x'] * width
+            y = leaf['y'] * height
+            size = leaf['size'] * min(width, height)
+
+            sway = math.sin(self._animation_time * 0.01 + leaf['sway_phase']) * leaf['sway_amount'] * width
+
+            leaf_surf = self._get_leaf_surface(leaf['size'])
+            leaf_surf.set_alpha(leaf['alpha'])
+            surface.blit(leaf_surf, (int(x - size + sway), int(y - size * 1.5)))
+
+    def _render_particles(self, surface: pygame.Surface, width: int, height: int) -> None:
+        """渲染浮动微粒层 - 模拟阳光中的尘埃"""
+        for p in self._particles:
+            x = p['x'] * width
+            y = p['y'] * height
+
+            # 闪烁效果
+            pulse = math.sin(self._animation_time * p['pulse_speed'] + p['pulse_offset'])
+            alpha = int(p['brightness'] * (0.4 + 0.6 * pulse))
+
+            # 绘制微粒
+            pygame.draw.circle(
+                surface,
+                (180, 200, 120),
+                (int(x), int(y)),
+                int(p['size'])
+            )

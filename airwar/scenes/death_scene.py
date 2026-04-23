@@ -171,23 +171,6 @@ class DeathScene(Scene, MouseSelectableMixin):
             line_surf.fill((*self.colors['particle'][:3], 25 - i * 6))
             surface.blit(line_surf, (center_x - 125, height // 3 + offset_y))
 
-    def _draw_icon_decoration(self, surface: pygame.Surface) -> None:
-        width, height = surface.get_size()
-        center_x = width // 2
-        title_y = height // 3 + self.glow_offset * 0.3
-
-        color = self.colors['title']
-        size = 7
-        spacing = 18
-
-        for i in range(-2, 3):
-            pulse = math.sin(self.animation_time * 0.06 + i * 0.5)
-            alpha = int(130 + 50 * pulse)
-            x = center_x + i * spacing
-            dot_surf = pygame.Surface((size * 2, size * 2), pygame.SRCALPHA)
-            pygame.draw.circle(dot_surf, (*color[:3], alpha), (size, size), size)
-            surface.blit(dot_surf, (x - size, title_y - size))
-
     def render(self, surface: pygame.Surface) -> None:
         self._background_renderer.render(surface, self.colors)
         self._particle_system.render(surface, self.colors['particle'])
@@ -201,7 +184,6 @@ class DeathScene(Scene, MouseSelectableMixin):
                            (width // 2, title_y), self.colors['title'], self.colors['title_glow'], 5)
 
         self._draw_decorative_lines(surface)
-        self._draw_icon_decoration(surface)
 
         score_text = self.score_font.render(f"SCORE: {self.score}", True, self.colors['score'])
         surface.blit(score_text, score_text.get_rect(center=(width // 2, height // 2 - ResponsiveHelper.scale(30, scale))))
