@@ -47,14 +47,16 @@ class TestPlayerEntity:
         player.take_damage(80)
         assert player.health == 0
 
-    def test_player_fire_cooldown(self):
+    def test_player_fire_cooldown_respects_cooldown(self):
         from airwar.entities import Player
         from airwar.input import MockInputHandler
         input_handler = MockInputHandler()
         player = Player(100, 200, input_handler)
-        assert player.fire_cooldown == 0
-        player.fire()
-        assert player.fire_cooldown > 0
+        player.fire_cooldown = 5
+        initial_count = len(player.get_bullets())
+        bullet = player.fire()
+        assert bullet is None
+        assert len(player.get_bullets()) == initial_count
 
 
 class TestEnemyEntity:
