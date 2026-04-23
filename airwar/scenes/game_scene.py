@@ -34,14 +34,25 @@ from airwar.game.managers import (
 from airwar.config import DIFFICULTY_SETTINGS, get_screen_width, get_screen_height
 from airwar.input import PygameInputHandler
 from airwar.utils.mouse_interaction import MouseInteractiveMixin
+from airwar.config.design_tokens import get_design_tokens
 
 
 class GameScene(Scene, MouseInteractiveMixin):
     """游戏场景主控制器，协调游戏主循环和各子系统。"""
-    
+
+    PAUSE_BUTTON_SIZE = 30
+    PAUSE_BUTTON_MARGIN = 10
+    PAUSE_BAR_WIDTH = 4
+    PAUSE_BAR_HEIGHT = 14
+    PAUSE_BAR_GAP = 4
+
     def __init__(self):
         Scene.__init__(self)
         MouseInteractiveMixin.__init__(self)
+        self._pause_requested = False
+        self._tokens = get_design_tokens()
+        self._pause_btn_layout = None  # 预计算布局
+        self._pause_btn_cache = {}     # Surface 缓存: "normal"/"hovered" -> (bg_surf, border_surf)
         self.game_controller: GameController = None
         self.game_renderer: GameRenderer = None
         self.health_system: HealthSystem = None
@@ -64,11 +75,11 @@ class GameScene(Scene, MouseInteractiveMixin):
 
     def enter(self, **kwargs) -> None:
         """初始化游戏场景
-        
+
         Args:
             difficulty: 游戏难度 ('easy', 'medium', 'hard')
             username: 玩家名称
-            
+
         初始化所有游戏子系统:
         - GameController: 游戏状态和逻辑
         - SpawnController: 敌人生成系统
@@ -76,8 +87,14 @@ class GameScene(Scene, MouseInteractiveMixin):
         - Player: 玩家飞船
         - MotherShip系统: 母舰交互系统
         """
+        self._pause_requested = False
+        self.clear_hover()
+        self.clear_buttons()
+        self._pause_btn_cache.clear()
+
         screen_width = get_screen_width()
         screen_height = get_screen_height()
+        self._init_pause_button_layout()
 
         difficulty = kwargs.get('difficulty', 'medium')
         username = kwargs.get('username', 'Player')
@@ -173,21 +190,41 @@ class GameScene(Scene, MouseInteractiveMixin):
 
     def handle_events(self, event: pygame.event.Event) -> None:
         """处理输入事件
-        
+
         Args:
             event: pygame事件对象
         """
         self._input_coordinator.handle_events(event)
-        
+
         if event.type == pygame.KEYDOWN and event.key == pygame.K_l:
             if self.game_renderer.integrated_hud:
                 self.game_renderer.integrated_hud.toggle()
+        elif event.type == pygame.MOUSEMOTION:
+            self.handle_mouse_motion(event.pos)
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
-                self._handle_mouse_click(event.pos)
+                if self.handle_mouse_click(event.pos):
+                    self._handle_button_click(self.get_hovered_button())
 
-    def _handle_mouse_click(self, mouse_pos: tuple) -> None:
-        pass
+    def _handle_button_click(self, button_name: str) -> None:
+        """处理鼠标点击按钮事件
+
+        Args:
+            button_name: 被点击的按钮名称
+        """
+        if button_name == "pause":
+            self._pause_requested = True
+
+    def consume_pause_request(self) -> bool:
+        """消费暂停请求标志
+
+        Returns:
+            bool: 如果有暂停请求则返回 True 并重置标志
+        """
+        if self._pause_requested:
+            self._pause_requested = False
+            return True
+        return False
 
     def update(self, *args, **kwargs) -> None:
         """游戏主更新循环
@@ -264,7 +301,7 @@ class GameScene(Scene, MouseInteractiveMixin):
 
     def render(self, surface: pygame.Surface) -> None:
         """渲染游戏场景
-        
+
         Args:
             surface: pygame渲染表面
         """
@@ -284,6 +321,8 @@ class GameScene(Scene, MouseInteractiveMixin):
         self._ui_manager.render_notification(surface)
         self._ui_manager.render_buff_stats_panel(surface, self.player)
 
+        self._render_pause_button(surface)
+
         if self.reward_selector.visible:
             self.reward_selector.render(surface)
 
@@ -292,6 +331,88 @@ class GameScene(Scene, MouseInteractiveMixin):
 
         self._game_loop_manager.render_explosions(surface)
         self._input_coordinator.render_give_up(surface)
+
+    def _init_pause_button_layout(self) -> None:
+        """预计算暂停按钮的几何布局并注册按钮区域
+
+        仅在 enter() 和 resize 时调用，避免每帧重复计算。
+        同时预渲染两种状态（normal/hovered）的 Surface 并缓存。
+        """
+        colors = self._tokens.colors
+        spacing = self._tokens.spacing
+        size = self.PAUSE_BUTTON_SIZE
+        margin = self.PAUSE_BUTTON_MARGIN
+        bar_w = self.PAUSE_BAR_WIDTH
+        bar_h = self.PAUSE_BAR_HEIGHT
+        bar_gap = self.PAUSE_BAR_GAP
+
+        button_x = margin
+        button_y = margin
+        center_x = button_x + size // 2
+        center_y = button_y + size // 2
+
+        self._pause_btn_layout = {
+            'rect': pygame.Rect(button_x, button_y, size, size),
+            'left_bar': (center_x - bar_gap // 2 - bar_w, center_y - bar_h // 2, bar_w, bar_h),
+            'right_bar': (center_x + bar_gap // 2, center_y - bar_h // 2, bar_w, bar_h),
+            'pos': (button_x, button_y),
+        }
+        self.register_button("pause", self._pause_btn_layout['rect'])
+
+        # 预渲染两种状态的 Surface
+        self._pause_btn_cache.clear()
+        for state_key, bg_alpha, border_alpha in [
+            ("normal", 180, 120),
+            ("hovered", 220, 200),
+        ]:
+            bg_color = (*colors.BACKGROUND_PANEL, bg_alpha)
+            bg_surface = pygame.Surface((size, size), pygame.SRCALPHA)
+            pygame.draw.rect(
+                bg_surface, bg_color,
+                bg_surface.get_rect(),
+                border_radius=spacing.BORDER_RADIUS_SM
+            )
+
+            border_color = (*colors.PANEL_BORDER, border_alpha)
+            border_surface = pygame.Surface((size, size), pygame.SRCALPHA)
+            pygame.draw.rect(
+                border_surface, border_color,
+                border_surface.get_rect(),
+                width=1,
+                border_radius=spacing.BORDER_RADIUS_SM
+            )
+
+            self._pause_btn_cache[state_key] = (bg_surface, border_surface)
+
+    def _render_pause_button(self, surface: pygame.Surface) -> None:
+        """渲染暂停按钮
+
+        仅在游戏正常运行（非暂停、非奖励选择）时渲染。
+        按钮位于屏幕左上角，使用两竖线图标表示暂停。
+        使用缓存的 Surface 避免每帧重新分配内存。
+
+        Args:
+            surface: pygame渲染表面
+        """
+        if not self.game_controller or self.game_controller.state.paused:
+            return
+        if self.reward_selector and self.reward_selector.visible:
+            return
+        if not self._pause_btn_layout:
+            return
+
+        is_hovered = self.is_button_hovered("pause")
+        state_key = "hovered" if is_hovered else "normal"
+        bg_surface, border_surface = self._pause_btn_cache[state_key]
+
+        layout = self._pause_btn_layout
+        pos = layout['pos']
+        surface.blit(bg_surface, pos)
+        surface.blit(border_surface, pos)
+
+        bar_color = self._tokens.colors.HUD_AMBER if is_hovered else self._tokens.colors.TEXT_MUTED
+        pygame.draw.rect(surface, bar_color, layout['left_bar'], border_radius=1)
+        pygame.draw.rect(surface, bar_color, layout['right_bar'], border_radius=1)
 
     @property
     def score(self) -> int:
