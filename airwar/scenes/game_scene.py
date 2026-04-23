@@ -623,7 +623,9 @@ class GameScene(Scene, MouseInteractiveMixin):
         """恢复母舰状态"""
         if self._mother_ship_integrator:
             self._mother_ship_integrator.reset_to_idle_with_mothership_visible()
-        self.game_controller.state.entrance_animation = False
-        self.game_controller.state.paused = False
-        self.player.rect.y = PlayerConstants.MOTHERSHIP_Y_POSITION
-        self.player.rect.x = self.game_controller.state.score // 2 % PlayerConstants.DEFAULT_SCREEN_WIDTH
+            docking_pos = self._mother_ship_integrator._mother_ship.get_docking_position()
+            self.player.rect.x = docking_pos[0]
+            self.player.rect.y = docking_pos[1]
+        else:
+            self.player.rect.y = PlayerConstants.MOTHERSHIP_Y_POSITION
+            self.player.rect.x = PlayerConstants.DEFAULT_SCREEN_WIDTH // 2
