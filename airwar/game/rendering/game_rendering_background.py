@@ -197,85 +197,6 @@ class NebulaLayer:
             nebula.draw(surface, y)
 
 
-class Meteor:
-    """流星效果 - 带有拖尾"""
-    
-    def __init__(self, screen_width: int, screen_height: int):
-        self.x = random.randint(0, screen_width)
-        self.y = random.randint(-50, 0)
-        self.speed = random.uniform(8, 15)
-        self.angle = math.radians(random.uniform(30, 60))
-        self.vx = math.cos(self.angle) * self.speed
-        self.vy = math.sin(self.angle) * self.speed
-        self.trail: List[Tuple[float, float, float]] = []
-        self.life = random.randint(30, 60)
-        self.max_life = self.life
-        self.is_alive = True
-    
-    def update(self, delta_time: float = 1.0) -> None:
-        if not self.is_alive:
-            return
-        
-        self.trail.append((self.x, self.y, self.life / self.max_life))
-        if len(self.trail) > 8:
-            self.trail.pop(0)
-        
-        self.x += self.vx * delta_time
-        self.y += self.vy * delta_time
-        self.life -= delta_time
-        
-        if self.life <= 0:
-            self.is_alive = False
-    
-    def draw(self, surface: pygame.Surface) -> None:
-        if not self.is_alive:
-            return
-        
-        for i, (tx, ty, alpha) in enumerate(self.trail):
-            size = max(1, int(3 - i * 0.3))
-            brightness = int(255 * alpha)
-            color = (
-                min(255, brightness + 100),
-                min(255, brightness + 150),
-                brightness
-            )
-            pygame.draw.circle(surface, color, (int(tx), int(ty)), size)
-
-
-class MeteorSystem:
-    """流星效果系统 - 随机生成流星"""
-    
-    def __init__(self):
-        self._meteors: List[Meteor] = []
-        self._next_spawn_time = random.uniform(5, 15)
-        self._spawn_interval = random.uniform(5, 15)
-        self._screen_width = 800
-        self._screen_height = 600
-    
-    def set_screen_size(self, width: int, height: int) -> None:
-        self._screen_width = width
-        self._screen_height = height
-    
-    def _spawn_meteor(self) -> None:
-        self._meteors.append(Meteor(self._screen_width, self._screen_height))
-        self._spawn_interval = random.uniform(5, 15)
-    
-    def update(self, delta_time: float = 1.0) -> None:
-        self._next_spawn_time -= delta_time
-        if self._next_spawn_time <= 0:
-            self._spawn_meteor()
-            self._next_spawn_time = self._spawn_interval
-        
-        for meteor in self._meteors:
-            meteor.update(delta_time)
-        
-        self._meteors = [m for m in self._meteors if m.is_alive]
-    
-    def render(self, surface: pygame.Surface) -> None:
-        for meteor in self._meteors:
-            meteor.draw(surface)
-
-
 class GameSceneBackground:
     """游戏场景星空背景 - 三层视差科幻星空效果"""
     _gradient_cache = {}
@@ -298,9 +219,7 @@ class GameSceneBackground:
         )
         
         self._nebula_layer = NebulaLayer(screen_width, screen_height)
-        self._meteor_system = MeteorSystem()
-        self._meteor_system.set_screen_size(screen_width, screen_height)
-        
+
         self.particles: List[dict] = []
         
         self._generate_gradient()
@@ -338,8 +257,7 @@ class GameSceneBackground:
         self._layer_mid.update(delta_time)
         self._layer_near.update(delta_time)
         self._nebula_layer.update(delta_time)
-        self._meteor_system.update(delta_time)
-        
+
         self.particles = [p for p in self.particles if self._update_particle(p)]
     
     def _update_particle(self, particle: dict) -> bool:
@@ -366,7 +284,6 @@ class GameSceneBackground:
         
         self._nebula_layer.render(surface)
         self._layer_far.render(surface)
-        self._meteor_system.render(surface)
         self._layer_mid.render(surface)
         self._layer_near.render(surface)
         
@@ -398,6 +315,4 @@ class GameSceneBackground:
             screen_width, screen_height, 30, 2.0, (2.5, 4.0), (200, 220, 255)
         )
         self._nebula_layer = NebulaLayer(screen_width, screen_height)
-        self._meteor_system = MeteorSystem()
-        self._meteor_system.set_screen_size(screen_width, screen_height)
         self._generate_gradient()
