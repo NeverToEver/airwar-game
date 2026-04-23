@@ -6,11 +6,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 class TestWindowFullscreen:
+    @pytest.mark.smoke
     def test_window_initial_state_not_fullscreen(self):
         from airwar.window import Window
         window = Window()
         assert window._is_fullscreen is False
 
+    @pytest.mark.smoke
     def test_window_is_fullscreen_returns_false_initially(self):
         from airwar.window import Window
         window = Window()

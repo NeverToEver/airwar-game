@@ -2,11 +2,13 @@ import pytest
 
 
 class TestBuffRegistry:
+    @pytest.mark.smoke
     def test_buff_registry_exists(self):
         from airwar.game.buffs.buff_registry import BUFF_REGISTRY
         assert BUFF_REGISTRY is not None
         assert len(BUFF_REGISTRY) > 0
 
+    @pytest.mark.smoke
     def test_buff_registry_has_all_buffs(self):
         from airwar.game.buffs.buff_registry import BUFF_REGISTRY
         expected_buffs = [
@@ -18,6 +20,7 @@ class TestBuffRegistry:
         for buff_name in expected_buffs:
             assert buff_name in BUFF_REGISTRY, f"Missing buff: {buff_name}"
 
+    @pytest.mark.smoke
     def test_create_buff_invalid_raises_error(self):
         from airwar.game.buffs.buff_registry import create_buff
         with pytest.raises(ValueError):
@@ -97,6 +100,7 @@ class TestBuffCalculations:
 
 
 class TestBuffApplication:
+    @pytest.mark.smoke
     def test_extra_life_buff_apply(self):
         from airwar.game.buffs.buff_registry import create_buff
         from airwar.entities import Player
@@ -108,6 +112,7 @@ class TestBuffApplication:
         result = buff.apply(player)
         assert result.name == 'Extra Life'
 
+    @pytest.mark.smoke
     def test_power_shot_buff_apply(self):
         from airwar.game.buffs.buff_registry import create_buff
         from airwar.entities import Player
@@ -117,6 +122,7 @@ class TestBuffApplication:
         result = buff.apply(player)
         assert result.name == 'Power Shot'
 
+    @pytest.mark.smoke
     def test_shield_buff_apply(self):
         from airwar.game.buffs.buff_registry import create_buff
         from airwar.entities import Player
