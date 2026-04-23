@@ -440,5 +440,9 @@ core.*
 # 4. Game data files are excluded to protect user privacy
 # 5. All rules are tested to avoid excluding necessary files
 # -----------------------------------------------------------------------------
-airwar/airwar/data/user_docking_save.json
-airwar/airwar/data/users.json
+
+# Claude Code
+.claude/
+.claude/*.json
+.claude/scheduled_tasks.json
+plans/
