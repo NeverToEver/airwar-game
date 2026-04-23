@@ -9,15 +9,15 @@ pygame.display.set_mode((800, 600))
 
 
 class TestEnemyHitboxExpansion:
-    """测试敌机碰撞体扩展功能"""
+    """Tests for enemy hitbox expansion feature"""
 
     def test_hitbox_padding_increased(self):
-        """验证碰撞体填充区域已增加"""
+        """Verify that hitbox padding has been increased"""
         assert ENEMY_HITBOX_PADDING == 8, "ENEMY_HITBOX_PADDING should be 8"
         assert ENEMY_HITBOX_SIZE == 50, "ENEMY_HITBOX_SIZE should be 50"
 
     def test_enemy_hitbox_expanded_by_padding(self):
-        """验证敌机碰撞体已正确扩展（带缩放）"""
+        """Verify enemy hitbox is correctly expanded (with scaling)"""
         data = EnemyData(health=100, speed=1.0, bullet_type="single", fire_rate=120, enemy_type="straight")
         enemy = Enemy(400, 300, data)
 
@@ -29,7 +29,7 @@ class TestEnemyHitboxExpansion:
         assert hitbox.height == expected_collision_size, f"Expected collision height {expected_collision_size}, got {hitbox.height}"
 
     def test_enemy_visual_size_scaled(self):
-        """验证敌机视觉尺寸已按比例缩放"""
+        """Verify enemy visual size is proportionally scaled"""
         data = EnemyData(health=100, speed=1.0, bullet_type="single", fire_rate=120, enemy_type="straight")
         enemy = Enemy(400, 300, data)
 
@@ -40,7 +40,7 @@ class TestEnemyHitboxExpansion:
         assert enemy.rect.height == expected_visual_size, f"Expected visual height {expected_visual_size}, got {enemy.rect.height}"
 
     def test_enemy_render_and_collision_sizes_differ(self):
-        """验证渲染尺寸和碰撞尺寸不同"""
+        """Verify render and collision sizes are different"""
         data = EnemyData(health=100, speed=1.0, bullet_type="single", fire_rate=120, enemy_type="straight")
         enemy = Enemy(400, 300, data)
 
@@ -48,7 +48,7 @@ class TestEnemyHitboxExpansion:
         assert enemy.rect.height != enemy.get_hitbox().height, "Visual size should differ from collision size"
 
     def test_collision_larger_than_visual(self):
-        """验证碰撞箱比视觉尺寸大"""
+        """Verify collision hitbox is larger than visual size"""
         data = EnemyData(health=100, speed=1.0, bullet_type="single", fire_rate=120, enemy_type="straight")
         enemy = Enemy(400, 300, data)
 
@@ -56,7 +56,7 @@ class TestEnemyHitboxExpansion:
         assert enemy.get_hitbox().height > enemy.rect.height, "Collision hitbox should be larger than visual"
 
     def test_enemy_get_hitbox_method_exists(self):
-        """验证get_hitbox方法存在"""
+        """Verify get_hitbox method exists"""
         data = EnemyData(health=100, speed=1.0, bullet_type="single", fire_rate=120, enemy_type="straight")
         enemy = Enemy(400, 300, data)
 
@@ -65,7 +65,7 @@ class TestEnemyHitboxExpansion:
         assert isinstance(hitbox, pygame.Rect), "get_hitbox should return pygame.Rect"
 
     def test_enemy_check_point_collision_method_exists(self):
-        """验证check_point_collision方法存在"""
+        """Verify check_point_collision method exists"""
         data = EnemyData(health=100, speed=1.0, bullet_type="single", fire_rate=120, enemy_type="straight")
         enemy = Enemy(400, 300, data)
 
@@ -73,10 +73,10 @@ class TestEnemyHitboxExpansion:
 
 
 class TestCollisionDetectionEnhanced:
-    """测试增强的碰撞检测功能"""
+    """Tests for enhanced collision detection feature"""
 
     def test_center_collision_detected(self):
-        """测试中央碰撞检测"""
+        """Test center collision detection"""
         data = EnemyData(health=100, speed=1.0, bullet_type="single", fire_rate=120, enemy_type="straight")
         enemy = Enemy(400, 300, data)
 
@@ -86,7 +86,7 @@ class TestCollisionDetectionEnhanced:
         assert bullet_rect.colliderect(enemy_hitbox), "Center collision should be detected"
 
     def test_top_edge_collision_detected(self):
-        """测试顶部边缘碰撞检测"""
+        """Test top edge collision detection"""
         data = EnemyData(health=100, speed=1.0, bullet_type="single", fire_rate=120, enemy_type="straight")
         enemy = Enemy(400, 300, data)
 
@@ -96,7 +96,7 @@ class TestCollisionDetectionEnhanced:
         assert bullet_rect.colliderect(enemy_hitbox), "Top edge collision should be detected"
 
     def test_left_edge_collision_detected(self):
-        """测试左侧边缘碰撞检测"""
+        """Test left edge collision detection"""
         data = EnemyData(health=100, speed=1.0, bullet_type="single", fire_rate=120, enemy_type="straight")
         enemy = Enemy(400, 300, data)
 
@@ -106,7 +106,7 @@ class TestCollisionDetectionEnhanced:
         assert bullet_rect.colliderect(enemy_hitbox), "Left edge collision should be detected"
 
     def test_right_edge_collision_detected(self):
-        """测试右侧边缘碰撞检测"""
+        """Test right edge collision detection"""
         data = EnemyData(health=100, speed=1.0, bullet_type="single", fire_rate=120, enemy_type="straight")
         enemy = Enemy(400, 300, data)
 
@@ -116,7 +116,7 @@ class TestCollisionDetectionEnhanced:
         assert bullet_rect.colliderect(enemy_hitbox), "Right edge collision should be detected"
 
     def test_bottom_edge_collision_detected(self):
-        """测试底部边缘碰撞检测"""
+        """Test bottom edge collision detection"""
         data = EnemyData(health=100, speed=1.0, bullet_type="single", fire_rate=120, enemy_type="straight")
         enemy = Enemy(400, 300, data)
 
@@ -126,7 +126,7 @@ class TestCollisionDetectionEnhanced:
         assert bullet_rect.colliderect(enemy_hitbox), "Bottom edge collision should be detected"
 
     def test_corner_collision_detected(self):
-        """测试角落碰撞检测"""
+        """Test corner collision detection"""
         data = EnemyData(health=100, speed=1.0, bullet_type="single", fire_rate=120, enemy_type="straight")
         enemy = Enemy(400, 300, data)
 
@@ -136,7 +136,7 @@ class TestCollisionDetectionEnhanced:
         assert bullet_rect.colliderect(enemy_hitbox), "Corner collision should be detected"
 
     def test_multiple_positions_collision(self):
-        """测试多个位置的碰撞检测"""
+        """Test collision detection at multiple positions"""
         positions = [(100, 100), (600, 200), (300, 500), (700, 400)]
 
         for x, y in positions:
@@ -150,17 +150,17 @@ class TestCollisionDetectionEnhanced:
 
 
 class TestMotherShipRippleClearIntegration:
-    """测试母舰涟漪特效清除集成"""
+    """Tests for mother ship ripple effect clearing integration"""
 
     def test_ripple_effects_initial_empty(self):
-        """验证涟漪特效列表初始为空"""
+        """Verify ripple effects list starts empty"""
         scene = GameScene()
         scene.enter(difficulty='easy', username='TestPlayer')
 
         assert len(scene.game_controller.state.ripple_effects) == 0
 
     def test_ripple_effect_created_on_hit(self):
-        """验证命中时创建涟漪特效"""
+        """Verify ripple effect is created on hit"""
         scene = GameScene()
         scene.enter(difficulty='easy', username='TestPlayer')
 
@@ -174,7 +174,7 @@ class TestMotherShipRippleClearIntegration:
         assert 'alpha' in ripple
 
     def test_ripple_effects_cleared_on_docking_start(self):
-        """验证对接开始时清除涟漪特效"""
+        """Verify ripple effects are cleared on docking start"""
         scene = GameScene()
         scene.enter(difficulty='easy', username='TestPlayer')
 
@@ -190,7 +190,7 @@ class TestMotherShipRippleClearIntegration:
         assert len(scene.game_controller.state.ripple_effects) == 0, "Ripple effects should be cleared on H_PRESSED"
 
     def test_ripple_effects_cleared_on_docked(self):
-        """验证对接完成时清除涟漪特效"""
+        """Verify ripple effects are cleared on docking complete"""
         scene = GameScene()
         scene.enter(difficulty='easy', username='TestPlayer')
 
@@ -216,7 +216,7 @@ class TestMotherShipRippleClearIntegration:
         assert len(scene.game_controller.state.ripple_effects) == 0, "Ripple effects should be cleared on DOCKED"
 
     def test_ripple_effects_cleared_on_undocking(self):
-        """验证脱离对接时清除涟漪特效"""
+        """Verify ripple effects are cleared on undocking"""
         scene = GameScene()
         scene.enter(difficulty='easy', username='TestPlayer')
 
@@ -245,7 +245,7 @@ class TestMotherShipRippleClearIntegration:
         assert len(scene.game_controller.state.ripple_effects) == 0, "Ripple effects should be cleared on undocking"
 
     def test_ripple_effects_cleared_on_idle(self):
-        """验证返回空闲状态时清除涟漪特效"""
+        """Verify ripple effects are cleared when returning to idle state"""
         scene = GameScene()
         scene.enter(difficulty='easy', username='TestPlayer')
 
@@ -264,7 +264,7 @@ class TestMotherShipRippleClearIntegration:
         assert len(scene.game_controller.state.ripple_effects) == 0, "Ripple effects should be cleared on H_RELEASED"
 
     def test_multiple_ripples_cleared_together(self):
-        """验证多个涟漪特效同时清除"""
+        """Verify multiple ripple effects are cleared together"""
         scene = GameScene()
         scene.enter(difficulty='easy', username='TestPlayer')
 
@@ -284,10 +284,10 @@ class TestMotherShipRippleClearIntegration:
 
 
 class TestGameSceneCollisionIntegration:
-    """测试游戏场景碰撞检测集成"""
+    """Tests for game scene collision detection integration"""
 
     def test_bullet_enemy_collision_uses_expanded_hitbox(self):
-        """验证子弹与敌机碰撞使用扩展碰撞体"""
+        """Verify bullet-enemy collision uses expanded hitbox"""
         scene = GameScene()
         scene.enter(difficulty='easy', username='TestPlayer')
 

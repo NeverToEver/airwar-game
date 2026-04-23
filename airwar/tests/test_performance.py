@@ -1,9 +1,9 @@
 """Performance Tests
 
-测试游戏关键功能的性能:
-- 碰撞检测性能
-- 子弹更新性能
-- 游戏循环性能
+Tests for game critical functionality performance:
+- Collision detection performance
+- Bullet update performance
+- Game loop performance
 """
 
 import pytest
@@ -70,10 +70,10 @@ class MockEnemy:
 
 
 class TestCollisionPerformance:
-    """碰撞检测性能测试"""
+    """Collision detection performance tests"""
     
     def test_collision_detection_performance_small_scale(self):
-        """测试小规模碰撞检测性能 (10子弹 x 10敌人)"""
+        """Test small scale collision detection (10 bullets x 10 enemies)"""
         controller = CollisionController()
         
         bullets = [MockBullet() for _ in range(10)]
@@ -93,7 +93,7 @@ class TestCollisionPerformance:
         assert avg_time_ms < 1.0, f"Collision check too slow: {avg_time_ms:.3f}ms (expected <1.0ms)"
     
     def test_collision_detection_performance_medium_scale(self):
-        """测试中等规模碰撞检测性能 (50子弹 x 50敌人)"""
+        """Test medium scale collision detection (50 bullets x 50 enemies)"""
         controller = CollisionController()
         
         bullets = [MockBullet() for _ in range(50)]
@@ -113,7 +113,7 @@ class TestCollisionPerformance:
         assert avg_time_ms < 10.0, f"Collision check too slow: {avg_time_ms:.3f}ms (expected <10.0ms)"
     
     def test_collision_detection_performance_large_scale(self):
-        """测试大规模碰撞检测性能 (100子弹 x 100敌人)"""
+        """Test large scale collision detection (100 bullets x 100 enemies)"""
         controller = CollisionController()
         
         bullets = [MockBullet() for _ in range(100)]
@@ -134,10 +134,10 @@ class TestCollisionPerformance:
 
 
 class TestBulletUpdatePerformance:
-    """子弹更新性能测试"""
+    """Bullet update performance tests"""
     
     def test_bullet_update_performance(self):
-        """测试大量子弹更新的性能 (100子弹)"""
+        """Test large scale bullet update performance (100 bullets)"""
         bullets = [MockBullet() for _ in range(100)]
         
         iterations = 1000
@@ -154,10 +154,10 @@ class TestBulletUpdatePerformance:
 
 
 class TestExplosiveDamagePerformance:
-    """爆炸伤害性能测试"""
+    """Explosive damage performance tests"""
     
     def test_explosive_damage_performance(self):
-        """测试爆炸伤害的性能 (50敌人范围伤害)"""
+        """Test explosive damage performance (50 enemy AoE damage)"""
         controller = CollisionController()
         
         bullet = MockBullet()

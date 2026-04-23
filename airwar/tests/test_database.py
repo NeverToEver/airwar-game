@@ -15,7 +15,6 @@ class TestUserDB:
         os.remove(self.db_path)
 
         from airwar.utils.database import UserDB
-        original_path = UserDB.__init__.__code__.co_freevars
         self.db = UserDB()
         self.db.db_path = self.db_path
         self.db._ensure_dir()

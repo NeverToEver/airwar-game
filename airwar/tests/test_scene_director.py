@@ -4,6 +4,8 @@ import pygame
 
 
 class TestPauseAction:
+    """Tests for PauseAction enum"""
+
     def test_pause_action_enum_exists(self):
         from airwar.scenes.scene import PauseAction
         assert PauseAction.RESUME is not None
@@ -22,6 +24,8 @@ class TestPauseAction:
 
 
 class TestPauseSceneResult:
+    """Tests for PauseScene result handling"""
+
     def test_pause_scene_returns_resume(self):
         from airwar.scenes.pause_scene import PauseScene
         from airwar.scenes.scene import PauseAction
@@ -43,17 +47,6 @@ class TestPauseSceneResult:
         scene._select_option()
 
         assert scene.result == PauseAction.MAIN_MENU
-
-    def test_pause_scene_returns_quit(self):
-        from airwar.scenes.pause_scene import PauseScene
-        from airwar.scenes.scene import PauseAction
-
-        scene = PauseScene()
-        scene.enter()
-        scene.selected_index = 2
-        scene._select_option()
-
-        assert scene.result == PauseAction.SAVE_AND_QUIT
 
     def test_pause_scene_returns_save_and_quit(self):
         from airwar.scenes.pause_scene import PauseScene
@@ -116,6 +109,8 @@ class TestPauseSceneResult:
 
 
 class TestSceneDirectorFlow:
+    """Tests for SceneDirector flow control"""
+
     def test_scene_director_run_signature(self):
         from airwar.game.scene_director import SceneDirector
 

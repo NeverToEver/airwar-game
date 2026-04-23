@@ -1,9 +1,10 @@
-
 import pytest
 import pygame
 
 
 class TestEventBus:
+    """Tests for EventBus class"""
+
     def test_event_bus_creation(self):
         from airwar.game.mother_ship.event_bus import EventBus
         bus = EventBus()
@@ -47,6 +48,8 @@ class TestEventBus:
 
 
 class TestMotherShipStateMachine:
+    """Tests for MotherShipStateMachine class"""
+
     def test_state_machine_initial_state(self):
         from airwar.game.mother_ship.state_machine import MotherShipStateMachine
         from airwar.game.mother_ship.event_bus import EventBus
@@ -102,6 +105,8 @@ class TestMotherShipStateMachine:
 
 
 class TestMotherShip:
+    """Tests for MotherShip class"""
+
     def test_mother_ship_creation(self):
         from airwar.game.mother_ship.mother_ship import MotherShip
         ship = MotherShip(800, 600)
@@ -126,6 +131,8 @@ class TestMotherShip:
 
 
 class TestGameIntegrator:
+    """Tests for GameIntegrator class"""
+
     def test_game_integrator_creation(self):
         from airwar.game.mother_ship.game_integrator import GameIntegrator
         from airwar.game.mother_ship.event_bus import EventBus
