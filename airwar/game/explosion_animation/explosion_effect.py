@@ -7,6 +7,24 @@ import pygame
 from airwar.game.explosion_animation.explosion_particle import ExplosionParticle
 
 
+# Global glow surface cache for particles
+_particle_glow_cache = {}
+
+
+def _get_particle_glow_surface(glow_radius: int) -> pygame.Surface:
+    """Get or create a cached glow surface for a particle."""
+    cache_key = glow_radius
+    if cache_key not in _particle_glow_cache:
+        surf = pygame.Surface((glow_radius * 2 + 2, glow_radius * 2 + 2), pygame.SRCALPHA)
+        _particle_glow_cache[cache_key] = surf
+    return _particle_glow_cache[cache_key]
+
+
+def clear_particle_glow_cache() -> None:
+    """Clear the particle glow surface cache."""
+    _particle_glow_cache.clear()
+
+
 class ExplosionEffect:
     """Explosion effect — manages the complete lifecycle of an explosion animation"""
 
@@ -150,19 +168,18 @@ class ExplosionEffect:
 
         glow_radius = int(particle.size * 2)
         if glow_radius > 0:
-            glow_surf = pygame.Surface(
-                (glow_radius * 2, glow_radius * 2),
-                pygame.SRCALPHA
-            )
+            glow_surf = _get_particle_glow_surface(glow_radius)
+            # Clear and redraw the glow (size-based cache)
+            glow_surf.fill((0, 0, 0, 0))
             pygame.draw.circle(
                 glow_surf,
                 (*color, int(alpha * 0.3)),
-                (glow_radius, glow_radius),
+                (glow_radius + 1, glow_radius + 1),
                 glow_radius
             )
             surface.blit(
                 glow_surf,
-                (int(particle.x) - glow_radius, int(particle.y) - glow_radius)
+                (int(particle.x) - glow_radius - 1, int(particle.y) - glow_radius - 1)
             )
 
         pygame.draw.circle(

@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List, Tuple, Callable, Optional, TYPE_CHECKING
+import pygame
 
 if TYPE_CHECKING:
     from airwar.entities.player import Player
@@ -30,6 +31,58 @@ class CollisionController:
     def __init__(self):
         self._events: List[CollisionEvent] = []
         self._explosion_callback: Optional[Callable[[float, float, int], None]] = None
+        # Spatial hash grid for collision optimization
+        self._grid_cells = {}
+        self._grid_cell_size = 100
+
+    def _clear_grid(self) -> None:
+        """Clear the spatial hash grid."""
+        self._grid_cells.clear()
+
+    def _get_rect_bounds(self, rect) -> Tuple[int, int, int, int]:
+        """Get (left, right, top, bottom) from rect, supporting both pygame.Rect and MockRect."""
+        if hasattr(rect, 'left'):
+            return rect.left, rect.right, rect.top, rect.bottom
+        else:
+            # MockRect uses centerx, centery, width, height
+            left = rect.centerx - rect.width // 2
+            top = rect.centery - rect.height // 2
+            return left, left + rect.width, top, top + rect.height
+
+    def _get_cell_key(self, x: int, y: int) -> Tuple[int, int]:
+        """Get grid cell key for a position."""
+        return (x // self._grid_cell_size, y // self._grid_cell_size)
+
+    def _add_to_grid(self, entity, rect) -> None:
+        """Add entity to spatial hash grid based on its rect."""
+        left, right, top, bottom = self._get_rect_bounds(rect)
+        min_x = left // self._grid_cell_size
+        max_x = right // self._grid_cell_size
+        min_y = top // self._grid_cell_size
+        max_y = bottom // self._grid_cell_size
+
+        for gx in range(min_x, max_x + 1):
+            for gy in range(min_y, max_y + 1):
+                key = (gx, gy)
+                if key not in self._grid_cells:
+                    self._grid_cells[key] = []
+                self._grid_cells[key].append(entity)
+
+    def _get_potential_collisions(self, rect) -> set:
+        """Get entities that might collide with the given rect."""
+        left, right, top, bottom = self._get_rect_bounds(rect)
+        min_x = left // self._grid_cell_size
+        max_x = right // self._grid_cell_size
+        min_y = top // self._grid_cell_size
+        max_y = bottom // self._grid_cell_size
+
+        potential = set()
+        for gx in range(min_x, max_x + 1):
+            for gy in range(min_y, max_y + 1):
+                key = (gx, gy)
+                if key in self._grid_cells:
+                    potential.update(self._grid_cells[key])
+        return potential
 
     @property
     def events(self) -> List[CollisionEvent]:
@@ -66,7 +119,13 @@ class CollisionController:
         on_clear_bullets: Callable = None,
     ) -> None:
         self._events.clear()
-        
+
+        # Build spatial hash grid for enemies
+        self._clear_grid()
+        for enemy in enemies:
+            if enemy.active:
+                self._add_to_grid(enemy, enemy.get_hitbox())
+
         score_gained, enemies_killed = self.check_player_bullets_vs_enemies(
             player.get_bullets(),
             enemies,
@@ -135,15 +194,26 @@ class CollisionController:
         score_gained = 0
         enemies_killed = 0
 
+        # Check if spatial hash is built (by check_all_collisions)
+        use_spatial_hash = bool(self._grid_cells)
+
         for bullet in player_bullets:
             if not bullet.active:
                 continue
 
-            for enemy in enemies:
+            bullet_rect = bullet.rect
+
+            # Use spatial hash if available, otherwise use all enemies
+            if use_spatial_hash:
+                potential_enemies = self._get_potential_collisions(bullet_rect)
+            else:
+                potential_enemies = [e for e in enemies if e.active]
+
+            for enemy in potential_enemies:
                 if not enemy.active:
                     continue
 
-                if bullet.get_rect().colliderect(enemy.get_hitbox()):
+                if bullet_rect.colliderect(enemy.get_hitbox()):
                     damage = bullet.data.damage
                     enemy.take_damage(damage)
 

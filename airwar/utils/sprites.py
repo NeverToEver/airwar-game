@@ -1,11 +1,24 @@
 import pygame
 import math
+from functools import lru_cache
 
 _glow_circle_cache = {}
 _single_bullet_glow_cache = {}
 _spread_bullet_glow_cache = {}
 _laser_bullet_glow_cache = {}
 _ripple_surface_cache = {}
+
+# Sprite surface caches
+_player_sprite_cache = {}
+_enemy_sprite_cache = {}
+_boss_sprite_cache = {}
+
+
+def clear_sprite_caches() -> None:
+    """Clear all sprite surface caches."""
+    _player_sprite_cache.clear()
+    _enemy_sprite_cache.clear()
+    _boss_sprite_cache.clear()
 
 
 def create_gradient_surface(width: int, height: int, color1: tuple, color2: tuple, vertical: bool = True) -> pygame.Surface:
@@ -39,7 +52,21 @@ def draw_glow_circle(surface: pygame.Surface, center: tuple, radius: int, color:
     pygame.draw.circle(surface, color, center, radius)
 
 
+def get_player_sprite(width: float = 50, height: float = 60) -> pygame.Surface:
+    cache_key = (int(width), int(height))
+    if cache_key not in _player_sprite_cache:
+        surf = pygame.Surface((int(width) + 4, int(height) + 4), pygame.SRCALPHA)
+        _draw_player_ship(surf, 2, 2, width, height)
+        _player_sprite_cache[cache_key] = surf
+    return _player_sprite_cache[cache_key]
+
+
 def draw_player_ship(surface: pygame.Surface, x: float, y: float, width: float = 50, height: float = 60) -> None:
+    sprite = get_player_sprite(width, height)
+    surface.blit(sprite, (int(x) - 2, int(y) - 2))
+
+
+def _draw_player_ship(surface: pygame.Surface, x: float, y: float, width: float = 50, height: float = 60) -> None:
     center_x = x + width / 2
     hull_dark = (35, 60, 100)
     hull_mid = (55, 100, 160)
@@ -180,7 +207,22 @@ def draw_player_ship(surface: pygame.Surface, x: float, y: float, width: float =
         pygame.draw.line(surface, hull_highlight, (center_x + width * 0.08, line_y), (center_x + width * 0.02, line_y), 1)
 
 
+def get_enemy_sprite(width: float = 50, height: float = 50, health_ratio: float = 1.0) -> pygame.Surface:
+    health_bucket = int(health_ratio * 10)
+    cache_key = (int(width), int(height), health_bucket)
+    if cache_key not in _enemy_sprite_cache:
+        surf = pygame.Surface((int(width) + 4, int(height) + 4), pygame.SRCALPHA)
+        _draw_enemy_ship(surf, 2, 2, width, height, health_ratio)
+        _enemy_sprite_cache[cache_key] = surf
+    return _enemy_sprite_cache[cache_key]
+
+
 def draw_enemy_ship(surface: pygame.Surface, x: float, y: float, width: float = 50, height: float = 50, health_ratio: float = 1.0) -> None:
+    sprite = get_enemy_sprite(width, height, health_ratio)
+    surface.blit(sprite, (int(x) - 2, int(y) - 2))
+
+
+def _draw_enemy_ship(surface: pygame.Surface, x: float, y: float, width: float = 50, height: float = 50, health_ratio: float = 1.0) -> None:
     center_x = x + width / 2
     
     if health_ratio > 0.6:
@@ -454,7 +496,22 @@ def draw_ripple(surface: pygame.Surface, x: float, y: float, radius: float, alph
     surface.blit(ripple_surface, (x_pos, y_pos))
 
 
+def get_boss_sprite(width: float = 120, height: float = 100, health_ratio: float = 1.0) -> pygame.Surface:
+    health_bucket = int(health_ratio * 10)
+    cache_key = (int(width), int(height), health_bucket)
+    if cache_key not in _boss_sprite_cache:
+        surf = pygame.Surface((int(width) + 4, int(height) + 20), pygame.SRCALPHA)
+        _draw_boss_ship(surf, 2, 2, width, height, health_ratio)
+        _boss_sprite_cache[cache_key] = surf
+    return _boss_sprite_cache[cache_key]
+
+
 def draw_boss_ship(surface: pygame.Surface, x: float, y: float, width: float = 120, height: float = 100, health_ratio: float = 1.0) -> None:
+    sprite = get_boss_sprite(width, height, health_ratio)
+    surface.blit(sprite, (int(x) - 2, int(y) - 2))
+
+
+def _draw_boss_ship(surface: pygame.Surface, x: float, y: float, width: float = 120, height: float = 100, health_ratio: float = 1.0) -> None:
     center_x = x + width / 2
     center_y = y + height / 2
 
