@@ -17,9 +17,10 @@ from airwar.config.design_tokens import get_design_tokens
 from airwar.ui.menu_background import MenuBackground
 from airwar.ui.particles import ParticleSystem
 from airwar.utils.responsive import ResponsiveHelper
+from airwar.utils.mouse_interaction import MouseInteractiveMixin
 
 
-class TutorialScene(Scene):
+class TutorialScene(Scene, MouseInteractiveMixin):
     """
     Tutorial scene class - coordinates all tutorial components.
 
@@ -30,6 +31,8 @@ class TutorialScene(Scene):
     """
 
     def __init__(self):
+        Scene.__init__(self)
+        MouseInteractiveMixin.__init__(self)
         self._is_running = False
         self._exit_requested = False
         self._panel = TutorialPanel()
@@ -38,7 +41,6 @@ class TutorialScene(Scene):
         self._animation_time = 0
         self._stars = []
         self._particles = []
-        self._hovered_button = None
 
         self._tokens = get_design_tokens()
         self._background_renderer = MenuBackground()
@@ -71,13 +73,14 @@ class TutorialScene(Scene):
         Args:
             **kwargs: Optional parameters (not used currently)
         """
+        self.clear_hover()
+        self.clear_buttons()
         self._is_running = True
         self._exit_requested = False
         self._panel.reset()
         self._navigator.reset()
         self._renderer.reset()
         self._animation_time = 0
-        self._hovered_button = None
         self._particle_system.reset(self._tokens.components.PARTICLE_COUNT, 'particle')
 
     def exit(self) -> None:
@@ -96,13 +99,14 @@ class TutorialScene(Scene):
         Reset the tutorial scene to initial state.
         Called when returning to tutorial from another scene.
         """
+        self.clear_hover()
+        self.clear_buttons()
         self._is_running = True
         self._exit_requested = False
         self._panel.reset()
         self._navigator.reset()
         self._renderer.reset()
         self._animation_time = 0
-        self._hovered_button = None
         self._background_renderer = MenuBackground()
         self._particle_system.reset(self._tokens.components.PARTICLE_COUNT, 'particle')
 
@@ -113,10 +117,33 @@ class TutorialScene(Scene):
         Args:
             event: pygame event to handle
         """
+        self._ensure_buttons_registered()
+        
         if event.type == pygame.KEYDOWN:
             self._handle_keydown(event)
+        elif event.type == pygame.MOUSEMOTION:
+            self.handle_mouse_motion(event.pos)
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            self._handle_mouse(event)
+            if self.handle_mouse_click(event.pos):
+                self._handle_button_click(self.get_hovered_button())
+
+    def _ensure_buttons_registered(self) -> None:
+        display_surface = pygame.display.get_surface()
+        if display_surface is None:
+            return
+        screen_width = display_surface.get_width()
+        screen_height = display_surface.get_height()
+        self._register_buttons(screen_width, screen_height)
+
+    def _handle_button_click(self, button_name: str) -> None:
+        if button_name == 'exit':
+            self._request_exit()
+        elif button_name == 'next':
+            if not self._navigator.is_last_step():
+                self._navigator.next_step()
+        elif button_name == 'prev':
+            if not self._navigator.is_first_step():
+                self._navigator.previous_step()
 
     def _handle_keydown(self, event: pygame.event.Event) -> None:
         """
@@ -149,62 +176,6 @@ class TutorialScene(Scene):
             content = current_step.get('content', [])
             max_index = max(0, len(content) - 1)
             self._navigator.move_selection_down(max_index)
-
-    def _handle_mouse(self, event: pygame.event.Event) -> None:
-        """
-        Handle mouse input.
-
-        Args:
-            event: pygame MOUSEBUTTONDOWN event
-        """
-        mouse_pos = event.pos
-
-        display_surface = pygame.display.get_surface()
-        if display_surface is None:
-            return
-
-        screen_width = display_surface.get_width()
-        screen_height = display_surface.get_height()
-
-        if self._navigator.is_last_step():
-            exit_rect = self._panel.get_button_rect(
-                screen_width,
-                screen_height,
-                'exit'
-            )
-            if self._rect_contains_point(exit_rect, mouse_pos):
-                self._request_exit()
-        else:
-            next_rect = self._panel.get_button_rect(
-                screen_width,
-                screen_height,
-                'next'
-            )
-            if self._rect_contains_point(next_rect, mouse_pos):
-                self._navigator.next_step()
-
-        if not self._navigator.is_first_step():
-            prev_rect = self._panel.get_button_rect(
-                screen_width,
-                screen_height,
-                'prev'
-            )
-            if self._rect_contains_point(prev_rect, mouse_pos):
-                self._navigator.previous_step()
-
-    def _rect_contains_point(self, rect: tuple, point: tuple) -> bool:
-        """
-        Check if a point is inside a rectangle.
-
-        Args:
-            rect: Tuple of (x, y, width, height)
-            point: Tuple of (x, y)
-
-        Returns:
-            True if point is inside rectangle
-        """
-        x, y, w, h = rect
-        return x <= point[0] <= x + w and y <= point[1] <= y + h
 
 
     def _request_exit(self) -> None:
@@ -256,6 +227,20 @@ class TutorialScene(Scene):
             self._particle_system,
             self._animation_time
         )
+
+    def _register_buttons(self, screen_width: int, screen_height: int) -> None:
+        self.clear_buttons()
+        
+        if self._navigator.is_last_step():
+            exit_rect = self._panel.get_button_rect(screen_width, screen_height, 'exit')
+            self.register_button('exit', pygame.Rect(*exit_rect))
+        else:
+            next_rect = self._panel.get_button_rect(screen_width, screen_height, 'next')
+            self.register_button('next', pygame.Rect(*next_rect))
+
+        if not self._navigator.is_first_step():
+            prev_rect = self._panel.get_button_rect(screen_width, screen_height, 'prev')
+            self.register_button('prev', pygame.Rect(*prev_rect))
 
     def is_running(self) -> bool:
         """

@@ -6,9 +6,14 @@ from airwar.ui.menu_background import MenuBackground
 from airwar.ui.particles import ParticleSystem
 from airwar.ui.effects import EffectsRenderer
 from airwar.config.design_tokens import get_design_tokens
+from airwar.utils.mouse_interaction import MouseSelectableMixin
 
 
-class PauseScene(Scene):
+class PauseScene(Scene, MouseSelectableMixin):
+    def __init__(self):
+        Scene.__init__(self)
+        MouseSelectableMixin.__init__(self)
+
     def enter(self, **kwargs) -> None:
         self.running = True
         self.result: PauseAction = None
@@ -62,6 +67,11 @@ class PauseScene(Scene):
                 self.selected_index = (self.selected_index + 1) % len(self.options)
             elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
                 self._select_option()
+        elif event.type == pygame.MOUSEMOTION:
+            self.handle_mouse_motion(event.pos)
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if self.handle_mouse_click(event.pos):
+                self._select_option()
 
     def _select_option(self) -> None:
         self.running = False
@@ -106,6 +116,7 @@ class PauseScene(Scene):
         box_width = ResponsiveHelper.scale(self.base_box_width, scale)
         box_height = ResponsiveHelper.scale(self.base_box_height, scale)
         box_rect = pygame.Rect(center_x - box_width // 2, y - box_height // 2, box_width, box_height)
+        self.append_option_rect(box_rect)
 
         if is_selected:
             glow_color = self.colors['selected_glow']
@@ -171,16 +182,19 @@ class PauseScene(Scene):
 
         option_spacing = ResponsiveHelper.scale(self.base_option_spacing, scale)
         start_y = height // 2 + ResponsiveHelper.scale(20, scale)
+        
+        self.clear_option_rects()
+        effective_index = self.get_effective_selected_index(self.selected_index)
         for i, option in enumerate(self.options):
-            self._draw_option_box(surface, option, start_y + i * option_spacing, i == self.selected_index, scale)
+            self._draw_option_box(surface, option, start_y + i * option_spacing, i == effective_index, scale)
 
         blink_interval = self._tokens.animation.BLINK_INTERVAL
         blink = (self.animation_time // blink_interval) % 2 == 0
-        hint_text = "PRESS ENTER TO CONFIRM" if blink else "                "
+        hint_text = "CLICK or ENTER to confirm" if blink else "                       "
         hint = self.hint_font.render(hint_text, True, self.colors['hint'])
         surface.blit(hint, hint.get_rect(center=(width // 2, height - ResponsiveHelper.scale(120, scale))))
 
-        controls = self.desc_font.render("W/S or UP/DOWN to select", True, (60, 60, 100))
+        controls = self.desc_font.render("Click or W/S to select", True, (60, 60, 100))
         surface.blit(controls, controls.get_rect(center=(width // 2, height - ResponsiveHelper.scale(80, scale))))
 
         esc_hint = self.desc_font.render("ESC to resume", True, (70, 70, 110))

@@ -7,10 +7,17 @@ from airwar.utils.responsive import ResponsiveHelper
 from airwar.ui.menu_background import MenuBackground
 from airwar.config.design_tokens import get_design_tokens
 from airwar.window.window import get_window
+from airwar.utils.mouse_interaction import MouseInteractiveMixin
 
 
-class LoginScene(Scene):
+class LoginScene(Scene, MouseInteractiveMixin):
+    def __init__(self):
+        Scene.__init__(self)
+        MouseInteractiveMixin.__init__(self)
+
     def enter(self, **kwargs) -> None:
+        self.clear_hover()
+        self.clear_buttons()
         self.db = UserDB()
         self.running = True
         self.mode = 'login'
@@ -116,8 +123,38 @@ class LoginScene(Scene):
     def handle_events(self, event: pygame.event.Event) -> None:
         if event.type == pygame.KEYDOWN:
             self._handle_keyboard_event(event)
+        elif event.type == pygame.MOUSEMOTION:
+            self.handle_mouse_motion(event.pos)
+            self._update_input_active_from_hover()
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            self._handle_mouse_event(event)
+            if self.handle_mouse_click(event.pos):
+                self._handle_button_click(self.get_hovered_button())
+
+    def _update_input_active_from_hover(self) -> None:
+        hovered = self.get_hovered_button()
+        if hovered == 'username':
+            self.input_active = 'username'
+        elif hovered == 'password':
+            self.input_active = 'password'
+
+    def _handle_button_click(self, button_name: str) -> None:
+        if button_name is None:
+            return
+        
+        if button_name == 'login':
+            self._do_login()
+        elif button_name == 'register':
+            self._do_register()
+        elif button_name == 'quit':
+            self.want_to_quit = True
+            self.running = False
+        elif button_name == 'fullscreen':
+            window = get_window()
+            window.toggle_fullscreen()
+        elif button_name == 'username':
+            self.input_active = 'username'
+        elif button_name == 'password':
+            self.input_active = 'password'
 
     def _handle_keyboard_event(self, event: pygame.event.Event) -> None:
         if event.key == pygame.K_TAB:
@@ -143,23 +180,6 @@ class LoginScene(Scene):
                 self._spawn_input_particles()
             elif len(self.password) < 16 and self.input_active == 'password':
                 self.password += event.unicode
-
-    def _handle_mouse_event(self, event: pygame.event.Event) -> None:
-        mx, my = event.pos
-        if self.username_input_rect.collidepoint(mx, my):
-            self.input_active = 'username'
-        elif self.password_input_rect.collidepoint(mx, my):
-            self.input_active = 'password'
-        elif self.login_btn.collidepoint(mx, my):
-            self._do_login()
-        elif self.register_btn.collidepoint(mx, my):
-            self._do_register()
-        elif self.quit_btn.collidepoint(mx, my):
-            self.want_to_quit = True
-            self.running = False
-        elif self.fullscreen_btn.collidepoint(mx, my):
-            window = get_window()
-            window.toggle_fullscreen()
 
     def _spawn_input_particles(self) -> None:
         for _ in range(5):
@@ -324,14 +344,18 @@ class LoginScene(Scene):
                                               self.input_width, self.input_height)
         self.password_input_rect = pygame.Rect(self.input_x, self.password_input_y,
                                              self.input_width, self.input_height)
+        
+        self.register_button('username', self.username_input_rect)
+        self.register_button('password', self.password_input_rect)
 
         self._render_input_box(surface, self.username_input_rect, "USERNAME", self.username, True)
         self._render_input_box(surface, self.password_input_rect, "PASSWORD", self.password, False)
 
     def _render_input_box(self, surface, rect, label, text, is_username):
         is_active = self.input_active == label.split('_')[0].lower()
-        self._draw_input_glow(surface, rect, is_active)
-        self._draw_input_bg(surface, rect, is_active)
+        is_hovered = self.is_button_hovered(label.split('_')[0].lower())
+        self._draw_input_glow(surface, rect, is_active or is_hovered)
+        self._draw_input_bg(surface, rect, is_active, is_hovered)
         self._draw_input_label(surface, rect, label, is_active)
         self._draw_input_content(surface, rect, text, is_username)
 
@@ -348,8 +372,10 @@ class LoginScene(Scene):
                            glow_surf.get_rect(), border_radius=12)
             surface.blit(glow_surf, glow_rect)
 
-    def _draw_input_bg(self, surface, rect, is_active):
+    def _draw_input_bg(self, surface, rect, is_active, is_hovered=False):
         bg_color = self.colors['input_active'] if is_active else self.colors['input_bg']
+        if is_hovered and not is_active:
+            bg_color = tuple(min(c + 10, 255) for c in bg_color)
         pygame.draw.rect(surface, bg_color, rect, border_radius=10)
         border_color = self.colors['title'] if is_active else self.colors['panel_border']
         border_surf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
@@ -385,17 +411,17 @@ class LoginScene(Scene):
                            (cursor_x, rect.y + ResponsiveHelper.scale(15, scale)), (cursor_x, rect.y + rect.height - ResponsiveHelper.scale(15, scale)), 2)
 
     def _render_buttons(self, surface):
-        self._render_button(surface, self.login_btn, "LOGIN", self.colors['button_login'], True)
-        self._render_button(surface, self.register_btn, "REGISTER", self.colors['button_register'], False)
-        self._render_button(surface, self.quit_btn, "QUIT", self.colors['button_quit'], False)
+        self._render_button(surface, self.login_btn, "LOGIN", self.colors['button_login'], True, 'login')
+        self._render_button(surface, self.register_btn, "REGISTER", self.colors['button_register'], False, 'register')
+        self._render_button(surface, self.quit_btn, "QUIT", self.colors['button_quit'], False, 'quit')
         
         window = get_window()
         fullscreen_text = "Exit Fullscreen" if window.is_fullscreen() else "Enter Fullscreen"
-        self._render_button(surface, self.fullscreen_btn, fullscreen_text, self.colors['button_fullscreen'], False)
+        self._render_button(surface, self.fullscreen_btn, fullscreen_text, self.colors['button_fullscreen'], False, 'fullscreen')
 
-    def _render_button(self, surface, rect, text, color, is_primary):
-        mouse_pos = pygame.mouse.get_pos()
-        hover = rect.collidepoint(mouse_pos)
+    def _render_button(self, surface, rect, text, color, is_primary, button_name=None):
+        self.register_button(button_name, rect)
+        hover = self.is_button_hovered(button_name) if button_name else False
 
         btn_color = tuple(min(c + 30, 255) for c in color) if hover else color
 

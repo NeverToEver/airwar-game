@@ -1,10 +1,12 @@
 import pygame
 import math
 from typing import List, Callable, Optional
+from airwar.utils.mouse_interaction import MouseSelectableMixin
 
 
-class RewardSelector:
+class RewardSelector(MouseSelectableMixin):
     def __init__(self):
+        MouseSelectableMixin.__init__(self)
         self.visible: bool = False
         self.selected_index: int = 0
         self.options: List[dict] = []
@@ -122,6 +124,11 @@ class RewardSelector:
                 self.selected_index = (self.selected_index + 1) % len(self.options)
             elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
                 self._confirm_selection()
+        elif event.type == pygame.MOUSEMOTION:
+            self.handle_mouse_motion(event.pos)
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if self.handle_mouse_click(event.pos):
+                self._confirm_selection()
 
     def _confirm_selection(self) -> None:
         if self.on_select and self.options:
@@ -233,6 +240,7 @@ class RewardSelector:
         box_width = 440
         box_height = option_height
         box_rect = pygame.Rect(center_x - box_width // 2, y, box_width, box_height)
+        self.append_option_rect(box_rect)
 
         buff_name = option['name']
         level = self.buff_levels.get(buff_name, 0)
@@ -299,7 +307,7 @@ class RewardSelector:
             hint_color = (90, 100, 140)
         else:
             hint_color = (120, 130, 170)
-        hint = self.hint_font.render("W / S to select   ENTER to confirm", True, hint_color)
+        hint = self.hint_font.render("Click or W/S to select, ENTER to confirm", True, hint_color)
         surface.blit(hint, hint.get_rect(center=(width // 2, height - 50)))
 
     def render(self, surface: pygame.Surface) -> None:
@@ -323,7 +331,9 @@ class RewardSelector:
         option_section_height = 80 * 3 + 15 * 2
         start_y = panel_y + (panel_height - option_section_height) // 2 + 10
         
+        self.clear_option_rects()
+        effective_index = self.get_effective_selected_index(self.selected_index)
         for i, option in enumerate(self.options):
-            self._draw_option_item(surface, option, i, center_x, start_y, i == self.selected_index)
+            self._draw_option_item(surface, option, i, center_x, start_y, i == effective_index)
 
         self._draw_bottom_hint(surface)
