@@ -6,7 +6,7 @@ Following the F.I.R.S.T. principles: Fast, Independent, Repeatable, Self-Validat
 """
 
 import pytest
-from airwar.components.tutorial import TutorialNavigator
+from airwar.scenes.tutorial import TutorialNavigator
 from airwar.config.tutorial import TUTORIAL_STEPS
 
 
