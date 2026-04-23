@@ -1,7 +1,8 @@
 from enum import Enum
 from typing import Optional, Tuple
 import pygame
-from airwar.config.design_tokens import get_design_tokens
+from airwar.config.design_tokens import get_design_tokens, ForestColors, MilitaryUI
+from airwar.ui.chamfered_panel import draw_chamfered_panel
 
 
 class ScreenAction(Enum):
@@ -20,6 +21,7 @@ class GameOverScreen:
         self._buttons = {}
         self._mouse_pos = (0, 0)
         self._tokens = get_design_tokens()
+        self._use_military_style = True
 
     def show(self, score: int, kills: int, username: Optional[str] = None,
              high_score: Optional[int] = None) -> ScreenAction:
@@ -139,7 +141,6 @@ class GameOverScreen:
         pygame.font.init()
 
         tokens = self._tokens
-        colors = tokens.colors
 
         scale = screen_width / 800
         font_large = pygame.font.Font(None, int(tokens.typography.HEADING_SIZE * scale))
@@ -147,23 +148,65 @@ class GameOverScreen:
         font_small = pygame.font.Font(None, int(tokens.typography.CAPTION_SIZE * scale))
         font_button = pygame.font.Font(None, int(tokens.typography.SMALL_SIZE * scale))
 
-        surface.fill(colors.BACKGROUND_PRIMARY)
+        if self._use_military_style:
+            # Military style background
+            surface.fill(ForestColors.BG_PRIMARY)
 
-        title = font_large.render("GAME OVER", True, colors.HEALTH_DANGER)
-        surface.blit(title, title.get_rect(center=(screen_width // 2, int(150 * scale))))
+            # Draw grid overlay
+            spacing = MilitaryUI.GRID_SPACING
+            grid_color = (*ForestColors.GOLD_PRIMARY[:3], MilitaryUI.GRID_ALPHA)
+            for x in range(0, screen_width, spacing):
+                pygame.draw.line(surface, grid_color, (x, 0), (x, screen_height))
+            for y in range(0, screen_height, spacing):
+                pygame.draw.line(surface, grid_color, (0, y), (screen_width, y))
 
-        score_text = font_medium.render(f"SCORE: {score}", True, colors.TEXT_PRIMARY)
-        surface.blit(score_text, score_text.get_rect(center=(screen_width // 2, int(280 * scale))))
+            # Military style title with glow
+            title_text = "GAME OVER"
+            for blur, alpha, color in [(4, 20, ForestColors.DANGER_RED_DIM), (2, 35, ForestColors.DANGER_RED)]:
+                glow_surf = font_large.render(title_text, True, color)
+                glow_surf.set_alpha(alpha)
+                for offset_x in range(-blur, blur + 1, 2):
+                    for offset_y in range(-blur, blur + 1, 2):
+                        if offset_x * offset_x + offset_y * offset_y <= blur * blur:
+                            glow_rect = glow_surf.get_rect(center=(screen_width // 2 + offset_x, int(150 * scale) + offset_y))
+                            surface.blit(glow_surf, glow_rect)
 
-        kills_text = font_medium.render(f"KILLS: {kills}", True, colors.PROGRESS_COLOR)
-        surface.blit(kills_text, kills_text.get_rect(center=(screen_width // 2, int(330 * scale))))
+            title = font_large.render(title_text, True, ForestColors.DANGER_RED)
+            surface.blit(title, title.get_rect(center=(screen_width // 2, int(150 * scale))))
 
-        if username and high_score is not None:
-            hs_text = font_small.render(f"HIGH SCORE: {high_score}", True, colors.SUCCESS)
-            surface.blit(hs_text, hs_text.get_rect(center=(screen_width // 2, int(400 * scale))))
+            # Military style stats
+            score_text = font_medium.render(f"SCORE: {score:,}", True, ForestColors.GOLD_PRIMARY)
+            surface.blit(score_text, score_text.get_rect(center=(screen_width // 2, int(280 * scale))))
 
-        self._render_button(surface, 'menu', "RETURN TO MAIN MENU", font_button, scale)
-        self._render_button(surface, 'quit', "QUIT GAME", font_button, scale)
+            kills_text = font_medium.render(f"KILLS: {kills}", True, ForestColors.TEXT_PRIMARY)
+            surface.blit(kills_text, kills_text.get_rect(center=(screen_width // 2, int(330 * scale))))
+
+            if username and high_score is not None:
+                hs_text = font_small.render(f"HIGH SCORE: {high_score}", True, ForestColors.FOREST_GREEN)
+                surface.blit(hs_text, hs_text.get_rect(center=(screen_width // 2, int(400 * scale))))
+
+            self._render_military_button(surface, 'menu', "RETURN TO MAIN MENU", font_button, scale)
+            self._render_military_button(surface, 'quit', "QUIT GAME", font_button, scale)
+        else:
+            # Original style
+            colors = tokens.colors
+            surface.fill(colors.BACKGROUND_PRIMARY)
+
+            title = font_large.render("GAME OVER", True, colors.HEALTH_DANGER)
+            surface.blit(title, title.get_rect(center=(screen_width // 2, int(150 * scale))))
+
+            score_text = font_medium.render(f"SCORE: {score}", True, colors.TEXT_PRIMARY)
+            surface.blit(score_text, score_text.get_rect(center=(screen_width // 2, int(280 * scale))))
+
+            kills_text = font_medium.render(f"KILLS: {kills}", True, colors.PROGRESS_COLOR)
+            surface.blit(kills_text, kills_text.get_rect(center=(screen_width // 2, int(330 * scale))))
+
+            if username and high_score is not None:
+                hs_text = font_small.render(f"HIGH SCORE: {high_score}", True, colors.SUCCESS)
+                surface.blit(hs_text, hs_text.get_rect(center=(screen_width // 2, int(400 * scale))))
+
+            self._render_button(surface, 'menu', "RETURN TO MAIN MENU", font_button, scale)
+            self._render_button(surface, 'quit', "QUIT GAME", font_button, scale)
 
     def _render_button(self, surface, btn_key: str, text: str, font, scale: float):
         colors = self._tokens.colors
@@ -219,6 +262,71 @@ class GameOverScreen:
         pygame.draw.rect(border_surf, (*glow_color, 180),
                         border_surf.get_rect(), width=2, border_radius=10)
         surface.blit(border_surf, scaled_rect.topleft)
+
+        text_surf = font.render(text, True, text_color)
+        text_rect = text_surf.get_rect(center=scaled_rect.center)
+        surface.blit(text_surf, text_rect)
+
+    def _render_military_button(self, surface, btn_key: str, text: str, font, scale: float):
+        """Render button in military style with chamfered corners."""
+        btn_rect = self._buttons[btn_key]
+        is_hovered = btn_rect.collidepoint(self._mouse_pos)
+        hover_scale = self._button_hover_scale[btn_key]
+        click_scale = 1.0 - (self._button_click_animation[btn_key] * self._tokens.animation.CLICK_SCALE_FACTOR)
+
+        final_scale = hover_scale * click_scale
+        scaled_width = int(btn_rect.width * final_scale)
+        scaled_height = int(btn_rect.height * final_scale)
+
+        center_x, center_y = btn_rect.centerx, btn_rect.centery
+        scaled_rect = pygame.Rect(
+            center_x - scaled_width // 2,
+            center_y - scaled_height // 2,
+            scaled_width,
+            scaled_height
+        )
+
+        if btn_key == 'menu':
+            if is_hovered:
+                base_color = ForestColors.FOREST_GREEN
+                border_color = ForestColors.GOLD_PRIMARY
+                text_color = ForestColors.TEXT_BRIGHT
+            else:
+                base_color = ForestColors.BG_PANEL_LIGHT
+                border_color = ForestColors.BORDER_DIM
+                text_color = ForestColors.TEXT_PRIMARY
+        else:
+            if is_hovered:
+                base_color = ForestColors.DANGER_RED_DIM
+                border_color = ForestColors.DANGER_RED
+                text_color = ForestColors.TEXT_BRIGHT
+            else:
+                base_color = ForestColors.BG_PANEL_LIGHT
+                border_color = ForestColors.BORDER_DIM
+                text_color = ForestColors.TEXT_PRIMARY
+
+        # Draw glow for hovered
+        if is_hovered or self._button_click_animation[btn_key] > 0:
+            draw_chamfered_panel(
+                surface,
+                scaled_rect.x - 4, scaled_rect.y - 4,
+                scaled_rect.width + 8, scaled_rect.height + 8,
+                ForestColors.BG_PANEL,
+                ForestColors.GOLD_GLOW if btn_key == 'menu' else ForestColors.DANGER_RED,
+                ForestColors.GOLD_GLOW if btn_key == 'menu' else ForestColors.DANGER_RED,
+                10
+            )
+
+        # Draw chamfered button
+        draw_chamfered_panel(
+            surface,
+            scaled_rect.x, scaled_rect.y,
+            scaled_rect.width, scaled_rect.height,
+            base_color,
+            border_color,
+            None,
+            8
+        )
 
         text_surf = font.render(text, True, text_color)
         text_rect = text_surf.get_rect(center=scaled_rect.center)

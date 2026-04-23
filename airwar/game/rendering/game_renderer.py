@@ -4,7 +4,7 @@ from typing import List
 from airwar.game.rendering.hud_renderer import HUDRenderer
 from airwar.game.rendering.integrated_hud import IntegratedHUD
 from airwar.game.managers.game_controller import GameState, GameplayState
-from airwar.game.rendering.game_rendering_background import GameSceneBackground
+from airwar.game.rendering.game_rendering_background import RainforestBackground
 from airwar.game.death_animation import DeathAnimation
 
 
@@ -19,13 +19,13 @@ class GameRenderer:
     def __init__(self, hud_renderer: HUDRenderer = None, use_integrated_hud: bool = True):
         self.hud_renderer = hud_renderer or HUDRenderer()
         self.integrated_hud = IntegratedHUD() if use_integrated_hud else None
-        self.background_renderer: GameSceneBackground = None
+        self.background_renderer: RainforestBackground = None
         self._death_animation = None
         self._screen_diagonal = 0
         self._was_in_dying_state = False
 
     def init_background(self, screen_width: int, screen_height: int) -> None:
-        self.background_renderer = GameSceneBackground(screen_width, screen_height)
+        self.background_renderer = RainforestBackground(screen_width, screen_height)
         self._screen_diagonal = int((screen_width ** 2 + screen_height ** 2) ** 0.5)
 
     def render(self, surface: pygame.Surface, state: GameState, entities: GameEntities) -> None:
