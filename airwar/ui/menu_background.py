@@ -1,7 +1,7 @@
 import pygame
 import math
 import random
-from airwar.config.design_tokens import get_design_tokens
+from airwar.config.design_tokens import get_design_tokens, MilitaryColors, MilitaryUI
 
 
 class MenuBackground:
@@ -75,3 +75,49 @@ class MenuBackground:
             twinkle = math.sin(self._animation_time * star['twinkle_speed'] + star['twinkle_offset'])
             brightness = int(star['brightness'] * (0.5 + 0.5 * twinkle))
             pygame.draw.circle(surface, star_color(brightness), (x, y), int(star['size']))
+
+    def render_military_style(self, surface: pygame.Surface, colors: dict):
+        """渲染军事风格背景（带网格和扫描线）
+
+        Args:
+            surface: 目标 surface
+            colors: 颜色配置
+        """
+        # 先渲染普通背景
+        self.render(surface, colors)
+
+        # 渲染网格线
+        self._render_grid_overlay(surface)
+
+        # 渲染扫描线
+        self._render_scanline_overlay(surface)
+
+    def _render_grid_overlay(self, surface: pygame.Surface):
+        """渲染网格覆盖层"""
+        width, height = surface.get_size()
+        spacing = MilitaryUI.GRID_SPACING
+        alpha = MilitaryUI.GRID_ALPHA
+
+        grid_color = (*MilitaryColors.AMBER_PRIMARY[:3], alpha)
+
+        # 垂直线
+        for x in range(0, width, spacing):
+            pygame.draw.line(surface, grid_color, (x, 0), (x, height))
+
+        # 水平线
+        for y in range(0, height, spacing):
+            pygame.draw.line(surface, grid_color, (0, y), (width, y))
+
+    def _render_scanline_overlay(self, surface: pygame.Surface):
+        """渲染扫描线覆盖层"""
+        width, height = surface.get_size()
+        spacing = MilitaryUI.SCANLINE_SPACING
+        alpha = MilitaryUI.SCANLINE_ALPHA
+
+        # 计算扫描线偏移（动画效果）
+        offset = (self._animation_time * MilitaryUI.SCANLINE_SPEED) % spacing
+
+        scanline_color = (*MilitaryColors.AMBER_PRIMARY[:3], alpha)
+
+        for y in range(int(offset), height, spacing):
+            pygame.draw.line(surface, scanline_color, (0, y), (width, y))

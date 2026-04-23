@@ -3,6 +3,10 @@ from dataclasses import dataclass
 import pygame
 import logging
 
+from airwar.config.design_tokens import MilitaryColors, MilitaryUI
+from airwar.ui.chamfered_panel import draw_chamfered_panel
+from airwar.ui.hex_icon import HexIcon, ICON_POWER, ICON_DEFENSE, ICON_SPEED
+
 logger = logging.getLogger(__name__)
 
 
@@ -232,7 +236,8 @@ class BuffStatsPanel:
         reward_system,
         player,
         screen_width: int,
-        screen_height: int
+        screen_height: int,
+        use_military: bool = True
     ) -> None:
         if not reward_system or not reward_system.unlocked_buffs:
             return
@@ -251,17 +256,24 @@ class BuffStatsPanel:
             if panel_y < 50:
                 panel_y = 50
 
-            cache_key = (self._panel_width, panel_height, tuple(sorted(reward_system.unlocked_buffs)))
-            if cache_key not in BuffStatsPanel._panel_surface_cache:
-                panel_surface = self._create_panel_surface(self._panel_width, panel_height)
-                self._render_header(panel_surface)
-                self._render_buff_items(panel_surface, buff_entries)
-                self._render_summary(panel_surface, summary)
-                self._add_to_cache(cache_key, panel_surface)
+            if use_military:
+                self._render_military_style(
+                    surface, buff_entries, summary,
+                    self._panel_width, panel_height,
+                    panel_x, panel_y
+                )
             else:
-                panel_surface = BuffStatsPanel._panel_surface_cache[cache_key]
+                cache_key = (self._panel_width, panel_height, tuple(sorted(reward_system.unlocked_buffs)))
+                if cache_key not in BuffStatsPanel._panel_surface_cache:
+                    panel_surface = self._create_panel_surface(self._panel_width, panel_height)
+                    self._render_header(panel_surface)
+                    self._render_buff_items(panel_surface, buff_entries)
+                    self._render_summary(panel_surface, summary)
+                    self._add_to_cache(cache_key, panel_surface)
+                else:
+                    panel_surface = BuffStatsPanel._panel_surface_cache[cache_key]
 
-            surface.blit(panel_surface, (panel_x, panel_y))
+                surface.blit(panel_surface, (panel_x, panel_y))
 
         except (AttributeError, TypeError) as e:
             logger.debug(f"Failed to render buff stats panel: {e}")
@@ -329,3 +341,95 @@ class BuffStatsPanel:
 
             if x > surface.get_width() - 80:
                 break
+
+    def _render_military_style(
+        self,
+        surface: pygame.Surface,
+        buff_entries: List[BuffStatEntry],
+        summary: Dict[str, str],
+        panel_width: int,
+        panel_height: int,
+        panel_x: int,
+        panel_y: int
+    ) -> None:
+        """Render buff stats panel in military style"""
+        # Draw chamfered panel background
+        draw_chamfered_panel(
+            surface, panel_x, panel_y, panel_width, panel_height,
+            MilitaryColors.BG_PANEL,
+            MilitaryColors.BORDER_GLOW,
+            MilitaryColors.AMBER_GLOW,
+            chamfer_depth=8
+        )
+
+        # Render content on a separate surface
+        content_surf = pygame.Surface((panel_width, panel_height), pygame.SRCALPHA)
+        content_surf.fill((0, 0, 0, 0))
+
+        # Title
+        title_font = pygame.font.Font(None, MilitaryUI.MILITARY_LABEL_SIZE)
+        title = title_font.render("ACTIVE", True, MilitaryColors.TEXT_DIM)
+        title_rect = title.get_rect(centerx=panel_width // 2, top=10)
+        content_surf.blit(title, title_rect)
+
+        # Divider line
+        pygame.draw.line(
+            content_surf, MilitaryColors.BORDER_DIM,
+            (10, 30), (panel_width - 10, 30), 1
+        )
+
+        # Buff items
+        y_offset = 40
+        for entry in buff_entries:
+            self._render_military_buff_item(content_surf, entry, y_offset, panel_width)
+            y_offset += 32
+
+        # Summary (if any)
+        if summary:
+            pygame.draw.line(
+                content_surf, MilitaryColors.BORDER_DIM,
+                (10, y_offset + 5), (panel_width - 10, y_offset + 5), 1
+            )
+            y_offset += 15
+            summary_font = pygame.font.Font(None, MilitaryUI.MILITARY_SMALL_SIZE)
+            x_offset = 10
+            for key, value in list(summary.items())[:4]:
+                text = summary_font.render(f"{key}:{value}", True, MilitaryColors.AMBER_PRIMARY)
+                content_surf.blit(text, (x_offset, y_offset))
+                x_offset += text.get_width() + 15
+
+        surface.blit(content_surf, (panel_x, panel_y))
+
+    def _render_military_buff_item(
+        self,
+        surface: pygame.Surface,
+        entry: BuffStatEntry,
+        y_offset: int,
+        panel_width: int
+    ) -> None:
+        """Render a single buff item in military style"""
+        # Determine icon type based on category
+        icon_type = ICON_POWER
+        if entry.category == 'defense':
+            icon_type = ICON_DEFENSE
+        elif entry.category == 'utility':
+            icon_type = ICON_SPEED
+
+        # Draw hexagon icon
+        icon = HexIcon(icon_type, 12, is_active=True)
+        icon.render(surface, (20, y_offset + 10), entry.color)
+
+        # Buff name
+        name_font = pygame.font.Font(None, MilitaryUI.MILITARY_SMALL_SIZE)
+        name_text = name_font.render(entry.short_name, True, MilitaryColors.TEXT_PRIMARY)
+        surface.blit(name_text, (38, y_offset + 2))
+
+        # Buff value
+        value_text = name_font.render(entry.value, True, MilitaryColors.AMBER_PRIMARY)
+        value_rect = value_text.get_rect(right=panel_width - 10, top=y_offset + 2)
+        surface.blit(value_text, value_rect)
+
+        # Level indicator
+        if entry.level > 1:
+            level_text = name_font.render(f"x{entry.level}", True, MilitaryColors.TEXT_DIM)
+            surface.blit(level_text, (38, y_offset + 16))
