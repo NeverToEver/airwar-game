@@ -56,10 +56,10 @@ class CollisionController:
     def _add_to_grid(self, entity, rect) -> None:
         """Add entity to spatial hash grid based on its rect."""
         left, right, top, bottom = self._get_rect_bounds(rect)
-        min_x = left // self._grid_cell_size
-        max_x = right // self._grid_cell_size
-        min_y = top // self._grid_cell_size
-        max_y = bottom // self._grid_cell_size
+        min_x = int(left // self._grid_cell_size)
+        max_x = int(right // self._grid_cell_size)
+        min_y = int(top // self._grid_cell_size)
+        max_y = int(bottom // self._grid_cell_size)
 
         for gx in range(min_x, max_x + 1):
             for gy in range(min_y, max_y + 1):
@@ -71,10 +71,10 @@ class CollisionController:
     def _get_potential_collisions(self, rect) -> set:
         """Get entities that might collide with the given rect."""
         left, right, top, bottom = self._get_rect_bounds(rect)
-        min_x = left // self._grid_cell_size
-        max_x = right // self._grid_cell_size
-        min_y = top // self._grid_cell_size
-        max_y = bottom // self._grid_cell_size
+        min_x = int(left // self._grid_cell_size)
+        max_x = int(right // self._grid_cell_size)
+        min_y = int(top // self._grid_cell_size)
+        max_y = int(bottom // self._grid_cell_size)
 
         potential = set()
         for gx in range(min_x, max_x + 1):

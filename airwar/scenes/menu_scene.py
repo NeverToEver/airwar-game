@@ -5,7 +5,8 @@ from airwar.utils.responsive import ResponsiveHelper
 from airwar.ui.menu_background import MenuBackground
 from airwar.ui.particles import ParticleSystem
 from airwar.ui.effects import EffectsRenderer
-from airwar.config.design_tokens import get_design_tokens
+from airwar.ui.chamfered_panel import draw_chamfered_panel
+from airwar.config.design_tokens import get_design_tokens, MilitaryColors
 from airwar.utils.mouse_interaction import MouseSelectableMixin
 
 
@@ -74,6 +75,21 @@ class MenuScene(Scene, MouseSelectableMixin):
             'option_selected_bg': colors.BUTTON_SELECTED_BG,
             'option_unselected_bg': colors.BUTTON_UNSELECTED_BG,
         }
+        # Military style colors
+        self.military_colors = {
+            'bg': MilitaryColors.BG_PRIMARY,
+            'bg_gradient': MilitaryColors.BG_PANEL,
+            'title': MilitaryColors.AMBER_PRIMARY,
+            'title_glow': MilitaryColors.AMBER_GLOW,
+            'selected': MilitaryColors.AMBER_PRIMARY,
+            'selected_glow': MilitaryColors.AMBER_GLOW,
+            'unselected': MilitaryColors.TEXT_DIM,
+            'panel': MilitaryColors.BG_PANEL,
+            'panel_border': MilitaryColors.BORDER_GLOW,
+            'option_selected_bg': MilitaryColors.BG_PANEL_LIGHT,
+            'option_unselected_bg': MilitaryColors.BG_PANEL,
+        }
+        self.use_military_style = True
 
     def exit(self) -> None:
         """Clean up when exiting the menu scene."""
@@ -154,24 +170,35 @@ class MenuScene(Scene, MouseSelectableMixin):
         panel_x = width // 2 - panel_width // 2
         panel_y = height // 2 - panel_height // 2 + ResponsiveHelper.scale(30, scale)
 
-        panel_rect = pygame.Rect(panel_x, panel_y, panel_width, panel_height)
+        if self.use_military_style:
+            # Military style: chamfered panel
+            draw_chamfered_panel(
+                surface, panel_x, panel_y, panel_width, panel_height,
+                self.military_colors['panel'],
+                self.military_colors['panel_border'],
+                self.military_colors['selected_glow'],
+                chamfer_depth=12
+            )
+        else:
+            # Original style: rounded panel with glow
+            panel_rect = pygame.Rect(panel_x, panel_y, panel_width, panel_height)
 
-        for i in range(4, 0, -1):
-            expand = i * 4
-            glow_surf = pygame.Surface((panel_width + expand * 2, panel_height + expand * 2), pygame.SRCALPHA)
-            alpha = max(5, 25 // i)
-            pygame.draw.rect(glow_surf, (*self.colors['title_glow'], alpha),
-                          glow_surf.get_rect(), border_radius=18)
-            surface.blit(glow_surf, (panel_x - expand, panel_y - expand))
+            for i in range(4, 0, -1):
+                expand = i * 4
+                glow_surf = pygame.Surface((panel_width + expand * 2, panel_height + expand * 2), pygame.SRCALPHA)
+                alpha = max(5, 25 // i)
+                pygame.draw.rect(glow_surf, (*self.colors['title_glow'], alpha),
+                              glow_surf.get_rect(), border_radius=18)
+                surface.blit(glow_surf, (panel_x - expand, panel_y - expand))
 
-        pygame.draw.rect(surface, self.colors['panel'], panel_rect, border_radius=15)
+            pygame.draw.rect(surface, self.colors['panel'], panel_rect, border_radius=15)
 
-        border_surf = pygame.Surface((panel_width, panel_height), pygame.SRCALPHA)
-        pygame.draw.rect(border_surf, (*self.colors['panel_border'], 140),
-                       border_surf.get_rect(), width=2, border_radius=15)
-        surface.blit(border_surf, panel_rect.topleft)
+            border_surf = pygame.Surface((panel_width, panel_height), pygame.SRCALPHA)
+            pygame.draw.rect(border_surf, (*self.colors['panel_border'], 140),
+                           border_surf.get_rect(), width=2, border_radius=15)
+            surface.blit(border_surf, panel_rect.topleft)
 
-    def _draw_option_item(self, surface: pygame.Surface, diff: str, index: int, 
+    def _draw_option_item(self, surface: pygame.Surface, diff: str, index: int,
                           center_x: int, start_y: int, is_selected: bool) -> None:
         width, height = surface.get_size()
         scale = ResponsiveHelper.get_scale_factor(width, height)
@@ -179,40 +206,77 @@ class MenuScene(Scene, MouseSelectableMixin):
         option_height = ResponsiveHelper.scale(self.base_option_height, scale)
         option_gap = ResponsiveHelper.scale(self.base_option_gap, scale)
         y = start_y + index * (option_height + option_gap)
-        
+
         box_width = ResponsiveHelper.scale(360, scale)
         box_height = option_height
         box_rect = pygame.Rect(center_x - box_width // 2, y, box_width, box_height)
         self.append_option_rect(box_rect)
 
-        if is_selected:
-            glow_color = self.colors['selected_glow']
-            for i in range(4, 0, -1):
-                expand = i * 3
-                glow_rect = box_rect.inflate(expand * 2, expand * 2)
-                glow_surf = pygame.Surface((glow_rect.width, glow_rect.height), pygame.SRCALPHA)
-                pygame.draw.rect(glow_surf, (*glow_color, 35 // i), glow_surf.get_rect(), border_radius=10)
-                surface.blit(glow_surf, glow_rect)
+        if self.use_military_style:
+            # Military style: chamfered options
+            m_colors = self.military_colors
+            if is_selected:
+                # Selected: glow effect
+                glow_rect = box_rect.inflate(6, 6)
+                draw_chamfered_panel(
+                    surface, glow_rect.x, glow_rect.y, glow_rect.width, glow_rect.height,
+                    (0, 0, 0, 0),  # transparent bg
+                    m_colors['selected_glow'],
+                    m_colors['selected_glow'],
+                    chamfer_depth=8
+                )
+                draw_chamfered_panel(
+                    surface, box_rect.x, box_rect.y, box_rect.width, box_rect.height,
+                    m_colors['option_selected_bg'],
+                    m_colors['selected'],
+                    None,
+                    chamfer_depth=8
+                )
+            else:
+                draw_chamfered_panel(
+                    surface, box_rect.x, box_rect.y, box_rect.width, box_rect.height,
+                    m_colors['option_unselected_bg'],
+                    m_colors['unselected'],
+                    None,
+                    chamfer_depth=8
+                )
 
-            pygame.draw.rect(surface, self.colors['option_selected_bg'], box_rect, border_radius=10)
-            border_surf = pygame.Surface((box_width, box_height), pygame.SRCALPHA)
-            pygame.draw.rect(border_surf, (*self.colors['selected'], 200),
-                           border_surf.get_rect(), width=2, border_radius=10)
-            surface.blit(border_surf, box_rect.topleft)
+            arrow = ">" if is_selected else " "
+            diff_text = self.option_names.get(diff, diff.upper())
+            text_color = m_colors['selected'] if is_selected else m_colors['unselected']
+            text = self.option_font.render(f"  {arrow}  {diff_text}", True, text_color)
+            text_rect = text.get_rect(midleft=(box_rect.x + 20, box_rect.centery))
+            surface.blit(text, text_rect)
         else:
-            pygame.draw.rect(surface, self.colors['option_unselected_bg'], box_rect, border_radius=10)
-            border_surf = pygame.Surface((box_width, box_height), pygame.SRCALPHA)
-            pygame.draw.rect(border_surf, (*self.colors['unselected'], 80),
-                           border_surf.get_rect(), width=1, border_radius=10)
-            surface.blit(border_surf, box_rect.topleft)
+            # Original style: rounded options
+            if is_selected:
+                glow_color = self.colors['selected_glow']
+                for i in range(4, 0, -1):
+                    expand = i * 3
+                    glow_rect = box_rect.inflate(expand * 2, expand * 2)
+                    glow_surf = pygame.Surface((glow_rect.width, glow_rect.height), pygame.SRCALPHA)
+                    pygame.draw.rect(glow_surf, (*glow_color, 35 // i), glow_surf.get_rect(), border_radius=10)
+                    surface.blit(glow_surf, glow_rect)
 
-        arrow = ">" if is_selected else " "
-        diff_text = self.option_names.get(diff, diff.upper())
-        text_color = self.colors['selected'] if is_selected else self.colors['unselected']
-        
-        text = self.option_font.render(f"  {arrow}  {diff_text}", True, text_color)
-        text_rect = text.get_rect(midleft=(box_rect.x + 20, box_rect.centery))
-        surface.blit(text, text_rect)
+                pygame.draw.rect(surface, self.colors['option_selected_bg'], box_rect, border_radius=10)
+                border_surf = pygame.Surface((box_width, box_height), pygame.SRCALPHA)
+                pygame.draw.rect(border_surf, (*self.colors['selected'], 200),
+                               border_surf.get_rect(), width=2, border_radius=10)
+                surface.blit(border_surf, box_rect.topleft)
+            else:
+                pygame.draw.rect(surface, self.colors['option_unselected_bg'], box_rect, border_radius=10)
+                border_surf = pygame.Surface((box_width, box_height), pygame.SRCALPHA)
+                pygame.draw.rect(border_surf, (*self.colors['unselected'], 80),
+                               border_surf.get_rect(), width=1, border_radius=10)
+                surface.blit(border_surf, box_rect.topleft)
+
+            arrow = ">" if is_selected else " "
+            diff_text = self.option_names.get(diff, diff.upper())
+            text_color = self.colors['selected'] if is_selected else self.colors['unselected']
+
+            text = self.option_font.render(f"  {arrow}  {diff_text}", True, text_color)
+            text_rect = text.get_rect(midleft=(box_rect.x + 20, box_rect.centery))
+            surface.blit(text, text_rect)
 
     def _draw_title_section(self, surface: pygame.Surface) -> None:
         width, height = surface.get_size()
@@ -243,7 +307,12 @@ class MenuScene(Scene, MouseSelectableMixin):
         scale = ResponsiveHelper.get_scale_factor(width, height)
         self._init_fonts(scale)
 
-        self._background_renderer.render(surface, self.colors)
+        # Use military style background if enabled
+        if self.use_military_style:
+            self._background_renderer.render_military_style(surface, self.military_colors)
+        else:
+            self._background_renderer.render(surface, self.colors)
+
         self._particle_system.render(surface, self.colors['particle'])
 
         self._draw_title_section(surface)

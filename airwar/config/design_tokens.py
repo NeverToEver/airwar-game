@@ -172,6 +172,105 @@ class UIComponents:
     BUFF_SCROLL_VISIBLE_COUNT = 6
 
 
+class MilitaryColors:
+    """Military HUD color palette - hard-core military style"""
+    # Primary amber tones
+    AMBER_PRIMARY = (255, 180, 50)
+    AMBER_DIM = (204, 144, 38)
+    AMBER_BRIGHT = (255, 200, 80)
+    AMBER_GLOW = (255, 180, 50, 100)
+
+    # Military green accents
+    MILITARY_GREEN = (74, 124, 89)
+    MILITARY_GREEN_DIM = (60, 100, 70)
+
+    # Background colors
+    BG_PRIMARY = (10, 10, 15)
+    BG_PANEL = (18, 20, 26)
+    BG_PANEL_LIGHT = (25, 28, 35)
+
+    # Border and glow
+    BORDER_GLOW = (255, 180, 50, 100)
+    BORDER_DIM = (150, 110, 50)
+    GRID_LINE = (255, 180, 50, 25)
+
+    # Danger indicators
+    DANGER_RED = (255, 68, 68)
+    DANGER_RED_DIM = (180, 50, 50)
+    WARNING_AMBER = (255, 140, 50)
+
+    # Text colors
+    TEXT_PRIMARY = (255, 228, 181)
+    TEXT_DIM = (139, 139, 122)
+    TEXT_BRIGHT = (255, 245, 220)
+
+    # Health bar colors
+    HEALTH_FULL = (100, 220, 100)
+    HEALTH_MEDIUM = (255, 180, 50)
+    HEALTH_LOW = (255, 68, 68)
+    HEALTH_CRITICAL = (255, 50, 50)
+
+    # Boss bar colors
+    BOSS_BAR_FULL = (255, 140, 60)
+    BOSS_BAR_EMPTY = (40, 35, 30)
+
+    # Segment bar
+    SEGMENT_FILL = (255, 180, 50)
+    SEGMENT_EMPTY = (30, 28, 35)
+    SEGMENT_BORDER = (80, 70, 50)
+
+    # Icon colors
+    ICON_POWER = (255, 200, 80)
+    ICON_DEFENSE = (100, 200, 150)
+    ICON_SPEED = (100, 200, 255)
+    ICON_LASER = (255, 100, 200)
+    ICON_MISSILE = (255, 150, 100)
+
+
+class MilitaryUI:
+    """Military UI component sizing and styling constants"""
+    # Chamfered border settings
+    CHAMFER_DEPTH = 12
+    CHAMFER_BORDER_WIDTH = 2
+    CHAMFER_GLOW_WIDTH = 1
+    CHAMFER_CORNER_RADIUS = 0
+
+    # Scanline effect
+    SCANLINE_ALPHA = 12
+    SCANLINE_SPACING = 3
+    SCANLINE_SPEED = 0.5  # pixels per frame at 60fps
+    SCANLINE_CYCLE_FRAMES = 120  # 2 seconds at 60fps
+
+    # Grid overlay
+    GRID_ALPHA = 10
+    GRID_SPACING = 40
+
+    # Hexagon icon
+    HEXAGON_SIZE = 24
+    HEXAGON_BORDER_WIDTH = 2
+
+    # Military panel
+    PANEL_PADDING = 15
+    PANEL_MARGIN = 10
+    PANEL_CORNER_CHAMFER = 12
+
+    # Segment bar
+    SEGMENT_GAP = 2
+    SEGMENT_MIN_WIDTH = 8
+
+    # Animation timings (in frames at 60fps)
+    PULSE_FAST = 15
+    PULSE_NORMAL = 30
+    PULSE_SLOW = 60
+    FLASH_DURATION = 10
+
+    # Font sizes for military HUD
+    MILITARY_LABEL_SIZE = 18
+    MILITARY_VALUE_SIZE = 24
+    MILITARY_TITLE_SIZE = 36
+    MILITARY_SMALL_SIZE = 14
+
+
 class DesignTokens:
     def __init__(self):
         self.colors = Colors
@@ -179,6 +278,8 @@ class DesignTokens:
         self.spacing = Spacing
         self.animation = Animation
         self.components = UIComponents
+        self.military = MilitaryColors
+        self.military_ui = MilitaryUI
 
     def get_font(self, size: int):
         return pygame.font.Font(pygame.font.get_default_font(), size)
