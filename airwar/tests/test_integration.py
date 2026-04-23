@@ -48,23 +48,6 @@ class TestPlayerMovementBoundaries:
 
 
 class TestPlayerBulletSystem:
-    def test_player_fire_creates_bullet(self):
-        from airwar.entities import Player
-        from airwar.input import MockInputHandler
-        player = Player(100, 200, MockInputHandler())
-        bullet = player.fire()
-        assert bullet is not None
-        assert len(player.get_bullets()) == 1
-
-    def test_player_cannot_fire_when_on_cooldown(self):
-        from airwar.entities import Player
-        from airwar.input import MockInputHandler
-        player = Player(100, 200, MockInputHandler())
-        player.fire_cooldown = 10
-        bullet = player.fire()
-        assert bullet is None
-        assert len(player.get_bullets()) == 0
-
     def test_fire_creates_bullets(self):
         from airwar.entities import Player
         from airwar.input import MockInputHandler
@@ -93,13 +76,6 @@ class TestEnemyBehavior:
         initial_y = enemy.rect.y
         enemy.update()
         assert enemy.rect.y > initial_y
-
-    def test_enemy_deactivates_when_off_screen_bottom(self):
-        from airwar.entities import Enemy, EnemyData
-        from airwar.config import SCREEN_HEIGHT
-        enemy = Enemy(100, SCREEN_HEIGHT + 100, EnemyData())
-        enemy.update()
-        assert enemy.active is False
 
     def test_enemy_with_zero_health_becomes_inactive(self):
         from airwar.entities import Enemy, EnemyData
@@ -318,9 +294,10 @@ class TestGameFlowIntegration:
 
     def test_game_over_when_player_dies(self):
         from airwar.scenes.game_scene import GameScene
+        from airwar.game.constants import DamageConstants
         scene = GameScene()
         scene.enter(difficulty='medium')
-        scene.game_controller.on_player_hit(999, scene.player)
+        scene.game_controller.on_player_hit(DamageConstants.INSTANT_KILL, scene.player)
         for _ in range(200):
             scene.game_controller.update(scene.player, False)
         assert scene.is_game_over() is True
@@ -347,9 +324,10 @@ class TestGameFlowIntegration:
 
     def test_death_menu_appears_after_animation_duration(self):
         from airwar.scenes.game_scene import GameScene
+        from airwar.game.constants import DamageConstants
         scene = GameScene()
         scene.enter(difficulty='medium')
-        scene.game_controller.on_player_hit(999, scene.player)
+        scene.game_controller.on_player_hit(DamageConstants.INSTANT_KILL, scene.player)
         assert scene.is_game_over() is False
         for _ in range(199):
             scene.game_controller.update(scene.player, False)

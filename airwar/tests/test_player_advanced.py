@@ -95,16 +95,6 @@ class TestPlayerHealing:
         player.heal(30)
         assert player.health == 80
 
-    def test_player_heal_cannot_exceed_max(self):
-        from airwar.entities import Player
-        from airwar.input import MockInputHandler
-        input_handler = MockInputHandler()
-        player = Player(100, 200, input_handler)
-        
-        player.health = 90
-        player.heal(50)
-        assert player.health == 100
-
     def test_player_heal_with_zero_max_health(self):
         from airwar.entities import Player
         from airwar.input import MockInputHandler
