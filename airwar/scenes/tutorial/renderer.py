@@ -32,9 +32,9 @@ class TutorialRenderer:
         self._particle_system = None
 
         self._base_panel_width = 600
-        self._base_panel_height = 550
-        self._base_option_height = 65
-        self._base_option_gap = 10
+        self._base_panel_height = 650
+        self._base_option_height = 55
+        self._base_option_gap = 8
         self._base_title_y = 55
         self._base_button_width = 160
         self._base_button_height = 48
@@ -211,7 +211,7 @@ class TutorialRenderer:
         center_x = width // 2
 
         title_area_end = panel_y + ResponsiveHelper.scale(100, scale)
-        note_area_start = panel_y + panel_height - ResponsiveHelper.scale(175, scale)
+        note_area_start = panel_y + panel_height - ResponsiveHelper.scale(130, scale)
         available_height = note_area_start - title_area_end - ResponsiveHelper.scale(10, scale)
         max_items = (available_height + option_gap) // (option_height + option_gap)
         visible_items = min(len(content), max_items)
@@ -420,7 +420,7 @@ class TutorialRenderer:
         note_font_size = ResponsiveHelper.font_size(18, scale)
         note_font = pygame.font.Font(None, note_font_size)
 
-        y_offset = panel_y + panel_height - ResponsiveHelper.scale(175, scale)
+        y_offset = panel_y + panel_height - ResponsiveHelper.scale(130, scale)
 
         if 'note' in step:
             note_color = self._colors['hint']
