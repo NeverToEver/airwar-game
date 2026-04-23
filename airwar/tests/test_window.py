@@ -30,3 +30,15 @@ class TestWindowFullscreen:
         window = Window()
         window.toggle_fullscreen()
         assert window._is_fullscreen is False
+
+    def test_window_resize_ignored_in_fullscreen(self):
+        from airwar.window import Window
+        window = Window()
+        window.init(800, 600)
+        window._is_fullscreen = True
+        original_width = window._width
+        original_height = window._height
+        window.resize(1920, 1080)
+        assert window._is_fullscreen is True
+        assert window._width == original_width
+        assert window._height == original_height

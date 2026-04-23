@@ -107,6 +107,7 @@ class GameIntegrator:
             score=self._game_scene.score,
             cycle_count=self._game_scene.cycle_count,
             kill_count=self._game_scene.game_controller.state.kill_count,
+            boss_kill_count=self._game_scene.game_controller.state.boss_kill_count,
             unlocked_buffs=self._game_scene.unlocked_buffs,
             buff_levels=self._get_buff_levels(),
             player_health=self._game_scene.player.health,
