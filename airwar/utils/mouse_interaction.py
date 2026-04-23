@@ -139,6 +139,7 @@ class MouseInteractiveMixin:
     def handle_mouse_click(self, mouse_pos: tuple) -> bool:
         clicked_button = self._get_button_at_pos(mouse_pos)
         if clicked_button:
+            self._hovered_button = clicked_button
             if self._on_button_click_callback:
                 self._on_button_click_callback(clicked_button)
             return True

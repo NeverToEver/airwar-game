@@ -164,6 +164,27 @@ class SceneDirector:
                 escape_handled = result is True
 
             self._handle_scene_events(events, escape_handled)
+
+            # 检查鼠标点击触发的暂停请求
+            if isinstance(current_scene, GameScene) and not escape_handled:
+                if current_scene.consume_pause_request():
+                    current_scene.pause()
+                    action = self._show_pause_menu(current_scene)
+                    if action == PauseAction.RESUME:
+                        current_scene.resume()
+                    elif action == PauseAction.MAIN_MENU:
+                        self._clear_saved_game()
+                        current_scene.resume()
+                        return "main_menu"
+                    elif action == PauseAction.SAVE_AND_QUIT:
+                        self._save_and_quit(current_scene)
+                        return self._show_exit_confirm(saved=True)
+                    elif action == PauseAction.QUIT_WITHOUT_SAVING:
+                        return self._show_exit_confirm(saved=False)
+                    elif action == PauseAction.QUIT:
+                        self._save_and_quit(current_scene)
+                        return self._show_exit_confirm(saved=True)
+
             self._scene_manager.update()
             self._scene_manager.render(self._window.get_surface())
             self._window.flip()
