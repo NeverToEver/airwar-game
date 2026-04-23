@@ -250,6 +250,9 @@ ssl/
 # -----------------------------------------------------------------------------
 
 # User data directory (contains personal info and game saves)
+airwar/data/
+
+# Legacy nested directory (from incorrect runs)
 airwar/airwar/
 
 # Game save files
