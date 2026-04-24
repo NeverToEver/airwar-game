@@ -32,13 +32,10 @@ class MenuBackground:
         # 光斑位置
         self._light_spots = []
         self._init_light_spots()
-        # 跑马灯效果 - 纵向
-        self._marquee_offset = 0.0
-        self._marquee_speed = 0.8
-        self._marquee_strip_height = 24
-        # 跑马灯效果 - 横向
-        self._marquee_h_offset = 0.0
-        self._marquee_h_strip_width = 24
+        # 跑马灯效果 - 使用令牌配置
+        self._marquee_time = 0.0
+        self._marquee_speed = ForestColors.MARQUEE_SPEED
+        self._marquee_strip_height = ForestColors.MARQUEE_STRIP_SIZE
 
     def _ensure_cached_surfaces(self, width: int, height: int):
         """确保缓存的表面尺寸与屏幕尺寸匹配"""
@@ -95,9 +92,8 @@ class MenuBackground:
     def update(self):
         """更新动画状态"""
         self._animation_time += 1
-        # 更新跑马灯位置
-        self._marquee_offset += self._marquee_speed
-        self._marquee_h_offset += self._marquee_speed
+        # 更新跑马灯时间（非线性移动）
+        self._marquee_time += self._marquee_speed
         # 更新叶子位置
         for leaf in self._leaves_far:
             leaf['y'] += leaf['speed']
@@ -231,18 +227,18 @@ class MenuBackground:
             )
 
     def _render_marquee(self, surface: pygame.Surface, width: int, height: int) -> None:
-        """渲染跑马灯效果 - 使用ForestColors令牌"""
-        # 条带颜色 - 使用ForestColors令牌
+        """渲染跑马灯效果 - 使用ForestColors令牌，非线性移动"""
         strip_color = ForestColors.MARQUEE_COLOR
+        strip_size = ForestColors.MARQUEE_STRIP_SIZE
 
-        # 纵向条带
-        marquee_y = (self._marquee_offset % height) - self._marquee_strip_height
-        strip_surf = pygame.Surface((width, self._marquee_strip_height), pygame.SRCALPHA)
-        strip_surf.fill(strip_color)
-        surface.blit(strip_surf, (0, int(marquee_y)))
+        # 纵向条带 - 使用正弦波非线性移动
+        marquee_y = ((math.sin(self._marquee_time * 0.5) + 1) / 2) * (height + strip_size) - strip_size
+        v_strip_surf = pygame.Surface((width, strip_size), pygame.SRCALPHA)
+        v_strip_surf.fill(strip_color)
+        surface.blit(v_strip_surf, (0, int(marquee_y)))
 
-        # 横向条带
-        marquee_x = (self._marquee_h_offset % width) - self._marquee_h_strip_width
-        h_strip_surf = pygame.Surface((self._marquee_h_strip_width, height), pygame.SRCALPHA)
+        # 横向条带 - 使用余弦波非线性移动（相位差产生雷达扫描效果）
+        marquee_x = ((math.cos(self._marquee_time * 0.5) + 1) / 2) * (width + strip_size) - strip_size
+        h_strip_surf = pygame.Surface((strip_size, height), pygame.SRCALPHA)
         h_strip_surf.fill(strip_color)
         surface.blit(h_strip_surf, (int(marquee_x), 0))
