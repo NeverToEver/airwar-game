@@ -34,7 +34,7 @@ class MenuBackground:
         self._init_light_spots()
         # 跑马灯效果
         self._marquee_offset = 0.0
-        self._marquee_speed = 0.3  # 2x faster
+        self._marquee_speed = 0.8
         self._marquee_strip_height = 8
 
     def _ensure_cached_surfaces(self, width: int, height: int):
