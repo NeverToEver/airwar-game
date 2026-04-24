@@ -34,7 +34,7 @@ class MenuBackground:
         self._init_light_spots()
         # 跑马灯效果
         self._marquee_offset = 0.0
-        self._marquee_speed = 0.15  # 缓慢移动速度
+        self._marquee_speed = 0.3  # 2x faster
         self._marquee_strip_height = 8
 
     def _ensure_cached_surfaces(self, width: int, height: int):
@@ -231,33 +231,10 @@ class MenuBackground:
         # 计算当前条带位置 (循环)
         marquee_y = (self._marquee_offset % height) - self._marquee_strip_height
 
-        # 条带颜色 - 浅绿色，半透明
+        # 条带颜色 - 均匀浅绿色
         strip_color = (150, 220, 120, 40)  # 浅绿色带透明度
 
         # 绘制主条带
-        strip_surf = pygame.Surface((width, self._marquee_strip_height * 3), pygame.SRCALPHA)
-        for i in range(self._marquee_strip_height * 3):
-            fade_ratio = 1.0 - abs(i - self._marquee_strip_height) / (self._marquee_strip_height * 2)
-            alpha = int(50 * fade_ratio)
-            pygame.draw.line(
-                strip_surf,
-                (150, 220, 120, alpha),
-                (0, i),
-                (width, i)
-            )
-
-        # 在主条带上方绘制渐变淡出条
-        fade_height = 40
-        fade_surf = pygame.Surface((width, fade_height), pygame.SRCALPHA)
-        for i in range(fade_height):
-            alpha = int(30 * (1.0 - i / fade_height))
-            pygame.draw.line(
-                fade_surf,
-                (150, 220, 120, alpha),
-                (0, i),
-                (width, i)
-            )
-
-        # 绘制到目标位置
+        strip_surf = pygame.Surface((width, self._marquee_strip_height), pygame.SRCALPHA)
+        strip_surf.fill(strip_color)
         surface.blit(strip_surf, (0, int(marquee_y)))
-        surface.blit(fade_surf, (0, int(marquee_y) - fade_height))
