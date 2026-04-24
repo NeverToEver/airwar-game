@@ -180,6 +180,7 @@ class SceneDirector:
                         self._save_and_quit(current_scene)
                         return self._show_exit_confirm(saved=True)
                     elif action == PauseAction.QUIT_WITHOUT_SAVING:
+                        self._clear_saved_game()
                         return self._show_exit_confirm(saved=False)
                     elif action == PauseAction.QUIT:
                         self._save_and_quit(current_scene)
