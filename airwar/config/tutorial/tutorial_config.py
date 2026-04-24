@@ -46,18 +46,18 @@ TUTORIAL_CONTENT: Dict = {
     'sections': [
         {
             'title': 'Movement',
-            'icon': '◈',
+            'icon': '-',
             'items': [
-                {'key': 'W / ↑', 'desc': 'Move Up'},
-                {'key': 'S / ↓', 'desc': 'Move Down'},
-                {'key': 'A / ←', 'desc': 'Move Left'},
-                {'key': 'D / →', 'desc': 'Move Right'},
+                {'key': 'W / UP', 'desc': 'Move Up'},
+                {'key': 'S / DOWN', 'desc': 'Move Down'},
+                {'key': 'A / LEFT', 'desc': 'Move Left'},
+                {'key': 'D / RIGHT', 'desc': 'Move Right'},
                 {'key': 'SPACE', 'desc': 'Fire (hold for auto-fire)'},
             ],
         },
         {
             'title': 'Special',
-            'icon': '◈',
+            'icon': '-',
             'items': [
                 {'key': 'H (hold)', 'desc': 'Dock with Mother Ship to save'},
                 {'key': 'K (hold 3s)', 'desc': 'Surrender (when docked)'},
@@ -65,7 +65,7 @@ TUTORIAL_CONTENT: Dict = {
         },
         {
             'title': 'Interface',
-            'icon': '◈',
+            'icon': '-',
             'items': [
                 {'key': 'ESC', 'desc': 'Pause game'},
                 {'key': 'L', 'desc': 'Toggle HUD panel'},
@@ -74,7 +74,7 @@ TUTORIAL_CONTENT: Dict = {
         },
         {
             'title': 'Progression',
-            'icon': '◈',
+            'icon': '-',
             'items': [
                 {'key': 'Milestones', 'desc': 'Score targets unlock buffs'},
                 {'key': 'Boss Kills', 'desc': 'Increase difficulty'},
