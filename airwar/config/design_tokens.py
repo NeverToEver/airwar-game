@@ -273,6 +273,9 @@ class ForestColors:
     GOLD_BRIGHT = (210, 180, 120)
     GOLD_GLOW = (180, 150, 90, 60)
 
+    # Marquee effect
+    MARQUEE_COLOR = (180, 150, 90, 40)
+
     # Forest green accents
     FOREST_GREEN = (60, 90, 60)
     FOREST_GREEN_DIM = (45, 70, 45)

@@ -227,12 +227,12 @@ class MenuBackground:
             )
 
     def _render_marquee(self, surface: pygame.Surface, width: int, height: int) -> None:
-        """渲染跑马灯效果 - 浅绿色条带从上到下缓慢扫过"""
+        """渲染跑马灯效果 - 使用ForestColors令牌"""
         # 计算当前条带位置 (循环)
         marquee_y = (self._marquee_offset % height) - self._marquee_strip_height
 
-        # 条带颜色 - 均匀浅绿色
-        strip_color = (150, 220, 120, 40)  # 浅绿色带透明度
+        # 条带颜色 - 使用ForestColors令牌
+        strip_color = ForestColors.MARQUEE_COLOR
 
         # 绘制主条带
         strip_surf = pygame.Surface((width, self._marquee_strip_height), pygame.SRCALPHA)
