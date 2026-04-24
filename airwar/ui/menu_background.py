@@ -32,6 +32,10 @@ class MenuBackground:
         # 光斑位置
         self._light_spots = []
         self._init_light_spots()
+        # 跑马灯效果
+        self._marquee_offset = 0.0
+        self._marquee_speed = 0.15  # 缓慢移动速度
+        self._marquee_strip_height = 8
 
     def _ensure_cached_surfaces(self, width: int, height: int):
         """确保缓存的表面尺寸与屏幕尺寸匹配"""
@@ -88,6 +92,8 @@ class MenuBackground:
     def update(self):
         """更新动画状态"""
         self._animation_time += 1
+        # 更新跑马灯位置
+        self._marquee_offset += self._marquee_speed
         # 更新叶子位置
         for leaf in self._leaves_far:
             leaf['y'] += leaf['speed']
@@ -161,6 +167,9 @@ class MenuBackground:
         gradient = self._get_cached_gradient(surface, bg_color, bg_gradient)
         surface.blit(gradient, (0, 0))
 
+        # 渲染跑马灯效果
+        self._render_marquee(surface, width, height)
+
         # 渲染光斑层
         self._render_light_spots(surface, width, height)
 
@@ -216,3 +225,39 @@ class MenuBackground:
                 (int(x), int(y)),
                 int(p['size'])
             )
+
+    def _render_marquee(self, surface: pygame.Surface, width: int, height: int) -> None:
+        """渲染跑马灯效果 - 浅绿色条带从上到下缓慢扫过"""
+        # 计算当前条带位置 (循环)
+        marquee_y = (self._marquee_offset % height) - self._marquee_strip_height
+
+        # 条带颜色 - 浅绿色，半透明
+        strip_color = (150, 220, 120, 40)  # 浅绿色带透明度
+
+        # 绘制主条带
+        strip_surf = pygame.Surface((width, self._marquee_strip_height * 3), pygame.SRCALPHA)
+        for i in range(self._marquee_strip_height * 3):
+            fade_ratio = 1.0 - abs(i - self._marquee_strip_height) / (self._marquee_strip_height * 2)
+            alpha = int(50 * fade_ratio)
+            pygame.draw.line(
+                strip_surf,
+                (150, 220, 120, alpha),
+                (0, i),
+                (width, i)
+            )
+
+        # 在主条带上方绘制渐变淡出条
+        fade_height = 40
+        fade_surf = pygame.Surface((width, fade_height), pygame.SRCALPHA)
+        for i in range(fade_height):
+            alpha = int(30 * (1.0 - i / fade_height))
+            pygame.draw.line(
+                fade_surf,
+                (150, 220, 120, alpha),
+                (0, i),
+                (width, i)
+            )
+
+        # 绘制到目标位置
+        surface.blit(strip_surf, (0, int(marquee_y)))
+        surface.blit(fade_surf, (0, int(marquee_y) - fade_height))
