@@ -142,7 +142,8 @@ class TestEnemySpawner:
         enemies = []
         for _ in range(60):
             spawner.update(enemies)
-        assert len(enemies) == 60
+        # Wave system limits to max 5 enemies at a time
+        assert len(enemies) == 5
         assert all(isinstance(e, Enemy) for e in enemies)
 
     def test_spawner_slow_factor(self):

@@ -54,7 +54,9 @@ class SpawnController:
         self.set_bullet_spawner(bullet_spawner)
 
     def update(self, score: int, slow_factor: float) -> bool:
-        self.enemy_spawner.update(self.enemies, slow_factor)
+        # Don't spawn new enemies when boss is active
+        if self.boss is None:
+            self.enemy_spawner.update(self.enemies, slow_factor)
 
         self.boss_spawn_timer += 1
         if self.boss is None and self.boss_spawn_timer >= self.boss_spawn_interval / slow_factor:
