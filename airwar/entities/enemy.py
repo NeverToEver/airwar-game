@@ -16,19 +16,19 @@ if TYPE_CHECKING:
 class Enemy(Entity):
     def __init__(self, x: float, y: float, data: EnemyData):
         base_size = ENEMY_HITBOX_SIZE + ENEMY_HITBOX_PADDING * 2
-        
+
         collision_size = int(base_size * ENEMY_COLLISION_SCALE)
         render_size = int(base_size * ENEMY_VISUAL_SCALE)
-        
+
         self._collision_rect = pygame.Rect(
             x - (collision_size - render_size) // 2,
             y - (collision_size - render_size) // 2,
             collision_size,
             collision_size
         )
-        
+
         super().__init__(x, y, render_size, render_size)
-        
+
         self.data = data
         self.health = data.health
         self.max_health = data.health
@@ -40,6 +40,26 @@ class Enemy(Entity):
         self._difficulty_multiplier = 1.0
         self._fire_rate_modifier = 1.0
         self._movement_enhancements = {}
+
+        # Wave system: entry/exit states
+        self._state = 'entering'
+        self._entry_progress = 0.0
+        self._entry_start_x = x
+        self._entry_start_y = y - 150  # Start above screen
+        self._entry_target_x = x
+        self._entry_target_y = y
+        self._exit_progress = 0.0
+        self._exit_start_x = x
+        self._exit_start_y = y
+        self._exit_end_x = random.choice([x - 300, x + 300, x, x - 150, x + 150])
+        self._exit_end_y = -150
+        self._entry_path_type = random.choice(['linear', 'diagonal', 'curve'])
+
+        # Lifetime timer: 15 seconds = 900 frames at 60fps
+        self._lifetime = 0
+        self._max_lifetime = 900
+        self._active_position_x = x
+        self._active_position_y = y
 
     @property
     def collision_rect(self) -> pygame.Rect:
@@ -98,66 +118,126 @@ class Enemy(Entity):
             self.move_type = "straight"
 
     def update(self, *args, **kwargs) -> None:
+        if not self.active:
+            return
+
         from airwar.config import get_screen_width, get_screen_height
         screen_width = get_screen_width()
         screen_height = get_screen_height()
-        
+
+        # Handle entry animation
+        if self._state == 'entering':
+            # Check if enemy somehow got placed off screen during entry
+            if self.rect.y > screen_height:
+                self.active = False
+                return
+
+            self._entry_progress += 0.02
+            if self._entry_progress >= 1.0:
+                self._entry_progress = 1.0
+                self._state = 'active'
+                self.rect.x = self._entry_target_x
+                self.rect.y = self._entry_target_y
+                self._sync_rects()
+                # Record position for small-range movement
+                self._active_position_x = self.rect.x
+                self._active_position_y = self.rect.y
+                self._lifetime = 0
+            else:
+                # Entry animation based on path type
+                if self._entry_path_type == 'linear':
+                    target_x = self._entry_start_x + (self._entry_target_x - self._entry_start_x) * self._entry_progress
+                    target_y = self._entry_start_y + (self._entry_target_y - self._entry_start_y) * self._entry_progress
+                elif self._entry_path_type == 'diagonal':
+                    wave = math.sin(self._entry_progress * math.pi) * 50
+                    target_x = self._entry_start_x + wave
+                    target_y = self._entry_start_y + (self._entry_target_y - self._entry_start_y) * self._entry_progress
+                else:  # curve
+                    curve = math.sin(self._entry_progress * math.pi * 0.5) * 80
+                    target_x = self._entry_start_x + curve
+                    target_y = self._entry_start_y + (self._entry_target_y - self._entry_start_y) * self._entry_progress
+                self.rect.x = target_x
+                self.rect.y = target_y
+                self._sync_rects()
+            return
+
+        # Handle exit animation
+        if self._state == 'exiting':
+            self._exit_progress += 0.015
+            if self._exit_progress >= 1.0:
+                self.active = False
+                return
+            t = self._exit_progress
+            # Smooth exit with curve
+            self.rect.x = self._exit_start_x + (self._exit_end_x - self._exit_start_x) * t + math.sin(t * math.pi) * 30
+            self.rect.y = self._exit_start_y + (self._exit_end_y - self._exit_start_y) * t
+            self._sync_rects()
+            return
+
+        # Active state: check lifetime (15 seconds max)
+        self._lifetime += 1
+        if self._lifetime >= self._max_lifetime:
+            self._state = 'exiting'
+            self._exit_start_x = self.rect.x
+            self._exit_start_y = self.rect.y
+            self._exit_end_x = random.choice([
+                self.rect.x - 300,
+                self.rect.x + 300,
+                self.rect.x,
+                self.rect.x - 150,
+                self.rect.x + 150
+            ])
+            self._exit_end_y = -100
+            return
+
         base_speed = self.data.speed * self._difficulty_multiplier
-        
+        # Small movement range around active position (±30 horizontal, ±15 vertical)
+        move_range_x = 30
+        move_range_y = 15
+
         if self.move_type == "sine":
             self.move_timer += 1
-            self.rect.y += base_speed
-            self.rect.x = self.start_x + math.sin(self.move_timer * self.move_frequency + self.move_offset) * self.move_amplitude * 30
-            self.rect.x = max(0, min(self.rect.x, screen_width - self.rect.width))
+            self.rect.x = self._active_position_x + math.sin(self.move_timer * self.move_frequency + self.move_offset) * move_range_x
+            self.rect.y = self._active_position_y + math.sin(self.move_timer * self.move_frequency * 0.5) * move_range_y
             self._sync_rects()
-            
+
         elif self.move_type == "zigzag":
-            self.rect.y += base_speed
             self.zigzag_timer += 1
             if self.zigzag_timer >= self.zigzag_interval:
                 self.zigzag_timer = 0
                 self.direction *= -1
-            self.rect.x += self.direction * self.zigzag_speed
-            if self.rect.x <= 0:
-                self.rect.x = 0
-                self.direction = 1
-            elif self.rect.x >= screen_width - self.rect.width:
-                self.rect.x = screen_width - self.rect.width
-                self.direction = -1
+            new_x = self.rect.x + self.direction * self.zigzag_speed
+            # Clamp to small range around active position
+            self.rect.x = max(self._active_position_x - move_range_x, min(new_x, self._active_position_x + move_range_x))
+            self.rect.y = self._active_position_y + math.sin(self.zigzag_timer * 0.1) * (move_range_y * 0.5)
             self._sync_rects()
-                
+
         elif self.move_type == "dive":
             self.dive_timer += 1
-            if self.dive_timer >= self.dive_delay and not self.diving:
-                self.diving = True
-            if self.diving:
-                self.rect.y += base_speed * 1.8
-            else:
-                self.rect.y += base_speed * 0.5
-                wave = math.sin(self.dive_timer * 0.05) * 1.5
-                self.rect.x += wave
-                self.rect.x = max(0, min(self.rect.x, screen_width - self.rect.width))
+            # Very limited movement for dive type
+            wave = math.sin(self.dive_timer * 0.05) * (move_range_x * 0.3)
+            self.rect.x = self._active_position_x + wave
+            self.rect.y = self._active_position_y + math.sin(self.dive_timer * 0.03) * (move_range_y * 0.3)
             self._sync_rects()
-                
+
         elif self.move_type == "hover":
-            self.rect.y += base_speed * 0.7
             self.hover_timer += 0.08
-            self.rect.x = self.start_x + math.sin(self.hover_timer) * self.hover_amplitude
-            self.rect.x = max(0, min(self.rect.x, screen_width - self.rect.width))
+            self.rect.x = self._active_position_x + math.sin(self.hover_timer) * move_range_x
+            self.rect.y = self._active_position_y + math.sin(self.hover_timer * 0.7) * (move_range_y * 0.5)
             self._sync_rects()
 
         elif self.move_type == "spiral":
-            self.rect.y += base_speed * 0.5
             self.spiral_timer += 1
-            spiral_x = math.cos(self.spiral_timer * self.spiral_frequency) * self.spiral_radius
-            spiral_y_offset = math.sin(self.spiral_timer * self.spiral_frequency * 2) * 10
-            self.rect.x = self.start_x + spiral_x
-            self.rect.y += spiral_y_offset * 0.1
-            self.rect.x = max(0, min(self.rect.x, screen_width - self.rect.width))
+            spiral_x = math.cos(self.spiral_timer * self.spiral_frequency) * (move_range_x * 0.5)
+            spiral_y = math.sin(self.spiral_timer * self.spiral_frequency * 2) * (move_range_y * 0.3)
+            self.rect.x = self._active_position_x + spiral_x
+            self.rect.y = self._active_position_y + spiral_y
             self._sync_rects()
-            
+
         else:
-            self.rect.y += base_speed
+            # straight movement with very small vertical oscillation
+            self.rect.x = self._active_position_x
+            self.rect.y = self._active_position_y + math.sin(self._lifetime * 0.05) * (move_range_y * 0.3)
             self._sync_rects()
 
         if self.rect.y > screen_height:
@@ -171,7 +251,7 @@ class Enemy(Entity):
 
     def _fire(self) -> None:
         bullets = self._create_bullets()
-        
+
         if self._bullet_spawner:
             for bullet in bullets:
                 self._bullet_spawner.spawn_bullet(bullet)
@@ -272,6 +352,10 @@ class EnemySpawner:
             "hover": 0.13,
             "spiral": 0.10,
         }
+        self._max_enemies = 5
+        self._wave_active = False
+        self._wave_enemies_spawned = 0
+        self._wave_size = 5
 
     def _select_enemy_type(self) -> str:
         rand = random.random()
@@ -295,29 +379,49 @@ class EnemySpawner:
         from airwar.config import get_screen_width, ENEMY_HITBOX_SIZE, ENEMY_HITBOX_PADDING, ENEMY_COLLISION_SCALE
         screen_width = get_screen_width()
 
+        # Count active enemies (not exiting or dead)
+        active_enemies = [e for e in enemies if e.active and e._state != 'exiting']
+
+        # Check if wave is complete (all enemies exited or died)
+        if self._wave_active and len(active_enemies) == 0 and self._wave_enemies_spawned >= self._wave_size:
+            self._wave_active = False
+            self._wave_enemies_spawned = 0
+
+        # Start new wave if no wave active
+        if not self._wave_active:
+            self._wave_active = True
+            self._wave_enemies_spawned = 0
+
+        # Spawn enemies for current wave (max 5 on screen)
         self.spawn_timer += 1
-        if self.spawn_timer >= self.spawn_rate:
+        if (self.spawn_timer >= self.spawn_rate and
+            len(active_enemies) < self._max_enemies and
+            self._wave_enemies_spawned < self._wave_size):
             self.spawn_timer = 0
             base_size = ENEMY_HITBOX_SIZE + ENEMY_HITBOX_PADDING * 2
             collision_size = int(base_size * ENEMY_COLLISION_SCALE)
+
+            # Spawn position: more above screen, random x
             x = random.randint(0, screen_width - collision_size)
+            y = -100  # Higher entry position
 
             bullet_types = ["single", "spread", "laser"]
             bullet_type = random.choice(bullet_types)
-            
+
             enemy_type = self._select_enemy_type()
 
             data = EnemyData(
                 health=self.health,
                 speed=self.speed * slow_factor,
                 bullet_type=bullet_type,
-                fire_rate=90 if bullet_type == "laser" else 120,
+                fire_rate=90 if bullet_type == "laser" else 150,
                 enemy_type=enemy_type
             )
-            enemy = Enemy(x, -40, data)
+            enemy = Enemy(x, y, data)
             if self._bullet_spawner:
                 enemy.set_bullet_spawner(self._bullet_spawner)
             enemies.append(enemy)
+            self._wave_enemies_spawned += 1
 
 
 @dataclass
