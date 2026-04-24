@@ -34,8 +34,8 @@ MOVEMENT_PATTERNS = {
 }
 
 BASE_ENEMY_PARAMS = {
-    'speed': 3.0,
-    'fire_rate': 120,
+    'speed': 2.0,
+    'fire_rate': 90,
     'aggression': 0.5,
     'spawn_rate': 30,
 }
