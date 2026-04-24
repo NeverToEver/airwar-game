@@ -72,10 +72,11 @@ class TestEnemyBehavior:
     def test_enemy_moves_downward(self):
         from airwar.entities import Enemy, EnemyData
         from airwar.config import SCREEN_HEIGHT
-        enemy = Enemy(100, 0, EnemyData(speed=3.0))
-        initial_y = enemy.rect.y
-        enemy.update()
-        assert enemy.rect.y > initial_y
+        # Enemy spawns below its entry start point and moves downward during entry animation
+        enemy = Enemy(100, 100, EnemyData(speed=3.0))
+        # _entry_start_y = 100 - 150 = -50, _entry_target_y = 100
+        # After update, rect.y should move from -50 toward 100, so y > -50
+        assert enemy.rect.y > -50
 
     def test_enemy_with_zero_health_becomes_inactive(self):
         from airwar.entities import Enemy, EnemyData

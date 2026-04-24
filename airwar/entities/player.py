@@ -21,6 +21,7 @@ class Player(Entity):
         self._fire_cooldown = 0
         self._has_spread = False
         self._has_laser = False
+        self._has_explosive = False
         self._bullet_listeners: List = []
         self._bullets: List = []
         self.is_shielded = False
@@ -89,6 +90,8 @@ class Player(Entity):
                 )
                 if self._has_laser:
                     bullet.data.is_laser = True
+                if self._has_explosive:
+                    bullet.data.is_explosive = True
                 self._bullets.append(bullet)
                 if first_bullet is None:
                     first_bullet = bullet
@@ -99,6 +102,8 @@ class Player(Entity):
                 bullet_y,
                 BulletData(damage=self.bullet_damage, bullet_type='laser', is_laser=True)
             )
+            if self._has_explosive:
+                bullet.data.is_explosive = True
             self._bullets.append(bullet)
             return bullet
         else:
@@ -107,6 +112,8 @@ class Player(Entity):
                 bullet_y,
                 BulletData(damage=self.bullet_damage)
             )
+            if self._has_explosive:
+                bullet.data.is_explosive = True
             self._bullets.append(bullet)
             return bullet
 
@@ -126,6 +133,9 @@ class Player(Entity):
 
     def activate_laser(self, duration: int) -> None:
         self._has_laser = True
+
+    def activate_explosive(self) -> None:
+        self._has_explosive = True
 
     def get_hitbox(self) -> pygame.Rect:
         hb_x = self.rect.x + (self.rect.width - self.hitbox_width) // 2

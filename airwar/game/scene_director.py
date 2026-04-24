@@ -306,6 +306,8 @@ class SceneDirector:
             self._clear_saved_game()
             return "restart"
         else:
+            if not saved:
+                self._clear_saved_game()
             return "quit"
 
     def _handle_game_over(self, game_scene: GameScene) -> bool:

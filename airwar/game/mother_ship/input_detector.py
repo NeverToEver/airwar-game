@@ -11,6 +11,10 @@ class InputDetector(IInputDetector):
         self._progress = DockingProgress()
         self._h_was_pressed = False
         self._last_update_time = 0.0
+        self._exit_progress = 0.0
+        self._is_exiting = False
+        self._exit_start_time = 0.0
+        self._exit_required_duration = 2.0
 
     def update(self) -> None:
         current_time = pygame.time.get_ticks() / 1000.0
@@ -22,26 +26,32 @@ class InputDetector(IInputDetector):
             self._on_h_pressed(current_time)
         elif not is_h_currently_pressed and self._h_was_pressed:
             self._on_h_released()
-        elif is_h_currently_pressed and self._progress.is_pressing:
-            self._on_h_held(current_time)
+        elif is_h_currently_pressed:
+            if self._is_exiting:
+                self._on_exit_held(current_time)
+            elif self._progress.is_pressing:
+                self._on_h_held(current_time)
 
         self._h_was_pressed = is_h_currently_pressed
 
-
-
     def _on_h_pressed(self, current_time: float) -> None:
+        self._event_bus.publish('H_PRESSED', timestamp=current_time)
         self._progress.is_pressing = True
         self._progress.press_start_time = current_time
-        self._event_bus.publish('H_PRESSED', timestamp=current_time)
 
     def _on_h_released(self) -> None:
-        was_complete = self._progress.current_progress >= 1.0
-        self._progress.reset()
-
-        if was_complete:
-            self._event_bus.publish('DOCKING_COMPLETE')
+        if self._is_exiting:
+            self._is_exiting = False
+            self._exit_progress = 0.0
+            self._event_bus.publish('H_RELEASED_EARLY')
         else:
-            self._event_bus.publish('H_RELEASED')
+            was_complete = self._progress.current_progress >= 1.0
+            self._progress.reset()
+
+            if was_complete:
+                self._event_bus.publish('DOCKING_COMPLETE')
+            else:
+                self._event_bus.publish('H_RELEASED')
 
     def _on_h_held(self, current_time: float) -> None:
         old_progress = self._progress.current_progress
@@ -50,8 +60,29 @@ class InputDetector(IInputDetector):
         if old_progress < 1.0 and self._progress.current_progress >= 1.0:
             self._event_bus.publish('PROGRESS_COMPLETE')
 
+    def _on_exit_held(self, current_time: float) -> None:
+        if self._exit_progress == 0.0:
+            self._exit_start_time = current_time
+
+        elapsed = current_time - self._exit_start_time
+        old_progress = self._exit_progress
+        self._exit_progress = min(elapsed / self._exit_required_duration, 1.0)
+
+        self._event_bus.publish('EXIT_PROGRESS_UPDATE', progress=self._exit_progress)
+
+        if old_progress < 1.0 and self._exit_progress >= 1.0:
+            self._is_exiting = False
+            self._exit_progress = 0.0
+            self._event_bus.publish('EXIT_COMPLETE')
+
     def is_h_pressed(self) -> bool:
         return pygame.key.get_pressed()[self.H_KEY]
 
     def get_progress(self) -> DockingProgress:
         return self._progress
+
+    def get_exit_progress(self) -> float:
+        return self._exit_progress
+
+    def is_exiting(self) -> bool:
+        return self._is_exiting

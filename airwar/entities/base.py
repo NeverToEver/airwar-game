@@ -109,6 +109,7 @@ class BulletData:
     bullet_type: str = "single"
     angle_offset: float = 0.0
     is_laser: bool = False
+    is_explosive: bool = False
 
 
 @dataclass

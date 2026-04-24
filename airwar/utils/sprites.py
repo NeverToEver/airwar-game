@@ -7,6 +7,7 @@ _single_bullet_glow_cache = {}
 _spread_bullet_glow_cache = {}
 _laser_bullet_glow_cache = {}
 _ripple_surface_cache = {}
+_explosive_missile_cache = {}
 
 # Sprite surface caches
 _player_sprite_cache = {}
@@ -429,6 +430,66 @@ def draw_laser_bullet(surface: pygame.Surface, x: float, y: float, width: float,
     surface.blit(glow, (int(center_x - 10), int(y - 2)))
     pygame.draw.line(surface, (255, 100, 200), (center_x, y), (center_x, y + height), 4)
     pygame.draw.line(surface, (255, 220, 240), (center_x, y), (center_x, y + height), 2)
+
+
+def draw_explosive_missile(surface: pygame.Surface, x: float, y: float, width: float, height: float) -> None:
+    """Draw a small missile projectile pointing upward (direction of travel)."""
+    cx = int(x + width / 2)
+    ty = int(y)
+    bh = int(height * 0.55)
+    nh = int(height * 0.25)
+    bw = int(width * 0.8)
+    nw = int(width * 0.5)
+    bw_half = bw // 2
+    nw_half = nw // 2
+
+    cache_key = (bw, int(height))
+    if cache_key not in _explosive_missile_cache:
+        glow_surf = pygame.Surface((bw * 3 + 12, int(height) + 10), pygame.SRCALPHA)
+        for i in range(6, 0, -1):
+            alpha = 35 * (6 - i) // 5
+            pygame.draw.ellipse(glow_surf, (255, 80, 20, alpha),
+                                (bw + 6 - i * 2, 2 - i, int(height) + i * 2, int(height) + i * 2))
+        _explosive_missile_cache[cache_key] = glow_surf
+    else:
+        glow_surf = _explosive_missile_cache[cache_key]
+
+    surface.blit(glow_surf, (cx - bw - 6, ty - 2))
+
+    # Flame trail at top (since bullet travels upward)
+    flame_h = int(height * 0.25)
+    flame_w = int(width * 0.45)
+    flame_y = ty
+    flame_points = [
+        (cx, flame_y - flame_h),
+        (cx - flame_w, flame_y + flame_h),
+        (cx + flame_w, flame_y + flame_h),
+    ]
+    pygame.draw.polygon(surface, (255, 200, 30), flame_points)
+    pygame.draw.polygon(surface, (255, 255, 150), [(cx, flame_y - flame_h + 2), (cx - flame_w + 3, flame_y + flame_h - 1), (cx + flame_w - 3, flame_y + flame_h - 1)])
+
+    # Body (cylinder)
+    body_top = ty + flame_h
+    body_rect = pygame.Rect(cx - bw_half, body_top, bw, bh)
+    pygame.draw.rect(surface, (200, 80, 20), body_rect)
+    pygame.draw.rect(surface, (255, 130, 40), pygame.Rect(cx - bw_half + 2, body_top + 2, bw - 4, bh - 4))
+
+    # Nose cone at bottom (pointing forward = upward since bullet travels up)
+    nose_base_y = body_top + bh
+    nose_points = [
+        (cx, nose_base_y + nh),                      # tip at bottom
+        (cx - nw_half, nose_base_y),                 # top left
+        (cx + nw_half, nose_base_y),                 # top right
+    ]
+    pygame.draw.polygon(surface, (255, 60, 10), nose_points)
+    pygame.draw.polygon(surface, (255, 140, 60), [(cx, nose_base_y + nh - 2), (cx - nw_half + 3, nose_base_y + 1), (cx + nw_half - 3, nose_base_y + 1)])
+
+    # Fins at the back (bottom of missile)
+    fin_h = int(height * 0.2)
+    fin_w = int(width * 0.35)
+    fin_y = nose_base_y
+    pygame.draw.polygon(surface, (180, 60, 10), [(cx - bw_half, fin_y), (cx - bw_half - fin_w, fin_y - fin_h), (cx - bw_half, fin_y - fin_h)])
+    pygame.draw.polygon(surface, (180, 60, 10), [(cx + bw_half, fin_y), (cx + bw_half + fin_w, fin_y - fin_h), (cx + bw_half, fin_y - fin_h)])
 
 
 def draw_ripple(surface: pygame.Surface, x: float, y: float, radius: float, alpha: int, pulse: int = 0) -> None:

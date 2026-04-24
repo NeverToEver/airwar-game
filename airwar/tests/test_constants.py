@@ -50,8 +50,8 @@ class TestAnimationConstants:
 class TestGameBalanceConstants:
     def test_game_balance_constants_values(self):
         assert GameBalanceConstants.MAX_CYCLES == 10
-        assert GameBalanceConstants.BASE_THRESHOLDS == (1000, 2500, 5000, 10000, 20000)
-        assert GameBalanceConstants.CYCLE_MULTIPLIER == 1.5
+        assert GameBalanceConstants.BASE_THRESHOLDS == (3000, 6000, 10000, 16000, 25000, 38000, 55000, 80000)
+        assert GameBalanceConstants.CYCLE_MULTIPLIER == 1.35
         assert GameBalanceConstants.DIFFICULTY_MULTIPLIERS == (1.0, 1.5, 2.0)
 
 
@@ -73,15 +73,15 @@ class TestGameConstants:
     
     def test_get_next_threshold_first_milestone_easy(self):
         threshold = GAME_CONSTANTS.get_next_threshold(0, 'easy')
-        assert threshold == 1000.0
-    
+        assert threshold == 3000.0
+
     def test_get_next_threshold_first_milestone_medium(self):
         threshold = GAME_CONSTANTS.get_next_threshold(0, 'medium')
-        assert threshold == 1500.0
-    
+        assert threshold == 4500.0
+
     def test_get_next_threshold_first_milestone_hard(self):
         threshold = GAME_CONSTANTS.get_next_threshold(0, 'hard')
-        assert threshold == 2000.0
+        assert threshold == 6000.0
     
     def test_get_next_threshold_cycle_bonus(self):
         threshold_0 = GAME_CONSTANTS.get_next_threshold(0, 'medium')

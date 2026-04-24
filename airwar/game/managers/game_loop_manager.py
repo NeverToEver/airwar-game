@@ -152,9 +152,11 @@ class GameLoopManager:
             self._game_controller.state.running = False
 
     def _update_enemy_spawning(self, player: PlayerProtocol) -> None:
+        player_pos = (player.rect.centerx, player.rect.centery)
         spawn_needed = self._spawn_controller.update(
             self._game_controller.state.score,
-            self._reward_system.slow_factor
+            self._reward_system.slow_factor,
+            player_pos
         )
 
         if spawn_needed:
