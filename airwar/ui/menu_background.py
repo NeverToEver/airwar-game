@@ -32,10 +32,13 @@ class MenuBackground:
         # 光斑位置
         self._light_spots = []
         self._init_light_spots()
-        # 跑马灯效果
+        # 跑马灯效果 - 纵向
         self._marquee_offset = 0.0
         self._marquee_speed = 0.8
         self._marquee_strip_height = 24
+        # 跑马灯效果 - 横向
+        self._marquee_h_offset = 0.0
+        self._marquee_h_strip_width = 24
 
     def _ensure_cached_surfaces(self, width: int, height: int):
         """确保缓存的表面尺寸与屏幕尺寸匹配"""
@@ -94,6 +97,7 @@ class MenuBackground:
         self._animation_time += 1
         # 更新跑马灯位置
         self._marquee_offset += self._marquee_speed
+        self._marquee_h_offset += self._marquee_speed
         # 更新叶子位置
         for leaf in self._leaves_far:
             leaf['y'] += leaf['speed']
@@ -228,13 +232,17 @@ class MenuBackground:
 
     def _render_marquee(self, surface: pygame.Surface, width: int, height: int) -> None:
         """渲染跑马灯效果 - 使用ForestColors令牌"""
-        # 计算当前条带位置 (循环)
-        marquee_y = (self._marquee_offset % height) - self._marquee_strip_height
-
         # 条带颜色 - 使用ForestColors令牌
         strip_color = ForestColors.MARQUEE_COLOR
 
-        # 绘制主条带
+        # 纵向条带
+        marquee_y = (self._marquee_offset % height) - self._marquee_strip_height
         strip_surf = pygame.Surface((width, self._marquee_strip_height), pygame.SRCALPHA)
         strip_surf.fill(strip_color)
         surface.blit(strip_surf, (0, int(marquee_y)))
+
+        # 横向条带
+        marquee_x = (self._marquee_h_offset % width) - self._marquee_h_strip_width
+        h_strip_surf = pygame.Surface((self._marquee_h_strip_width, height), pygame.SRCALPHA)
+        h_strip_surf.fill(strip_color)
+        surface.blit(h_strip_surf, (int(marquee_x), 0))
