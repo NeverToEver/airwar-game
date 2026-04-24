@@ -82,7 +82,7 @@ class ParticleSystem:
 
             cache_key = (base_size, p.get('color_key', 'particle'))
             if cache_key in self._texture_cache:
-                particle_surf = self._texture_cache[cache_key].copy()
+                particle_surf = self._texture_cache[cache_key]
                 particle_surf.set_alpha(alpha)
                 surface.blit(particle_surf, (x - base_size * 2, y - base_size * 2))
             else:

@@ -19,12 +19,16 @@ class DifficultyCoefficientPanel:
         (float('inf'), (255, 50, 50), (255, 50, 50)),
     ]
 
+    _bg_surface_cache = None
+    _glow_surface_cache = {}
+
     def __init__(self, difficulty_manager: 'DifficultyManager'):
         self._manager = difficulty_manager
         self._initial_multiplier = difficulty_manager.initial_multiplier
         self._last_multiplier = difficulty_manager.get_current_multiplier()
         self._pulse_timer = 0
         self._glow_intensity = 0.0
+        self._last_cached_height = 0
 
     def update(self) -> None:
         current = self._manager.get_current_multiplier()
@@ -47,10 +51,13 @@ class DifficultyCoefficientPanel:
 
         self._render_glow(surface, panel_x, panel_y, current)
 
-        bg_color = (10, 10, 30, 220)
-        bg_surface = pygame.Surface((self.PANEL_WIDTH, self.PANEL_HEIGHT), pygame.SRCALPHA)
-        bg_surface.fill(bg_color)
-        surface.blit(bg_surface, (panel_x, panel_y))
+        # Use cached background surface
+        if DifficultyCoefficientPanel._bg_surface_cache is None:
+            bg_color = (10, 10, 30, 220)
+            bg_surface = pygame.Surface((self.PANEL_WIDTH, self.PANEL_HEIGHT), pygame.SRCALPHA)
+            bg_surface.fill(bg_color)
+            DifficultyCoefficientPanel._bg_surface_cache = bg_surface
+        surface.blit(DifficultyCoefficientPanel._bg_surface_cache, (panel_x, panel_y))
 
         pygame.draw.rect(surface, MilitaryColors.COEFFICIENT_BAR_BG, (panel_x + 2, panel_y + 2, self.PANEL_WIDTH - 4, self.PANEL_HEIGHT - 4), 1)
 
@@ -96,9 +103,12 @@ class DifficultyCoefficientPanel:
 
         for i in range(glow_radius, 0, -1):
             alpha = int(30 * (1 - i / glow_radius))
-            glow_surface = pygame.Surface((self.PANEL_WIDTH + i * 2, self.PANEL_HEIGHT + i * 2), pygame.SRCALPHA)
-            glow_surface.fill((*glow_color[:3], alpha))
-            surface.blit(glow_surface, (x - i, y - i), special_flags=pygame.BLEND_RGBA_ADD)
+            cache_key = (i, glow_color[:3])
+            if cache_key not in DifficultyCoefficientPanel._glow_surface_cache:
+                glow_surface = pygame.Surface((self.PANEL_WIDTH + i * 2, self.PANEL_HEIGHT + i * 2), pygame.SRCALPHA)
+                glow_surface.fill((*glow_color[:3], alpha))
+                DifficultyCoefficientPanel._glow_surface_cache[cache_key] = glow_surface
+            surface.blit(DifficultyCoefficientPanel._glow_surface_cache[cache_key], (x - i, y - i), special_flags=pygame.BLEND_RGBA_ADD)
 
     def _get_color_for_multiplier(self, multiplier: float) -> Tuple[int, int, int]:
         return self._get_color_by_index(multiplier, 1)

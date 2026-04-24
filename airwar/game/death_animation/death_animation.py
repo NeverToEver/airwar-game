@@ -61,6 +61,10 @@ class DeathAnimation:
     GLOW_COLOR = (255, 255, 255)
     FLICKER_COLOR = (255, 50, 50)
 
+    # Cache for flicker surfaces
+    _flicker_cache = {}
+    _spark_glow_cache = {}
+
     def __init__(self) -> None:
         self._active = False
         self._timer = 0
@@ -135,10 +139,13 @@ class DeathAnimation:
         if is_visible:
             alpha = self.FLICKER_ALPHA_HIGH if flicker_step % 4 == 0 else self.FLICKER_ALPHA_LOW
             color = self.FLICKER_COLOR if flicker_step % 4 == 0 else (255, 255, 255)
-            flicker_surf = pygame.Surface((60, 60), pygame.SRCALPHA)
-            flicker_surf.set_alpha(alpha)
-            pygame.draw.circle(flicker_surf, color, (30, 30), 25)
-            surface.blit(flicker_surf, (int(self._center_x - 30), int(self._center_y - 30)))
+            cache_key = (alpha, color)
+            if cache_key not in DeathAnimation._flicker_cache:
+                flicker_surf = pygame.Surface((60, 60), pygame.SRCALPHA)
+                flicker_surf.set_alpha(alpha)
+                pygame.draw.circle(flicker_surf, color, (30, 30), 25)
+                DeathAnimation._flicker_cache[cache_key] = flicker_surf
+            surface.blit(DeathAnimation._flicker_cache[cache_key], (int(self._center_x - 30), int(self._center_y - 30)))
 
     def is_active(self) -> bool:
         """检查动画是否处于活跃状态"""
@@ -189,15 +196,18 @@ class DeathAnimation:
 
             glow_radius = int(spark.size * 2)
             if glow_radius > 0:
-                glow_surf = pygame.Surface((glow_radius * 2, glow_radius * 2), pygame.SRCALPHA)
-                glow_alpha = int(alpha * 0.3)
-                pygame.draw.circle(
-                    glow_surf,
-                    (*color_base, glow_alpha),
-                    (glow_radius, glow_radius),
-                    glow_radius
-                )
-                surface.blit(glow_surf, (int(spark.x) - glow_radius, int(spark.y) - glow_radius))
+                cache_key = (glow_radius, alpha)
+                if cache_key not in DeathAnimation._spark_glow_cache:
+                    glow_surf = pygame.Surface((glow_radius * 2, glow_radius * 2), pygame.SRCALPHA)
+                    glow_alpha = int(alpha * 0.3)
+                    pygame.draw.circle(
+                        glow_surf,
+                        (*color_base, glow_alpha),
+                        (glow_radius, glow_radius),
+                        glow_radius
+                    )
+                    DeathAnimation._spark_glow_cache[cache_key] = glow_surf
+                surface.blit(DeathAnimation._spark_glow_cache[cache_key], (int(spark.x) - glow_radius, int(spark.y) - glow_radius))
 
             pygame.draw.circle(
                 surface,
