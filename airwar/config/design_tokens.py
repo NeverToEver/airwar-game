@@ -226,6 +226,25 @@ class MilitaryColors:
     ICON_LASER = (255, 100, 200)
     ICON_MISSILE = (255, 150, 100)
 
+    # Stats panel text colors
+    STATS_TEXT = (200, 200, 200)
+    STATS_TEXT_BRIGHT = (220, 220, 240)
+    STATS_TEXT_DIM = (150, 150, 180)
+
+    # Give up UI
+    GIVE_UP_BG = (40, 10, 10)
+
+    # Difficulty coefficient
+    COEFFICIENT_EASY = (100, 255, 100)
+    COEFFICIENT_MEDIUM = (255, 255, 100)
+    COEFFICIENT_HARD = (255, 150, 50)
+    COEFFICIENT_BAR_BG = (40, 40, 70)
+    COEFFICIENT_BAR_FILL = (20, 20, 40)
+
+    # Panel overlay
+    PANEL_OVERLAY_DARK = (25, 35, 65)
+    PANEL_OVERLAY_LIGHT = (18, 20, 40)
+
 
 class MilitaryUI:
     """Military UI component sizing and styling constants"""
@@ -324,6 +343,57 @@ class ForestColors:
     ICON_SPEED = (80, 150, 160)
     ICON_LASER = (180, 120, 150)
     ICON_MISSILE = (180, 130, 90)
+
+    # Input colors
+    INPUT_BG = (20, 28, 55)
+    INPUT_ACTIVE = (30, 45, 75)
+    INPUT_TEXT = (200, 190, 170)
+    INPUT_PLACEHOLDER = (60, 70, 100)
+
+    # Button colors
+    BUTTON_LOGIN = (20, 50, 100)
+    BUTTON_REGISTER = (40, 80, 60)
+    BUTTON_QUIT = (180, 60, 40)
+    BUTTON_FULLSCREEN = (30, 60, 90)
+    BUTTON_TEXT = (245, 250, 255)
+
+    # Hint colors
+    HINT_DIM = (70, 75, 120)
+    HINT_BRIGHT = (100, 105, 150)
+
+    # Title glow colors
+    TITLE_GLOW_INNER = (100, 200, 255)
+    TITLE_GLOW_MIDDLE = (70, 160, 220)
+    TITLE_GLOW_OUTER = (50, 120, 180)
+    TITLE_SHADOW = (20, 60, 100)
+
+    # Particle color
+    PARTICLE_COLOR = (180, 200, 120)
+
+    # Panel overlay colors
+    PANEL_OVERLAY_DARK = (25, 35, 65)
+    PANEL_OVERLAY_LIGHT = (18, 20, 40)
+
+    # Back button
+    BACK_BUTTON = (220, 110, 110)
+
+    # Description text
+    DESC_TEXT = (50, 50, 80)
+
+    # Stats panel text
+    STATS_TEXT = (200, 200, 200)
+    STATS_TEXT_BRIGHT = (220, 220, 240)
+    STATS_TEXT_DIM = (150, 150, 180)
+
+    # Give up UI
+    GIVE_UP_BG = (40, 10, 10)
+
+    # Difficulty coefficient
+    COEFFICIENT_EASY = (100, 255, 100)
+    COEFFICIENT_MEDIUM = (255, 255, 100)
+    COEFFICIENT_HARD = (255, 150, 50)
+    COEFFICIENT_BAR_BG = (40, 40, 70)
+    COEFFICIENT_BAR_FILL = (20, 20, 40)
 
 
 class DesignTokens:

@@ -336,7 +336,11 @@ class LoginScene(Scene, MouseInteractiveMixin):
         else:
             # Original style
             colors = self.colors
-            for blur, alpha, color in [(6, 18, (50, 120, 180)), (4, 30, (70, 160, 220)), (2, 45, (100, 200, 255))]:
+            for blur, alpha, color in [
+                (6, 18, ForestColors.TITLE_GLOW_OUTER),
+                (4, 30, ForestColors.TITLE_GLOW_MIDDLE),
+                (2, 45, ForestColors.TITLE_GLOW_INNER)
+            ]:
                 glow_surf = self.title_font.render(title_text, True, color)
                 glow_surf.set_alpha(alpha)
                 for offset_x in range(-blur, blur + 1, 2):
@@ -346,7 +350,7 @@ class LoginScene(Scene, MouseInteractiveMixin):
                                 center=(width // 2 + offset_x, int(title_y + glow_offset) + offset_y))
                             surface.blit(glow_surf, glow_rect)
 
-            title_shadow = self.title_font.render(title_text, True, (20, 60, 100))
+            title_shadow = self.title_font.render(title_text, True, ForestColors.TITLE_SHADOW)
             surface.blit(title_shadow, title_shadow.get_rect(
                 center=(width // 2 + 2, int(title_y + glow_offset) + 2)))
 
@@ -482,7 +486,7 @@ class LoginScene(Scene, MouseInteractiveMixin):
         surface.blit(text_surf, text_rect)
         if not text:
             placeholder = "Enter username..." if is_username else "Enter password..."
-            ph_surf = self.input_font.render(placeholder, True, (60, 70, 100))
+            ph_surf = self.input_font.render(placeholder, True, ForestColors.INPUT_PLACEHOLDER)
             ph_rect = ph_surf.get_rect(midleft=(rect.x + ResponsiveHelper.scale(20, scale), rect.y + rect.height // 2))
             surface.blit(ph_surf, ph_rect)
         if self.cursor_visible:
@@ -566,7 +570,7 @@ class LoginScene(Scene, MouseInteractiveMixin):
                         border_surf.get_rect(), width=2, border_radius=10)
         surface.blit(border_surf, rect.topleft)
 
-        text_surf = self.button_font.render(text, True, (245, 250, 255))
+        text_surf = self.button_font.render(text, True, ForestColors.BUTTON_TEXT)
         text_rect = text_surf.get_rect(center=rect.center)
         surface.blit(text_surf, text_rect)
 
@@ -580,9 +584,9 @@ class LoginScene(Scene, MouseInteractiveMixin):
                 hint_color = ForestColors.TEXT_PRIMARY
         else:
             if (self.animation_time // 60) % 2 == 0:
-                hint_color = (70, 75, 120)
+                hint_color = ForestColors.HINT_DIM
             else:
-                hint_color = (100, 105, 150)
+                hint_color = ForestColors.HINT_BRIGHT
 
         hints = "TAB: switch  |  ENTER: submit  |  ESC: quit"
         hint_surf = self.hint_font.render(hints, True, hint_color)

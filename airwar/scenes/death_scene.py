@@ -205,7 +205,7 @@ class DeathScene(Scene, MouseSelectableMixin):
         hint = self.hint_font.render(hint_text, True, self.colors['hint'])
         surface.blit(hint, hint.get_rect(center=(width // 2, height - ResponsiveHelper.scale(100, scale))))
 
-        controls = self.desc_font.render("Click or W/S to select", True, (50, 50, 80))
+        controls = self.desc_font.render("Click or W/S to select", True, ForestColors.DESC_TEXT)
         surface.blit(controls, controls.get_rect(center=(width // 2, height - ResponsiveHelper.scale(70, scale))))
 
     def get_result(self):

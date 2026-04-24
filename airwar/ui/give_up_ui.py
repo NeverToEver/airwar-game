@@ -1,6 +1,6 @@
 import pygame
 import math
-from airwar.config.design_tokens import get_design_tokens, ForestColors, MilitaryUI
+from airwar.config.design_tokens import get_design_tokens, ForestColors, MilitaryColors, MilitaryUI
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 
 
@@ -21,7 +21,7 @@ class GiveUpUI:
         self._corner_radius = 8
         self._border_width = 2
 
-        self._bg_color = (40, 10, 10)
+        self._bg_color = MilitaryColors.GIVE_UP_BG
         self._progress_color = colors.HEALTH_DANGER
         self._border_color = colors.WARNING
         self._text_color = colors.HEALTH_DANGER

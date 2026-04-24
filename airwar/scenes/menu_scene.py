@@ -6,7 +6,7 @@ from airwar.ui.menu_background import MenuBackground
 from airwar.ui.particles import ParticleSystem
 from airwar.ui.effects import EffectsRenderer
 from airwar.ui.chamfered_panel import draw_chamfered_panel
-from airwar.config.design_tokens import get_design_tokens, MilitaryColors
+from airwar.config.design_tokens import get_design_tokens, MilitaryColors, ForestColors
 from airwar.utils.mouse_interaction import MouseSelectableMixin
 
 
@@ -68,7 +68,7 @@ class MenuScene(Scene, MouseSelectableMixin):
             'selected_glow': colors.HUD_AMBER_BRIGHT,
             'unselected': colors.TEXT_MUTED,
             'hint': colors.TEXT_HINT,
-            'back': (220, 110, 110),
+            'back': ForestColors.BACK_BUTTON,
             'particle': colors.PARTICLE_PRIMARY,
             'panel': colors.BACKGROUND_PANEL,
             'panel_border': colors.PANEL_BORDER,
@@ -293,13 +293,13 @@ class MenuScene(Scene, MouseSelectableMixin):
 
         blink_interval = self._tokens.animation.BLINK_INTERVAL
         if (self.animation_time // blink_interval) % 2 == 0:
-            hint_color = (110, 110, 160)
+            hint_color = ForestColors.HINT_DIM
         else:
-            hint_color = (140, 140, 180)
+            hint_color = ForestColors.HINT_BRIGHT
         start_text = self.hint_font.render("CLICK or ENTER to start", True, hint_color)
         surface.blit(start_text, start_text.get_rect(center=(width // 2, height - ResponsiveHelper.scale(self._tokens.components.HINT_Y_OFFSET, scale))))
 
-        controls = self.desc_font.render("Click or W/S to select", True, (60, 60, 100))
+        controls = self.desc_font.render("Click or W/S to select", True, ForestColors.DESC_TEXT)
         surface.blit(controls, controls.get_rect(center=(width // 2, height - ResponsiveHelper.scale(self._tokens.components.CONTROLS_Y_OFFSET, scale))))
 
     def render(self, surface: pygame.Surface) -> None:

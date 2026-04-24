@@ -221,7 +221,7 @@ class MenuBackground:
             # 绘制微粒
             pygame.draw.circle(
                 surface,
-                (180, 200, 120),
+                ForestColors.PARTICLE_COLOR,
                 (int(x), int(y)),
                 int(p['size'])
             )
