@@ -102,6 +102,14 @@ class RewardSystem:
         self.buff_levels['Spread Shot'] = value
 
     @property
+    def laser_level(self) -> int:
+        return self.buff_levels.get('Laser', 0)
+
+    @laser_level.setter
+    def laser_level(self, value: int) -> None:
+        self.buff_levels['Laser'] = value
+
+    @property
     def explosive_level(self) -> int:
         return self.buff_levels.get('Explosive', 0)
 
@@ -188,7 +196,8 @@ class RewardSystem:
             player.activate_shotgun()
 
     def _apply_explosive(self, player) -> None:
-        pass
+        if self.buff_levels.get('Explosive', 0) == 1:
+            player.activate_explosive()
 
     def _apply_shotgun(self, player) -> None:
         if self.buff_levels.get('Shotgun', 0) == 1:

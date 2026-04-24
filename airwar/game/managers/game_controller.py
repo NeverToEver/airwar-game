@@ -129,7 +129,8 @@ class GameController:
         for i in range(milestone_index + 1):
             delta = min(self.initial_delta * (i + 1), self.max_delta)
             threshold += delta
-        return threshold * self.difficulty_multiplier
+        capped = threshold * self.difficulty_multiplier
+        return min(capped, self.max_threshold * self.difficulty_multiplier)
 
     def on_player_hit(self, damage: int, player) -> None:
         player.take_damage(damage)

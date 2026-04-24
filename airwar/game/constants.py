@@ -104,8 +104,8 @@ class GameBalanceConstants:
         DIFFICULTY_MULTIPLIERS: 难度倍率元组 (easy, medium, hard)
     """
     MAX_CYCLES: int = 10
-    BASE_THRESHOLDS: Tuple[int, ...] = (1000, 2500, 5000, 10000, 20000)
-    CYCLE_MULTIPLIER: float = 1.5
+    BASE_THRESHOLDS: Tuple[int, ...] = (3000, 6000, 10000, 16000, 25000, 38000, 55000, 80000)
+    CYCLE_MULTIPLIER: float = 1.35
     DIFFICULTY_MULTIPLIERS: Tuple[float, float, float] = (1.0, 1.5, 2.0)
 
 

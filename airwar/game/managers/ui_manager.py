@@ -115,3 +115,7 @@ class UIManager:
             self._reward_system,
             player
         )
+        self._game_renderer.render_attack_mode_panel(
+            surface,
+            self._reward_system
+        )

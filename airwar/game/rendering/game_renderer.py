@@ -160,6 +160,9 @@ class GameRenderer:
         if not self.integrated_hud:
             self.hud_renderer.render_buff_stats_panel(surface, reward_system, player)
 
+    def render_attack_mode_panel(self, surface, reward_system) -> None:
+        self.hud_renderer.render_attack_mode_panel(surface, reward_system)
+
     def _render_death_animation(self, surface, state, entities):
         is_dying = state.gameplay_state == GameplayState.DYING
 

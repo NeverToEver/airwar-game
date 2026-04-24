@@ -1,7 +1,7 @@
 import pygame
 from typing import Optional, List
 from .base import Entity, BulletData, Vector2
-from airwar.utils.sprites import draw_bullet
+from airwar.utils.sprites import draw_bullet, draw_explosive_missile
 
 
 class Bullet(Entity):
@@ -43,7 +43,10 @@ class Bullet(Entity):
 
     def render(self, surface: pygame.Surface) -> None:
         if not self._sprite:
-            draw_bullet(surface, self.rect.x, self.rect.y, self.rect.width, self.rect.height, self.data.bullet_type)
+            if self.data.is_explosive:
+                draw_explosive_missile(surface, self.rect.x, self.rect.y, self.rect.width, self.rect.height)
+            else:
+                draw_bullet(surface, self.rect.x, self.rect.y, self.rect.width, self.rect.height, self.data.bullet_type)
         else:
             surface.blit(self._sprite, self.get_rect())
 

@@ -1,5 +1,6 @@
 from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass
+import math
 import pygame
 import logging
 
@@ -433,3 +434,116 @@ class BuffStatsPanel:
         if entry.level > 1:
             level_text = name_font.render(f"x{entry.level}", True, MilitaryColors.TEXT_DIM)
             surface.blit(level_text, (38, y_offset + 16))
+
+
+@dataclass
+class AttackModeEntry:
+    name: str
+    short_name: str
+    is_on: bool
+    color: Tuple[int, int, int]
+
+
+class AttackModePanel:
+    """Horizontal attack mode indicator strip at top-left."""
+
+    PANEL_WIDTH = 240
+    PANEL_HEIGHT = 80
+    LIGHT_SIZE = 16
+
+    def __init__(self):
+        pygame.font.init()
+        from airwar.config.design_tokens import MilitaryColors, MilitaryUI
+        self._colors = MilitaryColors
+        self._font = pygame.font.Font(None, MilitaryUI.MILITARY_LABEL_SIZE)
+        self._name_font = pygame.font.Font(None, MilitaryUI.MILITARY_LABEL_SIZE)
+
+    def render(
+        self,
+        surface: pygame.Surface,
+        reward_system,
+        screen_width: int,
+        screen_height: int
+    ) -> None:
+        if not reward_system:
+            return
+
+        spread_on = reward_system.spread_level > 0 or 'Shotgun' in reward_system.unlocked_buffs
+        laser_on = reward_system.laser_level > 0 or 'Laser' in reward_system.unlocked_buffs
+        explosive_on = reward_system.explosive_level > 0
+
+        panel_x = 15
+        panel_y = 95
+
+        draw_chamfered_panel(
+            surface, panel_x, panel_y, self.PANEL_WIDTH, self.PANEL_HEIGHT,
+            MilitaryColors.BG_PANEL,
+            MilitaryColors.BORDER_GLOW,
+            MilitaryColors.AMBER_GLOW,
+            chamfer_depth=5
+        )
+
+        content_surf = pygame.Surface((self.PANEL_WIDTH, self.PANEL_HEIGHT), pygame.SRCALPHA)
+        content_surf.fill((0, 0, 0, 0))
+
+        # Title
+        title = self._font.render("ATTACK", True, MilitaryColors.TEXT_BRIGHT)
+        title_rect = title.get_rect(left=12, top=6)
+        content_surf.blit(title, title_rect)
+
+        entries = [
+            AttackModeEntry("SPR", "SPREAD", spread_on, (255, 160, 30)),
+            AttackModeEntry("LAS", "LASER", laser_on, (255, 80, 180)),
+            AttackModeEntry("EXP", "EXPLOSIVE", explosive_on, (255, 100, 50)),
+        ]
+
+        spacing = self.PANEL_WIDTH // 3
+        hex_center_y = 46
+        label_top_y = hex_center_y + self.LIGHT_SIZE + 4
+
+        for i, entry in enumerate(entries):
+            cx = spacing * i + spacing // 2
+            color_on = entry.color
+            color_off = (80, 80, 90)
+            color = color_on if entry.is_on else color_off
+
+            # Glow when on
+            if entry.is_on:
+                glow_surf = pygame.Surface((self.LIGHT_SIZE * 4 + 8, self.LIGHT_SIZE * 4 + 8), pygame.SRCALPHA)
+                for r in range(self.LIGHT_SIZE + 4, 1, -2):
+                    alpha = max(0, 70 - (r - 1) * 5)
+                    pygame.draw.circle(glow_surf, (*color_on, alpha),
+                                       (self.LIGHT_SIZE * 2 + 4, self.LIGHT_SIZE * 2 + 4), r)
+                content_surf.blit(glow_surf, (cx - self.LIGHT_SIZE * 2 - 4, hex_center_y - self.LIGHT_SIZE * 2 - 4))
+
+            # Hexagon indicator
+            hex_surf = self._draw_hexagon(self.LIGHT_SIZE, color)
+            hex_rect = hex_surf.get_rect(center=(cx, hex_center_y))
+            content_surf.blit(hex_surf, hex_rect)
+
+            # Label below hexagon
+            label_color = color_on if entry.is_on else (110, 110, 120)
+            label = self._name_font.render(entry.short_name, True, label_color)
+            label_rect = label.get_rect(centerx=cx, top=label_top_y)
+            content_surf.blit(label, label_rect)
+
+        surface.blit(content_surf, (panel_x, panel_y))
+
+    def _draw_hexagon(self, size: int, color: Tuple[int, int, int]) -> pygame.Surface:
+        surf = pygame.Surface((size * 2, size * 2), pygame.SRCALPHA)
+        cx, cy = size, size
+        points = []
+        for i in range(6):
+            angle = math.pi / 3 * i - math.pi / 2
+            px = cx + size * math.cos(angle)
+            py = cy + size * math.sin(angle)
+            points.append((px, py))
+        pygame.draw.polygon(surf, color, points)
+        inner = []
+        for i in range(6):
+            angle = math.pi / 3 * i - math.pi / 2
+            px = cx + (size - 3) * math.cos(angle)
+            py = cy + (size - 3) * math.sin(angle)
+            inner.append((px, py))
+        pygame.draw.polygon(surf, (30, 30, 40), inner)
+        return surf

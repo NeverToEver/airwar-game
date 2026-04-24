@@ -53,7 +53,6 @@ class Enemy(Entity):
         self._exit_start_y = y
         self._exit_end_x = random.choice([x - 300, x + 300, x, x - 150, x + 150])
         self._exit_end_y = -150
-        self._entry_path_type = random.choice(['linear', 'diagonal', 'curve'])
 
         # Lifetime timer: 15 seconds = 900 frames at 60fps
         self._lifetime = 0
@@ -144,20 +143,10 @@ class Enemy(Entity):
                 self._active_position_y = self.rect.y
                 self._lifetime = 0
             else:
-                # Entry animation based on path type
-                if self._entry_path_type == 'linear':
-                    target_x = self._entry_start_x + (self._entry_target_x - self._entry_start_x) * self._entry_progress
-                    target_y = self._entry_start_y + (self._entry_target_y - self._entry_start_y) * self._entry_progress
-                elif self._entry_path_type == 'diagonal':
-                    wave = math.sin(self._entry_progress * math.pi) * 50
-                    target_x = self._entry_start_x + wave
-                    target_y = self._entry_start_y + (self._entry_target_y - self._entry_start_y) * self._entry_progress
-                else:  # curve
-                    curve = math.sin(self._entry_progress * math.pi * 0.5) * 80
-                    target_x = self._entry_start_x + curve
-                    target_y = self._entry_start_y + (self._entry_target_y - self._entry_start_y) * self._entry_progress
-                self.rect.x = target_x
-                self.rect.y = target_y
+                # Linear entry animation from above screen to target position
+                t = self._entry_progress
+                self.rect.x = self._entry_start_x + (self._entry_target_x - self._entry_start_x) * t
+                self.rect.y = self._entry_start_y + (self._entry_target_y - self._entry_start_y) * t
                 self._sync_rects()
             return
 
@@ -190,10 +179,9 @@ class Enemy(Entity):
             self._exit_end_y = -100
             return
 
-        base_speed = self.data.speed * self._difficulty_multiplier
-        # Small movement range around active position (±30 horizontal, ±15 vertical)
-        move_range_x = 30
-        move_range_y = 15
+        # Movement range around active position
+        move_range_x = 80
+        move_range_y = 40
 
         if self.move_type == "sine":
             self.move_timer += 1
@@ -355,7 +343,7 @@ class EnemySpawner:
         self._max_enemies = 5
         self._wave_active = False
         self._wave_enemies_spawned = 0
-        self._wave_size = 5
+        self._wave_size = 9
 
     def _select_enemy_type(self) -> str:
         rand = random.random()
@@ -375,10 +363,8 @@ class EnemySpawner:
     def set_bullet_spawner(self, spawner: IBulletSpawner) -> None:
         self._bullet_spawner = spawner
 
-    def update(self, enemies: List[Enemy], slow_factor: float = 1.0) -> None:
-        from airwar.config import get_screen_width, ENEMY_HITBOX_SIZE, ENEMY_HITBOX_PADDING, ENEMY_COLLISION_SCALE
-        screen_width = get_screen_width()
-
+    def update(self, enemies: List[Enemy], slow_factor: float = 1.0,
+               player_pos: tuple = None) -> None:
         # Count active enemies (not exiting or dead)
         active_enemies = [e for e in enemies if e.active and e._state != 'exiting']
 
@@ -387,37 +373,71 @@ class EnemySpawner:
             self._wave_active = False
             self._wave_enemies_spawned = 0
 
-        # Start new wave if no wave active
+        # Start new wave if no wave active — spawn V-formation immediately
         if not self._wave_active:
             self._wave_active = True
             self._wave_enemies_spawned = 0
+            self._spawn_v_formation(enemies, slow_factor, player_pos)
 
-        # Spawn enemies for current wave (max 5 on screen)
-        self.spawn_timer += 1
-        if (self.spawn_timer >= self.spawn_rate and
-            len(active_enemies) < self._max_enemies and
-            self._wave_enemies_spawned < self._wave_size):
-            self.spawn_timer = 0
-            base_size = ENEMY_HITBOX_SIZE + ENEMY_HITBOX_PADDING * 2
-            collision_size = int(base_size * ENEMY_COLLISION_SCALE)
+    def _spawn_v_formation(self, enemies: List[Enemy], slow_factor: float,
+                           player_pos: tuple = None) -> None:
+        """Spawn a wave of enemies in V-formation with tip pointing toward the player."""
+        from airwar.config import (get_screen_width, get_screen_height,
+                                   ENEMY_HITBOX_SIZE, ENEMY_HITBOX_PADDING, ENEMY_COLLISION_SCALE)
+        screen_width = get_screen_width()
+        screen_height = get_screen_height()
 
-            # Spawn position: more above screen, random x
-            x = random.randint(0, screen_width - collision_size)
-            y = -100  # Higher entry position
+        # V-formation: tip closest to player, arms opening upward
+        # Formation tip positioned in the upper half of the screen
+        player_x = player_pos[0] if player_pos else screen_width // 2
 
-            bullet_types = ["single", "spread", "laser"]
+        # Arm geometry: horizontal spread and vertical step per arm position
+        arm_spread = 140  # px per step outward
+        arm_step = 50      # px per step upward
+        enemies_per_side = (self._wave_size - 1) // 2
+
+        # Clamp tip_x so the entire V-formation stays within screen bounds
+        margin = enemies_per_side * arm_spread + 40
+        base_x = min(margin, max(player_x, screen_width - margin))
+        tip_x = base_x + random.randint(-80, 80)
+        tip_x = max(margin, min(tip_x, screen_width - margin))
+        tip_y = int(screen_height * 0.40) + random.randint(-30, 30)
+
+        # Generate V formation positions: tip first, then alternating left/right up the arms
+        positions = [(tip_x, tip_y)]
+        for i in range(1, enemies_per_side + 1):
+            positions.append((tip_x - arm_spread * i, tip_y - arm_step * i))
+            positions.append((tip_x + arm_spread * i, tip_y - arm_step * i))
+
+        # If wave_size is even, add one more at the top center
+        if len(positions) < self._wave_size:
+            top_y = tip_y - arm_step * enemies_per_side
+            positions.append((tip_x, top_y - arm_step))
+
+        base_size = ENEMY_HITBOX_SIZE + ENEMY_HITBOX_PADDING * 2
+        collision_size = int(base_size * ENEMY_COLLISION_SCALE)
+
+        bullet_types = ["single", "spread", "laser"]
+
+        for px, py in positions:
+            # Clamp to screen bounds (upper half only)
+            px = max(collision_size // 2, min(px, screen_width - collision_size // 2))
+            py = max(-30, min(py, int(screen_height * 0.70)))
+
             bullet_type = random.choice(bullet_types)
-
             enemy_type = self._select_enemy_type()
 
             data = EnemyData(
                 health=self.health,
                 speed=self.speed * slow_factor,
                 bullet_type=bullet_type,
-                fire_rate=90 if bullet_type == "laser" else 150,
+                fire_rate=60 if bullet_type == "laser" else 80,
                 enemy_type=enemy_type
             )
-            enemy = Enemy(x, y, data)
+            enemy = Enemy(px, py, data)
+            # Override entry start Y so all enemies fly in from above screen
+            enemy._entry_start_y = -50
+            enemy._entry_start_x = px
             if self._bullet_spawner:
                 enemy.set_bullet_spawner(self._bullet_spawner)
             enemies.append(enemy)

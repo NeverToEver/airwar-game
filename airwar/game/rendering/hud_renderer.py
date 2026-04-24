@@ -1,6 +1,6 @@
 from typing import Optional, List
 import pygame
-from airwar.ui.buff_stats_panel import BuffStatsPanel
+from airwar.ui.buff_stats_panel import BuffStatsPanel, AttackModePanel
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.ui.segmented_bar import BossHealthBar
 from airwar.config.design_tokens import get_design_tokens, MilitaryColors, MilitaryUI
@@ -36,6 +36,7 @@ class HUDRenderer:
         self.buff_font = pygame.font.Font(None, tokens.typography.TINY_SIZE)
         self.notif_font = pygame.font.Font(None, tokens.typography.CAPTION_SIZE)
         self._buff_stats_panel = BuffStatsPanel()
+        self._attack_mode_panel = AttackModePanel()
 
     def render_hud(self, surface: pygame.Surface, score: int, difficulty: str,
                   player_health: int, player_max_health: int, kills: int,
@@ -223,3 +224,24 @@ class HUDRenderer:
         except Exception as e:
             import logging
             logging.warning(f"Failed to render buff stats panel: {e}")
+
+    def render_attack_mode_panel(
+        self,
+        surface: pygame.Surface,
+        reward_system
+    ) -> None:
+        if not reward_system:
+            return
+
+        try:
+            self._attack_mode_panel.render(
+                surface,
+                reward_system,
+                surface.get_width(),
+                surface.get_height()
+            )
+        except (AttributeError, TypeError) as e:
+            pass
+        except Exception as e:
+            import logging
+            logging.warning(f"Failed to render attack mode panel: {e}")
