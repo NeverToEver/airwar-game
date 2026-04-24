@@ -143,10 +143,10 @@ class PauseScene(Scene, MouseSelectableMixin):
                 pygame.draw.rect(glow_surf, (*glow_color, 50 // i), glow_surf.get_rect())
                 surface.blit(glow_surf, glow_rect)
 
-            pygame.draw.rect(surface, (25, 35, 65), box_rect, border_radius=12)
+            pygame.draw.rect(surface, ForestColors.PANEL_OVERLAY_DARK, box_rect, border_radius=12)
             pygame.draw.rect(surface, self.colors['selected'], box_rect, 3, border_radius=12)
         else:
-            pygame.draw.rect(surface, (18, 20, 40), box_rect, border_radius=12)
+            pygame.draw.rect(surface, ForestColors.PANEL_OVERLAY_LIGHT, box_rect, border_radius=12)
             pygame.draw.rect(surface, self.colors['unselected'], box_rect, 2, border_radius=12)
 
         arrow = ">> " if is_selected else "   "

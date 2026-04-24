@@ -1,6 +1,8 @@
 import pygame
 from typing import TYPE_CHECKING, Tuple, List
 
+from airwar.config.design_tokens import MilitaryColors
+
 if TYPE_CHECKING:
     from airwar.game.systems.difficulty_manager import DifficultyManager
 
@@ -50,14 +52,14 @@ class DifficultyCoefficientPanel:
         bg_surface.fill(bg_color)
         surface.blit(bg_surface, (panel_x, panel_y))
 
-        pygame.draw.rect(surface, (40, 40, 70), (panel_x + 2, panel_y + 2, self.PANEL_WIDTH - 4, self.PANEL_HEIGHT - 4), 1)
+        pygame.draw.rect(surface, MilitaryColors.COEFFICIENT_BAR_BG, (panel_x + 2, panel_y + 2, self.PANEL_WIDTH - 4, self.PANEL_HEIGHT - 4), 1)
 
         bar_width = self.PANEL_WIDTH - 24
         bar_height = 10
         bar_x = panel_x + 12
         bar_y = panel_y + self.PANEL_HEIGHT - 28
 
-        pygame.draw.rect(surface, (20, 20, 40), (bar_x, bar_y, bar_width, bar_height), border_radius=3)
+        pygame.draw.rect(surface, MilitaryColors.COEFFICIENT_BAR_FILL, (bar_x, bar_y, bar_width, bar_height), border_radius=3)
         fill_width = int(bar_width * min(current / max_mult, 1.0))
         color = self._get_color_for_multiplier(current)
         if fill_width > 0:

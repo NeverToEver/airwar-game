@@ -62,7 +62,7 @@ class BuffStatsAggregator:
             from airwar.game.buffs.buff_registry import create_buff
             return create_buff(name).get_color()
         except (ValueError, AttributeError):
-            return (200, 200, 200)
+            return MilitaryColors.STATS_TEXT
 
     def _get_buff_category(self, name: str) -> str:
         category_map = {
@@ -310,12 +310,12 @@ class BuffStatsPanel:
         name_text = self._name_font.render(entry.short_name, True, entry.color)
         surface.blit(name_text, (x + 5, y_offset + 4))
 
-        value_text = self._value_font.render(entry.value, True, (220, 220, 240))
+        value_text = self._value_font.render(entry.value, True, MilitaryColors.STATS_TEXT_BRIGHT)
         value_rect = value_text.get_rect(right=x + item_width - 5, centery=y_offset + item_height // 2)
         surface.blit(value_text, value_rect)
 
         if entry.level > 1:
-            level_text = self._value_font.render(f"x{entry.level}", True, (150, 150, 180))
+            level_text = self._value_font.render(f"x{entry.level}", True, MilitaryColors.STATS_TEXT_DIM)
             surface.blit(level_text, (x + 5, y_offset + item_height - 14))
 
     def _render_summary(self, surface: pygame.Surface, summary: Dict[str, str]) -> None:
@@ -335,7 +335,7 @@ class BuffStatsPanel:
         x = self._panel_padding + 5
 
         for key, value in list(summary.items())[:4]:
-            text = self._summary_font.render(f"{key}:{value}", True, (200, 200, 220))
+            text = self._summary_font.render(f"{key}:{value}", True, MilitaryColors.STATS_TEXT)
             surface.blit(text, (x, y_offset))
             x += text.get_width() + 12
 
