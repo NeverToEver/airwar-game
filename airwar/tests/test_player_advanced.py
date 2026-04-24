@@ -9,28 +9,28 @@ class TestPlayerShotModes:
         from airwar.input import MockInputHandler
         input_handler = MockInputHandler()
         player = Player(100, 200, input_handler)
-        
-        assert player._shot_mode == 'normal'
+
+        assert player._has_spread is False
         player.activate_shotgun()
-        assert player._shot_mode == 'shotgun'
+        assert player._has_spread is True
 
     def test_player_laser_mode(self):
         from airwar.entities import Player
         from airwar.input import MockInputHandler
         input_handler = MockInputHandler()
         player = Player(100, 200, input_handler)
-        
-        assert player._shot_mode == 'normal'
+
+        assert player._has_laser is False
         player.activate_laser(180)
-        assert player._shot_mode == 'laser'
+        assert player._has_laser is True
 
     def test_player_fire_creates_bullets_in_shotgun_mode(self):
         from airwar.entities import Player
         from airwar.input import MockInputHandler
         input_handler = MockInputHandler()
         player = Player(100, 200, input_handler)
-        
-        player._shot_mode = 'shotgun'
+
+        player._has_spread = True
         initial_count = len(player.get_bullets())
         player.fire()
         assert len(player.get_bullets()) == initial_count + 3
@@ -40,11 +40,25 @@ class TestPlayerShotModes:
         from airwar.input import MockInputHandler
         input_handler = MockInputHandler()
         player = Player(100, 200, input_handler)
-        
-        player._shot_mode = 'laser'
+
+        player._has_laser = True
         bullet = player.fire()
         assert bullet is not None
         assert bullet.data.is_laser is True
+
+    def test_player_spread_laser_mode(self):
+        from airwar.entities import Player
+        from airwar.input import MockInputHandler
+        input_handler = MockInputHandler()
+        player = Player(100, 200, input_handler)
+
+        player._has_spread = True
+        player._has_laser = True
+        initial_count = len(player.get_bullets())
+        player.fire()
+        assert len(player.get_bullets()) == initial_count + 3
+        for bullet in player.get_bullets()[initial_count:]:
+            assert bullet.data.is_laser is True
 
 
 class TestPlayerShield:

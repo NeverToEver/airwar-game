@@ -80,12 +80,7 @@ class UIManager:
 
         unlocked_buffs = getattr(self._reward_system, 'unlocked_buffs', [])
 
-        def get_buff_color(buff_name):
-            try:
-                from airwar.game.buffs.buff_registry import create_buff
-                return create_buff(buff_name).get_color()
-            except:
-                return (255, 200, 100)
+        from airwar.game.buffs.buff_registry import get_buff_color
 
         difficulty_manager = self._game_controller.difficulty_manager
         current_coefficient = difficulty_manager.get_current_multiplier()

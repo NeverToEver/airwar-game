@@ -366,7 +366,7 @@ def _draw_enemy_ship(surface: pygame.Surface, x: float, y: float, width: float =
 
 
 def draw_bullet(surface: pygame.Surface, x: float, y: float, width: float = 8, height: float = 16, bullet_type: str = "single") -> None:
-    if bullet_type == "spread":
+    if bullet_type == "spread" or bullet_type == "spread_laser":
         draw_spread_bullet(surface, x, y, width, height)
     elif bullet_type == "laser":
         draw_laser_bullet(surface, x, y, width, height)
