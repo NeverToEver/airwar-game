@@ -35,7 +35,7 @@ class MenuBackground:
         # 跑马灯效果
         self._marquee_offset = 0.0
         self._marquee_speed = 0.8
-        self._marquee_strip_height = 8
+        self._marquee_strip_height = 24
 
     def _ensure_cached_surfaces(self, width: int, height: int):
         """确保缓存的表面尺寸与屏幕尺寸匹配"""
