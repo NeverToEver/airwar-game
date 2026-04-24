@@ -276,7 +276,8 @@ class ForestColors:
     # Marquee effect
     MARQUEE_COLOR = (180, 150, 90, 40)
     MARQUEE_STRIP_SIZE = 24
-    MARQUEE_SPEED = 0.8
+    MARQUEE_SPEED = 0.08
+    MARQUEE_WOBBLE_AMOUNT = 0.03
 
     # Forest green accents
     FOREST_GREEN = (60, 90, 60)

@@ -227,18 +227,23 @@ class MenuBackground:
             )
 
     def _render_marquee(self, surface: pygame.Surface, width: int, height: int) -> None:
-        """渲染跑马灯效果 - 使用ForestColors令牌，非线性移动"""
+        """渲染跑马灯效果 - 使用ForestColors令牌，慢速线性移动"""
         strip_color = ForestColors.MARQUEE_COLOR
         strip_size = ForestColors.MARQUEE_STRIP_SIZE
+        wobble = ForestColors.MARQUEE_WOBBLE_AMOUNT
 
-        # 纵向条带 - 使用正弦波非线性移动
-        marquee_y = ((math.sin(self._marquee_time * 0.5) + 1) / 2) * (height + strip_size) - strip_size
+        # 纵向条带 - 缓慢线性移动带轻微摆动
+        base_y = (self._marquee_time % (height + strip_size * 2)) - strip_size
+        offset_y = math.sin(self._marquee_time * 2) * height * wobble
+        marquee_y = base_y + offset_y
         v_strip_surf = pygame.Surface((width, strip_size), pygame.SRCALPHA)
         v_strip_surf.fill(strip_color)
         surface.blit(v_strip_surf, (0, int(marquee_y)))
 
-        # 横向条带 - 使用余弦波非线性移动（相位差产生雷达扫描效果）
-        marquee_x = ((math.cos(self._marquee_time * 0.5) + 1) / 2) * (width + strip_size) - strip_size
+        # 横向条带 - 缓慢线性移动带轻微摆动
+        base_x = (self._marquee_time % (width + strip_size * 2)) - strip_size
+        offset_x = math.sin(self._marquee_time * 2 + math.pi) * width * wobble
+        marquee_x = base_x + offset_x
         h_strip_surf = pygame.Surface((strip_size, height), pygame.SRCALPHA)
         h_strip_surf.fill(strip_color)
         surface.blit(h_strip_surf, (int(marquee_x), 0))
