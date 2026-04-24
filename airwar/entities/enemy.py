@@ -70,7 +70,7 @@ class Enemy(Entity):
             self.direction = random.choice([-1, 1])
             self.zigzag_timer = 0
             self.zigzag_interval = random.randint(30, 60)
-            self.zigzag_speed = random.uniform(2.0, 3.5)
+            self.zigzag_speed = random.uniform(1.5, 2.5)
             
         elif enemy_type == "dive":
             self.move_type = "dive"
@@ -82,14 +82,14 @@ class Enemy(Entity):
         elif enemy_type == "hover":
             self.move_type = "hover"
             self.hover_timer = 0
-            self.hover_speed = random.uniform(1.5, 2.5)
+            self.hover_speed = random.uniform(1.0, 1.8)
             self.hover_amplitude = random.uniform(20, 40)
             self.start_x = self.rect.x
             
         elif enemy_type == "spiral":
             self.move_type = "spiral"
             self.spiral_timer = 0
-            self.spiral_speed = random.uniform(2.0, 3.0)
+            self.spiral_speed = random.uniform(1.0, 2.0)
             self.spiral_radius = random.uniform(30, 50)
             self.spiral_frequency = random.uniform(0.05, 0.08)
             self.start_x = self.rect.x
@@ -181,7 +181,7 @@ class Enemy(Entity):
         center_x = self.rect.centerx
 
         if self.data.bullet_type == "spread":
-            for angle in [-20, 0, 20]:
+            for angle in [-40, -20, 0, 20, 40]:
                 bullet_data = BulletData(
                     damage=self._get_damage(),
                     speed=5.0,
@@ -189,7 +189,7 @@ class Enemy(Entity):
                     bullet_type="spread"
                 )
                 bullet = Bullet(center_x + angle, self.rect.bottom, bullet_data)
-                bullet.velocity = Vector2(angle * 0.1, 5)
+                bullet.velocity = Vector2(angle * 0.15, 5)
                 bullets.append(bullet)
         elif self.data.bullet_type == "laser":
             bullet_data = BulletData(
