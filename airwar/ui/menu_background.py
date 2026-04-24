@@ -18,6 +18,7 @@ class MenuBackground:
     _gradient_cache = {}
     _leaf_surface_cache = {}
     _light_surface_cache = {}
+    _marquee_cache = {}
 
     def __init__(self):
         self._animation_time = 0
@@ -231,14 +232,23 @@ class MenuBackground:
         strip_color = ForestColors.MARQUEE_COLOR
         strip_size = ForestColors.MARQUEE_STRIP_SIZE
 
+        # Cache marquee surfaces to avoid recreating every frame
+        cache_key_v = ('v', width, strip_size, strip_color)
+        cache_key_h = ('h', strip_size, height, strip_color)
+
+        if cache_key_v not in MenuBackground._marquee_cache:
+            v_strip_surf = pygame.Surface((width, strip_size), pygame.SRCALPHA)
+            v_strip_surf.fill(strip_color)
+            MenuBackground._marquee_cache[cache_key_v] = v_strip_surf
+        if cache_key_h not in MenuBackground._marquee_cache:
+            h_strip_surf = pygame.Surface((strip_size, height), pygame.SRCALPHA)
+            h_strip_surf.fill(strip_color)
+            MenuBackground._marquee_cache[cache_key_h] = h_strip_surf
+
         # 纵向条带 - 线性移动
         marquee_y = (self._marquee_time % (height + strip_size * 2)) - strip_size
-        v_strip_surf = pygame.Surface((width, strip_size), pygame.SRCALPHA)
-        v_strip_surf.fill(strip_color)
-        surface.blit(v_strip_surf, (0, int(marquee_y)))
+        surface.blit(MenuBackground._marquee_cache[cache_key_v], (0, int(marquee_y)))
 
         # 横向条带 - 线性移动
         marquee_x = (self._marquee_time % (width + strip_size * 2)) - strip_size
-        h_strip_surf = pygame.Surface((strip_size, height), pygame.SRCALPHA)
-        h_strip_surf.fill(strip_color)
-        surface.blit(h_strip_surf, (int(marquee_x), 0))
+        surface.blit(MenuBackground._marquee_cache[cache_key_h], (int(marquee_x), 0))
