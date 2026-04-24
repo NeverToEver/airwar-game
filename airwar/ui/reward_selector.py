@@ -19,6 +19,8 @@ class RewardSelector(MouseSelectableMixin):
         self.particles: list = []
         self.buff_levels: dict = {}
         self.unlocked_buffs: list = []
+        self._gradient_cache: Optional[pygame.Surface] = None
+        self._gradient_cache_size: tuple = (0, 0)
         self._init_visual_elements()
 
     def _init_visual_elements(self) -> None:
@@ -190,12 +192,17 @@ class RewardSelector(MouseSelectableMixin):
 
     def _draw_gradient_background(self, surface: pygame.Surface) -> None:
         width, height = surface.get_size()
-        for y in range(height):
-            ratio = y / height
-            r = int(self.colors['bg'][0] * (1 - ratio) + self.colors['bg_gradient'][0] * ratio)
-            g = int(self.colors['bg'][1] * (1 - ratio) + self.colors['bg_gradient'][1] * ratio)
-            b = int(self.colors['bg'][2] * (1 - ratio) + self.colors['bg_gradient'][2] * ratio)
-            pygame.draw.line(surface, (r, g, b), (0, y), (width, y))
+        size = (width, height)
+        if self._gradient_cache is None or self._gradient_cache_size != size:
+            self._gradient_cache = pygame.Surface((width, height))
+            for y in range(height):
+                ratio = y / height
+                r = int(self.colors['bg'][0] * (1 - ratio) + self.colors['bg_gradient'][0] * ratio)
+                g = int(self.colors['bg'][1] * (1 - ratio) + self.colors['bg_gradient'][1] * ratio)
+                b = int(self.colors['bg'][2] * (1 - ratio) + self.colors['bg_gradient'][2] * ratio)
+                pygame.draw.line(self._gradient_cache, (r, g, b), (0, y), (width, y))
+            self._gradient_cache_size = size
+        surface.blit(self._gradient_cache, (0, 0))
 
     def _draw_stars(self, surface: pygame.Surface) -> None:
         width, height = surface.get_size()

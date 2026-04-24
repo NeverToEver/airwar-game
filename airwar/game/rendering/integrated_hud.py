@@ -12,6 +12,8 @@ class IntegratedHUD:
         self._buff_scroll_offset = 0.0
         self._buff_scroll_speed = self._tokens.components.BUFF_SCROLL_SPEED
         self._buff_visible_count = self._tokens.components.BUFF_SCROLL_VISIBLE_COUNT
+        self._panel_bg_cache = {}
+        self._bar_bg_cache = {}
 
     def _setup_layout(self):
         colors = self._tokens.colors
@@ -48,6 +50,7 @@ class IntegratedHUD:
             self._current_width = self.panel_width
         else:
             self._current_width = int(self.panel_width * self._tokens.components.HUD_PANEL_COLLAPSED_RATIO)
+        self._panel_bg_cache.clear()
 
     def is_expanded(self) -> bool:
         return self._is_expanded
@@ -109,23 +112,26 @@ class IntegratedHUD:
             self._render_expand_indicator(surface, panel_x, panel_y, panel_height, colors)
 
     def _render_panel_background(self, surface, rect, colors):
-        overlay = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
-        pygame.draw.rect(
-            overlay,
-            (*colors.BACKGROUND_PANEL, 235),
-            overlay.get_rect(),
-            border_radius=self.corner_radius
-        )
+        cache_key = (rect.width, rect.height, self._is_expanded)
+        if cache_key not in self._panel_bg_cache:
+            overlay = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
+            pygame.draw.rect(
+                overlay,
+                (*colors.BACKGROUND_PANEL, 235),
+                overlay.get_rect(),
+                border_radius=self.corner_radius
+            )
+            border_surf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
+            pygame.draw.rect(
+                border_surf,
+                (*colors.PANEL_BORDER, 200),
+                border_surf.get_rect(),
+                width=2,
+                border_radius=self.corner_radius
+            )
+            self._panel_bg_cache[cache_key] = (overlay, border_surf)
+        overlay, border_surf = self._panel_bg_cache[cache_key]
         surface.blit(overlay, rect.topleft)
-
-        border_surf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
-        pygame.draw.rect(
-            border_surf,
-            (*colors.PANEL_BORDER, 200),
-            border_surf.get_rect(),
-            width=2,
-            border_radius=self.corner_radius
-        )
         surface.blit(border_surf, rect.topleft)
 
     def _render_expand_indicator(self, surface, panel_x, panel_y, panel_height, colors):
@@ -144,32 +150,36 @@ class IntegratedHUD:
         surface.blit(hint_text, hint_rect)
 
     def _render_bar_background(self, surface, rect, colors):
-        overlay = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
-        pygame.draw.rect(
-            overlay,
-            (*colors.BACKGROUND_PANEL, 230),
-            overlay.get_rect(),
-            border_radius=self.corner_radius
-        )
+        cache_key = (rect.width, rect.height)
+        if cache_key not in self._bar_bg_cache:
+            overlay = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
+            pygame.draw.rect(
+                overlay,
+                (*colors.BACKGROUND_PANEL, 230),
+                overlay.get_rect(),
+                border_radius=self.corner_radius
+            )
+            border_surf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
+            pygame.draw.rect(
+                border_surf,
+                (*colors.PANEL_BORDER, 200),
+                border_surf.get_rect(),
+                width=2,
+                border_radius=self.corner_radius
+            )
+            line_surf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
+            pygame.draw.line(
+                line_surf,
+                (*colors.PANEL_BORDER, 120),
+                (30, rect.height - 10),
+                (rect.width - 30, rect.height - 10),
+                width=2
+            )
+            self._bar_bg_cache[cache_key] = (overlay, border_surf, line_surf)
+        overlay, border_surf, line_surf = self._bar_bg_cache[cache_key]
         surface.blit(overlay, rect.topleft)
-
-        border_surf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
-        pygame.draw.rect(
-            border_surf,
-            (*colors.PANEL_BORDER, 200),
-            border_surf.get_rect(),
-            width=2,
-            border_radius=self.corner_radius
-        )
         surface.blit(border_surf, rect.topleft)
-
-        pygame.draw.line(
-            surface,
-            (*colors.PANEL_BORDER, 120),
-            (rect.left + 30, rect.bottom - 10),
-            (rect.right - 30, rect.bottom - 10),
-            width=2
-        )
+        surface.blit(line_surf, rect.topleft)
 
     def _render_score_module(self, surface, score, colors, x, y):
         content_x = x + self.padding

@@ -28,6 +28,18 @@ BUFF_REGISTRY: Dict[str, Type[Buff]] = {
     'Slow Field': SlowFieldBuff,
 }
 
+_BUFF_COLOR_CACHE: Dict[str, tuple] = {}
+
+
+def get_buff_color(name: str) -> tuple:
+    if name not in _BUFF_COLOR_CACHE:
+        buff_class = BUFF_REGISTRY.get(name)
+        if buff_class:
+            _BUFF_COLOR_CACHE[name] = buff_class().get_color()
+        else:
+            _BUFF_COLOR_CACHE[name] = (255, 200, 100)
+    return _BUFF_COLOR_CACHE[name]
+
 
 def create_buff(name: str) -> Buff:
     buff_class = BUFF_REGISTRY.get(name)

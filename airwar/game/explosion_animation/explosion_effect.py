@@ -133,20 +133,12 @@ class ExplosionEffect:
         if alpha < 5:
             return
 
-        radius_surf = pygame.Surface(
-            (self._radius * 2 + 20, self._radius * 2 + 20),
-            pygame.SRCALPHA
-        )
         pygame.draw.circle(
-            radius_surf,
-            (255, 100, 30, alpha),
-            (self._radius + 10, self._radius + 10),
+            surface,
+            (255, 100, 30),
+            (int(self._x), int(self._y)),
             self._radius,
             2
-        )
-        surface.blit(
-            radius_surf,
-            (self._x - self._radius - 10, self._y - self._radius - 10)
         )
 
     def _render_particles(self, surface: pygame.Surface) -> None:
@@ -165,28 +157,13 @@ class ExplosionEffect:
             return
 
         color = particle.get_color()
-
-        glow_radius = int(particle.size * 2)
-        if glow_radius > 0:
-            glow_surf = _get_particle_glow_surface(glow_radius)
-            # Clear and redraw the glow (size-based cache)
-            glow_surf.fill((0, 0, 0, 0))
-            pygame.draw.circle(
-                glow_surf,
-                (*color, int(alpha * 0.3)),
-                (glow_radius + 1, glow_radius + 1),
-                glow_radius
-            )
-            surface.blit(
-                glow_surf,
-                (int(particle.x) - glow_radius - 1, int(particle.y) - glow_radius - 1)
-            )
+        size = max(1, int(particle.size * (alpha / 255)))
 
         pygame.draw.circle(
             surface,
             color,
             (int(particle.x), int(particle.y)),
-            max(1, int(particle.size * (alpha / 255)))
+            size
         )
 
     def reset(self) -> None:

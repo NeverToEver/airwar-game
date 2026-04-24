@@ -184,17 +184,19 @@ class RewardSystem:
         player.pierce_count = self.buff_levels.get('Piercing', 0)
 
     def _apply_spread_shot(self, player) -> None:
-        if self.buff_levels.get('Spread Shot', 0) > 0:
+        if self.buff_levels.get('Spread Shot', 0) == 1:
             player.activate_shotgun()
 
     def _apply_explosive(self, player) -> None:
         pass
 
     def _apply_shotgun(self, player) -> None:
-        player.activate_shotgun()
+        if self.buff_levels.get('Shotgun', 0) == 1:
+            player.activate_shotgun()
 
     def _apply_laser(self, player) -> None:
-        player.activate_laser(180)
+        if self.buff_levels.get('Laser', 0) == 1:
+            player.activate_laser(180)
 
     def _apply_armor(self, player) -> None:
         pass

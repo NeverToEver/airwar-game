@@ -19,7 +19,8 @@ class Player(Entity):
         self.speed = 5
         self.bullet_damage = 10
         self._fire_cooldown = 0
-        self._shot_mode = 'normal'
+        self._has_spread = False
+        self._has_laser = False
         self._bullet_listeners: List = []
         self._bullets: List = []
         self.is_shielded = False
@@ -72,21 +73,27 @@ class Player(Entity):
     def _create_bullets_for_shot_mode(self, return_first: bool = False) -> Optional[Bullet]:
         center_x = self.rect.x + self.rect.width / 2
         bullet_y = self.rect.y - 10
-        
-        if self._shot_mode == 'shotgun':
+
+        if self._has_spread:
             bullet_x = center_x - 5
             first_bullet = None
             for angle in [-15, 0, 15]:
                 bullet = Bullet(
                     bullet_x,
                     bullet_y,
-                    BulletData(damage=self.bullet_damage, angle_offset=angle, bullet_type='shotgun')
+                    BulletData(
+                        damage=self.bullet_damage,
+                        angle_offset=angle,
+                        bullet_type='spread_laser' if self._has_laser else 'spread'
+                    )
                 )
+                if self._has_laser:
+                    bullet.data.is_laser = True
                 self._bullets.append(bullet)
                 if first_bullet is None:
                     first_bullet = bullet
             return first_bullet if return_first else None
-        elif self._shot_mode == 'laser':
+        elif self._has_laser:
             bullet = Bullet(
                 center_x - 3,
                 bullet_y,
@@ -115,10 +122,10 @@ class Player(Entity):
             self._create_bullets_for_shot_mode()
 
     def activate_shotgun(self) -> None:
-        self._shot_mode = 'shotgun'
+        self._has_spread = True
 
     def activate_laser(self, duration: int) -> None:
-        self._shot_mode = 'laser'
+        self._has_laser = True
 
     def get_hitbox(self) -> pygame.Rect:
         hb_x = self.rect.x + (self.rect.width - self.hitbox_width) // 2

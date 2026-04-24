@@ -178,7 +178,7 @@ class RainforestLayer:
         self._scroll_offset += self._speed * delta_time
 
     def render(self, surface: pygame.Surface) -> None:
-        time = RainforestBackground.time
+        time = self.time
         for leaf in self._leaves:
             y = (leaf['base_y'] + self._scroll_offset * leaf['speed_factor']) % (self._screen_height + leaf['size'] * 2)
             y = y - leaf['size']
