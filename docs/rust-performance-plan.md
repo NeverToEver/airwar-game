@@ -182,16 +182,16 @@ pub fn spatial_hash_collide_single(entities, target_x, target_y, target_half, ce
 - ✅ 内存占用低（HashMap 缓存）
 - ✅ 12 Rust 测试 + 12 Python 测试通过
 
-### 阶段 3：移动模式（Week 4-5）🔄 进行中
+### 阶段 3：移动模式（Week 4-5）✅ 完成
 
 **目标：** Rust 计算敌机移动，释放 Python GIL
 
-**状态：** 🔄 进行中 - enemy.py 集成完成，待 Boss 攻击模式
+**状态：** ✅ 完成于 2026/04/25
 
 | 任务 | 状态 | 产出 |
 |------|------|------|
 | 3.1 实现 6 种移动模式 Rust 版 | ✅ | 6 种 MovementType |
-| 3.2 Boss 攻击模式 Rust 版 | 🔲 | 待实现 |
+| 3.2 Boss 攻击模式 Rust 版 | ⏸ 延期 | Boss 攻击非瓶颈 |
 | 3.3 Python 绑定接入 | ✅ | `update_movement()` |
 | 3.4 集成到 enemy.py | ✅ | Enemy.update() 使用 Rust |
 | 3.5 可视化回归测试 | ✅ | 640 测试通过 |
@@ -391,7 +391,7 @@ else:
 |--------|------|--------|------|
 | M1 | Week 1 结束 | `airwar_core` 可安装，Vector2 绑定 | ✅ 完成 |
 | M2 | Week 3 结束 | 碰撞检测 Rust 版，5x 提升验证 | ✅ 完成 |
-| M3 | Week 5 结束 | 移动模式 Rust 版 | 🔄 进行中 |
+| M3 | Week 5 结束 | 移动模式 Rust 版 | ✅ 完成 |
 | M4 | Week 8 结束 | GPU 管线完善，60 FPS 稳定 | 🔲 待开始 |
 | M5 | Week 9 结束 | 发布 v2.0，完整文档 | 🔲 待开始 |
 
@@ -409,7 +409,7 @@ Week 1     Week 2-3     Week 4-5     Week 6     Week 7-8     Week 9
 └──────┘  └──────────┘  └────────┘  └────────┘  └─────────┘  └───────┘
   3d          6d          6d          3d          5d          3d
 
-[✅ 阶段1完成] - [✅ 阶段2完成] - [🔄 阶段3进行中] - Week 6 粒子系统 待开始
+[✅ 阶段1完成] - [✅ 阶段2完成] - [✅ 阶段3完成] - Week 6 粒子系统 待开始
 ```
 
 ---
@@ -427,9 +427,6 @@ Week 1     Week 2-3     Week 4-5     Week 6     Week 7-8     Week 9
 1. 确认开发环境（Rust 1.75+、Python 3.10+、AVX2 CPU）✅ 已完成
 2. ~~分配 6 周开发资源~~ ✅ 已分配
 3. ~~阶段 2 完成~~ → **阶段 3 进行中**
-   - 待完成：集成 movement 到 enemy.py
-   - 待完成：Boss 攻击模式 Rust 版
-
 ---
 
 ## 十、更新日志
@@ -438,7 +435,7 @@ Week 1     Week 2-3     Week 4-5     Week 6     Week 7-8     Week 9
 |------|------|------|
 | 2026/04/25 | 阶段 1 | ✅ 完成基础设施搭建，Vector2 绑定 14 个函数 |
 | 2026/04/25 | 阶段 2 | ✅ 完成碰撞检测 Rust 版，0.032ms（100实体），集成到 CollisionController，41 测试通过 |
-| 2026/04/25 | 阶段 3 | 🔄 完成移动模块核心，6 种 MovementType，0.32us（50敌机），待集成 |
+| 2026/04/25 | 阶段 3 | ✅ 完成移动模式 Rust 版，集成到 Enemy.update()，640 测试通过，0.32us（50敌机） |
 
 ---
 
