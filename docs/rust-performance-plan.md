@@ -139,11 +139,11 @@ airwar/
 - ✅ `RUST_AVAILABLE = True`
 - ✅ 所有 vector2 函数已验证
 
-### 阶段 2：碰撞检测（Week 2-3）🔄 进行中
+### 阶段 2：碰撞检测（Week 2-3）✅ 完成
 
 **目标：** 用 Rust 重写空间哈希碰撞，验证 5-10x 提升
 
-**状态：** 🔄 进行中 - 核心实现完成，待集成
+**状态：** ✅ 完成于 2026/04/25
 
 | 任务 | 状态 | 产出 |
 |------|------|------|
@@ -151,7 +151,8 @@ airwar/
 | 2.2 SIMD colliderect | ✅ | SSE2 向量化碰撞检测 |
 | 2.3 Python 绑定接入 | ✅ | `spatial_hash_collide()` |
 | 2.4 性能基准测试 | ✅ | 100实体 0.032ms |
-| 2.5 回归测试 | ✅ | 12 Rust + 12 Python 测试通过 |
+| 2.5 回归测试 | ✅ | 18 Rust + 12 Python + 41 CollisionController 测试通过 |
+| 2.6 集成到游戏 | ✅ | `CollisionController.check_player_bullets_vs_enemies()` 使用 Rust |
 
 **性能基准：**
 | 实体数 | 耗时 |
@@ -167,6 +168,12 @@ airwar/
 pub struct SpatialHashGrid { cell_size, cells, entity_positions }
 pub struct AABB { min_x, min_y, max_x, max_y }
 pub fn spatial_hash_collide(entities: Vec<(i32,f32,f32,f32)>, cell_size: i32) -> Vec<(i32,i32)>
+```
+
+**游戏集成：**
+- `CollisionController` 使用 Rust `spatial_hash_collide` 加速
+- 自动降级到 Python 实现如果 Rust 不可用
+- `check_player_bullets_vs_enemies()` 完全兼容
 pub fn spatial_hash_collide_single(entities, target_x, target_y, target_half, cell_size) -> Vec<i32>
 ```
 
@@ -360,7 +367,7 @@ else:
 | 里程碑 | 日期 | 交付物 | 状态 |
 |--------|------|--------|------|
 | M1 | Week 1 结束 | `airwar_core` 可安装，Vector2 绑定 | ✅ 完成 |
-| M2 | Week 3 结束 | 碰撞检测 Rust 版，5x 提升验证 | 🔄 进行中 |
+| M2 | Week 3 结束 | 碰撞检测 Rust 版，5x 提升验证 | ✅ 完成 |
 | M3 | Week 5 结束 | 移动模式 Rust 版 | 🔲 待开始 |
 | M4 | Week 8 结束 | GPU 管线完善，60 FPS 稳定 | 🔲 待开始 |
 | M5 | Week 9 结束 | 发布 v2.0，完整文档 | 🔲 待开始 |
@@ -379,7 +386,7 @@ Week 1     Week 2-3     Week 4-5     Week 6     Week 7-8     Week 9
 └──────┘  └──────────┘  └────────┘  └────────┘  └─────────┘  └───────┘
   3d          6d          6d          3d          5d          3d
 
-[✅ 阶段1完成] - [🔄 阶段2进行中] - Week 4-5 移动模式 待开始
+[✅ 阶段1完成] - [✅ 阶段2完成] - Week 4-5 移动模式 待开始
 ```
 
 ---
@@ -396,9 +403,7 @@ Week 1     Week 2-3     Week 4-5     Week 6     Week 7-8     Week 9
 **下一步行动：**
 1. 确认开发环境（Rust 1.75+、Python 3.10+、AVX2 CPU）✅ 已完成
 2. ~~分配 6 周开发资源~~ ✅ 已分配
-3. ~~从阶段 1 启动~~ → **阶段 2 进行中**
-   - 待完成：集成 collision 模块到 CollisionController
-   - 待完成：验证游戏内碰撞检测回归
+3. ~~从阶段 1 启动~~ → **阶段 2 完成，启动阶段 3（移动模式）**
 
 ---
 
@@ -407,7 +412,7 @@ Week 1     Week 2-3     Week 4-5     Week 6     Week 7-8     Week 9
 | 日期 | 阶段 | 变更 |
 |------|------|------|
 | 2026/04/25 | 阶段 1 | ✅ 完成基础设施搭建，Vector2 绑定 14 个函数 |
-| 2026/04/25 | 阶段 2 | ✅ 完成碰撞检测 Rust 版，0.032ms（100实体），12 Rust + 12 Python 测试 |
+| 2026/04/25 | 阶段 2 | ✅ 完成碰撞检测 Rust 版，0.032ms（100实体），集成到 CollisionController，41 测试通过 |
 
 ---
 
