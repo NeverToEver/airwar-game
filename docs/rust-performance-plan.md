@@ -186,15 +186,15 @@ pub fn spatial_hash_collide_single(entities, target_x, target_y, target_half, ce
 
 **目标：** Rust 计算敌机移动，释放 Python GIL
 
-**状态：** 🔄 进行中 - 核心模块完成，待集成到 enemy.py
+**状态：** 🔄 进行中 - enemy.py 集成完成，待 Boss 攻击模式
 
 | 任务 | 状态 | 产出 |
 |------|------|------|
 | 3.1 实现 6 种移动模式 Rust 版 | ✅ | 6 种 MovementType |
 | 3.2 Boss 攻击模式 Rust 版 | 🔲 | 待实现 |
 | 3.3 Python 绑定接入 | ✅ | `update_movement()` |
-| 3.4 集成到 enemy.py | 🔲 | 待完成 |
-| 3.5 可视化回归测试 | 🔲 | 待完成 |
+| 3.4 集成到 enemy.py | ✅ | Enemy.update() 使用 Rust |
+| 3.5 可视化回归测试 | ✅ | 640 测试通过 |
 
 **性能基准：**
 - 50 敌机更新: 0.32us/次 (目标 <500us)
@@ -215,6 +215,7 @@ pub fn update_movement(...) -> (f32, f32, f32)
 **验收结果：**
 - ✅ 移动更新延迟 **0.32us** (50敌机) << 0.5ms 目标
 - ✅ 4 Rust 测试 + 9 Python 测试通过
+- ✅ 640 游戏测试通过
 
 **移动模式列表：**
 
