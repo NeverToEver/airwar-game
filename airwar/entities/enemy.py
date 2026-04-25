@@ -313,7 +313,7 @@ class Enemy(Entity):
                 self.rect.y = self._active_position_y + math.sin(self._lifetime * 0.05) * (move_range_y * 0.3)
                 self._sync_rects()
 
-        if self.rect.y > screen_height:
+        if self.rect.y > get_screen_height():
             self.active = False
 
         self.fire_timer += 1

@@ -41,7 +41,7 @@ DIFFICULTY_SETTINGS = {
         'bullet_damage': 100,
         'enemy_speed': 2.5,
         'spawn_rate': 40,
-        'max_delta': 1500,
+        'max_delta': 2700,
         'difficulty_multiplier': 0.8,
     },
     'medium': {
@@ -49,7 +49,7 @@ DIFFICULTY_SETTINGS = {
         'bullet_damage': 50,
         'enemy_speed': 3,
         'spawn_rate': 30,
-        'max_delta': 2000,
+        'max_delta': 3600,
         'difficulty_multiplier': 1.0,
     },
     'hard': {
@@ -57,7 +57,7 @@ DIFFICULTY_SETTINGS = {
         'bullet_damage': 34,
         'enemy_speed': 3.5,
         'spawn_rate': 25,
-        'max_delta': 3000,
+        'max_delta': 5400,
         'difficulty_multiplier': 1.5,
     },
 }

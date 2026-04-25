@@ -149,7 +149,7 @@ class RewardSystem:
             cat = random.choice(categories)
             rewards = REWARD_POOL[cat]
 
-            if cat == 'offense' and boss_kill_count < 2:
+            if cat == 'offense' and boss_kill_count < 3:
                 rewards = [r for r in rewards if r['name'] not in ['Explosive']]
 
             reward = random.choice(rewards)
