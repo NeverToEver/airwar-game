@@ -35,6 +35,8 @@ class PersistenceManager(IPersistenceManager):
             save_dict = data.to_dict()
             save_dict['timestamp'] = __import__('time').time()
 
+            self._validate_save_dict(save_dict)
+
             with open(self._save_path, 'w', encoding='utf-8') as f:
                 json.dump(save_dict, f, indent=2, ensure_ascii=False)
 
@@ -47,9 +49,39 @@ class PersistenceManager(IPersistenceManager):
         except OSError as e:
             logger.error(f"IO error while saving game: {e}")
             return False
+        except SaveDataCorruptedError as e:
+            logger.error(f"Save data validation failed: {e}")
+            return False
         except Exception as e:
             logger.critical(f"Unexpected error saving game: {e}")
             return False
+
+    def _validate_save_dict(self, data: dict) -> None:
+        required_keys = {'version', 'score', 'username'}
+        type_checks = {
+            'version': int,
+            'score': int,
+            'cycle_count': int,
+            'kill_count': int,
+            'boss_kill_count': int,
+            'unlocked_buffs': list,
+            'buff_levels': dict,
+            'player_health': int,
+            'player_max_health': int,
+            'difficulty': str,
+            'timestamp': (int, float),
+            'is_in_mothership': bool,
+            'username': str,
+        }
+        for key in required_keys:
+            if key not in data:
+                raise SaveDataCorruptedError(f"Missing required field: {key}")
+        for key, expected_type in type_checks.items():
+            if key in data and not isinstance(data[key], expected_type):
+                raise SaveDataCorruptedError(
+                    f"Field '{key}' has wrong type: expected {expected_type.__name__}, "
+                    f"got {type(data[key]).__name__}"
+                )
 
     def load_game(self) -> Optional[GameSaveData]:
         if not self.has_saved_game():

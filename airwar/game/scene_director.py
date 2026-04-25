@@ -13,6 +13,7 @@ class SceneDirector:
         self._running = True
         self._current_user: Optional[str] = None
         self._selected_difficulty: str = 'medium'
+        self._selected_gpu_mode: bool = False  # GPU 模式选择
         self._pending_save_data = None
 
     @property
@@ -45,8 +46,7 @@ class SceneDirector:
         self._scene_manager.switch("login")
         login_scene = self._scene_manager.get_current_scene()
 
-        while self._running and (login_scene.is_running()
-                if hasattr(login_scene, 'is_running') else not login_scene.is_ready()):
+        while self._running and login_scene.is_running():
             events = self._poll_events()
             if not self._check_quit(events):
                 return (False, None)
@@ -92,6 +92,7 @@ class SceneDirector:
                         self._scene_manager.switch("menu")
                     else:
                         self._selected_difficulty = ms.get_difficulty()
+                        self._selected_gpu_mode = ms.get_use_gpu()
                         break
 
         return not back_to_login
@@ -130,7 +131,8 @@ class SceneDirector:
     def _run_game_flow(self) -> str:
         self._scene_manager.switch("game",
                                   difficulty=self._selected_difficulty,
-                                  username=self._current_user or 'Guest')
+                                  username=self._current_user or 'Guest',
+                                  use_gpu=self._selected_gpu_mode)
 
         current_scene = self._scene_manager.get_current_scene()
         if self._pending_save_data and isinstance(current_scene, GameScene):

@@ -11,12 +11,17 @@ from airwar.utils.mouse_interaction import MouseSelectableMixin
 
 
 class MenuScene(Scene, MouseSelectableMixin):
+    # 菜单阶段
+    PHASE_DIFFICULTY = 'difficulty'
+    PHASE_GPU = 'gpu'
+
     def __init__(self):
         Scene.__init__(self)
         MouseSelectableMixin.__init__(self)
 
     def enter(self, **kwargs) -> None:
         self.running = True
+        self.phase = self.PHASE_DIFFICULTY  # 从难度选择开始
         self.difficulty = 'medium'
         self.difficulty_options = ['easy', 'medium', 'hard', 'tutorial']
         self.option_names = {
@@ -25,11 +30,21 @@ class MenuScene(Scene, MouseSelectableMixin):
             'hard': 'HARD',
             'tutorial': 'TUTORIAL'
         }
+        # GPU 模式选项
+        self.use_gpu = False  # 默认 pygame 模式
+        self.gpu_options = ['pygame', 'GPU']
+        self.gpu_option_labels = {
+            'pygame': 'RENDERER: pygame (CPU)',
+            'GPU': 'RENDERER: GPU (ModernGL)'
+        }
         self.selected_index = 1
+        self.gpu_selected_index = 0  # 默认选择 pygame
         self.animation_time = 0
         self.glow_offset = 0
         self.selection_confirmed = False
         self.back_requested = False
+        self._gpu_error = False  # GPU 测试失败标志
+        self._gpu_error_message = ''  # GPU 错误消息
 
         self._tokens = get_design_tokens()
 
@@ -100,24 +115,40 @@ class MenuScene(Scene, MouseSelectableMixin):
     def reset(self) -> None:
         """Reset the menu scene to initial state."""
         self.running = True
+        self.phase = self.PHASE_DIFFICULTY
         self.difficulty = 'medium'
+        self.use_gpu = False
         self.selected_index = 1
+        self.gpu_selected_index = 0
         self.animation_time = 0
         self.glow_offset = 0
         self.selection_confirmed = False
         self.back_requested = False
+        self._gpu_error = False
+        self._gpu_error_message = ''
         self._background_renderer = MenuBackground()
         self._particle_system.reset(40, 'particle')
 
     def handle_events(self, event: pygame.event.Event) -> None:
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
-                self.back_requested = True
-                self.running = False
+                if self.phase == self.PHASE_GPU:
+                    # 从 GPU 阶段返回难度选择
+                    self.phase = self.PHASE_DIFFICULTY
+                    self.selected_index = 1
+                else:
+                    self.back_requested = True
+                    self.running = False
             elif event.key in (pygame.K_UP, pygame.K_w):
-                self.selected_index = (self.selected_index - 1) % len(self.difficulty_options)
+                if self.phase == self.PHASE_DIFFICULTY:
+                    self.selected_index = (self.selected_index - 1) % len(self.difficulty_options)
+                else:
+                    self.gpu_selected_index = (self.gpu_selected_index - 1) % len(self.gpu_options)
             elif event.key in (pygame.K_DOWN, pygame.K_s):
-                self.selected_index = (self.selected_index + 1) % len(self.difficulty_options)
+                if self.phase == self.PHASE_DIFFICULTY:
+                    self.selected_index = (self.selected_index + 1) % len(self.difficulty_options)
+                else:
+                    self.gpu_selected_index = (self.gpu_selected_index + 1) % len(self.gpu_options)
             elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
                 self._confirm_selection()
         elif event.type == pygame.MOUSEMOTION:
@@ -127,11 +158,39 @@ class MenuScene(Scene, MouseSelectableMixin):
                 self._confirm_selection()
 
     def _confirm_selection(self) -> None:
-        selected_option = self.difficulty_options[self.selected_index]
-        if selected_option != 'tutorial':
-            self.difficulty = selected_option
-        self.selection_confirmed = True
-        self.running = False
+        if self.phase == self.PHASE_DIFFICULTY:
+            selected_option = self.difficulty_options[self.selected_index]
+            if selected_option != 'tutorial':
+                self.difficulty = selected_option
+            # 进入 GPU 选择阶段
+            self.phase = self.PHASE_GPU
+            self.selected_index = 0
+            self._gpu_error = False  # 清除错误状态
+        else:
+            # GPU 阶段确认
+            self.use_gpu = (self.gpu_selected_index == 1)  # 1 = GPU
+            if self.use_gpu:
+                # 测试 GPU 是否可用
+                if not self._test_gpu_mode():
+                    # GPU 不可用，返回 GPU 选择阶段
+                    self._gpu_error = True
+                    self.phase = self.PHASE_GPU
+                    self.gpu_selected_index = 0  # 重置为 pygame
+                    return
+            self.selection_confirmed = True
+            self.running = False
+
+    def _test_gpu_mode(self) -> bool:
+        """测试 GPU 模式是否可用"""
+        from airwar.game.rendering.hybrid_renderer import HybridRenderer
+        from airwar.config import get_screen_width, get_screen_height
+
+        screen_width = get_screen_width()
+        screen_height = get_screen_height()
+        test_renderer = HybridRenderer(screen_width, screen_height, use_gpu=False)
+        result = test_renderer.test_gpu()
+        test_renderer.release()
+        return result
 
     def _on_hover_change(self, index: int) -> None:
         self.selected_index = index
@@ -207,7 +266,14 @@ class MenuScene(Scene, MouseSelectableMixin):
         option_gap = ResponsiveHelper.scale(self.base_option_gap, scale)
         y = start_y + index * (option_height + option_gap)
 
-        box_width = ResponsiveHelper.scale(360, scale)
+        # 根据文本长度计算所需宽度
+        arrow = "> " if is_selected else "  "
+        full_text = f"{arrow}{diff}"
+        text_width = self.option_font.size(full_text)[0]
+        # 加上左右 padding
+        min_width = ResponsiveHelper.scale(360, scale)
+        padding = ResponsiveHelper.scale(40, scale)
+        box_width = max(min_width, text_width + padding)
         box_height = option_height
         box_rect = pygame.Rect(center_x - box_width // 2, y, box_width, box_height)
         self.append_option_rect(box_rect)
@@ -242,9 +308,9 @@ class MenuScene(Scene, MouseSelectableMixin):
                 )
 
             arrow = ">" if is_selected else " "
-            diff_text = self.option_names.get(diff, diff.upper())
+            # diff 已经是完整文本（GPU 选项或难度名称）
             text_color = m_colors['selected'] if is_selected else m_colors['unselected']
-            text = self.option_font.render(f"  {arrow}  {diff_text}", True, text_color)
+            text = self.option_font.render(f"  {arrow}  {diff}", True, text_color)
             text_rect = text.get_rect(midleft=(box_rect.x + 20, box_rect.centery))
             surface.blit(text, text_rect)
         else:
@@ -271,10 +337,10 @@ class MenuScene(Scene, MouseSelectableMixin):
                 surface.blit(border_surf, box_rect.topleft)
 
             arrow = ">" if is_selected else " "
-            diff_text = self.option_names.get(diff, diff.upper())
+            # diff 已经是完整文本（GPU 选项或难度名称）
             text_color = self.colors['selected'] if is_selected else self.colors['unselected']
 
-            text = self.option_font.render(f"  {arrow}  {diff_text}", True, text_color)
+            text = self.option_font.render(f"  {arrow}  {diff}", True, text_color)
             text_rect = text.get_rect(midleft=(box_rect.x + 20, box_rect.centery))
             surface.blit(text, text_rect)
 
@@ -296,11 +362,27 @@ class MenuScene(Scene, MouseSelectableMixin):
             hint_color = ForestColors.HINT_DIM
         else:
             hint_color = ForestColors.HINT_BRIGHT
-        start_text = self.hint_font.render("CLICK or ENTER to start", True, hint_color)
+
+        if self.phase == self.PHASE_DIFFICULTY:
+            start_text = self.hint_font.render("CLICK or ENTER to select", True, hint_color)
+        else:
+            start_text = self.hint_font.render("SELECT RENDERER MODE", True, hint_color)
         surface.blit(start_text, start_text.get_rect(center=(width // 2, height - ResponsiveHelper.scale(self._tokens.components.HINT_Y_OFFSET, scale))))
 
-        controls = self.desc_font.render("Click or W/S to select", True, ForestColors.DESC_TEXT)
+        controls = self.desc_font.render("W/S to select", True, ForestColors.DESC_TEXT)
         surface.blit(controls, controls.get_rect(center=(width // 2, height - ResponsiveHelper.scale(self._tokens.components.CONTROLS_Y_OFFSET, scale))))
+
+    def _draw_title_section(self, surface: pygame.Surface) -> None:
+        width, height = surface.get_size()
+        scale = ResponsiveHelper.get_scale_factor(width, height)
+
+        title_y = ResponsiveHelper.scale(self.base_title_y, scale) + self.glow_offset * 0.5
+        if self.phase == self.PHASE_GPU:
+            title_text = "SELECT RENDERER"
+        else:
+            title_text = "AIR WAR"
+        self._draw_glow_text(surface, title_text, self.title_font,
+                           (width // 2, title_y), self.colors['title'], self.colors['title_glow'], 5)
 
     def render(self, surface: pygame.Surface) -> None:
         width, height = surface.get_size()
@@ -322,24 +404,88 @@ class MenuScene(Scene, MouseSelectableMixin):
         panel_height = ResponsiveHelper.scale(self.base_panel_height, scale)
         center_x = width // 2
         panel_y = height // 2 - panel_height // 2 + ResponsiveHelper.scale(30, scale)
-        
+
         option_height = ResponsiveHelper.scale(self.base_option_height, scale)
         option_gap = ResponsiveHelper.scale(self.base_option_gap, scale)
-        option_section_height = option_height * len(self.difficulty_options) + option_gap * (len(self.difficulty_options) - 1)
+
+        # 根据阶段选择渲染选项
+        if self.phase == self.PHASE_DIFFICULTY:
+            current_options = self.difficulty_options
+            option_labels = self.option_names
+        else:
+            current_options = self.gpu_options
+            option_labels = self.gpu_option_labels
+
+        option_section_height = option_height * len(current_options) + option_gap * (len(current_options) - 1)
         start_y = panel_y + (panel_height - option_section_height) // 2
-        
+
         self.clear_option_rects()
         effective_index = self.get_effective_selected_index(self.selected_index)
-        for i, diff in enumerate(self.difficulty_options):
-            self._draw_option_item(surface, diff, i, center_x, start_y, i == effective_index)
+        for i, option in enumerate(current_options):
+            self._draw_option_item(surface, option_labels.get(option, option.upper()), i, center_x, start_y, i == effective_index)
 
         self._draw_bottom_hints(surface)
+
+        # GPU 错误提示
+        if self._gpu_error:
+            self._draw_gpu_error(surface)
+
+    def _draw_gpu_error(self, surface: pygame.Surface) -> None:
+        """绘制 GPU 错误提示"""
+        width, height = surface.get_size()
+        scale = ResponsiveHelper.get_scale_factor(width, height)
+
+        # 错误消息
+        error_font_size = ResponsiveHelper.font_size(20, scale)
+        error_font = pygame.font.Font(None, error_font_size)
+
+        lines = [
+            'GPU 初始化失败！',
+            '您的系统不支持 ModernGL GPU 渲染',
+            '建议使用 pygame (CPU) 模式运行游戏',
+            '按 ENTER 选择 pygame 模式'
+        ]
+
+        # 计算文本区域高度
+        line_height = error_font_size * 1.5
+        total_height = len(lines) * line_height
+        start_y = height // 2 + ResponsiveHelper.scale(200, scale)
+
+        # 半透明背景
+        bg_height = total_height + 40
+        bg_width = ResponsiveHelper.scale(500, scale)
+        bg_surface = pygame.Surface((bg_width, bg_height), pygame.SRCALPHA)
+        pygame.draw.rect(bg_surface, (40, 10, 10, 220), bg_surface.get_rect(), border_radius=10)
+        bg_rect = bg_surface.get_rect(center=(width // 2, start_y + total_height // 2))
+        surface.blit(bg_surface, bg_rect)
+
+        # 绘制错误文本
+        for i, line in enumerate(lines):
+            if i == 0:
+                # 第一行用红色
+                text_color = (255, 100, 100)
+            elif i == len(lines) - 1:
+                # 最后一行用高亮
+                text_color = (255, 220, 180)
+            else:
+                text_color = (200, 180, 160)
+
+            text_surf = error_font.render(line, True, text_color)
+            text_rect = text_surf.get_rect(center=(width // 2, start_y + i * line_height))
+            surface.blit(text_surf, text_rect)
 
     def get_difficulty(self) -> str:
         return self.difficulty
 
+    def get_use_gpu(self) -> bool:
+        """返回是否使用 GPU 模式"""
+        return self.use_gpu
+
     def get_selected_option(self) -> str:
-        return self.difficulty_options[self.selected_index]
+        if self.phase == self.PHASE_DIFFICULTY:
+            return self.difficulty_options[self.selected_index]
+        else:
+            return self.gpu_options[self.gpu_selected_index]
 
     def is_selection_confirmed(self) -> bool:
         return self.selection_confirmed

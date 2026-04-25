@@ -6,6 +6,8 @@ from airwar.utils.sprites import draw_bullet, draw_explosive_missile
 
 class Bullet(Entity):
     _trail_surface_cache: dict = {}
+    _trail_cache_order: list = []
+    _TRAIL_CACHE_MAX_SIZE: int = 256
 
     def __init__(self, x: float, y: float, data: BulletData):
         super().__init__(x, y, 10, 10)
@@ -55,9 +57,13 @@ class Bullet(Entity):
                 alpha = int(100 * (i / len(self._trail)))
                 cache_key = (trail_rect.width, trail_rect.height, alpha)
                 if cache_key not in Bullet._trail_surface_cache:
+                    if len(Bullet._trail_surface_cache) >= Bullet._TRAIL_CACHE_MAX_SIZE:
+                        oldest = Bullet._trail_cache_order.pop(0)
+                        Bullet._trail_surface_cache.pop(oldest, None)
                     trail_surface = pygame.Surface((trail_rect.width, trail_rect.height), pygame.SRCALPHA)
                     trail_surface.fill((255, 0, 100, alpha))
                     Bullet._trail_surface_cache[cache_key] = trail_surface
+                    Bullet._trail_cache_order.append(cache_key)
                 else:
                     trail_surface = Bullet._trail_surface_cache[cache_key]
                 surface.blit(trail_surface, trail_rect)

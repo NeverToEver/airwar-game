@@ -27,10 +27,10 @@ pip install -r requirements.txt
 
 ```bash
 # As ubt user (recommended - uses locally installed packages)
-sudo -u ubt python3 main.py
+cd /home/ubt/airwar && sudo -u ubt python3 main.py
 
 # With explicit PYTHONPATH (if running as root)
-PYTHONPATH=/home/ubt/.local/lib/python3.12/site-packages python3 main.py
+cd /home/ubt/airwar && PYTHONPATH=/home/ubt/.local/lib/python3.12/site-packages python3 main.py
 ```
 
 ### Testing

@@ -61,7 +61,8 @@ class DifficultyManager:
         raw_multiplier = self._strategy.base_multiplier
 
         if self._boss_kill_count > 0:
-            exponential_bonus = (2 ** self._boss_kill_count - 1)
+            capped_count = min(self._boss_kill_count, 10)
+            exponential_bonus = (2 ** capped_count - 1)
             raw_multiplier += exponential_bonus * self._strategy.growth_rate
 
         self._current_multiplier = min(
@@ -141,6 +142,8 @@ class DifficultyManager:
             try:
                 listener.on_difficulty_changed(params)
             except Exception as e:
-                self._logger.error(
-                    f"Error notifying listener {listener.__class__.__name__}: {e}"
+                self._logger.critical(
+                    f"Difficulty listener {listener.__class__.__name__} failed "
+                    f"and will be removed: {e}", exc_info=True
                 )
+                self.remove_listener(listener)

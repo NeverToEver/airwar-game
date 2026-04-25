@@ -5,7 +5,13 @@
 ## 快速开始
 
 ```bash
+# 进入项目目录
+cd airwar
+
+# 安装依赖
 pip install -r requirements.txt
+
+# 运行游戏
 python main.py
 ```
 
