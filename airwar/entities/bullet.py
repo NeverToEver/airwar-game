@@ -1,10 +1,35 @@
+"""Bullet entity module.
+
+Provides the Bullet class for all projectiles in the game, including
+player bullets, enemy bullets, lasers, and explosive missiles.
+"""
+
 import pygame
 from typing import Optional, List
 from .base import Entity, BulletData, Vector2
-from airwar.utils.sprites import draw_bullet, draw_explosive_missile
+from ..utils.sprites import draw_bullet, draw_explosive_missile
+from ..config import SCREEN_HEIGHT
 
 
 class Bullet(Entity):
+    """Bullet entity for all projectiles.
+
+    Handles movement, collision tracking, and rendering. Supports various
+    bullet types (single, spread, laser, explosive) with trail effects
+    for laser bullets.
+
+    Class Attributes:
+        _trail_surface_cache: Cache for trail surface rendering.
+        _trail_cache_order: LRU cache order for trail surfaces.
+        _TRAIL_CACHE_MAX_SIZE: Maximum number of cached trail surfaces.
+
+    Attributes:
+        data: BulletData containing bullet configuration.
+        velocity: Current velocity vector.
+        _trail: Trail positions for laser bullets.
+        _hit_enemies: List of enemy IDs already hit by this bullet.
+    """
+
     _trail_surface_cache: dict = {}
     _trail_cache_order: list = []
     _TRAIL_CACHE_MAX_SIZE: int = 256
@@ -33,7 +58,6 @@ class Bullet(Entity):
         self.rect.x += self.velocity.x
         self.rect.y += self.velocity.y
 
-        from airwar.config import SCREEN_HEIGHT
         if self.rect.y < -self.rect.height:
             self.active = False
 

@@ -6,8 +6,14 @@ from dataclasses import dataclass
 from .base import Entity, EnemyData, Vector2
 from .bullet import Bullet, BulletData
 from .interfaces import IBulletSpawner
-from airwar.utils.sprites import draw_enemy_ship, draw_boss_ship
-from airwar.config import ENEMY_HITBOX_SIZE, ENEMY_HITBOX_PADDING, ENEMY_VISUAL_SCALE, ENEMY_COLLISION_SCALE
+from ..utils.sprites import draw_enemy_ship, draw_boss_ship
+from ..config import (
+    ENEMY_HITBOX_SIZE, ENEMY_HITBOX_PADDING, ENEMY_VISUAL_SCALE, ENEMY_COLLISION_SCALE,
+    get_screen_width, get_screen_height,
+    BOSS_AIM_BULLET_DAMAGE_BASE, BOSS_AIM_SPEED, BOSS_ATTACK_DISTANCE, BOSS_BULLET_OFFSET_X,
+    BOSS_WAVE_BULLET_DAMAGE, BOSS_WAVE_SPEED, BOSS_WAVE_ANGLE_INTERVAL,
+)
+# NOTE: GAME_CONSTANTS is imported locally in methods to avoid circular import
 
 # Try to import Rust movement function
 try:
@@ -90,9 +96,6 @@ class Enemy(Entity):
         self._collision_rect.y = self.rect.y - (self._collision_rect.height - self.rect.height) // 2
 
     def _init_movement(self, enemy_type: str) -> None:
-        from airwar.config import get_screen_width
-        screen_width = get_screen_width()
-        
         if enemy_type == "sine":
             self.move_type = "sine"
             self.move_offset = random.uniform(0, math.pi * 2)
@@ -137,14 +140,10 @@ class Enemy(Entity):
         if not self.active:
             return
 
-        from airwar.config import get_screen_width, get_screen_height
-        screen_width = get_screen_width()
-        screen_height = get_screen_height()
-
         # Handle entry animation
         if self._state == 'entering':
             # Check if enemy somehow got placed off screen during entry
-            if self.rect.y > screen_height:
+            if self.rect.y > get_screen_height():
                 self.active = False
                 return
 
@@ -354,7 +353,8 @@ class Enemy(Entity):
         return bullets
 
     def _get_damage(self) -> int:
-        from airwar.game.constants import GAME_CONSTANTS
+        # Local import to avoid circular dependency
+        from ..game.constants import GAME_CONSTANTS
         return GAME_CONSTANTS.BOSS.BULLET_DAMAGE_MAP.get(self.data.bullet_type, 15)
 
     def set_bullet_spawner(self, spawner: IBulletSpawner) -> None:
@@ -417,7 +417,8 @@ class EnemySpawner:
         self._wave_size = self._get_wave_size()
 
     def _get_wave_size(self) -> int:
-        from airwar.game.constants import GAME_CONSTANTS
+        # Local import to avoid circular dependency
+        from ..game.constants import GAME_CONSTANTS
         return GAME_CONSTANTS.BALANCE.WAVE_SIZE
 
     def _select_enemy_type(self) -> str:
@@ -457,8 +458,6 @@ class EnemySpawner:
     def _spawn_v_formation(self, enemies: List[Enemy], slow_factor: float,
                            player_pos: tuple = None) -> None:
         """Spawn a wave of enemies in V-formation with tip pointing toward the player."""
-        from airwar.config import (get_screen_width, get_screen_height,
-                                   ENEMY_HITBOX_SIZE, ENEMY_HITBOX_PADDING, ENEMY_COLLISION_SCALE)
         screen_width = get_screen_width()
         screen_height = get_screen_height()
 
@@ -586,7 +585,8 @@ class Boss(Entity):
         }
 
     def _get_target_offsets(self) -> dict:
-        from airwar.game.constants import GAME_CONSTANTS
+        # Local import to avoid circular dependency
+        from ..game.constants import GAME_CONSTANTS
         d = GAME_CONSTANTS.BOSS.ATTACK_DISTANCE
         return {
             'down': (0, d),
@@ -595,11 +595,8 @@ class Boss(Entity):
             'up': (0, -d)
         }
 
-    def update(self, enemies: List['Enemy'] = None, slow_factor: float = 1.0, 
+    def update(self, enemies: List['Enemy'] = None, slow_factor: float = 1.0,
               player_pos: Tuple[int, int] = None, *args, **kwargs) -> None:
-        from airwar.config import get_screen_width
-        screen_width = get_screen_width()
-
         if self.entering:
             self.rect.y += 2 * slow_factor
             if self.rect.y >= self.target_y:
@@ -628,8 +625,8 @@ class Boss(Entity):
         if self.rect.x <= 0:
             self.rect.x = 0
             self.move_direction = 1
-        elif self.rect.x >= screen_width - self.rect.width:
-            self.rect.x = screen_width - self.rect.width
+        elif self.rect.x >= get_screen_width() - self.rect.width:
+            self.rect.x = get_screen_width() - self.rect.width
             self.move_direction = -1
 
         self.phase_timer += 1
@@ -662,7 +659,8 @@ class Boss(Entity):
         self.attack_pattern = (self.attack_pattern + 1) % 3
 
     def _spread_attack(self) -> List[Bullet]:
-        from airwar.game.constants import GAME_CONSTANTS
+        # Local import to avoid circular dependency
+        from ..game.constants import GAME_CONSTANTS
         B = GAME_CONSTANTS.BOSS
         bullets = []
 
@@ -696,7 +694,6 @@ class Boss(Entity):
         return bullets
 
     def _aim_attack(self, player_pos: Tuple[float, float] = None) -> List[Bullet]:
-        from airwar.config import BOSS_AIM_BULLET_DAMAGE_BASE, BOSS_AIM_SPEED, BOSS_ATTACK_DISTANCE, BOSS_BULLET_OFFSET_X
         bullets = []
         
         direction_sources = self._get_direction_sources()
@@ -723,7 +720,6 @@ class Boss(Entity):
         return bullets
 
     def _wave_attack(self) -> List[Bullet]:
-        from airwar.config import BOSS_WAVE_BULLET_DAMAGE, BOSS_WAVE_SPEED, BOSS_WAVE_ANGLE_INTERVAL
         bullets = []
         
         direction_sources = self._get_direction_sources()
