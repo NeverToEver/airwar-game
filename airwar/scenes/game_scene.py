@@ -36,7 +36,12 @@ from airwar.input import PygameInputHandler
 from airwar.utils.mouse_interaction import MouseInteractiveMixin
 from airwar.config.design_tokens import get_design_tokens
 class GameScene(Scene, MouseInteractiveMixin):
-    """游戏场景主控制器，协调游戏主循环和各子系统。"""
+    """Main game scene controller coordinating game loop and subsystems.
+
+    GameScene is the primary controller for the gameplay scene. It coordinates
+    all subsystems including GameController, SpawnController, CollisionController,
+    Player, and MotherShip systems.
+    """
 
     PAUSE_BUTTON_SIZE = 30
     PAUSE_BUTTON_MARGIN = 10
@@ -72,18 +77,18 @@ class GameScene(Scene, MouseInteractiveMixin):
         self._game_loop_manager: GameLoopManager = None
 
     def enter(self, **kwargs) -> None:
-        """初始化游戏场景
+        """Initialize the game scene.
 
         Args:
-            difficulty: 游戏难度 ('easy', 'medium', 'hard')
-            username: 玩家名称
+            difficulty: Game difficulty ('easy', 'medium', 'hard').
+            username: Player name.
 
-        初始化所有游戏子系统:
-        - GameController: 游戏状态和逻辑
-        - SpawnController: 敌人生成系统
-        - CollisionController: 碰撞检测
-        - Player: 玩家飞船
-        - MotherShip系统: 母舰交互系统
+        Initializes all game subsystems:
+        - GameController: Game state and logic.
+        - SpawnController: Enemy spawning system.
+        - CollisionController: Collision detection.
+        - Player: Player spaceship.
+        - MotherShip system: Mothership interaction system.
         """
         self._pause_requested = False
         self.clear_hover()
@@ -187,10 +192,10 @@ class GameScene(Scene, MouseInteractiveMixin):
         pass
 
     def handle_events(self, event: pygame.event.Event) -> None:
-        """处理输入事件
+        """Process input events.
 
         Args:
-            event: pygame事件对象
+            event: pygame event object.
         """
         self._input_coordinator.handle_events(event)
 
@@ -205,19 +210,19 @@ class GameScene(Scene, MouseInteractiveMixin):
                     self._handle_button_click(self.get_hovered_button())
 
     def _handle_button_click(self, button_name: str) -> None:
-        """处理鼠标点击按钮事件
+        """Handle mouse button click events.
 
         Args:
-            button_name: 被点击的按钮名称
+            button_name: Name of the clicked button.
         """
         if button_name == "pause":
             self._pause_requested = True
 
     def consume_pause_request(self) -> bool:
-        """消费暂停请求标志
+        """Consume the pause request flag.
 
         Returns:
-            bool: 如果有暂停请求则返回 True 并重置标志
+            True if there was a pause request (and resets the flag), False otherwise.
         """
         if self._pause_requested:
             self._pause_requested = False
@@ -225,13 +230,13 @@ class GameScene(Scene, MouseInteractiveMixin):
         return False
 
     def update(self, *args, **kwargs) -> None:
-        """游戏主更新循环
-        
-        游戏更新顺序:
-        1. 入口动画 (如果正在播放)
-        2. 母舰系统更新
-        3. 停靠状态处理
-        4. 游戏逻辑更新 (如果未暂停)
+        """Main game update loop.
+
+        Update order:
+        1. Entrance animation (if playing).
+        2. Mothership system update.
+        3. Docking state handling.
+        4. Game logic update (if not paused).
         """
         self.reward_selector.update()
 
@@ -287,10 +292,10 @@ class GameScene(Scene, MouseInteractiveMixin):
         )
 
     def _on_reward_selected(self, reward: dict) -> None:
-        """处理奖励选择回调 (兼容层)
+        """Handle reward selection callback (compatibility layer).
 
         Args:
-            reward: 选择的奖励配置字典
+            reward: Selected reward configuration dictionary.
         """
         self._milestone_manager._on_reward_selected(reward, self.player)
 
@@ -298,10 +303,10 @@ class GameScene(Scene, MouseInteractiveMixin):
         self._milestone_manager.check_and_trigger(self.player)
 
     def render(self, surface: pygame.Surface) -> None:
-        """渲染游戏场景
+        """Render the game scene.
 
         Args:
-            surface: pygame渲染表面
+            surface: pygame rendering surface.
         """
         self._ui_manager.render_game(
             surface,
@@ -331,10 +336,10 @@ class GameScene(Scene, MouseInteractiveMixin):
         self._input_coordinator.render_give_up(surface)
 
     def _init_pause_button_layout(self) -> None:
-        """预计算暂停按钮的几何布局并注册按钮区域
+        """Pre-calculate pause button geometry and register button regions.
 
-        仅在 enter() 和 resize 时调用，避免每帧重复计算。
-        同时预渲染两种状态（normal/hovered）的 Surface 并缓存。
+        Only called in enter() and resize to avoid per-frame recalculation.
+        Also pre-renders both states (normal/hovered) Surface and caches them.
         """
         colors = self._tokens.colors
         spacing = self._tokens.spacing
@@ -383,14 +388,14 @@ class GameScene(Scene, MouseInteractiveMixin):
             self._pause_btn_cache[state_key] = (bg_surface, border_surface)
 
     def _render_pause_button(self, surface: pygame.Surface) -> None:
-        """渲染暂停按钮
+        """Render the pause button.
 
-        仅在游戏正常运行（非暂停、非奖励选择）时渲染。
-        按钮位于屏幕左上角，使用两竖线图标表示暂停。
-        使用缓存的 Surface 避免每帧重新分配内存。
+        Only renders when game is running normally (not paused, not reward selection).
+        Button is located at top-left corner, uses two vertical bars icon for pause.
+        Uses cached Surface to avoid per-frame memory reallocation.
 
         Args:
-            surface: pygame渲染表面
+            surface: pygame rendering surface.
         """
         if not self.game_controller or self.game_controller.state.paused:
             return
@@ -414,56 +419,56 @@ class GameScene(Scene, MouseInteractiveMixin):
 
     @property
     def score(self) -> int:
-        """获取当前分数
-        
+        """Get the current score.
+
         Returns:
-            int: 当前游戏分数
+            Current game score.
         """
         return self.game_controller.state.score if self.game_controller else 0
 
     @score.setter
     def score(self, value: int) -> None:
-        """设置当前分数
-        
+        """Set the current score.
+
         Args:
-            value: 新的分数值
+            value: New score value.
         """
         if self.game_controller:
             self.game_controller.state.score = value
 
     @property
     def cycle_count(self) -> int:
-        """获取当前周期计数
-        
+        """Get the current cycle count.
+
         Returns:
-            int: 已完成的Boss周期数
+            Number of completed boss cycles.
         """
         return self.game_controller.cycle_count if self.game_controller else 0
 
     @cycle_count.setter
     def cycle_count(self, value: int) -> None:
-        """设置周期计数
-        
+        """Set the cycle count.
+
         Args:
-            value: 新的周期计数
+            value: New cycle count value.
         """
         if self.game_controller:
             self.game_controller.cycle_count = value
 
     @property
     def boss(self):
-        """获取当前Boss实例
-        
+        """Get the current Boss instance.
+
         Returns:
-            Boss对象，如果不存在则返回None
+            Boss instance or None if not present.
         """
         return self.spawn_controller.boss if self.spawn_controller else None
 
     def is_game_over(self) -> bool:
-        """判断游戏是否结束
-        
+        """Check if the game is over.
+
         Returns:
-            bool: True表示游戏结束
+            True if the game is over.
         """
         if not self.player:
             return True
@@ -472,60 +477,60 @@ class GameScene(Scene, MouseInteractiveMixin):
         return self.game_controller.is_game_over()
 
     def is_paused(self) -> bool:
-        """判断游戏是否暂停
-        
+        """Check if the game is paused.
+
         Returns:
-            bool: True表示游戏已暂停
+            True if the game is paused.
         """
         return self.game_controller.state.paused if self.game_controller else False
 
     def pause(self) -> None:
-        """暂停游戏
-        
-        如果奖励选择器可见则不会暂停。
+        """Pause the game.
+
+        Does not pause if reward selector is visible.
         """
         if self.game_controller and not self.reward_selector.visible:
             self.game_controller.state.paused = True
 
     def resume(self) -> None:
-        """继续游戏"""
+        """Resume the game."""
         if self.game_controller:
             self.game_controller.state.paused = False
 
     @property
     def paused(self) -> bool:
-        """获取游戏暂停状态
-        
+        """Get the game paused state.
+
         Returns:
-            bool: True表示游戏暂停
+            True if the game is paused.
         """
         return self.game_controller.state.paused if self.game_controller else False
 
     @paused.setter
     def paused(self, value: bool) -> None:
-        """设置游戏暂停状态
-        
+        """Set the game paused state.
+
         Args:
-            value: True暂停游戏，False继续游戏
+            value: True to pause, False to resume.
         """
         if self.game_controller:
             self.game_controller.state.paused = value
 
     @property
     def unlocked_buffs(self) -> list:
-        """获取已解锁的Buff列表
-        
+        """Get the list of unlocked buffs.
+
         Returns:
-            list: 已解锁的Buff名称列表
+            List of unlocked buff names.
         """
         return self.reward_system.unlocked_buffs if self.reward_system else []
 
     @unlocked_buffs.setter
     def unlocked_buffs(self, value: list) -> None:
-        """设置已解锁的Buff列表
-        
+        """Set the list of unlocked buffs.
+
         Args:
-            value: Buff名称列表
+            value: List of buff names.
         """
         if self.reward_system:
             self.reward_system.unlocked_buffs = value
@@ -544,38 +549,38 @@ class GameScene(Scene, MouseInteractiveMixin):
 
     @property
     def difficulty(self) -> str:
-        """获取游戏难度
-        
+        """Get the game difficulty.
+
         Returns:
-            str: 游戏难度 ('easy', 'medium', 'hard')
+            Game difficulty ('easy', 'medium', 'hard').
         """
         return self.game_controller.state.difficulty if self.game_controller else 'medium'
 
     @difficulty.setter
     def difficulty(self, value: str) -> None:
-        """设置游戏难度
-        
+        """Set the game difficulty.
+
         Args:
-            value: 游戏难度 ('easy', 'medium', 'hard')
+            value: Game difficulty ('easy', 'medium', 'hard').
         """
         if self.game_controller:
             self.game_controller.state.difficulty = value
 
     def restore_from_save(self, save_data) -> None:
-        """从存档数据恢复游戏状态
-        
+        """Restore game state from save data.
+
         Args:
-            save_data: 存档数据对象，包含:
-                - score: 当前分数
-                - kill_count: 击杀数
-                - cycle_count: 当前周期数
-                - player_health: 玩家生命值
-                - player_max_health: 玩家最大生命值
-                - unlocked_buffs: 已解锁的buff列表
-                - buff_levels: buff等级字典
-                - difficulty: 游戏难度
-                - username: 玩家名称
-                - is_in_mothership: 是否在母舰状态
+            save_data: Save data object containing:
+                - score: Current score.
+                - kill_count: Kill count.
+                - cycle_count: Current cycle count.
+                - player_health: Player health.
+                - player_max_health: Player max health.
+                - unlocked_buffs: List of unlocked buffs.
+                - buff_levels: Dictionary of buff levels.
+                - difficulty: Game difficulty.
+                - username: Player name.
+                - is_in_mothership: Whether in mothership state.
         """
         if not save_data or not self.game_controller or not self.player:
             return
@@ -603,10 +608,10 @@ class GameScene(Scene, MouseInteractiveMixin):
             self.game_controller.state.entrance_animation = False
 
     def _restore_buff_levels(self, buff_levels: dict) -> None:
-        """恢复Buff等级
-        
+        """Restore buff levels.
+
         Args:
-            buff_levels: Buff等级字典
+            buff_levels: Dictionary of buff levels.
         """
         if not buff_levels:
             return
@@ -618,7 +623,7 @@ class GameScene(Scene, MouseInteractiveMixin):
         self.reward_system.rapid_fire_level = buff_levels.get('rapid_fire_level', 0)
 
     def _restore_to_mothership_state(self) -> None:
-        """恢复母舰状态"""
+        """Restore mothership state."""
         if self._mother_ship_integrator:
             self._mother_ship_integrator.reset_to_idle_with_mothership_visible()
             docking_pos = self._mother_ship_integrator._mother_ship.get_docking_position()

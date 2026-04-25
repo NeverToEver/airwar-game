@@ -3,24 +3,23 @@ from typing import List, Optional, Callable, Dict
 
 
 class MouseSelectableMixin:
-    """
-    鼠标可选中混入类，为列表选择模式的菜单场景提供统一的鼠标交互支持。
-    
-    使用方式:
+    """Mixin for list-selection menu scenes with mouse interaction support.
+
+    Provides unified mouse interaction for scenes using list-based selection.
+    Supports hover detection, click handling, and prioritizes mouse hover
+    over keyboard selection.
+
+    Usage:
         class MyMenuScene(Scene, MouseSelectableMixin):
             def __init__(self):
                 Scene.__init__(self)
                 MouseSelectableMixin.__init__(self)
-    
-    特性:
-        - 鼠标悬停检测：自动跟踪鼠标位置，更新悬停状态
-        - 鼠标点击处理：通过索引处理点击事件
-        - 键盘/鼠标状态优先级：鼠标悬停优先于键盘选中状态
-    
-    典型用法:
-        1. 在渲染选项时调用 append_option_rect() 注册每个选项的矩形区域
-        2. 在 handle_events() 中处理 pygame.MOUSEMOTION 和 pygame.MOUSEBUTTONDOWN 事件
-        3. 使用 get_effective_selected_index() 获取有效的选中索引（鼠标优先）
+
+    Attributes:
+        _hovered_index: Currently hovered option index (-1 if none).
+        _option_rects: List of pygame.Rect for each option.
+        _on_hover_callback: Optional callback for hover state changes.
+        _on_click_callback: Optional callback for option clicks.
     """
 
     def __init__(self):
@@ -80,26 +79,23 @@ class MouseSelectableMixin:
 
 
 class MouseInteractiveMixin:
-    """
-    鼠标交互混入类，为按钮模式的场景提供统一的鼠标交互支持。
-    
-    使用方式:
+    """Mixin for button-based scenes with mouse interaction support.
+
+    Provides unified mouse interaction for scenes using named buttons.
+    Supports button registration, hover detection, click handling,
+    and hover/click callbacks.
+
+    Usage:
         class MyScene(Scene, MouseInteractiveMixin):
             def __init__(self):
                 Scene.__init__(self)
                 MouseInteractiveMixin.__init__(self)
-    
-    特性:
-        - 命名按钮管理：通过字符串名称标识不同按钮
-        - 鼠标悬停检测：自动跟踪鼠标位置，更新悬停状态
-        - 鼠标点击处理：通过按钮名称处理点击事件
-        - 悬停回调支持：支持自定义悬停状态变化时的回调
-    
-    典型用法:
-        1. 在渲染按钮时调用 register_button() 注册每个按钮的矩形区域和名称
-        2. 在 handle_events() 中处理 pygame.MOUSEMOTION 和 pygame.MOUSEBUTTONDOWN 事件
-        3. 使用 is_button_hovered() 检查特定按钮是否处于悬停状态
-        4. 使用 get_hovered_button() 获取当前悬停的按钮名称
+
+    Attributes:
+        _button_rects: Dictionary mapping button names to their pygame.Rect.
+        _hovered_button: Currently hovered button name (None if none).
+        _on_button_hover_callback: Optional callback for hover state changes.
+        _on_button_click_callback: Optional callback for button clicks.
     """
 
     def __init__(self):

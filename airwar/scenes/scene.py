@@ -5,6 +5,15 @@ import pygame
 
 
 class PauseAction(Enum):
+    """Actions available from the pause menu.
+
+    Attributes:
+        RESUME: Resume the current game.
+        MAIN_MENU: Return to main menu.
+        SAVE_AND_QUIT: Save progress and quit.
+        QUIT_WITHOUT_SAVING: Quit without saving.
+        QUIT: Quit the application.
+    """
     RESUME = "resume"
     MAIN_MENU = "main_menu"
     SAVE_AND_QUIT = "save_and_quit"
@@ -13,12 +22,25 @@ class PauseAction(Enum):
 
 
 class ExitConfirmAction(Enum):
+    """Actions available from the exit confirmation dialog.
+
+    Attributes:
+        RETURN_TO_MENU: Return to menu without quitting.
+        START_NEW_GAME: Start a new game.
+        QUIT_GAME: Quit the game entirely.
+    """
     RETURN_TO_MENU = "return_to_menu"
     START_NEW_GAME = "start_new_game"
     QUIT_GAME = "quit_game"
 
 
 class Scene(ABC):
+    """Abstract base class for all game scenes.
+
+    Defines the interface that all scenes must implement: enter, exit,
+    handle_events, update, and render lifecycle methods.
+    """
+
     @abstractmethod
     def enter(self, **kwargs) -> None:
         pass
@@ -41,6 +63,18 @@ class Scene(ABC):
 
 
 class SceneManager:
+    """Manages scene registration, switching, and state persistence.
+
+    Handles the lifecycle of scenes including registration, switching,
+    state save/restore for scene state preservation across transitions.
+
+    Attributes:
+        _scenes: Dictionary of registered scenes by name.
+        _current_scene: Currently active scene.
+        _current_scene_name: Name of the current scene.
+        _scene_states: Saved states for scenes.
+    """
+
     def __init__(self):
         self._scenes: Dict[str, Scene] = {}
         self._current_scene: Scene = None
