@@ -8,6 +8,18 @@ if TYPE_CHECKING:
     from airwar.entities.boss import Boss
     from airwar.entities.bullet import Bullet, EnemyBullet
 
+# Try to import Rust collision functions
+try:
+    from airwar.core_bindings import (
+        spatial_hash_collide,
+        spatial_hash_collide_single,
+        RUST_AVAILABLE,
+    )
+except ImportError:
+    spatial_hash_collide = None
+    spatial_hash_collide_single = None
+    RUST_AVAILABLE = False
+
 
 @dataclass
 class CollisionResult:
@@ -34,6 +46,7 @@ class CollisionController:
         # Spatial hash grid for collision optimization
         self._grid_cells = {}
         self._grid_cell_size = 100
+        self._use_rust = RUST_AVAILABLE
 
     def _clear_grid(self) -> None:
         """Clear the spatial hash grid."""
@@ -194,7 +207,75 @@ class CollisionController:
         score_gained = 0
         enemies_killed = 0
 
-        # Check if spatial hash is built (by check_all_collisions)
+        # Use Rust collision if available
+        if self._use_rust and spatial_hash_collide is not None:
+            # Build entity list for Rust: (id, x, y, half_size)
+            # Bullets: positive IDs (0, 1, 2, ...)
+            # Enemies: negative IDs (-1, -2, -3, ...) to avoid collision
+            entities = []
+
+            # Add active enemies
+            enemy_indices = {}
+            for i, enemy in enumerate(enemies):
+                if enemy.active:
+                    hitbox = enemy.get_hitbox()
+                    cx = float(hitbox.centerx)
+                    cy = float(hitbox.centery)
+                    half_size = float(max(hitbox.width, hitbox.height)) / 2.0
+                    entities.append((-i - 1, cx, cy, half_size))
+                    enemy_indices[-i - 1] = enemy
+
+            # Add active bullets
+            bullet_indices = {}
+            for i, bullet in enumerate(player_bullets):
+                if bullet.active:
+                    rect = bullet.rect
+                    cx = float(rect.centerx)
+                    cy = float(rect.centery)
+                    half_size = float(max(rect.width, rect.height)) / 2.0
+                    entities.append((i, cx, cy, half_size))
+                    bullet_indices[i] = bullet
+
+            # Get collision pairs from Rust
+            if entities:
+                collision_pairs = spatial_hash_collide(entities, self._grid_cell_size)
+
+                # Process collision pairs
+                # Note: bullets have positive IDs, enemies have negative IDs
+                for id1, id2 in collision_pairs:
+                    # Determine which is bullet and which is enemy based on sign
+                    if id1 >= 0 and id2 < 0:
+                        bullet_id, enemy_id = id1, id2
+                    elif id1 < 0 and id2 >= 0:
+                        bullet_id, enemy_id = id2, id1
+                    else:
+                        # Same sign or invalid - skip
+                        continue
+
+                    if bullet_id not in bullet_indices or enemy_id not in enemy_indices:
+                        continue
+
+                    bullet = bullet_indices[bullet_id]
+                    enemy = enemy_indices[enemy_id]
+
+                    if not bullet.active or not enemy.active:
+                        continue
+
+                    damage = bullet.data.damage
+                    enemy.take_damage(damage)
+
+                    if explosive_level > 0:
+                        self._handle_explosive_damage(bullet, enemies, explosive_level)
+
+                    if not enemy.active:
+                        enemies_killed += 1
+                        score_gained += enemy.data.score * score_multiplier
+
+                    if bullet.data.owner == "player":
+                        bullet.active = False
+            return score_gained, enemies_killed
+
+        # Fallback to Python implementation
         use_spatial_hash = bool(self._grid_cells)
 
         for bullet in player_bullets:
@@ -203,7 +284,6 @@ class CollisionController:
 
             bullet_rect = bullet.rect
 
-            # Use spatial hash if available, otherwise use all enemies
             if use_spatial_hash:
                 potential_enemies = self._get_potential_collisions(bullet_rect)
             else:
