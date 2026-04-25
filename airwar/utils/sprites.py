@@ -2,6 +2,24 @@ import pygame
 import math
 from functools import lru_cache
 
+# Try to import Rust sprite functions
+try:
+    from airwar.core_bindings import (
+        create_single_bullet_glow,
+        create_spread_bullet_glow,
+        create_laser_bullet_glow,
+        create_explosive_missile_glow,
+        create_glow_circle,
+        RUST_AVAILABLE,
+    )
+except ImportError:
+    create_single_bullet_glow = None
+    create_spread_bullet_glow = None
+    create_laser_bullet_glow = None
+    create_explosive_missile_glow = None
+    create_glow_circle = None
+    RUST_AVAILABLE = False
+
 _glow_circle_cache = {}
 _single_bullet_glow_cache = {}
 _spread_bullet_glow_cache = {}
@@ -15,11 +33,79 @@ _enemy_sprite_cache = {}
 _boss_sprite_cache = {}
 
 
+def _bytes_to_surface(data: bytes, width: int, height: int) -> pygame.Surface:
+    """Convert RGBA bytes to pygame Surface."""
+    surf = pygame.image.frombuffer(bytes(data), (width, height), 'RGBA')
+    return surf.convert_alpha()
+
+
 def clear_sprite_caches() -> None:
     """Clear all sprite surface caches."""
     _player_sprite_cache.clear()
     _enemy_sprite_cache.clear()
     _boss_sprite_cache.clear()
+    _glow_circle_cache.clear()
+    _single_bullet_glow_cache.clear()
+    _spread_bullet_glow_cache.clear()
+    _laser_bullet_glow_cache.clear()
+    _explosive_missile_cache.clear()
+    _ripple_surface_cache.clear()
+
+
+def prewarm_glow_caches() -> None:
+    """Pre-generate all glow surfaces at startup to eliminate cache misses during gameplay.
+
+    This is called once at game initialization to warm up the glow caches
+    with all commonly used sizes, so no lazy creation happens during gameplay.
+    """
+    if not RUST_AVAILABLE:
+        return
+
+    # Single bullet glows: common player bullet sizes
+    for width, height in [(8, 16), (6, 12), (10, 20), (4, 8)]:
+        key = (width, height)
+        if key not in _single_bullet_glow_cache:
+            data = create_single_bullet_glow(float(width), float(height))
+            surf_w = width + 16
+            surf_h = height + 12
+            _single_bullet_glow_cache[key] = _bytes_to_surface(data, surf_w, surf_h)
+
+    # Spread bullet glows: common radii (radius = width/2 for spread bullets)
+    for width in [8, 10, 12, 14, 16]:
+        radius = width // 2
+        key = (radius)
+        if key not in _spread_bullet_glow_cache:
+            data = create_spread_bullet_glow(float(radius))
+            surf_size = radius * 4 + 8
+            _spread_bullet_glow_cache[key] = _bytes_to_surface(data, surf_size, surf_size)
+
+    # Laser bullet glows: common heights
+    for height in [16, 20, 24, 28, 32]:
+        key = (height)
+        if key not in _laser_bullet_glow_cache:
+            data = create_laser_bullet_glow(float(height))
+            _laser_bullet_glow_cache[key] = _bytes_to_surface(data, 20, height + 8)
+
+    # Explosive missile glows: common sizes
+    for width, height in [(10, 20), (8, 16), (12, 24)]:
+        # Note: bw is computed same as Rust (float arithmetic, not int truncation)
+        bw = int(width * 0.8)  # used for cache key only
+        key = (bw, height)
+        if key not in _explosive_missile_cache:
+            data = create_explosive_missile_glow(float(width), float(height))
+            # Match Rust float arithmetic: surf_w = (width * 0.8 * 3 + 12) as usize
+            surf_w = int(width * 0.8 * 3 + 12)
+            surf_h = height + 10
+            _explosive_missile_cache[key] = _bytes_to_surface(data, surf_w, surf_h)
+
+    # Glow circles: enemy and player ship sizes
+    # Enemy ships use glow_radius 5-15, player uses 8-12
+    for radius, glow_radius in [(8, 8), (10, 10), (12, 12), (15, 15), (20, 15)]:
+        key = (radius, (255, 100, 50), glow_radius)  # Enemy color
+        if key not in _glow_circle_cache:
+            data = create_glow_circle(radius, 255, 100, 50, glow_radius)
+            surf_size = (radius + glow_radius) * 2 + 4
+            _glow_circle_cache[key] = _bytes_to_surface(data, surf_size, surf_size)
 
 
 def create_gradient_surface(width: int, height: int, color1: tuple, color2: tuple, vertical: bool = True) -> pygame.Surface:
@@ -41,6 +127,7 @@ def draw_glow_circle(surface: pygame.Surface, center: tuple, radius: int, color:
     if glow_radius > 0:
         cache_key = (radius, color[:3], glow_radius)
         if cache_key not in _glow_circle_cache:
+            # Always use pygame fallback for glow circles - the Rust version renders differently
             glow_surf = pygame.Surface((glow_radius * 2 + 4, glow_radius * 2 + 4), pygame.SRCALPHA)
             for i in range(glow_radius, 0, -2):
                 alpha = int(80 * (1 - i / glow_radius))
@@ -397,11 +484,17 @@ def draw_single_bullet(surface: pygame.Surface, x: float, y: float, width: float
     top_y = y
     cache_key = (int(width), int(height))
     if cache_key not in _single_bullet_glow_cache:
-        glow = pygame.Surface((int(width + 16), int(height + 12)), pygame.SRCALPHA)
-        for i in range(6, 0, -1):
-            alpha = 30 * (6 - i) // 5
-            glow_color = (255, 200, 50, alpha)
-            pygame.draw.ellipse(glow, glow_color, (8 - i, 4 - i // 2, int(width) + i * 2 - 6, int(height) + i - 2))
+        if RUST_AVAILABLE and create_single_bullet_glow:
+            data = create_single_bullet_glow(width, height)
+            surf_w = int(width + 16)
+            surf_h = int(height + 12)
+            glow = _bytes_to_surface(data, surf_w, surf_h)
+        else:
+            glow = pygame.Surface((int(width + 16), int(height + 12)), pygame.SRCALPHA)
+            for i in range(6, 0, -1):
+                alpha = 30 * (6 - i) // 5
+                glow_color = (255, 200, 50, alpha)
+                pygame.draw.ellipse(glow, glow_color, (8 - i, 4 - i // 2, int(width) + i * 2 - 6, int(height) + i - 2))
         _single_bullet_glow_cache[cache_key] = glow
     else:
         glow = _single_bullet_glow_cache[cache_key]
@@ -421,10 +514,15 @@ def draw_spread_bullet(surface: pygame.Surface, x: float, y: float, width: float
     radius = int(width / 2)
     cache_key = (radius)
     if cache_key not in _spread_bullet_glow_cache:
-        glow = pygame.Surface((radius * 4 + 8, radius * 4 + 8), pygame.SRCALPHA)
-        for i in range(radius + 4, 0, -2):
-            alpha = 40 * (radius + 4 - i) // (radius + 4)
-            pygame.draw.circle(glow, (255, 150, 50, alpha), (radius * 2 + 4, radius * 2 + 4), i)
+        if RUST_AVAILABLE and create_spread_bullet_glow:
+            data = create_spread_bullet_glow(float(radius))
+            surf_size = radius * 4 + 8
+            glow = _bytes_to_surface(data, surf_size, surf_size)
+        else:
+            glow = pygame.Surface((radius * 4 + 8, radius * 4 + 8), pygame.SRCALPHA)
+            for i in range(radius + 4, 0, -2):
+                alpha = 40 * (radius + 4 - i) // (radius + 4)
+                pygame.draw.circle(glow, (255, 150, 50, alpha), (radius * 2 + 4, radius * 2 + 4), i)
         _spread_bullet_glow_cache[cache_key] = glow
     else:
         glow = _spread_bullet_glow_cache[cache_key]
@@ -437,10 +535,14 @@ def draw_laser_bullet(surface: pygame.Surface, x: float, y: float, width: float,
     center_x = x + width / 2
     cache_key = (int(height))
     if cache_key not in _laser_bullet_glow_cache:
-        glow = pygame.Surface((20, int(height) + 8), pygame.SRCALPHA)
-        for i in range(8, 0, -2):
-            alpha = 50 * (8 - i) // 7
-            pygame.draw.line(glow, (255, 50, 150, alpha), (10, 2), (10, int(height) + 6), i)
+        if RUST_AVAILABLE and create_laser_bullet_glow:
+            data = create_laser_bullet_glow(height)
+            glow = _bytes_to_surface(data, 20, int(height) + 8)
+        else:
+            glow = pygame.Surface((20, int(height) + 8), pygame.SRCALPHA)
+            for i in range(8, 0, -2):
+                alpha = 50 * (8 - i) // 7
+                pygame.draw.line(glow, (255, 50, 150, alpha), (10, 2), (10, int(height) + 6), i)
         _laser_bullet_glow_cache[cache_key] = glow
     else:
         glow = _laser_bullet_glow_cache[cache_key]
@@ -462,11 +564,17 @@ def draw_explosive_missile(surface: pygame.Surface, x: float, y: float, width: f
 
     cache_key = (bw, int(height))
     if cache_key not in _explosive_missile_cache:
-        glow_surf = pygame.Surface((bw * 3 + 12, int(height) + 10), pygame.SRCALPHA)
-        for i in range(6, 0, -1):
-            alpha = 35 * (6 - i) // 5
-            pygame.draw.ellipse(glow_surf, (255, 80, 20, alpha),
-                                (bw + 6 - i * 2, 2 - i, int(height) + i * 2, int(height) + i * 2))
+        if RUST_AVAILABLE and create_explosive_missile_glow:
+            data = create_explosive_missile_glow(width, height)
+            surf_w = bw * 3 + 12
+            surf_h = int(height) + 10
+            glow_surf = _bytes_to_surface(data, surf_w, surf_h)
+        else:
+            glow_surf = pygame.Surface((bw * 3 + 12, int(height) + 10), pygame.SRCALPHA)
+            for i in range(6, 0, -1):
+                alpha = 35 * (6 - i) // 5
+                pygame.draw.ellipse(glow_surf, (255, 80, 20, alpha),
+                                    (bw + 6 - i * 2, 2 - i, int(height) + i * 2, int(height) + i * 2))
         _explosive_missile_cache[cache_key] = glow_surf
     else:
         glow_surf = _explosive_missile_cache[cache_key]

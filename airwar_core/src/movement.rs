@@ -79,10 +79,12 @@ pub fn update_movement(
             } else {
                 direction
             };
-            let x = (active_x + actual_direction * speed).clamp(
-                active_x - move_range_x,
-                active_x + move_range_x,
-            );
+            // NOTE: Rust zigzag differs from Python fallback:
+            // Python accumulates from current x: new_x = self.rect.x + direction * speed
+            // Rust computes from active_x: x = active_x + direction * speed
+            // This makes Rust zigzag oscillate by only ~speed px instead of accumulating.
+            // The Python fallback is used for zigzag in Enemy.update() instead.
+            let x = active_x + actual_direction * speed;
             let y = active_y + (new_timer * 0.1).sin() * (move_range_y * 0.5);
             (x, y)
         }
@@ -101,7 +103,7 @@ pub fn update_movement(
         MovementType::Spiral => {
             let t = new_timer * frequency;
             let spiral_x = t.cos() * (move_range_x * 0.5);
-            let spiral_y = t.sin() * (move_range_x * 0.3);
+            let spiral_y = (t * 2.0).sin() * (move_range_y * 0.3);
             let x = active_x + spiral_x;
             let y = active_y + spiral_y;
             (x, y)

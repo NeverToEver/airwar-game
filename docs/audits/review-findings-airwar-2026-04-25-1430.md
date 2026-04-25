@@ -2,7 +2,7 @@
 
 **日期：** 2026/04/25
 **审查者：** AI Agent（独立上下文）
-**审查范围：** 全代码库审计 — 架构、实体系统、Manager、GPU 渲染管线、场景管理、游戏平衡
+**审查范围：** 全代码库审计 — 架构、实体系统、Manager、场景管理、游戏平衡
 
 ---
 
@@ -56,7 +56,6 @@
 - CollisionController 中的空间哈希网格实现 O(1) 平均碰撞查询 — 良好的优化
 - `GameLoopManager` 中基于 Protocol 的依赖注入 — 便于测试
 - 全局日志记录（`logging.getLogger(__name__)`）— 良好的可观测性基础
-- GPU 渲染管线（ModernGL 作为可选后端）— 适当的功能开关设计
 - 奖励/Buff 系统通过 `BUFF_REGISTRY` 字典可扩展 — 良好的 OCP 合规性
 
 ### 缺点

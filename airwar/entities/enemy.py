@@ -201,7 +201,9 @@ class Enemy(Entity):
         move_range_y = 40
 
         # Try Rust movement first if available
-        if rust_update_movement is not None and self.move_type in MOVEMENT_TYPE_MAP:
+        # Exclude zigzag: Rust uses active_x as base instead of current x,
+        # which produces different (non-accumulating) movement behavior
+        if rust_update_movement is not None and self.move_type in MOVEMENT_TYPE_MAP and self.move_type != "zigzag":
             move_type_code = MOVEMENT_TYPE_MAP[self.move_type]
 
             # Get movement timer
@@ -218,7 +220,11 @@ class Enemy(Entity):
             # Get movement parameters
             offset = getattr(self, 'move_offset', 0.0)
             amplitude = getattr(self, 'move_amplitude', 2.0)
-            frequency = getattr(self, 'move_frequency', 0.05)
+            # Spiral uses its own random frequency (set in __init__), other types use move_frequency
+            if self.move_type == "spiral":
+                frequency = getattr(self, 'spiral_frequency', 0.05)
+            else:
+                frequency = getattr(self, 'move_frequency', 0.05)
             speed = getattr(self, 'zigzag_speed', 2.0) if self.move_type == "zigzag" else getattr(self, 'spiral_speed', 2.0)
             direction = getattr(self, 'direction', 1.0)
             zigzag_interval = getattr(self, 'zigzag_interval', 45.0)

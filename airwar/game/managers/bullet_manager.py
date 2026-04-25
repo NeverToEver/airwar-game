@@ -127,11 +127,7 @@ class BulletManager:
         """清理敌人子弹列表中的非活跃子弹"""
         if not self._spawn_controller.enemy_bullets:
             return
-
-        bullets = self._spawn_controller.enemy_bullets
-        i = 0
-        while i < len(bullets):
-            if not bullets[i].active:
-                bullets.pop(i)
-            else:
-                i += 1
+        # Use in-place filter to preserve list reference for EnemyBulletSpawner
+        self._spawn_controller.enemy_bullets[:] = [
+            b for b in self._spawn_controller.enemy_bullets if b.active
+        ]

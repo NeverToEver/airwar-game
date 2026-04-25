@@ -14,4 +14,5 @@ class EnemyBulletSpawner(IBulletSpawner):
         return self.bullet_list
 
     def clear_inactive(self) -> None:
-        self.bullet_list = [b for b in self.bullet_list if b.active]
+        # Use in-place filter to preserve list reference
+        self.bullet_list[:] = [b for b in self.bullet_list if b.active]

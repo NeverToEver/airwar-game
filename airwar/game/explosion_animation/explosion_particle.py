@@ -52,3 +52,10 @@ class ExplosionParticle:
     def is_alive(self) -> bool:
         """Check if particle is alive"""
         return self.life > 0
+
+    @property
+    def life_ratio(self) -> float:
+        """Get life as ratio for Rust batch update compatibility"""
+        if self.max_life <= 0:
+            return 0.0
+        return self.life / self.max_life

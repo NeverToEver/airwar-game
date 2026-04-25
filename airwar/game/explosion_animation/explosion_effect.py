@@ -5,6 +5,11 @@ from typing import List
 import pygame
 
 from airwar.game.explosion_animation.explosion_particle import ExplosionParticle
+from airwar.core_bindings import (
+    generate_explosion_particles,
+    batch_update_particles,
+    RUST_AVAILABLE,
+)
 
 
 # Global glow surface cache for particles
@@ -63,31 +68,48 @@ class ExplosionEffect:
         self._generate_particles()
 
     def _generate_particles(self) -> None:
-        """Generate explosion particles"""
-        for _ in range(self.PARTICLE_COUNT):
-            angle = random.uniform(0, 2 * math.pi)
-            speed = random.uniform(
-                self.PARTICLE_SPEED_MIN,
-                self.PARTICLE_SPEED_MAX
-            )
-            life = random.randint(
+        """Generate explosion particles using Rust if available"""
+        if RUST_AVAILABLE:
+            particle_data = generate_explosion_particles(
+                self._x, self._y,
+                self.PARTICLE_COUNT,
                 self.PARTICLE_LIFE_MIN,
-                self.PARTICLE_LIFE_MAX
-            )
-            size = random.uniform(
+                self.PARTICLE_LIFE_MAX,
+                self.PARTICLE_SPEED_MIN,
+                self.PARTICLE_SPEED_MAX,
                 self.PARTICLE_SIZE_MIN,
-                self.PARTICLE_SIZE_MAX
+                self.PARTICLE_SIZE_MAX,
             )
+            for x, y, vx, vy, life, max_life, size in particle_data:
+                self._particles.append(ExplosionParticle(
+                    x=x, y=y, vx=vx, vy=vy,
+                    life=life, max_life=max_life, size=size
+                ))
+        else:
+            for _ in range(self.PARTICLE_COUNT):
+                angle = random.uniform(0, 2 * math.pi)
+                speed = random.uniform(
+                    self.PARTICLE_SPEED_MIN,
+                    self.PARTICLE_SPEED_MAX
+                )
+                life = random.randint(
+                    self.PARTICLE_LIFE_MIN,
+                    self.PARTICLE_LIFE_MAX
+                )
+                size = random.uniform(
+                    self.PARTICLE_SIZE_MIN,
+                    self.PARTICLE_SIZE_MAX
+                )
 
-            self._particles.append(ExplosionParticle(
-                x=self._x,
-                y=self._y,
-                vx=math.cos(angle) * speed,
-                vy=math.sin(angle) * speed,
-                life=life,
-                max_life=life,
-                size=size
-            ))
+                self._particles.append(ExplosionParticle(
+                    x=self._x,
+                    y=self._y,
+                    vx=math.cos(angle) * speed,
+                    vy=math.sin(angle) * speed,
+                    life=life,
+                    max_life=life,
+                    size=size
+                ))
 
     def update(self, dt: float = 1.0) -> bool:
         """Update explosion state
@@ -101,10 +123,25 @@ class ExplosionEffect:
         if not self._active:
             return False
 
-        for particle in self._particles:
-            particle.update(dt)
-
-        self._particles = [p for p in self._particles if p.is_alive()]
+        if RUST_AVAILABLE:
+            # Save original max_life so alpha/fade effects work correctly
+            max_lives = [p.max_life for p in self._particles]
+            particle_data = [
+                (p.x, p.y, p.vx, p.vy, p.life, p.max_life, p.size)
+                for p in self._particles
+            ]
+            results = batch_update_particles(particle_data, dt)
+            self._particles.clear()
+            for (x, y, vx, vy, life, size, is_alive), original_max_life in zip(results, max_lives):
+                if is_alive:
+                    self._particles.append(ExplosionParticle(
+                        x=x, y=y, vx=vx, vy=vy,
+                        life=life, max_life=original_max_life, size=size
+                    ))
+        else:
+            for particle in self._particles:
+                particle.update(dt)
+            self._particles = [p for p in self._particles if p.is_alive()]
 
         if not self._particles:
             self._active = False

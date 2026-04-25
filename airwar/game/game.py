@@ -33,6 +33,9 @@ class Game:
 
     def run(self) -> None:
         try:
+            # Pre-warm sprite glow caches for optimal performance
+            from airwar.utils.sprites import prewarm_glow_caches
+            prewarm_glow_caches()
             self._director.run()
         finally:
             self._window.close()
