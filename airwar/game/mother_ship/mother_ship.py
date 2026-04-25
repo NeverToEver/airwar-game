@@ -6,12 +6,20 @@ class MotherShip:
     DOCKING_BAY_X_OFFSET = 0
     DOCKING_BAY_Y_OFFSET = 50
 
+    # Movement configuration
+    MOVE_SPEED = 0.3  # pixels per frame, very slow
+    OSCILLATION_AMPLITUDE = 80  # horizontal oscillation range
+    OSCILLATION_SPEED = 0.0003  # oscillation frequency (slower)
+
     def __init__(self, screen_width: int, screen_height: int):
         self._screen_width = screen_width
         self._screen_height = screen_height
         self._visible = False
-        self._position = (screen_width // 2, 80)
+        self._initial_x = screen_width // 2
+        self._initial_y = int(screen_height * 0.35)  # 35% from top, closer to center
+        self._position = (self._initial_x, self._initial_y)
         self._animation_time = 0
+        self._move_time = 0  # for oscillation tracking
 
         self._engine_pulse = 0.0
         self._wing_pulse = 0.0
@@ -54,6 +62,17 @@ class MotherShip:
             self._animation_time += 0.05
             self._engine_pulse = 0.5 + 0.5 * math.sin(self._animation_time * 2)
             self._wing_pulse = 0.3 + 0.3 * math.sin(self._animation_time * 1.5)
+
+    def update(self) -> None:
+        if not self._visible:
+            return
+        self._move_time += 1
+        # Slow horizontal oscillation using sine wave
+        oscillation = math.sin(self._move_time * self.OSCILLATION_SPEED) * self.OSCILLATION_AMPLITUDE
+        new_x = self._initial_x + oscillation
+        # Keep mothership centered vertically but allow slight vertical drift
+        new_y = self._initial_y
+        self._position = (int(new_x), new_y)
 
     def render(self, surface: pygame.Surface) -> None:
         if not self._visible:
