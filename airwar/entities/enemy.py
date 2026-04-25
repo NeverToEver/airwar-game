@@ -9,6 +9,23 @@ from .interfaces import IBulletSpawner
 from airwar.utils.sprites import draw_enemy_ship, draw_boss_ship
 from airwar.config import ENEMY_HITBOX_SIZE, ENEMY_HITBOX_PADDING, ENEMY_VISUAL_SCALE, ENEMY_COLLISION_SCALE
 
+# Try to import Rust movement function
+try:
+    from airwar.core_bindings import update_movement as rust_update_movement, RUST_AVAILABLE
+except ImportError:
+    rust_update_movement = None
+    RUST_AVAILABLE = False
+
+# Movement type string to Rust enum mapping
+MOVEMENT_TYPE_MAP = {
+    "straight": 0,
+    "sine": 1,
+    "zigzag": 2,
+    "dive": 3,
+    "hover": 4,
+    "spiral": 5,
+}
+
 if TYPE_CHECKING:
     from airwar.scenes.game_scene import GameScene
 
@@ -183,50 +200,98 @@ class Enemy(Entity):
         move_range_x = 80
         move_range_y = 40
 
-        if self.move_type == "sine":
-            self.move_timer += 1
-            self.rect.x = self._active_position_x + math.sin(self.move_timer * self.move_frequency + self.move_offset) * move_range_x
-            self.rect.y = self._active_position_y + math.sin(self.move_timer * self.move_frequency * 0.5) * move_range_y
-            self._sync_rects()
+        # Try Rust movement first if available
+        if rust_update_movement is not None and self.move_type in MOVEMENT_TYPE_MAP:
+            move_type_code = MOVEMENT_TYPE_MAP[self.move_type]
 
-        elif self.move_type == "zigzag":
-            self.zigzag_timer += 1
-            if self.zigzag_timer >= self.zigzag_interval:
-                self.zigzag_timer = 0
-                self.direction *= -1
-            new_x = self.rect.x + self.direction * self.zigzag_speed
-            # Clamp to small range around active position
-            self.rect.x = max(self._active_position_x - move_range_x, min(new_x, self._active_position_x + move_range_x))
-            self.rect.y = self._active_position_y + math.sin(self.zigzag_timer * 0.1) * (move_range_y * 0.5)
-            self._sync_rects()
+            # Get movement timer
+            timer = getattr(self, 'move_timer', 0.0)
+            if self.move_type == "zigzag":
+                timer = getattr(self, 'zigzag_timer', 0.0)
+            elif self.move_type == "dive":
+                timer = getattr(self, 'dive_timer', 0.0)
+            elif self.move_type == "hover":
+                timer = getattr(self, 'hover_timer', 0.0) / 0.08  # Convert back to frame count
+            elif self.move_type == "spiral":
+                timer = getattr(self, 'spiral_timer', 0.0)
 
-        elif self.move_type == "dive":
-            self.dive_timer += 1
-            # Very limited movement for dive type
-            wave = math.sin(self.dive_timer * 0.05) * (move_range_x * 0.3)
-            self.rect.x = self._active_position_x + wave
-            self.rect.y = self._active_position_y + math.sin(self.dive_timer * 0.03) * (move_range_y * 0.3)
-            self._sync_rects()
+            # Get movement parameters
+            offset = getattr(self, 'move_offset', 0.0)
+            amplitude = getattr(self, 'move_amplitude', 2.0)
+            frequency = getattr(self, 'move_frequency', 0.05)
+            speed = getattr(self, 'zigzag_speed', 2.0) if self.move_type == "zigzag" else getattr(self, 'spiral_speed', 2.0)
+            direction = getattr(self, 'direction', 1.0)
+            zigzag_interval = getattr(self, 'zigzag_interval', 45.0)
+            spiral_radius = getattr(self, 'spiral_radius', 40.0)
 
-        elif self.move_type == "hover":
-            self.hover_timer += 0.08
-            self.rect.x = self._active_position_x + math.sin(self.hover_timer) * move_range_x
-            self.rect.y = self._active_position_y + math.sin(self.hover_timer * 0.7) * (move_range_y * 0.5)
-            self._sync_rects()
+            new_x, new_y, new_timer = rust_update_movement(
+                move_type_code, timer,
+                self._active_position_x, self._active_position_y,
+                move_range_x, move_range_y,
+                offset, amplitude, frequency, speed, direction,
+                zigzag_interval, spiral_radius
+            )
 
-        elif self.move_type == "spiral":
-            self.spiral_timer += 1
-            spiral_x = math.cos(self.spiral_timer * self.spiral_frequency) * (move_range_x * 0.5)
-            spiral_y = math.sin(self.spiral_timer * self.spiral_frequency * 2) * (move_range_y * 0.3)
-            self.rect.x = self._active_position_x + spiral_x
-            self.rect.y = self._active_position_y + spiral_y
-            self._sync_rects()
+            self.rect.x = new_x
+            self.rect.y = new_y
 
+            # Update timer back
+            if self.move_type == "zigzag":
+                self.zigzag_timer = new_timer
+            elif self.move_type == "dive":
+                self.dive_timer = new_timer
+            elif self.move_type == "hover":
+                self.hover_timer = new_timer * 0.08
+            elif self.move_type == "spiral":
+                self.spiral_timer = new_timer
+            else:
+                self.move_timer = new_timer
+
+            self._sync_rects()
         else:
-            # straight movement with very small vertical oscillation
-            self.rect.x = self._active_position_x
-            self.rect.y = self._active_position_y + math.sin(self._lifetime * 0.05) * (move_range_y * 0.3)
-            self._sync_rects()
+            # Fallback to Python movement
+            if self.move_type == "sine":
+                self.move_timer += 1
+                self.rect.x = self._active_position_x + math.sin(self.move_timer * self.move_frequency + self.move_offset) * move_range_x
+                self.rect.y = self._active_position_y + math.sin(self.move_timer * self.move_frequency * 0.5) * move_range_y
+                self._sync_rects()
+
+            elif self.move_type == "zigzag":
+                self.zigzag_timer += 1
+                if self.zigzag_timer >= self.zigzag_interval:
+                    self.zigzag_timer = 0
+                    self.direction *= -1
+                new_x = self.rect.x + self.direction * self.zigzag_speed
+                self.rect.x = max(self._active_position_x - move_range_x, min(new_x, self._active_position_x + move_range_x))
+                self.rect.y = self._active_position_y + math.sin(self.zigzag_timer * 0.1) * (move_range_y * 0.5)
+                self._sync_rects()
+
+            elif self.move_type == "dive":
+                self.dive_timer += 1
+                wave = math.sin(self.dive_timer * 0.05) * (move_range_x * 0.3)
+                self.rect.x = self._active_position_x + wave
+                self.rect.y = self._active_position_y + math.sin(self.dive_timer * 0.03) * (move_range_y * 0.3)
+                self._sync_rects()
+
+            elif self.move_type == "hover":
+                self.hover_timer += 0.08
+                self.rect.x = self._active_position_x + math.sin(self.hover_timer) * move_range_x
+                self.rect.y = self._active_position_y + math.sin(self.hover_timer * 0.7) * (move_range_y * 0.5)
+                self._sync_rects()
+
+            elif self.move_type == "spiral":
+                self.spiral_timer += 1
+                spiral_x = math.cos(self.spiral_timer * self.spiral_frequency) * (move_range_x * 0.5)
+                spiral_y = math.sin(self.spiral_timer * self.spiral_frequency * 2) * (move_range_y * 0.3)
+                self.rect.x = self._active_position_x + spiral_x
+                self.rect.y = self._active_position_y + spiral_y
+                self._sync_rects()
+
+            else:
+                # straight movement with very small vertical oscillation
+                self.rect.x = self._active_position_x
+                self.rect.y = self._active_position_y + math.sin(self._lifetime * 0.05) * (move_range_y * 0.3)
+                self._sync_rects()
 
         if self.rect.y > screen_height:
             self.active = False
