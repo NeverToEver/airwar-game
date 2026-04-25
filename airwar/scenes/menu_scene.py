@@ -11,6 +11,17 @@ from airwar.utils.mouse_interaction import MouseSelectableMixin
 
 
 class MenuScene(Scene, MouseSelectableMixin):
+    """Main menu scene with difficulty selection.
+
+    MenuScene displays the main menu with difficulty options (easy, medium, hard, tutorial).
+    Supports both keyboard navigation and mouse interaction via MouseSelectableMixin.
+
+    Attributes:
+        difficulty: Selected difficulty level.
+        selected_index: Currently selected menu option index.
+        selection_confirmed: Whether user has confirmed their selection.
+        back_requested: Whether user requested to go back.
+    """
 
     def __init__(self):
         Scene.__init__(self)

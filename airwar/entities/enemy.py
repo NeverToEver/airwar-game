@@ -37,6 +37,21 @@ if TYPE_CHECKING:
 
 
 class Enemy(Entity):
+    """Enemy entity with various movement patterns.
+
+    Enemy class handles movement, firing, and lifecycle for regular enemies.
+    Supports multiple movement patterns: straight, sine, zigzag, dive, hover, spiral.
+    Enemies enter from above screen, stay active for ~15 seconds, then exit.
+
+    Attributes:
+        data: EnemyData configuration for health, speed, score, etc.
+        health: Current health points.
+        max_health: Maximum health points.
+        fire_timer: Timer for tracking fire rate.
+        move_type: Current movement pattern type.
+        entity_id: Unique identifier for this entity.
+    """
+
     def __init__(self, x: float, y: float, data: EnemyData):
         base_size = ENEMY_HITBOX_SIZE + ENEMY_HITBOX_PADDING * 2
 
@@ -396,6 +411,21 @@ class Enemy(Entity):
 
 
 class EnemySpawner:
+    """Spawns enemies in V-formation waves.
+
+    Manages enemy wave spawning with V-formation patterns. Handles wave
+    lifecycle tracking and enemy type selection based on probability
+    distribution.
+
+    Attributes:
+        health: Health value for spawned enemies.
+        speed: Speed value for spawned enemies.
+        spawn_rate: Frames between potential spawns.
+        bullet_type: Type of bullet spawned enemies fire.
+        _wave_active: Whether a spawn wave is currently active.
+        _wave_enemies_spawned: Count of enemies spawned in current wave.
+    """
+
     def __init__(self):
         self.spawn_timer = 0
         self.health = 100
@@ -520,6 +550,19 @@ class EnemySpawner:
 
 @dataclass
 class BossData:
+    """Data class for Boss entity configuration.
+
+    Attributes:
+        health: Maximum health points.
+        speed: Movement speed in pixels per frame.
+        score: Score awarded when defeated.
+        width: Width of the boss sprite.
+        height: Height of the boss sprite.
+        fire_rate: Frames between attacks.
+        phase: Current attack phase (1-3).
+        escape_time: Frames before boss escapes.
+    """
+
     health: int = 2000
     speed: float = 1.5
     score: int = 5000
@@ -531,7 +574,26 @@ class BossData:
 
 
 class Boss(Entity):
+    """Boss entity with phase-based attacks.
+
+    Boss class handles movement, phase transitions, and multiple attack patterns
+    (spread, aim, wave). Boss has 3 phases that increase in difficulty. Boss will
+    escape after survival_timer reaches escape_time.
+
+    Attributes:
+        data: BossData configuration.
+        health: Current health points.
+        max_health: Maximum health points.
+        phase: Current attack phase (1-3).
+        fire_timer: Timer for attack fire rate.
+        attack_pattern: Current attack pattern index (0-2).
+        survival_timer: Frames survived in battle.
+        escaped: Whether the boss has escaped.
+        _bullet_spawner: Optional spawner for bullets.
+    """
+
     ATTACK_DIRECTIONS = ['down', 'left', 'right', 'up']
+
     _warning_font = None
     _escape_font = None
 

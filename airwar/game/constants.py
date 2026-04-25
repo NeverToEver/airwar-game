@@ -1,20 +1,20 @@
-"""游戏常量定义模块
+"""Game constants definition module.
 
-集中管理所有游戏相关的常量值，避免魔法数字散落在代码各处。
-遵循架构标准:
-- 单一职责: 仅定义游戏常量
-- 可扩展性: 使用dataclass支持继承扩展
-- 可维护性: 集中管理，易于修改
+Centralizes all game-related constant values to avoid magic numbers scattered
+throughout the codebase. Follows architectural standards:
+- Single Responsibility: Only defines game constants
+- Extensibility: Uses dataclass to support inheritance extension
+- Maintainability: Centralized management for easy modification
 
 Usage:
     from airwar.game.constants import GAME_CONSTANTS, PlayerConstants
-    
+
     # Access player constants
     player_y = PlayerConstants.INITIAL_Y
-    
+
     # Access damage constants
     boss_damage = GAME_CONSTANTS.DAMAGE.BOSS_COLLISION_DAMAGE
-    
+
     # Calculate threshold
     threshold = GAME_CONSTANTS.get_next_threshold(0, 'medium')
 """
@@ -25,16 +25,16 @@ from typing import Tuple
 
 @dataclass(frozen=True)
 class PlayerConstants:
-    """玩家相关常量
-    
+    """Player-related constants.
+
     Attributes:
-        INITIAL_X_OFFSET: 玩家初始X偏移量
-        INITIAL_Y: 玩家初始Y位置
-        FINAL_Y: 玩家最终Y位置
-        SCREEN_BOTTOM_OFFSET: 屏幕底部偏移量
-        INVINCIBILITY_DURATION: 无敌持续时间（帧）
-        MOTHERSHIP_Y_POSITION: 母舰状态时玩家Y位置
-        DEFAULT_SCREEN_WIDTH: 默认屏幕宽度
+        INITIAL_X_OFFSET: Initial X offset for player spawn.
+        INITIAL_Y: Initial Y position for player.
+        FINAL_Y: Final Y position for player.
+        SCREEN_BOTTOM_OFFSET: Offset from screen bottom.
+        INVINCIBILITY_DURATION: Invincibility duration in frames.
+        MOTHERSHIP_Y_POSITION: Player Y position when docked with mothership.
+        DEFAULT_SCREEN_WIDTH: Default screen width.
     """
     INITIAL_X_OFFSET: int = 25
     INITIAL_Y: int = -80
@@ -47,15 +47,15 @@ class PlayerConstants:
 
 @dataclass(frozen=True)
 class DamageConstants:
-    """伤害相关常量
-    
+    """Damage-related constants.
+
     Attributes:
-        BOSS_COLLISION_DAMAGE: Boss碰撞伤害值
-        ENEMY_COLLISION_DAMAGE: 敌人碰撞伤害值
-        EXPLOSIVE_DAMAGE: 爆炸基础伤害值
-        DEFAULT_REGEN_RATE: 默认生命恢复速率
-        REGEN_THRESHOLD: 生命恢复阈值
-        INSTANT_KILL: 即死伤害值（投降功能使用）
+        BOSS_COLLISION_DAMAGE: Damage from boss collision.
+        ENEMY_COLLISION_DAMAGE: Damage from enemy collision.
+        EXPLOSIVE_DAMAGE: Base explosive damage.
+        DEFAULT_REGEN_RATE: Default health regeneration rate.
+        REGEN_THRESHOLD: Health threshold for regeneration.
+        INSTANT_KILL: Instant kill damage value (used for surrender).
     """
     BOSS_COLLISION_DAMAGE: int = 30
     ENEMY_COLLISION_DAMAGE: int = 20
@@ -67,11 +67,11 @@ class DamageConstants:
 
 @dataclass(frozen=True)
 class TimingConstants:
-    """时间相关常量
-    
+    """Timing-related constants.
+
     Attributes:
-        FIXED_DELTA_TIME: 固定帧时间步长（约16.67ms @60fps）
-        NOTIFICATION_DURATION: 通知显示持续时间（帧）
+        FIXED_DELTA_TIME: Fixed frame time step (~16.67ms @60fps).
+        NOTIFICATION_DURATION: Notification display duration in frames.
     """
     FIXED_DELTA_TIME: float = 1 / 60
     NOTIFICATION_DURATION: int = 90
@@ -79,13 +79,13 @@ class TimingConstants:
 
 @dataclass(frozen=True)
 class AnimationConstants:
-    """动画相关常量
-    
+    """Animation-related constants.
+
     Attributes:
-        ENTRANCE_DURATION: 入场动画持续时间（帧）
-        RIPPLE_INITIAL_RADIUS: 波动效果初始半径
-        RIPPLE_INITIAL_ALPHA: 波动效果初始透明度
-        NOTIFICATION_DECAY_RATE: 通知衰减速率
+        ENTRANCE_DURATION: Entrance animation duration in frames.
+        RIPPLE_INITIAL_RADIUS: Ripple effect initial radius.
+        RIPPLE_INITIAL_ALPHA: Ripple effect initial alpha.
+        NOTIFICATION_DECAY_RATE: Notification decay rate.
     """
     ENTRANCE_DURATION: int = 60
     RIPPLE_INITIAL_RADIUS: int = 15
@@ -95,15 +95,15 @@ class AnimationConstants:
 
 @dataclass(frozen=True)
 class GameBalanceConstants:
-    """游戏平衡相关常量
+    """Game balance-related constants.
 
     Attributes:
-        MAX_CYCLES: 最大周期数
-        BASE_THRESHOLDS: 基础阈值列表
-        CYCLE_MULTIPLIER: 周期倍率
-        DIFFICULTY_MULTIPLIERS: 难度倍率元组 (easy, medium, hard)
-        WAVE_SIZE: 每波敌机数量
-        EXPLOSION_RADIUS: 爆炸半径
+        MAX_CYCLES: Maximum number of cycles.
+        BASE_THRESHOLDS: Base milestone threshold list.
+        CYCLE_MULTIPLIER: Cycle multiplier for scaling.
+        DIFFICULTY_MULTIPLIERS: Difficulty multipliers tuple (easy, medium, hard).
+        WAVE_SIZE: Number of enemies per wave.
+        EXPLOSION_RADIUS: Explosion radius.
     """
     MAX_CYCLES: int = 10
     BASE_THRESHOLDS: Tuple[int, ...] = (3000, 6000, 10000, 16000, 25000, 38000, 55000, 80000)
@@ -115,7 +115,26 @@ class GameBalanceConstants:
 
 @dataclass(frozen=True)
 class BossConstants:
-    """Boss战相关常量"""
+    """Boss battle-related constants.
+
+    Attributes:
+        BULLET_DAMAGE_BASE: Base bullet damage.
+        AIM_BULLET_DAMAGE_BASE: Base aimed bullet damage.
+        WAVE_BULLET_DAMAGE: Wave attack bullet damage.
+        SPREAD_SPEED: Spread attack bullet speed.
+        AIM_SPEED: Aimed bullet speed.
+        WAVE_SPEED: Wave attack bullet speed.
+        SPREAD_ANGLE_RANGE: Spread attack angle range.
+        WAVE_ANGLE_INTERVAL: Wave attack angle interval.
+        SIDE_ANGLE_RANGE: Side attack angle range.
+        SIDE_ANGLE_OFFSET: Side attack angle offset.
+        ATTACK_DISTANCE: Attack distance for aimed shots.
+        BULLET_OFFSET_X: Horizontal bullet offset for multi-shot.
+        FIRE_RATE_BASE: Base fire rate.
+        PHASE_INTERVAL: Frames between phase transitions.
+        SPREAD_BULLET_COUNT_BASE: Base number of spread bullets.
+        BULLET_DAMAGE_MAP: Damage map by bullet type.
+    """
     BULLET_DAMAGE_BASE: int = 12
     AIM_BULLET_DAMAGE_BASE: int = 18
     WAVE_BULLET_DAMAGE: int = 12
@@ -140,23 +159,24 @@ class BossConstants:
 
 @dataclass
 class GameConstants:
-    """游戏全局常量聚合类
+    """Aggregates all game constants with unified access.
 
-    使用组合模式聚合各类常量，提供统一的访问入口。
+    Uses composition pattern to aggregate various constant classes,
+    providing a unified access entry point.
 
     Attributes:
-        PLAYER: 玩家相关常量
-        DAMAGE: 伤害相关常量
-        ANIMATION: 动画相关常量
-        BALANCE: 游戏平衡相关常量
-        TIMING: 时间相关常量
-        BOSS: Boss战相关常量
+        PLAYER: Player-related constants.
+        DAMAGE: Damage-related constants.
+        ANIMATION: Animation-related constants.
+        BALANCE: Game balance-related constants.
+        TIMING: Timing-related constants.
+        BOSS: Boss battle-related constants.
 
     Methods:
         get_difficulty_multiplier(difficulty: str) -> float:
-            获取难度对应的分数倍率
+            Returns the score multiplier for the given difficulty.
         get_next_threshold(milestone_index: int, difficulty: str) -> float:
-            计算下一个里程碑阈值
+            Calculates the next milestone threshold.
     """
     PLAYER: PlayerConstants = field(default_factory=PlayerConstants)
     DAMAGE: DamageConstants = field(default_factory=DamageConstants)
@@ -166,13 +186,13 @@ class GameConstants:
     BOSS: BossConstants = field(default_factory=BossConstants)
     
     def get_difficulty_multiplier(self, difficulty: str) -> float:
-        """获取难度对应的分数倍率
-        
+        """Returns the score multiplier for the given difficulty.
+
         Args:
-            difficulty: 难度等级 ('easy', 'medium', 'hard')
-        
+            difficulty: Difficulty level ('easy', 'medium', 'hard').
+
         Returns:
-            分数倍率 (easy=1.0, medium=1.5, hard=2.0)
+            Score multiplier (easy=1.0, medium=1.5, hard=2.0).
         """
         multipliers = {
             'easy': self.BALANCE.DIFFICULTY_MULTIPLIERS[0],
@@ -182,14 +202,14 @@ class GameConstants:
         return multipliers.get(difficulty, 1.0)
     
     def get_next_threshold(self, milestone_index: int, difficulty: str) -> float:
-        """计算下一个里程碑阈值
-        
+        """Calculates the next milestone threshold.
+
         Args:
-            milestone_index: 里程碑索引
-            difficulty: 难度等级
-        
+            milestone_index: Milestone index.
+            difficulty: Difficulty level.
+
         Returns:
-            下一个里程碑的分数阈值
+            Next milestone score threshold.
         """
         base_idx = milestone_index % len(self.BALANCE.BASE_THRESHOLDS)
         cycle_bonus = milestone_index // len(self.BALANCE.BASE_THRESHOLDS)
