@@ -95,7 +95,8 @@ airwar/
 │       ├── vector2.rs        向量数学运算
 │       ├── collision.rs       空间哈希碰撞检测
 │       ├── movement.rs       移动更新
-│       └── particles.rs      粒子系统
+│       ├── particles.rs      粒子系统
+│       └── sprites.rs        精灵 glow 表面创建
 ├── docs/                     文档（Rust 优化方案、审查报告）
 └── plans/                    实现计划
 ```
@@ -111,6 +112,8 @@ cd airwar_core && maturin develop --release
 
 Rust 模块不可用时自动降级到纯 Python 实现，无需额外处理。
 
+渲染采用纯 pygame 方案（Phase 6 移除了 ModernGL GPU 依赖），Rust sprites 模块仅用于 glow 表面创建。
+
 ## 测试
 
 ```bash
@@ -124,5 +127,5 @@ cd airwar && python -m pytest -m smoke
 cd airwar && python -m pytest -m "not slow"
 
 # 运行 Rust 绑定测试
-cd airwar && python -m pytest tests/test_vector2_bindings.py tests/test_collision_bindings.py tests/test_movement_bindings.py tests/test_particle_bindings.py
+cd airwar && python -m pytest tests/test_vector2_bindings.py tests/test_collision_bindings.py tests/test_movement_bindings.py tests/test_particle_bindings.py tests/test_sprite_bindings.py
 ```
