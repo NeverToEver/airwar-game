@@ -79,6 +79,8 @@ class GameIntegrator:
         self._event_bus.subscribe('EXIT_PROGRESS_UPDATE', self._on_exit_progress_update)
 
     def update(self) -> None:
+        self._mother_ship.update()
+
         if self._docking_animation_active:
             self._update_docking_animation()
             return

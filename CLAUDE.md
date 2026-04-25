@@ -26,7 +26,11 @@ pip install -r requirements.txt
 ### Running the Game
 
 ```bash
-python main.py
+# As ubt user (recommended - uses locally installed packages)
+sudo -u ubt python3 main.py
+
+# With explicit PYTHONPATH (if running as root)
+PYTHONPATH=/home/ubt/.local/lib/python3.12/site-packages python3 main.py
 ```
 
 ### Testing
