@@ -57,8 +57,8 @@ class GameController:
         self.cycle_count = 0
         self.milestone_index = 0
         self.max_cycles = 10
-        self.initial_delta = 500
-        self.delta_growth = 500
+        self.initial_delta = 800
+        self.delta_growth = 800
         self.max_delta = settings['max_delta']
         self.max_threshold = 50000
         self.difficulty_multiplier = settings['difficulty_multiplier']
