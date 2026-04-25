@@ -38,22 +38,22 @@ cd /home/ubt/airwar && PYTHONPATH=/home/ubt/.local/lib/python3.12/site-packages 
 
 ```bash
 # All tests
-cd airwar && python -m pytest
+cd airwar && python3 -m pytest
 
 # Smoke tests (core functionality)
-cd airwar && python -m pytest -m smoke
+cd airwar && python3 -m pytest -m smoke
 
 # Exclude slow tests
-cd airwar && python -m pytest -m "not slow"
+cd airwar && python3 -m pytest -m "not slow"
 
 # Specific test file
-cd airwar && python -m pytest tests/test_entities.py
+cd airwar && python3 -m pytest tests/test_entities.py
 
 # Specific test class/method
-cd airwar && python -m pytest tests/test_entities.py::TestPlayer -v
+cd airwar && python3 -m pytest tests/test_entities.py::TestPlayer -v
 
 # Rust binding tests
-cd airwar && python -m pytest tests/test_vector2_bindings.py tests/test_collision_bindings.py tests/test_movement_bindings.py tests/test_particle_bindings.py
+cd airwar && python3 -m pytest tests/test_vector2_bindings.py tests/test_collision_bindings.py tests/test_movement_bindings.py tests/test_particle_bindings.py
 ```
 
 ### Build Rust Extension
@@ -82,7 +82,9 @@ PyO3 extension module providing performance-critical computation with graceful P
 | `collision.rs` | spatial_hash_collide, spatial_hash_collide_single | `core_bindings.py` |
 | `movement.rs` | update_movement | `core_bindings.py` |
 | `particles.rs` | update_particle, batch_update_particles, generate_explosion_particles | `core_bindings.py` |
-| `sprites.rs` | create_single_bullet_glow, create_spread_bullet_glow, create_laser_bullet_glow, create_explosive_missile_glow, create_glow_circle | `core_bindings.py` |
+| `sprites.rs` | create_single_bullet_glow, create_spread_bullet_glow, create_laser_bullet_glow, create_explosive_missile_glow | `core_bindings.py` |
+
+**Note:** `draw_glow_circle` uses pygame fallback only (Rust version has visual differences). Rust sprites acceleration covers bullet glow surfaces; enemy core glow uses pygame.
 
 **Fallback mechanism** (`airwar/core_bindings.py`):
 ```python
@@ -94,7 +96,7 @@ except ImportError:
 ```
 
 **Build:** `maturin develop --release` (requires Rust toolchain via rustup).  
-**Tests:** Python tests at `tests/test_*_bindings.py` exercise the Rust module; no Rust-side test framework configured.
+**Tests:** Python tests at `tests/test_*_bindings.py` exercise the Rust module (vector2, collision, movement, particles, sprites). No Rust-side test framework configured.
 
 ---
 
@@ -116,7 +118,7 @@ airwar/
 │   │   ├── constants.py     # GameConstants dataclass (all tuning constants)
 │   │   ├── managers/        # GameController, SpawnController, CollisionController, BulletManager,
 │   │   │                    # BossManager, MilestoneManager, InputCoordinator, UIManager, GameLoopManager
-│   │   ├── controllers/     # (newer subsystem controllers)
+│   │   ├── controllers/     # Reserved for subsystem controllers (currently unused)
 │   │   ├── spawners/        # EnemyBulletSpawner
 │   │   ├── systems/         # HealthSystem, RewardSystem, NotificationManager, DifficultyManager,
 │   │   │                    # MovementPatternGenerator
@@ -136,7 +138,7 @@ airwar/
 │   ├── tests/               # pytest suite
 │   └── core_bindings.py     # Rust→Python bridge with fallback
 ├── airwar_core/             # Rust PyO3 extension (maturin)
-├── docs/                    # Rust perf plan, superpower specs, audit reports
+├── docs/                    # Rust perf plan, superpower specs, audit reports, REFACTORING_GUIDE
 ├── plans/                   # Implementation plans
 └── requirements.txt
 ```
@@ -197,6 +199,13 @@ PLAYING → DYING → GAME_OVER
 - **`config/design_tokens.py`** — Visual design system: color themes (`Colors`, `MilitaryColors`, `ForestColors`), typography, spacing.
 - **`config/game_config.py`** — `GameConfig` singleton with adaptive screen sizing.
 - **Rust native code always has a pure-Python fallback** — checked via `RUST_AVAILABLE` flag in `core_bindings.py`.
+- **Coding standards** — See `docs/REFACTORING_GUIDE.md` for naming conventions, import conventions (relative preferred within package), method ordering within classes, and documentation standards.
+
+### Important Rules
+
+- **Imports within the `airwar` package**: use relative imports (`from ..config import ...`) over absolute imports (`from airwar.config import ...`).
+- **Local imports inside methods** (`from airwar.config import ...` at method level): prohibited except to avoid circular dependencies or for optional dependencies.
+- **Glow circle rendering**: `draw_glow_circle` uses pygame fallback only. Rust `create_glow_circle` exists in `sprites.rs` but is not used for rendering.
 
 ### Key Subsystems
 
@@ -215,4 +224,5 @@ PLAYING → DYING → GAME_OVER
 
 ### Rendering Pipeline
 
+Pure pygame rendering (no GPU/ModernGL). The rendering pipeline draws in order:
 Parallax starfield background → Entities → Effects (explosions, ripples) → MotherShip → HUD → UI overlays (pause, reward selector, notifications)
