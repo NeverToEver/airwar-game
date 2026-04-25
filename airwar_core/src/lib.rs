@@ -2,6 +2,7 @@ use pyo3::prelude::*;
 
 pub mod vector2;
 pub mod collision;
+pub mod movement;
 
 #[pymodule]
 fn airwar_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -24,5 +25,8 @@ fn airwar_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Collision functions
     m.add_function(wrap_pyfunction!(collision::spatial_hash_collide, m)?)?;
     m.add_function(wrap_pyfunction!(collision::spatial_hash_collide_single, m)?)?;
+
+    // Movement functions
+    m.add_function(wrap_pyfunction!(movement::update_movement, m)?)?;
     Ok(())
 }
