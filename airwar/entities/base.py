@@ -1,3 +1,9 @@
+"""Base entity classes for the Air War game.
+
+Provides foundational data structures (Vector2, Rect) and the Entity base class
+used by all game entities (Player, Enemy, Boss, Bullet).
+"""
+
 from abc import ABC, abstractmethod
 import math
 import pygame
@@ -7,6 +13,10 @@ from dataclasses import dataclass, field
 
 @dataclass
 class Vector2:
+    """2D vector with basic arithmetic operations."""
+
+    x: float = 0
+    y: float = 0
     x: float = 0
     y: float = 0
 
@@ -40,6 +50,7 @@ class Vector2:
 
 @dataclass
 class Rect:
+    """Axis-aligned rectangle for collision detection and positioning."""
     x: float
     y: float
     width: float
@@ -81,6 +92,17 @@ class Rect:
 
 
 class Entity(ABC):
+    """Abstract base class for all game entities.
+
+    Provides common functionality for positioning, velocity, rendering,
+    and collision detection. Subclasses must implement update() and render().
+
+    Attributes:
+        rect: Position and dimensions of the entity.
+        velocity: Current velocity vector.
+        active: Whether the entity is active and should be updated/rendered.
+    """
+
     def __init__(self, x: float, y: float, width: float, height: float):
         self.rect = Rect(x, y, width, height)
         self.velocity = Vector2()
@@ -109,6 +131,17 @@ class Entity(ABC):
 
 @dataclass
 class BulletData:
+    """Data class for bullet configuration.
+
+    Attributes:
+        damage: Damage dealt by the bullet.
+        speed: Movement speed in pixels per frame.
+        owner: Owner of the bullet ("player" or "enemy").
+        bullet_type: Type of bullet ("single", "spread", "laser", etc.).
+        angle_offset: Angle offset in degrees for spread patterns.
+        is_laser: Whether the bullet is a laser beam.
+        is_explosive: Whether the bullet explodes on impact.
+    """
     damage: int = 10
     speed: float = 10.0
     owner: str = "player"
@@ -120,6 +153,16 @@ class BulletData:
 
 @dataclass
 class EnemyData:
+    """Data class for enemy configuration.
+
+    Attributes:
+        health: Maximum health points.
+        speed: Movement speed in pixels per frame.
+        score: Score awarded when destroyed.
+        enemy_type: Type of enemy movement pattern.
+        fire_rate: Fire rate in frames between shots.
+        bullet_type: Type of bullet fired by the enemy.
+    """
     health: int = 100
     speed: float = 3.0
     score: int = 100

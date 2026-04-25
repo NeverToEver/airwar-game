@@ -1,12 +1,41 @@
+"""Player entity module.
+
+Provides the Player class representing the user's spaceship, handling
+movement, weapon firing, health and shield systems.
+"""
+
 import pygame
 import math
 from typing import Optional, List
 from .base import Entity
 from .bullet import Bullet, BulletData
-from airwar.input.input_handler import InputHandler
+from ..input.input_handler import InputHandler
+from ..config import (
+    get_screen_width,
+    get_screen_height,
+    HITBOX_INDICATOR_PADDING,
+    HITBOX_INDICATOR_FREQUENCY,
+    HITBOX_INDICATOR_ALPHA_MIN,
+    HITBOX_INDICATOR_ALPHA_MAX,
+)
+from ..utils.sprites import draw_player_ship
 
 
 class Player(Entity):
+    """Player entity representing the user's spaceship.
+
+    Handles movement via InputHandler, weapon firing, health and shield
+    systems. Bullets are delegated to UIManager for rendering to avoid
+    double rendering.
+
+    Attributes:
+        health: Current health points (0 to max_health).
+        max_health: Maximum health points.
+        speed: Movement speed in pixels per frame.
+        bullet_damage: Damage dealt by each bullet.
+        is_shielded: Whether the player currently has shield active.
+    """
+
     def __init__(self, x: float, y: float, input_handler: InputHandler):
         super().__init__(x, y, 50, 60)
         self._input_handler = input_handler
@@ -53,7 +82,6 @@ class Player(Entity):
         direction = self._input_handler.get_movement_direction()
         self.rect.x += direction.x * self.speed
         self.rect.y += direction.y * self.speed
-        from airwar.config import get_screen_width, get_screen_height
         self.rect.x = max(0, min(self.rect.x, get_screen_width() - self.rect.width))
         self.rect.y = max(0, min(self.rect.y, get_screen_height() - self.rect.height))
 
@@ -139,13 +167,6 @@ class Player(Entity):
         return pygame.Rect(hb_x, hb_y, self.hitbox_width, self.hitbox_height)
 
     def _render_hitbox_indicator(self, surface: pygame.Surface) -> None:
-        from airwar.config import (
-            HITBOX_INDICATOR_PADDING,
-            HITBOX_INDICATOR_FREQUENCY,
-            HITBOX_INDICATOR_ALPHA_MIN,
-            HITBOX_INDICATOR_ALPHA_MAX
-        )
-
         hb = self.get_hitbox()
         padding = HITBOX_INDICATOR_PADDING
         cx = hb.width / 2 + padding
@@ -201,8 +222,6 @@ class Player(Entity):
         self._shield_duration = duration
 
     def render(self, surface: pygame.Surface) -> None:
-        from airwar.utils.sprites import draw_player_ship
-        health_ratio = self.health / self.max_health if self.max_health > 0 else 1.0
         draw_player_ship(surface, self.rect.x, self.rect.y, self.rect.width, self.rect.height)
 
         self._render_hitbox_indicator(surface)
