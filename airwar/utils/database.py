@@ -14,8 +14,11 @@ class SimpleDB:
             self._save({})
 
     def _load(self) -> dict:
-        with open(self.db_path, 'r') as f:
-            return json.load(f)
+        try:
+            with open(self.db_path, 'r') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError):
+            return {}
 
     def _save(self, data: dict) -> None:
         with open(self.db_path, 'w') as f:

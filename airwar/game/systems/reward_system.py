@@ -224,10 +224,6 @@ class RewardSystem:
         player.max_health += 50
         player.health = player.max_health
 
-    def _increment_stat(self, stat_name: str) -> None:
-        current = getattr(self, stat_name, 0)
-        setattr(self, stat_name, current + 1)
-
     def apply_reward(self, reward: Dict, player) -> str:
         name = reward['name']
 

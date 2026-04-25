@@ -35,6 +35,7 @@ from airwar.config import DIFFICULTY_SETTINGS, get_screen_width, get_screen_heig
 from airwar.input import PygameInputHandler
 from airwar.utils.mouse_interaction import MouseInteractiveMixin
 from airwar.config.design_tokens import get_design_tokens
+from airwar.game.rendering.hybrid_renderer import HybridRenderer
 
 
 class GameScene(Scene, MouseInteractiveMixin):
@@ -72,6 +73,8 @@ class GameScene(Scene, MouseInteractiveMixin):
         self._input_coordinator: InputCoordinator = None
         self._ui_manager: UIManager = None
         self._game_loop_manager: GameLoopManager = None
+        self._gpu_renderer: HybridRenderer = None
+        self._use_gpu_renderer: bool = False
 
     def enter(self, **kwargs) -> None:
         """初始化游戏场景
@@ -107,6 +110,10 @@ class GameScene(Scene, MouseInteractiveMixin):
         self.reward_system = self.game_controller.reward_system
         self.hud_renderer = HUDRenderer()
         self.notification_manager = self.game_controller.notification_manager
+
+        # GPU 渲染器初始化（根据启动时选择设置）
+        use_gpu = kwargs.get('use_gpu', False)
+        self._init_gpu_renderer(screen_width, screen_height, use_gpu)
 
         self.spawn_controller = SpawnController(settings)
         self.spawn_controller.init_bullet_system()
@@ -185,8 +192,31 @@ class GameScene(Scene, MouseInteractiveMixin):
         self._give_up_detector = GiveUpDetector(self._on_give_up_complete)
         self._give_up_ui = GiveUpUI(screen_width, screen_height)
 
+    def _init_gpu_renderer(self, screen_width: int, screen_height: int, use_gpu: bool = False) -> None:
+        """初始化 GPU 渲染器
+
+        Args:
+            screen_width: 屏幕宽度
+            screen_height: 屏幕高度
+            use_gpu: 是否启用 GPU 模式（启动时设定后不可更改）
+        """
+        self._gpu_renderer = HybridRenderer(screen_width, screen_height, use_gpu=use_gpu)
+        self._use_gpu_renderer = use_gpu
+
+    def toggle_gpu_renderer(self) -> bool:
+        """切换 GPU 渲染模式（游戏开始后锁定，不允许切换）"""
+        # 游戏启动后 GPU 模式不允许切换
+        return False
+
+    @property
+    def gpu_renderer_enabled(self) -> bool:
+        """GPU 渲染器是否启用"""
+        return self._gpu_renderer.is_gpu_enabled if self._gpu_renderer else False
+
     def exit(self) -> None:
-        pass
+        if self._gpu_renderer:
+            self._gpu_renderer.release()
+            self._gpu_renderer = None
 
     def handle_events(self, event: pygame.event.Event) -> None:
         """处理输入事件
@@ -305,12 +335,16 @@ class GameScene(Scene, MouseInteractiveMixin):
         Args:
             surface: pygame渲染表面
         """
-        self._ui_manager.render_game(
-            surface,
-            self.player,
-            self.spawn_controller.enemies,
-            self.spawn_controller.boss
-        )
+        # GPU 渲染游戏主画面（如果启用）
+        if self._gpu_renderer and self._gpu_renderer.is_gpu_enabled:
+            self._render_game_gpu(surface)
+        else:
+            self._ui_manager.render_game(
+                surface,
+                self.player,
+                self.spawn_controller.enemies,
+                self.spawn_controller.boss
+            )
 
         self._ui_manager.render_bullets(
             surface,
@@ -331,6 +365,19 @@ class GameScene(Scene, MouseInteractiveMixin):
 
         self._game_loop_manager.render_explosions(surface)
         self._input_coordinator.render_give_up(surface)
+
+    def _render_game_gpu(self, surface: pygame.Surface) -> None:
+        """使用 GPU 渲染游戏主画面"""
+        if not self._gpu_renderer:
+            return
+
+        self._gpu_renderer.render_game(
+            surface,
+            self.game_controller.state,
+            self.player,
+            self.spawn_controller.enemies,
+            self.spawn_controller.boss
+        )
 
     def _init_pause_button_layout(self) -> None:
         """预计算暂停按钮的几何布局并注册按钮区域

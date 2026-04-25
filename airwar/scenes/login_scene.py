@@ -605,6 +605,9 @@ class LoginScene(Scene, MouseInteractiveMixin):
     def get_username(self) -> str:
         return self.username
 
+    def is_running(self) -> bool:
+        return self.running
+
     def is_ready(self) -> bool:
         return not self.running
 

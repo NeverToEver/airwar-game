@@ -78,8 +78,28 @@ class GameIntegrator:
         self._event_bus.subscribe('EXIT_STARTED', self._on_exit_started)
         self._event_bus.subscribe('EXIT_PROGRESS_UPDATE', self._on_exit_progress_update)
 
+    def _update_mothership_input(self) -> None:
+        if not self._mother_ship.is_visible():
+            self._mother_ship.set_player_input(0, 0)
+            return
+
+        keys = pygame.key.get_pressed()
+        x_input = 0
+        y_input = 0
+
+        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
+            x_input = -1
+        if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+            x_input = 1
+        if keys[pygame.K_UP] or keys[pygame.K_w]:
+            y_input = -1
+        if keys[pygame.K_DOWN] or keys[pygame.K_s]:
+            y_input = 1
+
+        self._mother_ship.set_player_input(x_input, y_input)
+
     def update(self) -> None:
-        self._mother_ship.update()
+        self._update_mothership_input()
 
         if self._docking_animation_active:
             self._update_docking_animation()
@@ -93,6 +113,8 @@ class GameIntegrator:
 
         current_time = pygame.time.get_ticks() / 1000.0
         self._state_machine.update(current_time)
+
+        self._mother_ship.update()
 
         if self._state_machine.is_docked():
             self._update_mothership_firing()

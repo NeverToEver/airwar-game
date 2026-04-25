@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING
+from airwar.config import HEALTH_REGEN
 
 if TYPE_CHECKING:
     from airwar.entities.player import Player
@@ -10,14 +11,9 @@ class HealthSystem:
         self._regen_timer = 0
         self._regen_interval_timer = 0
         self._regen_active = False
-        self._difficulty_settings = {
-            'easy': {'delay': 180, 'rate': 3, 'interval': 45},
-            'medium': {'delay': 240, 'rate': 2, 'interval': 60},
-            'hard': {'delay': 300, 'rate': 1, 'interval': 90},
-        }
 
     def update(self, player: 'Player', has_regen_buff: bool = False) -> None:
-        settings = self._difficulty_settings[self._difficulty]
+        settings = HEALTH_REGEN[self._difficulty]
 
         if has_regen_buff:
             self._update_buff_regen(player)

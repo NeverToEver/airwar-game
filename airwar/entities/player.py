@@ -1,13 +1,9 @@
 import pygame
 import math
-from typing import Optional, List, TYPE_CHECKING
+from typing import Optional, List
 from .base import Entity
 from .bullet import Bullet, BulletData
-
-if TYPE_CHECKING:
-    from airwar.input.input_handler import InputHandler
-else:
-    from airwar.input.input_handler import InputHandler
+from airwar.input.input_handler import InputHandler
 
 
 class Player(Entity):

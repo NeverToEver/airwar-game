@@ -118,6 +118,7 @@ class GameLoopManager:
         except Exception as e:
             import logging
             logging.error(f"Game update error: {e}", exc_info=True)
+            self._game_controller.show_notification("GAME ERROR - check logs")
             self._game_controller.state.running = False
             return False
 

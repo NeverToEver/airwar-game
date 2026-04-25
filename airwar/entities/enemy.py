@@ -32,7 +32,7 @@ class Enemy(Entity):
         self.data = data
         self.health = data.health
         self.max_health = data.health
-        self.fire_timer = random.randint(0, data.fire_rate)
+        self.fire_timer = 0
         self._bullet_spawner: Optional[IBulletSpawner] = None
         self.entity_id = id(self)
         self._init_movement(data.enemy_type)
@@ -283,8 +283,8 @@ class Enemy(Entity):
         return bullets
 
     def _get_damage(self) -> int:
-        from airwar.config import ENEMY_BULLET_DAMAGE
-        return ENEMY_BULLET_DAMAGE.get(self.data.bullet_type, 15)
+        from airwar.game.constants import GAME_CONSTANTS
+        return GAME_CONSTANTS.BOSS.BULLET_DAMAGE_MAP.get(self.data.bullet_type, 15)
 
     def set_bullet_spawner(self, spawner: IBulletSpawner) -> None:
         self._bullet_spawner = spawner
@@ -343,7 +343,11 @@ class EnemySpawner:
         self._max_enemies = 5
         self._wave_active = False
         self._wave_enemies_spawned = 0
-        self._wave_size = 9
+        self._wave_size = self._get_wave_size()
+
+    def _get_wave_size(self) -> int:
+        from airwar.game.constants import GAME_CONSTANTS
+        return GAME_CONSTANTS.BALANCE.WAVE_SIZE
 
     def _select_enemy_type(self) -> str:
         rand = random.random()
@@ -458,7 +462,21 @@ class BossData:
 
 class Boss(Entity):
     ATTACK_DIRECTIONS = ['down', 'left', 'right', 'up']
-    
+    _warning_font = None
+    _escape_font = None
+
+    @classmethod
+    def _get_warning_font(cls):
+        if cls._warning_font is None:
+            cls._warning_font = pygame.font.Font(None, 36)
+        return cls._warning_font
+
+    @classmethod
+    def _get_escape_font(cls):
+        if cls._escape_font is None:
+            cls._escape_font = pygame.font.Font(None, 28)
+        return cls._escape_font
+
     def __init__(self, x: float, y: float, data: BossData):
         super().__init__(x, y, data.width, data.height)
         self.data = data
@@ -497,12 +515,13 @@ class Boss(Entity):
         }
 
     def _get_target_offsets(self) -> dict:
-        from airwar.config import BOSS_ATTACK_DISTANCE
+        from airwar.game.constants import GAME_CONSTANTS
+        d = GAME_CONSTANTS.BOSS.ATTACK_DISTANCE
         return {
-            'down': (0, BOSS_ATTACK_DISTANCE),
-            'left': (-BOSS_ATTACK_DISTANCE, 0),
-            'right': (BOSS_ATTACK_DISTANCE, 0),
-            'up': (0, -BOSS_ATTACK_DISTANCE)
+            'down': (0, d),
+            'left': (-d, 0),
+            'right': (d, 0),
+            'up': (0, -d)
         }
 
     def update(self, enemies: List['Enemy'] = None, slow_factor: float = 1.0, 
@@ -572,38 +591,37 @@ class Boss(Entity):
         self.attack_pattern = (self.attack_pattern + 1) % 3
 
     def _spread_attack(self) -> List[Bullet]:
-        from airwar.config import (BOSS_BULLET_DAMAGE_BASE, BOSS_SPREAD_BULLET_COUNT_BASE,
-                                   BOSS_SPREAD_SPEED, BOSS_SPREAD_ANGLE_RANGE, 
-                                   BOSS_SIDE_ANGLE_RANGE, BOSS_SIDE_ANGLE_OFFSET)
+        from airwar.game.constants import GAME_CONSTANTS
+        B = GAME_CONSTANTS.BOSS
         bullets = []
-        
+
         direction_offsets = self._get_direction_offsets()
-        
+
         base_angle, y_pos = direction_offsets.get(self.attack_direction, (-90, self.rect.bottom))
         center_x = self.rect.centerx
-        bullet_count = BOSS_SPREAD_BULLET_COUNT_BASE + self.phase
+        bullet_count = B.SPREAD_BULLET_COUNT_BASE + self.phase
 
         for i in range(bullet_count):
             if self.attack_direction == 'left' or self.attack_direction == 'right':
-                angle = base_angle + (BOSS_SIDE_ANGLE_RANGE / (bullet_count - 1)) * i - BOSS_SIDE_ANGLE_OFFSET
+                angle = base_angle + (B.SIDE_ANGLE_RANGE / (bullet_count - 1)) * i - B.SIDE_ANGLE_OFFSET
             else:
-                angle = base_angle + (BOSS_SPREAD_ANGLE_RANGE / (bullet_count - 1)) * i
-            
+                angle = base_angle + (B.SPREAD_ANGLE_RANGE / (bullet_count - 1)) * i
+
             rad = math.radians(angle)
-            speed = BOSS_SPREAD_SPEED
+            speed = B.SPREAD_SPEED
             vx = math.cos(rad) * speed
             vy = math.sin(rad) * speed
 
             bullet_data = BulletData(
-                damage=BOSS_BULLET_DAMAGE_BASE + self.phase * 2,
-                speed=BOSS_SPREAD_SPEED,
+                damage=B.BULLET_DAMAGE_BASE + self.phase * 2,
+                speed=B.SPREAD_SPEED,
                 owner="enemy",
                 bullet_type="spread"
             )
             bullet = Bullet(center_x, y_pos, bullet_data)
             bullet.velocity = Vector2(vx, vy)
             bullets.append(bullet)
-        
+
         return bullets
 
     def _aim_attack(self, player_pos: Tuple[float, float] = None) -> List[Bullet]:
@@ -676,7 +694,7 @@ class Boss(Entity):
         if self.entering:
             warning_y = 20
             pulse = abs(math.sin(pygame.time.get_ticks() * 0.01)) * 0.3 + 0.7
-            warning_surf = pygame.font.Font(None, 36).render("! WARNING !", True, (255, 50, 50))
+            warning_surf = self._get_warning_font().render("! WARNING !", True, (255, 50, 50))
             warning_surf.set_alpha(int(255 * pulse))
             warning_rect = warning_surf.get_rect(center=(surface.get_width() // 2, warning_y))
             surface.blit(warning_surf, warning_rect)
@@ -684,7 +702,7 @@ class Boss(Entity):
         if self._show_escape_warning and not self.entering:
             warning_y = 50
             pulse = abs(math.sin(pygame.time.get_ticks() * 0.02)) * 0.3 + 0.7
-            warning_surf = pygame.font.Font(None, 28).render("ESCAPING...", True, (255, 200, 50))
+            warning_surf = self._get_escape_font().render("ESCAPING...", True, (255, 200, 50))
             warning_surf.set_alpha(int(255 * pulse))
             warning_rect = warning_surf.get_rect(center=(surface.get_width() // 2, warning_y))
             surface.blit(warning_surf, warning_rect)

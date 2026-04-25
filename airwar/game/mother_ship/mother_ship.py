@@ -6,10 +6,10 @@ class MotherShip:
     DOCKING_BAY_X_OFFSET = 0
     DOCKING_BAY_Y_OFFSET = 50
 
-    # Movement configuration
-    MOVE_SPEED = 0.3  # pixels per frame, very slow
-    OSCILLATION_AMPLITUDE = 80  # horizontal oscillation range
-    OSCILLATION_SPEED = 0.0003  # oscillation frequency (slower)
+    # Movement configuration - inertia-based system
+    ACCELERATION = 0.08  # how fast mothership accelerates when player input
+    MAX_SPEED = 1.5  # maximum velocity (pixels per frame), very slow
+    FRICTION = 0.98  # velocity multiplier per frame when no input (1 = no friction)
 
     def __init__(self, screen_width: int, screen_height: int):
         self._screen_width = screen_width
@@ -19,26 +19,32 @@ class MotherShip:
         self._initial_y = int(screen_height * 0.35)  # 35% from top, closer to center
         self._position = (self._initial_x, self._initial_y)
         self._animation_time = 0
-        self._move_time = 0  # for oscillation tracking
+
+        # Inertia-based velocity
+        self._velocity = [0.0, 0.0]
+        self._player_input = [0, 0]  # [x, y] input direction (-1, 0, or 1)
 
         self._engine_pulse = 0.0
         self._wing_pulse = 0.0
 
         self._colors = {
-            'hull_dark': (35, 40, 55),
-            'hull_main': (55, 65, 85),
-            'hull_light': (75, 85, 105),
-            'hull_highlight': (95, 110, 140),
-            'wing_dark': (30, 35, 50),
-            'wing_main': (45, 55, 70),
-            'wing_light': (65, 75, 90),
-            'engine_core': (80, 160, 255),
-            'engine_glow': (40, 100, 200),
-            'engine_outer': (20, 50, 120),
-            'cockpit': (30, 60, 100),
-            'cockpit_glass': (100, 180, 255),
-            'detail_line': (100, 120, 160),
-            'accent': (60, 140, 220),
+            # 军事配色：银灰 + 琥珀金
+            'hull_dark': (45, 50, 60),
+            'hull_main': (70, 80, 100),
+            'hull_light': (100, 115, 140),
+            'hull_highlight': (140, 155, 185),
+            'wing_dark': (40, 48, 58),
+            'wing_main': (60, 72, 90),
+            'wing_light': (90, 105, 130),
+            # 引擎：琥珀色/橙色
+            'engine_core': (255, 180, 50),
+            'engine_glow': (255, 200, 80),
+            'engine_outer': (200, 120, 30),
+            # 驾驶舱：金色
+            'cockpit': (180, 140, 60),
+            'cockpit_glass': (255, 200, 100),
+            'detail_line': (120, 140, 180),
+            'accent': (255, 180, 50),  # 琥珀金色标记线
         }
 
     def show(self) -> None:
@@ -50,6 +56,9 @@ class MotherShip:
 
     def is_visible(self) -> bool:
         return self._visible
+
+    def set_player_input(self, x: int, y: int) -> None:
+        self._player_input = [x, y]
 
     def get_docking_position(self) -> tuple:
         return (
@@ -66,13 +75,31 @@ class MotherShip:
     def update(self) -> None:
         if not self._visible:
             return
-        self._move_time += 1
-        # Slow horizontal oscillation using sine wave
-        oscillation = math.sin(self._move_time * self.OSCILLATION_SPEED) * self.OSCILLATION_AMPLITUDE
-        new_x = self._initial_x + oscillation
-        # Keep mothership centered vertically but allow slight vertical drift
-        new_y = self._initial_y
-        self._position = (int(new_x), new_y)
+
+        # Apply acceleration based on player input
+        self._velocity[0] += self._player_input[0] * self.ACCELERATION
+        self._velocity[1] += self._player_input[1] * self.ACCELERATION
+
+        # Clamp velocity to max speed
+        for i in range(2):
+            if abs(self._velocity[i]) > self.MAX_SPEED:
+                self._velocity[i] = self.MAX_SPEED if self._velocity[i] > 0 else -self.MAX_SPEED
+
+        # Apply friction when no input
+        if self._player_input[0] == 0:
+            self._velocity[0] *= self.FRICTION
+        if self._player_input[1] == 0:
+            self._velocity[1] *= self.FRICTION
+
+        # Update position
+        new_x = self._position[0] + self._velocity[0]
+        new_y = self._position[1] + self._velocity[1]
+
+        # Keep within screen bounds
+        new_x = max(50, min(self._screen_width - 50, new_x))
+        new_y = max(50, min(self._screen_height - 100, new_y))
+
+        self._position = (int(new_x), int(new_y))
 
     def render(self, surface: pygame.Surface) -> None:
         if not self._visible:

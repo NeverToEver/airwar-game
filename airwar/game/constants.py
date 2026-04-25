@@ -96,32 +96,62 @@ class AnimationConstants:
 @dataclass(frozen=True)
 class GameBalanceConstants:
     """游戏平衡相关常量
-    
+
     Attributes:
         MAX_CYCLES: 最大周期数
         BASE_THRESHOLDS: 基础阈值列表
         CYCLE_MULTIPLIER: 周期倍率
         DIFFICULTY_MULTIPLIERS: 难度倍率元组 (easy, medium, hard)
+        WAVE_SIZE: 每波敌机数量
+        EXPLOSION_RADIUS: 爆炸半径
     """
     MAX_CYCLES: int = 10
     BASE_THRESHOLDS: Tuple[int, ...] = (3000, 6000, 10000, 16000, 25000, 38000, 55000, 80000)
     CYCLE_MULTIPLIER: float = 1.35
     DIFFICULTY_MULTIPLIERS: Tuple[float, float, float] = (1.0, 1.5, 2.0)
+    WAVE_SIZE: int = 9
+    EXPLOSION_RADIUS: int = 50
+
+
+@dataclass(frozen=True)
+class BossConstants:
+    """Boss战相关常量"""
+    BULLET_DAMAGE_BASE: int = 12
+    AIM_BULLET_DAMAGE_BASE: int = 18
+    WAVE_BULLET_DAMAGE: int = 12
+    SPREAD_SPEED: float = 5.0
+    AIM_SPEED: float = 7.0
+    WAVE_SPEED: float = 4.0
+    SPREAD_ANGLE_RANGE: float = 180.0
+    WAVE_ANGLE_INTERVAL: float = 22.5
+    SIDE_ANGLE_RANGE: float = 45.0
+    SIDE_ANGLE_OFFSET: float = 22.5
+    ATTACK_DISTANCE: int = 500
+    BULLET_OFFSET_X: int = 30
+    FIRE_RATE_BASE: int = 60
+    PHASE_INTERVAL: int = 300
+    SPREAD_BULLET_COUNT_BASE: int = 5
+    BULLET_DAMAGE_MAP: dict = field(default_factory=lambda: {
+        'spread': 12,
+        'laser': 35,
+        'single': 20,
+    })
 
 
 @dataclass
 class GameConstants:
     """游戏全局常量聚合类
-    
+
     使用组合模式聚合各类常量，提供统一的访问入口。
-    
+
     Attributes:
         PLAYER: 玩家相关常量
         DAMAGE: 伤害相关常量
         ANIMATION: 动画相关常量
         BALANCE: 游戏平衡相关常量
         TIMING: 时间相关常量
-    
+        BOSS: Boss战相关常量
+
     Methods:
         get_difficulty_multiplier(difficulty: str) -> float:
             获取难度对应的分数倍率
@@ -133,6 +163,7 @@ class GameConstants:
     ANIMATION: AnimationConstants = field(default_factory=AnimationConstants)
     BALANCE: GameBalanceConstants = field(default_factory=GameBalanceConstants)
     TIMING: TimingConstants = field(default_factory=TimingConstants)
+    BOSS: BossConstants = field(default_factory=BossConstants)
     
     def get_difficulty_multiplier(self, difficulty: str) -> float:
         """获取难度对应的分数倍率

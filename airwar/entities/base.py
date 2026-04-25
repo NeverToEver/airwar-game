@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import math
 import pygame
 from typing import Tuple, Optional
 from dataclasses import dataclass, field
@@ -12,14 +13,19 @@ class Vector2:
     def __add__(self, other: 'Vector2') -> 'Vector2':
         return Vector2(self.x + other.x, self.y + other.y)
 
+    def __radd__(self, other: 'Vector2') -> 'Vector2':
+        return self.__add__(other)
+
     def __mul__(self, scalar: float) -> 'Vector2':
         return Vector2(self.x * scalar, self.y * scalar)
+
+    def __rmul__(self, scalar: float) -> 'Vector2':
+        return self.__mul__(scalar)
 
     def __abs__(self) -> 'Vector2':
         return Vector2(abs(self.x), abs(self.y))
     
     def length(self) -> float:
-        import math
         return math.sqrt(self.x * self.x + self.y * self.y)
     
     def normalize(self) -> 'Vector2':

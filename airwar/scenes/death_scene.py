@@ -5,7 +5,7 @@ from airwar.utils.responsive import ResponsiveHelper
 from airwar.ui.menu_background import MenuBackground
 from airwar.ui.particles import ParticleSystem
 from airwar.ui.effects import EffectsRenderer
-from airwar.config.design_tokens import get_design_tokens
+from airwar.config.design_tokens import get_design_tokens, ForestColors
 from airwar.utils.mouse_interaction import MouseSelectableMixin
 
 

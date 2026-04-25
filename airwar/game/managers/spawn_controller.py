@@ -67,7 +67,7 @@ class SpawnController:
     def spawn_boss(self, boss_kill_count: int, bullet_damage: int) -> Boss:
         screen_width = get_screen_width()
         base_health = 2000 * (1 + boss_kill_count * 0.5)
-        escape_time = int(base_health / bullet_damage * 45)
+        escape_time = round(base_health / bullet_damage * 45)
         escape_time = max(1200, min(escape_time, 3600))
 
         boss_data = BossData(
