@@ -19,6 +19,8 @@ try:
         # Collision functions
         spatial_hash_collide,
         spatial_hash_collide_single,
+        # Movement functions
+        update_movement,
     )
     RUST_AVAILABLE = True
 except ImportError:
@@ -44,5 +46,7 @@ __all__ = [
     # Collision functions
     'spatial_hash_collide',
     'spatial_hash_collide_single',
+    # Movement functions
+    'update_movement',
     'RUST_AVAILABLE',
 ]
