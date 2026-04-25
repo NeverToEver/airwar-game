@@ -77,6 +77,7 @@ class TestMenuScene:
         pygame.init()
         scene = MenuScene()
         scene.enter()
+        # RETURN confirms difficulty selection
         scene.handle_events(pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_RETURN}))
         assert scene.is_selection_confirmed() is True
 

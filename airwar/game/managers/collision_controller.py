@@ -273,6 +273,7 @@ class CollisionController:
 
                     if bullet.data.owner == "player":
                         bullet.active = False
+                        break
             return score_gained, enemies_killed
 
         # Fallback to Python implementation

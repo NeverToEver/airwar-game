@@ -21,6 +21,16 @@ try:
         spatial_hash_collide_single,
         # Movement functions
         update_movement,
+        # Particle functions
+        update_particle,
+        batch_update_particles,
+        generate_explosion_particles,
+        # Sprite functions
+        create_single_bullet_glow,
+        create_spread_bullet_glow,
+        create_laser_bullet_glow,
+        create_explosive_missile_glow,
+        create_glow_circle,
     )
     RUST_AVAILABLE = True
 except ImportError:
@@ -48,5 +58,15 @@ __all__ = [
     'spatial_hash_collide_single',
     # Movement functions
     'update_movement',
+    # Particle functions
+    'update_particle',
+    'batch_update_particles',
+    'generate_explosion_particles',
+    # Sprite functions
+    'create_single_bullet_glow',
+    'create_spread_bullet_glow',
+    'create_laser_bullet_glow',
+    'create_explosive_missile_glow',
+    'create_glow_circle',
     'RUST_AVAILABLE',
 ]
