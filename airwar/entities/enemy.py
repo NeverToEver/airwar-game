@@ -1,3 +1,4 @@
+"""Enemy and Boss entities with movement patterns and attack behaviors."""
 import pygame
 import random
 import math
@@ -13,7 +14,9 @@ from ..config import (
     BOSS_AIM_BULLET_DAMAGE_BASE, BOSS_AIM_SPEED, BOSS_ATTACK_DISTANCE, BOSS_BULLET_OFFSET_X,
     BOSS_WAVE_BULLET_DAMAGE, BOSS_WAVE_SPEED, BOSS_WAVE_ANGLE_INTERVAL,
 )
-# NOTE: GAME_CONSTANTS is imported locally in methods to avoid circular import
+
+from ..config.constants_access import get_game_constants
+from .movement_strategies import get_movement_strategy
 
 # Try to import Rust movement function
 try:
@@ -30,6 +33,8 @@ MOVEMENT_TYPE_MAP = {
     "dive": 3,
     "hover": 4,
     "spiral": 5,
+    "noise": 6,
+    "aggressive": 7,
 }
 
 if TYPE_CHECKING:
@@ -51,6 +56,8 @@ class Enemy(Entity):
         move_type: Current movement pattern type.
         entity_id: Unique identifier for this entity.
     """
+
+    # 1. Special methods
 
     def __init__(self, x: float, y: float, data: EnemyData):
         base_size = ENEMY_HITBOX_SIZE + ENEMY_HITBOX_PADDING * 2
@@ -94,9 +101,11 @@ class Enemy(Entity):
 
         # Lifetime timer: 15 seconds = 900 frames at 60fps
         self._lifetime = 0
-        self._max_lifetime = 900
+        self._max_lifetime = get_game_constants().ENEMY.LIFETIME
         self._active_position_x = x
         self._active_position_y = y
+
+    # 2. Properties
 
     @property
     def collision_rect(self) -> pygame.Rect:
@@ -106,52 +115,15 @@ class Enemy(Entity):
     def collision_rect(self, value: pygame.Rect) -> None:
         self._collision_rect = value
 
-    def _sync_rects(self) -> None:
-        self._collision_rect.x = self.rect.x - (self._collision_rect.width - self.rect.width) // 2
-        self._collision_rect.y = self.rect.y - (self._collision_rect.height - self.rect.height) // 2
-
-    def _init_movement(self, enemy_type: str) -> None:
-        if enemy_type == "sine":
-            self.move_type = "sine"
-            self.move_offset = random.uniform(0, math.pi * 2)
-            self.move_amplitude = random.uniform(1.5, 3.0)
-            self.move_frequency = random.uniform(0.03, 0.06)
-            self.start_x = self.rect.x
-            self.move_timer = 0
-            
-        elif enemy_type == "zigzag":
-            self.move_type = "zigzag"
-            self.direction = random.choice([-1, 1])
-            self.zigzag_timer = 0
-            self.zigzag_interval = random.randint(30, 60)
-            self.zigzag_speed = random.uniform(1.5, 2.5)
-            
-        elif enemy_type == "dive":
-            self.move_type = "dive"
-            self.target_x = self.start_x = self.rect.x
-            self.dive_timer = 0
-            self.dive_delay = random.randint(20, 50)
-            self.diving = False
-            
-        elif enemy_type == "hover":
-            self.move_type = "hover"
-            self.hover_timer = 0
-            self.hover_speed = random.uniform(1.0, 1.8)
-            self.hover_amplitude = random.uniform(20, 40)
-            self.start_x = self.rect.x
-            
-        elif enemy_type == "spiral":
-            self.move_type = "spiral"
-            self.spiral_timer = 0
-            self.spiral_speed = random.uniform(1.0, 2.0)
-            self.spiral_radius = random.uniform(30, 50)
-            self.spiral_frequency = random.uniform(0.05, 0.08)
-            self.start_x = self.rect.x
-            
-        else:
-            self.move_type = "straight"
+    # 3. Public lifecycle methods
 
     def update(self, *args, **kwargs) -> None:
+
+        """Update enemy state each frame.
+
+        Handles entry/active/exit state machine, lifetime tracking,
+        movement (Rust-accelerated or Python fallback), and firing.
+        """
         if not self.active:
             return
 
@@ -212,7 +184,7 @@ class Enemy(Entity):
 
         # Movement range around active position
         move_range_x = 80
-        move_range_y = 40
+        move_range_y = 50
 
         # Try Rust movement first if available
         # Exclude zigzag: Rust uses active_x as base instead of current x,
@@ -230,6 +202,10 @@ class Enemy(Entity):
                 timer = getattr(self, 'hover_timer', 0.0) / 0.08  # Convert back to frame count
             elif self.move_type == "spiral":
                 timer = getattr(self, 'spiral_timer', 0.0)
+            elif self.move_type == "noise":
+                timer = getattr(self, 'noise_timer', 0.0)
+            elif self.move_type == "aggressive":
+                timer = getattr(self, 'agg_timer', 0.0)
 
             # Get movement parameters
             offset = getattr(self, 'move_offset', 0.0)
@@ -239,17 +215,41 @@ class Enemy(Entity):
                 frequency = getattr(self, 'spiral_frequency', 0.05)
             else:
                 frequency = getattr(self, 'move_frequency', 0.05)
-            speed = getattr(self, 'zigzag_speed', 2.0) if self.move_type == "zigzag" else getattr(self, 'spiral_speed', 2.0)
+            if self.move_type == "zigzag":
+                speed = getattr(self, 'zigzag_speed', 2.0)
+            elif self.move_type == "noise":
+                speed = getattr(self, 'noise_speed', 0.03)
+            elif self.move_type == "aggressive":
+                speed = getattr(self, 'agg_speed', 0.035)
+            else:
+                speed = getattr(self, 'spiral_speed', 2.0)
             direction = getattr(self, 'direction', 1.0)
             zigzag_interval = getattr(self, 'zigzag_interval', 45.0)
             spiral_radius = getattr(self, 'spiral_radius', 40.0)
+
+            # Noise/aggressive parameters
+            noise_scale_x = getattr(self, 'noise_scale_x', 0.04)
+            noise_scale_y = getattr(self, 'noise_scale_y', 0.02)
+            noise_amplitude_x = getattr(self, 'noise_amplitude_x', 0.7)
+            noise_amplitude_y = getattr(self, 'noise_amplitude_y', 0.4)
+            noise_seed = getattr(self, 'noise_seed', 0)
+            if self.move_type == "aggressive":
+                noise_scale_x = getattr(self, 'agg_scale_x', 0.04)
+                noise_scale_y = getattr(self, 'agg_scale_y', 0.02)
+                noise_amplitude_x = getattr(self, 'agg_amplitude_x', 0.6)
+                noise_amplitude_y = getattr(self, 'agg_amplitude_y', 0.5)
+                noise_seed = getattr(self, 'agg_seed', 0)
 
             new_x, new_y, new_timer = rust_update_movement(
                 move_type_code, timer,
                 self._active_position_x, self._active_position_y,
                 move_range_x, move_range_y,
                 offset, amplitude, frequency, speed, direction,
-                zigzag_interval, spiral_radius
+                zigzag_interval, spiral_radius,
+                self.rect.x, self.rect.y,
+                noise_scale_x, noise_scale_y,
+                noise_amplitude_x, noise_amplitude_y,
+                noise_seed,
             )
 
             self.rect.x = new_x
@@ -264,54 +264,17 @@ class Enemy(Entity):
                 self.hover_timer = new_timer * 0.08
             elif self.move_type == "spiral":
                 self.spiral_timer = new_timer
+            elif self.move_type == "noise":
+                self.noise_timer = new_timer
+            elif self.move_type == "aggressive":
+                self.agg_timer = new_timer
             else:
                 self.move_timer = new_timer
 
             self._sync_rects()
         else:
-            # Fallback to Python movement
-            if self.move_type == "sine":
-                self.move_timer += 1
-                self.rect.x = self._active_position_x + math.sin(self.move_timer * self.move_frequency + self.move_offset) * move_range_x
-                self.rect.y = self._active_position_y + math.sin(self.move_timer * self.move_frequency * 0.5) * move_range_y
-                self._sync_rects()
-
-            elif self.move_type == "zigzag":
-                self.zigzag_timer += 1
-                if self.zigzag_timer >= self.zigzag_interval:
-                    self.zigzag_timer = 0
-                    self.direction *= -1
-                new_x = self.rect.x + self.direction * self.zigzag_speed
-                self.rect.x = max(self._active_position_x - move_range_x, min(new_x, self._active_position_x + move_range_x))
-                self.rect.y = self._active_position_y + math.sin(self.zigzag_timer * 0.1) * (move_range_y * 0.5)
-                self._sync_rects()
-
-            elif self.move_type == "dive":
-                self.dive_timer += 1
-                wave = math.sin(self.dive_timer * 0.05) * (move_range_x * 0.3)
-                self.rect.x = self._active_position_x + wave
-                self.rect.y = self._active_position_y + math.sin(self.dive_timer * 0.03) * (move_range_y * 0.3)
-                self._sync_rects()
-
-            elif self.move_type == "hover":
-                self.hover_timer += 0.08
-                self.rect.x = self._active_position_x + math.sin(self.hover_timer) * move_range_x
-                self.rect.y = self._active_position_y + math.sin(self.hover_timer * 0.7) * (move_range_y * 0.5)
-                self._sync_rects()
-
-            elif self.move_type == "spiral":
-                self.spiral_timer += 1
-                spiral_x = math.cos(self.spiral_timer * self.spiral_frequency) * (move_range_x * 0.5)
-                spiral_y = math.sin(self.spiral_timer * self.spiral_frequency * 2) * (move_range_y * 0.3)
-                self.rect.x = self._active_position_x + spiral_x
-                self.rect.y = self._active_position_y + spiral_y
-                self._sync_rects()
-
-            else:
-                # straight movement with very small vertical oscillation
-                self.rect.x = self._active_position_x
-                self.rect.y = self._active_position_y + math.sin(self._lifetime * 0.05) * (move_range_y * 0.3)
-                self._sync_rects()
+            # Fallback to Python movement via strategy pattern
+            self._movement_strategy.update(self)
 
         if self.rect.y > get_screen_height():
             self.active = False
@@ -321,6 +284,133 @@ class Enemy(Entity):
         if self.fire_timer >= fire_threshold:
             self.fire_timer = 0
             self._fire()
+
+    def render(self, surface: pygame.Surface) -> None:
+
+        """Render the enemy sprite with health-based coloring.
+
+        Args:
+        surface: Pygame surface to render onto.
+        """
+        if not self._sprite:
+            health_ratio = self.health / self.max_health if self.max_health > 0 else 1.0
+            draw_enemy_ship(surface, self.rect.x, self.rect.y,
+                          self.rect.width, self.rect.height, health_ratio)
+        else:
+            surface.blit(self._sprite, self.get_rect())
+
+    # 4. Public behavior methods
+
+    def take_damage(self, damage: int) -> None:
+
+        """Apply damage to the enemy.
+
+        Reduces health by the damage amount. If health reaches 0,
+        the enemy is deactivated.
+
+        Args:
+        damage: Amount of damage to apply (ignored if None or negative).
+        """
+        if damage is None or damage < 0:
+            return
+        self.health -= damage
+        if self.health <= 0:
+            self.active = False
+
+    def get_hitbox(self) -> pygame.Rect:
+        return self._collision_rect
+
+    def check_point_collision(self, x: float, y: float) -> bool:
+        return self._collision_rect.collidepoint(x, y)
+
+    def set_bullet_spawner(self, spawner: IBulletSpawner) -> None:
+        self._bullet_spawner = spawner
+
+    def set_difficulty(
+        self,
+        speed_mult: float,
+        fire_rate_modifier: float,
+        movement_enhancements: dict = None
+    ) -> None:
+        self._difficulty_multiplier = speed_mult
+        self._fire_rate_modifier = fire_rate_modifier
+        self._movement_enhancements = movement_enhancements or {}
+
+    def set_sprite(self, sprite: pygame.Surface) -> None:
+        self._sprite = sprite
+
+    # 5. Private lifecycle methods
+
+    def _init_movement(self, enemy_type: str) -> None:
+        if enemy_type == "sine":
+            self.move_type = "sine"
+            self.move_offset = random.uniform(0, math.pi * 2)
+            self.move_amplitude = random.uniform(1.5, 3.0)
+            self.move_frequency = random.uniform(0.03, 0.06)
+            self.start_x = self.rect.x
+            self.move_timer = 0
+
+        elif enemy_type == "zigzag":
+            self.move_type = "zigzag"
+            self.direction = random.choice([-1, 1])
+            self.zigzag_timer = 0
+            self.zigzag_interval = random.randint(30, 60)
+            self.zigzag_speed = random.uniform(1.5, 2.5)
+
+        elif enemy_type == "dive":
+            self.move_type = "dive"
+            self.target_x = self.start_x = self.rect.x
+            self.dive_timer = 0
+            self.dive_delay = random.randint(20, 50)
+            self.diving = False
+
+        elif enemy_type == "hover":
+            self.move_type = "hover"
+            self.hover_timer = 0
+            self.hover_speed = random.uniform(1.0, 1.8)
+            self.hover_amplitude = random.uniform(20, 40)
+            self.start_x = self.rect.x
+
+        elif enemy_type == "spiral":
+            self.move_type = "spiral"
+            self.spiral_timer = 0
+            self.spiral_speed = random.uniform(1.0, 2.0)
+            self.spiral_radius = random.uniform(30, 50)
+            self.spiral_frequency = random.uniform(0.05, 0.08)
+            self.start_x = self.rect.x
+
+        elif enemy_type == "noise":
+            self.move_type = "noise"
+            self.noise_timer = 0.0
+            self.noise_speed = random.uniform(0.02, 0.04)  # slower for smooth movement
+            self.noise_scale_x = random.uniform(0.5, 1.0)
+            self.noise_scale_y = random.uniform(0.3, 0.6)
+            self.noise_amplitude_x = random.uniform(0.6, 0.9)
+            self.noise_amplitude_y = random.uniform(0.3, 0.6)
+            self.noise_seed = random.randint(0, 9999)
+
+        elif enemy_type == "aggressive":
+            self.move_type = "aggressive"
+            self.agg_timer = 0.0
+            self.agg_speed = random.uniform(0.025, 0.045)  # moderate speed for smoothness
+            self.agg_scale_x = random.uniform(0.6, 1.0)
+            self.agg_scale_y = random.uniform(0.5, 0.8)
+            self.agg_amplitude_x = random.uniform(0.5, 0.8)
+            self.agg_amplitude_y = random.uniform(0.4, 0.7)
+            self.agg_seed = random.randint(0, 9999)
+            self.agg_tracking_x = 0.0  # smooth tracking toward player
+            self.agg_tracking_y = 0.0
+
+        else:
+            self.move_type = "straight"
+
+        self._movement_strategy = get_movement_strategy(self.move_type)
+
+    # 6. Private behavior methods
+
+    def _sync_rects(self) -> None:
+        self._collision_rect.x = self.rect.x - (self._collision_rect.width - self.rect.width) // 2
+        self._collision_rect.y = self.rect.y - (self._collision_rect.height - self.rect.height) // 2
 
     def _fire(self) -> None:
         bullets = self._create_bullets()
@@ -368,46 +458,7 @@ class Enemy(Entity):
         return bullets
 
     def _get_damage(self) -> int:
-        # Local import to avoid circular dependency
-        from ..game.constants import GAME_CONSTANTS
-        return GAME_CONSTANTS.BOSS.BULLET_DAMAGE_MAP.get(self.data.bullet_type, 15)
-
-    def set_bullet_spawner(self, spawner: IBulletSpawner) -> None:
-        self._bullet_spawner = spawner
-
-    def set_difficulty(
-        self,
-        speed_mult: float,
-        fire_rate_modifier: float,
-        movement_enhancements: dict = None
-    ) -> None:
-        self._difficulty_multiplier = speed_mult
-        self._fire_rate_modifier = fire_rate_modifier
-        self._movement_enhancements = movement_enhancements or {}
-
-    def render(self, surface: pygame.Surface) -> None:
-        if not self._sprite:
-            health_ratio = self.health / self.max_health if self.max_health > 0 else 1.0
-            draw_enemy_ship(surface, self.rect.x, self.rect.y, 
-                          self.rect.width, self.rect.height, health_ratio)
-        else:
-            surface.blit(self._sprite, self.get_rect())
-
-    def set_sprite(self, sprite: pygame.Surface) -> None:
-        self._sprite = sprite
-
-    def take_damage(self, damage: int) -> None:
-        if damage is None or damage < 0:
-            return
-        self.health -= damage
-        if self.health <= 0:
-            self.active = False
-
-    def get_hitbox(self) -> pygame.Rect:
-        return self._collision_rect
-
-    def check_point_collision(self, x: float, y: float) -> bool:
-        return self._collision_rect.collidepoint(x, y)
+        return get_game_constants().BOSS.BULLET_DAMAGE_MAP.get(self.data.bullet_type, 15)
 
 
 class EnemySpawner:
@@ -434,12 +485,14 @@ class EnemySpawner:
         self.bullet_type = "single"
         self._bullet_spawner: Optional[IBulletSpawner] = None
         self._enemy_type_distribution = {
-            "straight": 0.25,
-            "sine": 0.20,
-            "zigzag": 0.18,
-            "dive": 0.14,
-            "hover": 0.13,
+            "straight": 0.10,
+            "sine": 0.10,
+            "zigzag": 0.10,
+            "dive": 0.10,
+            "hover": 0.10,
             "spiral": 0.10,
+            "noise": 0.20,
+            "aggressive": 0.20,
         }
         self._max_enemies = 5
         self._wave_active = False
@@ -447,9 +500,7 @@ class EnemySpawner:
         self._wave_size = self._get_wave_size()
 
     def _get_wave_size(self) -> int:
-        # Local import to avoid circular dependency
-        from ..game.constants import GAME_CONSTANTS
-        return GAME_CONSTANTS.BALANCE.WAVE_SIZE
+        return get_game_constants().BALANCE.WAVE_SIZE
 
     def _select_enemy_type(self) -> str:
         rand = random.random()
@@ -487,39 +538,46 @@ class EnemySpawner:
 
     def _spawn_v_formation(self, enemies: List[Enemy], slow_factor: float,
                            player_pos: tuple = None) -> None:
-        """Spawn a wave of enemies in V-formation with tip pointing toward the player."""
+        """Spawn a wave of enemies in V-shape, tip pointing toward the player.
+
+        V-shape: back row (further from player) spreads wide at the wings,
+                 front row (closer to player) converges at the V tip.
+        """
         screen_width = get_screen_width()
         screen_height = get_screen_height()
 
-        # V-formation: tip closest to player, arms opening upward
-        # Formation tip positioned in the upper half of the screen
-        player_x = player_pos[0] if player_pos else screen_width // 2
-
-        # Arm geometry: horizontal spread and vertical step per arm position
-        arm_spread = 140  # px per step outward
-        arm_step = 50      # px per step upward
-        enemies_per_side = (self._wave_size - 1) // 2
-
-        # Clamp tip_x so the entire V-formation stays within screen bounds
-        margin = enemies_per_side * arm_spread + 40
-        base_x = min(margin, max(player_x, screen_width - margin))
-        tip_x = base_x + random.randint(-80, 80)
-        tip_x = max(margin, min(tip_x, screen_width - margin))
-        tip_y = int(screen_height * 0.40) + random.randint(-30, 30)
-
-        # Generate V formation positions: tip first, then alternating left/right up the arms
-        positions = [(tip_x, tip_y)]
-        for i in range(1, enemies_per_side + 1):
-            positions.append((tip_x - arm_spread * i, tip_y - arm_step * i))
-            positions.append((tip_x + arm_spread * i, tip_y - arm_step * i))
-
-        # If wave_size is even, add one more at the top center
-        if len(positions) < self._wave_size:
-            top_y = tip_y - arm_step * enemies_per_side
-            positions.append((tip_x, top_y - arm_step))
+        center_x = player_pos[0] if player_pos else screen_width // 2
 
         base_size = ENEMY_HITBOX_SIZE + ENEMY_HITBOX_PADDING * 2
         collision_size = int(base_size * ENEMY_COLLISION_SCALE)
+
+        # Two rows: back row at wings (wider), front row at tip (narrower)
+        enemies_back = self._wave_size // 2
+        enemies_front = self._wave_size - enemies_back
+
+        # Y positions: back (wings) higher up, front (tip) lower down
+        back_y = int(screen_height * 0.25) + random.randint(-10, 10)
+        front_y = int(screen_height * 0.40) + random.randint(-10, 10)
+
+        # Horizontal spread: back row wider, front row narrower
+        back_width = int(screen_width * 0.80)  # 80% of screen
+        front_width = int(screen_width * 0.35)  # 35% of screen (converged)
+
+        positions = []
+
+        # Back row (wings): evenly spaced across wide area
+        for i in range(enemies_back):
+            t = i / max(1, enemies_back - 1)  # 0 to 1
+            px = center_x - back_width // 2 + int(t * back_width)
+            py = back_y
+            positions.append((px, py))
+
+        # Front row (tip): evenly spaced across narrow area
+        for i in range(enemies_front):
+            t = i / max(1, enemies_front - 1)
+            px = center_x - front_width // 2 + int(t * front_width)
+            py = front_y
+            positions.append((px, py))
 
         bullet_types = ["single", "spread", "laser"]
 
@@ -647,9 +705,7 @@ class Boss(Entity):
         }
 
     def _get_target_offsets(self) -> dict:
-        # Local import to avoid circular dependency
-        from ..game.constants import GAME_CONSTANTS
-        d = GAME_CONSTANTS.BOSS.ATTACK_DISTANCE
+        d = get_game_constants().BOSS.ATTACK_DISTANCE
         return {
             'down': (0, d),
             'left': (-d, 0),
@@ -659,6 +715,16 @@ class Boss(Entity):
 
     def update(self, enemies: List['Enemy'] = None, slow_factor: float = 1.0,
               player_pos: Tuple[int, int] = None, *args, **kwargs) -> None:
+        """Update boss state each frame.
+
+        Handles entrance animation, survival timer, horizontal movement,
+        phase transitions, and attack firing based on fire rate.
+
+        Args:
+            enemies: List of active enemies (for context).
+            slow_factor: Time dilation factor from slow field buffs.
+            player_pos: (x, y) of the player for aim attacks.
+        """
         if self.entering:
             self.rect.y += 2 * slow_factor
             if self.rect.y >= self.target_y:
@@ -673,12 +739,12 @@ class Boss(Entity):
             self.active = False
             return
 
-        if self.survival_timer >= self.data.escape_time - 180:
+        if self.survival_timer >= self.data.escape_time - get_game_constants().ENEMY.ESCAPE_WARNING:
             self._show_escape_warning = True
             self.rect.y -= 0.5
 
         self.move_timer += 1
-        if self.move_timer >= 60:
+        if self.move_timer >= get_game_constants().ENEMY.MOVE_TIMER:
             self.move_timer = 0
             self.move_direction *= -1
 
@@ -692,7 +758,7 @@ class Boss(Entity):
             self.move_direction = -1
 
         self.phase_timer += 1
-        if self.phase_timer >= 300 and self.phase < 3:
+        if self.phase_timer >= get_game_constants().BOSS.PHASE_INTERVAL and self.phase < 3:
             self.phase_timer = 0
             self.phase += 1
 
@@ -704,9 +770,9 @@ class Boss(Entity):
     def _fire(self) -> None:
         import random
         bullets = []
-        
+
         self.attack_direction = random.choice(self.ATTACK_DIRECTIONS)
-        
+
         if self.attack_pattern == 0:
             bullets = self._spread_attack()
         elif self.attack_pattern == 1:
@@ -721,9 +787,7 @@ class Boss(Entity):
         self.attack_pattern = (self.attack_pattern + 1) % 3
 
     def _spread_attack(self) -> List[Bullet]:
-        # Local import to avoid circular dependency
-        from ..game.constants import GAME_CONSTANTS
-        B = GAME_CONSTANTS.BOSS
+        B = get_game_constants().BOSS
         bullets = []
 
         direction_offsets = self._get_direction_offsets()
@@ -757,14 +821,14 @@ class Boss(Entity):
 
     def _aim_attack(self, player_pos: Tuple[float, float] = None) -> List[Bullet]:
         bullets = []
-        
+
         direction_sources = self._get_direction_sources()
-        
+
         source_x, source_y = direction_sources.get(self.attack_direction, (self.rect.centerx, self.rect.bottom))
-        
+
         target_offsets = self._get_target_offsets()
         dx, dy = target_offsets.get(self.attack_direction, (0, BOSS_ATTACK_DISTANCE))
-        
+
         bullet_data = BulletData(
             damage=BOSS_AIM_BULLET_DAMAGE_BASE + self.phase * 3,
             speed=BOSS_AIM_SPEED,
@@ -778,14 +842,14 @@ class Boss(Entity):
             velocity = velocity.normalize() * BOSS_AIM_SPEED
             bullet.velocity = velocity
             bullets.append(bullet)
-        
+
         return bullets
 
     def _wave_attack(self) -> List[Bullet]:
         bullets = []
-        
+
         direction_sources = self._get_direction_sources()
-        
+
         center_x, center_y = direction_sources.get(self.attack_direction, (self.rect.centerx, self.rect.centery))
 
         for i in range(8):
@@ -797,7 +861,7 @@ class Boss(Entity):
                 angle = 90 + BOSS_WAVE_ANGLE_INTERVAL * i
             else:
                 angle = -90 + BOSS_WAVE_ANGLE_INTERVAL * i
-            
+
             rad = math.radians(angle)
             speed = BOSS_WAVE_SPEED
 
@@ -810,13 +874,22 @@ class Boss(Entity):
             bullet = Bullet(center_x, center_y, bullet_data)
             bullet.velocity = Vector2(math.cos(rad) * speed, math.sin(rad) * speed)
             bullets.append(bullet)
-        
+
         return bullets
 
     def set_bullet_spawner(self, spawner: IBulletSpawner) -> None:
         self._bullet_spawner = spawner
 
     def render(self, surface: pygame.Surface) -> None:
+
+        """Render the boss ship with health-based coloring and warning text.
+
+        Displays entry warning during entrance animation and escape
+        warning when the boss is about to flee.
+
+        Args:
+        surface: Pygame surface to render onto.
+        """
         health_ratio = self.health / self.max_health if self.max_health > 0 else 1.0
         draw_boss_ship(surface, self.rect.x, self.rect.y, self.rect.width, self.rect.height, health_ratio)
 
@@ -837,6 +910,17 @@ class Boss(Entity):
             surface.blit(warning_surf, warning_rect)
 
     def take_damage(self, damage: int) -> int:
+
+        """Apply damage to the boss.
+
+        Reduces health and returns the score value if the boss is killed.
+
+        Args:
+        damage: Amount of damage to apply.
+
+        Returns:
+        Score value if boss is killed, 0 otherwise.
+        """
         if damage is None or damage < 0:
             return 0
         self.health -= damage

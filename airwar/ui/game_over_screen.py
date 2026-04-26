@@ -1,3 +1,4 @@
+"""Game over screen — post-death options and score display."""
 from enum import Enum
 from typing import Optional, Tuple
 import pygame
@@ -6,11 +7,13 @@ from airwar.ui.chamfered_panel import draw_chamfered_panel
 
 
 class ScreenAction(Enum):
+    """Screen action enum — user choices on the game over screen."""
     RETURN_TO_MENU = "return_to_menu"
     QUIT = "quit"
 
 
 class GameOverScreen:
+    """Game over screen — post-death UI with score display and action buttons."""
     def __init__(self, window):
         self._window = window
         self._running = False

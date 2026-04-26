@@ -1,3 +1,4 @@
+"""Death animation — player destruction visual effect sequence."""
 import math
 import random
 from typing import List

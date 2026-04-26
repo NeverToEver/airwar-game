@@ -1,8 +1,9 @@
+"""Config package — game settings, design tokens, and difficulty configuration."""
 from .settings import *
 from .game_config import GameConfig, get_screen_width, get_screen_height, set_screen_size
 from .difficulty_config import DIFFICULTY_CONFIGS, MOVEMENT_PATTERNS, BASE_ENEMY_PARAMS
 from airwar.config.tutorial import TUTORIAL_CONTENT
-from airwar.config.design_tokens import get_design_tokens, get_colors, get_typography
+from airwar.config.design_tokens import get_design_tokens, get_colors
 
 __all__ = [
     'SCREEN_WIDTH', 'SCREEN_HEIGHT', 'FPS',
@@ -18,5 +19,5 @@ __all__ = [
     'EXPLOSION_RADIUS',
     'VALID_DIFFICULTIES',
     'TUTORIAL_CONTENT',
-    'get_design_tokens', 'get_colors', 'get_typography',
+    'get_design_tokens', 'get_colors',
 ]

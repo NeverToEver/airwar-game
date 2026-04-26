@@ -1,18 +1,21 @@
+"""Buff stats panel — displays active buffs and attack mode info."""
 from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass
 import math
 import pygame
 import logging
 
-from airwar.config.design_tokens import MilitaryColors, MilitaryUI
+from airwar.config.design_tokens import MilitaryColors, MilitaryUI, get_design_tokens
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.ui.hex_icon import HexIcon, ICON_POWER, ICON_DEFENSE, ICON_SPEED
+from airwar.game.buffs.buff_registry import create_buff
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class BuffStatEntry:
+    """Buff stat entry dataclass — name, level, and value for a single buff."""
     name: str
     short_name: str
     value: str
@@ -22,6 +25,7 @@ class BuffStatEntry:
 
 
 class BuffStatsAggregator:
+    """Buff stats aggregator — computes combined buff effect values."""
     def __init__(self):
         self._stat_formatters = self._init_stat_formatters()
         self._category_order = ['offense', 'defense', 'health', 'utility']
@@ -31,9 +35,8 @@ class BuffStatsAggregator:
             'Power Shot': lambda rs, p: f"+{int((p.bullet_damage / rs.base_bullet_damage - 1) * 100)}%",
             'Rapid Fire': lambda rs, p: self._calculate_rapid_fire_value(rs),
             'Piercing': lambda rs, _: f"Lv.{rs.piercing_level}",
-            'Spread Shot': lambda rs, _: f"Lv.{rs.spread_level}",
-            'Explosive': lambda rs, _: f"Lv.{rs.explosive_level}",
-            'Shotgun': lambda rs, _: "ON" if 'Shotgun' in rs.unlocked_buffs else "-",
+            'Spread Shot': lambda rs, _: "ON" if 'Spread Shot' in rs.unlocked_buffs else "-",
+            'Explosive': lambda rs, _: "ON" if 'Explosive' in rs.unlocked_buffs else "-",
             'Laser': lambda rs, _: "ON" if 'Laser' in rs.unlocked_buffs else "-",
             'Armor': lambda rs, _: f"-{rs.armor_level * 15}%",
             'Evasion': lambda rs, _: f"+{rs.evasion_level * 20}%",
@@ -41,10 +44,7 @@ class BuffStatsAggregator:
             'Extra Life': lambda rs, _: f"+50 HP",
             'Regeneration': lambda rs, _: "+2/s",
             'Lifesteal': lambda rs, _: "+10%",
-            'Speed Boost': lambda rs, _: "+15%",
-            'Magnet': lambda rs, _: "+30%",
             'Slow Field': lambda rs, _: f"{int((1 - rs.slow_factor) * 100)}%",
-            'Shield': lambda rs, _: "Ready" if 'Shield' in rs.unlocked_buffs else "-",
         }
 
     def _calculate_rapid_fire_value(self, reward_system) -> str:
@@ -60,7 +60,6 @@ class BuffStatsAggregator:
 
     def _get_buff_color(self, name: str, reward_system) -> Tuple[int, int, int]:
         try:
-            from airwar.game.buffs.buff_registry import create_buff
             return create_buff(name).get_color()
         except (ValueError, AttributeError):
             return MilitaryColors.STATS_TEXT
@@ -68,23 +67,20 @@ class BuffStatsAggregator:
     def _get_buff_category(self, name: str) -> str:
         category_map = {
             'Power Shot': 'offense', 'Rapid Fire': 'offense', 'Piercing': 'offense',
-            'Spread Shot': 'offense', 'Explosive': 'offense', 'Shotgun': 'offense',
-            'Laser': 'offense',
-            'Armor': 'defense', 'Evasion': 'defense', 'Shield': 'defense',
-            'Barrier': 'defense',
+            'Spread Shot': 'offense', 'Explosive': 'offense', 'Laser': 'offense',
+            'Armor': 'defense', 'Evasion': 'defense', 'Barrier': 'defense',
             'Extra Life': 'health', 'Regeneration': 'health', 'Lifesteal': 'health',
-            'Speed Boost': 'utility', 'Magnet': 'utility', 'Slow Field': 'utility',
+            'Slow Field': 'utility',
         }
         return category_map.get(name, 'utility')
 
     def _get_short_name(self, name: str) -> str:
         short_names = {
             'Power Shot': 'PWR', 'Rapid Fire': 'RPD', 'Piercing': 'PIR',
-            'Spread Shot': 'SPD', 'Explosive': 'EXP', 'Shotgun': 'SHT',
-            'Laser': 'LSR', 'Armor': 'ARM', 'Evasion': 'EVD',
-            'Barrier': 'BAR', 'Extra Life': 'XLP', 'Regeneration': 'REG',
-            'Lifesteal': 'LST', 'Speed Boost': 'SPB', 'Magnet': 'MAG',
-            'Slow Field': 'SLO', 'Shield': 'SHD',
+            'Spread Shot': 'SPD', 'Explosive': 'EXP', 'Laser': 'LSR',
+            'Armor': 'ARM', 'Evasion': 'EVD', 'Barrier': 'BAR',
+            'Extra Life': 'XLP', 'Regeneration': 'REG', 'Lifesteal': 'LST',
+            'Slow Field': 'SLO',
         }
         return short_names.get(name, name[:3].upper())
 
@@ -171,6 +167,7 @@ class BuffStatsAggregator:
 
 
 class BuffStatsPanel:
+    """Buff stats panel — displays active buffs and their current levels."""
     _MAX_CACHE_SIZE = 50
     _panel_surface_cache: dict = {}
 
@@ -181,7 +178,6 @@ class BuffStatsPanel:
         cls._panel_surface_cache[key] = surface
 
     def __init__(self):
-        from airwar.config.design_tokens import get_design_tokens
         pygame.font.init()
 
         self._tokens = get_design_tokens()
@@ -438,6 +434,7 @@ class BuffStatsPanel:
 
 @dataclass
 class AttackModeEntry:
+    """Attack mode entry dataclass — current weapon mode configuration."""
     name: str
     short_name: str
     is_on: bool
@@ -453,7 +450,6 @@ class AttackModePanel:
 
     def __init__(self):
         pygame.font.init()
-        from airwar.config.design_tokens import MilitaryColors, MilitaryUI
         self._colors = MilitaryColors
         self._font = pygame.font.Font(None, MilitaryUI.MILITARY_LABEL_SIZE)
         self._name_font = pygame.font.Font(None, MilitaryUI.MILITARY_LABEL_SIZE)
@@ -468,7 +464,7 @@ class AttackModePanel:
         if not reward_system:
             return
 
-        spread_on = reward_system.spread_level > 0 or 'Shotgun' in reward_system.unlocked_buffs
+        spread_on = 'Spread Shot' in reward_system.unlocked_buffs
         laser_on = reward_system.laser_level > 0 or 'Laser' in reward_system.unlocked_buffs
         explosive_on = reward_system.explosive_level > 0
 

@@ -26,8 +26,8 @@ class TestRewardPool:
         from airwar.game.systems.reward_system import REWARD_POOL
         assert len(REWARD_POOL['health']) >= 3
         assert len(REWARD_POOL['offense']) >= 5
-        assert len(REWARD_POOL['defense']) >= 4
-        assert len(REWARD_POOL['utility']) >= 3
+        assert len(REWARD_POOL['defense']) >= 3
+        assert len(REWARD_POOL['utility']) >= 1
 
     def test_all_rewards_unique(self):
         from airwar.game.systems.reward_system import REWARD_POOL

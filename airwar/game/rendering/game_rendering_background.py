@@ -1,24 +1,25 @@
+"""Background renderer — parallax starfield and rainforest visuals."""
 import pygame
 import math
 import random
-from typing import List, Optional, Tuple
-from airwar.config.design_tokens import ForestColors
+from typing import List, Tuple
+from airwar.config.design_tokens import get_design_tokens
 
 
-class RainforestBackground:
-    """雨林风格游戏背景 - 柔和的绿色渐变配合浮动微粒
+class SpaceBackground:
+    """Space game background with parallax starfield and nebula hints.
 
-    性能优化：
-    - 预渲染渐变背景到缓存
-    - 使用简单的矩形/圆形代替复杂图形
-    - 限制粒子数量
-    - 视差滚动层数有限
+    Performance optimized:
+    - Pre-rendered gradient cache
+    - Layered parallax stars (3 layers)
+    - Cached star surfaces
     """
 
     _gradient_cache = {}
-    _leaf_cache = {}
+    _star_cache = {}
 
     def __init__(self, screen_width: int = 800, screen_height: int = 600):
+        self.tokens = get_design_tokens()
         self.screen_width = screen_width
         self.screen_height = screen_height
         self.time = 0.0
@@ -26,88 +27,83 @@ class RainforestBackground:
         self._cached_gradient = None
         self._init_layers(screen_width, screen_height)
         self._generate_gradient()
-        self._generate_leaf_shapes()
 
     def _init_layers(self, screen_width: int, screen_height: int) -> None:
-        """初始化雨林层"""
-        # 远景层 - 大型模糊叶影，移动缓慢
-        self._layer_far = RainforestLayer(
+        """Initialize parallax star layers using token values."""
+        colors = self.tokens.colors
+        anim = self.tokens.animation
+        components = self.tokens.components
+
+        # Far layer - tiny stars, very slow
+        self._layer_far = StarLayer(
             screen_width, screen_height,
-            count=8, speed=0.2, size_range=(80, 150),
-            color=(15, 35, 15, 40),  # 深绿半透明
-            shape='large_leaf'
+            count=components.STAR_COUNT,
+            speed=anim.STAR_SPEED * 0.3,
+            size_range=(0.5, 1.5),
+            color=colors.star_color(80),
+            twinkle_speed_range=(anim.TWINKLE_SPEED_MIN, anim.TWINKLE_SPEED_MAX)
         )
 
-        # 中景层 - 中型叶影
-        self._layer_mid = RainforestLayer(
+        # Mid layer - medium stars
+        self._layer_mid = StarLayer(
             screen_width, screen_height,
-            count=12, speed=0.5, size_range=(40, 80),
-            color=(20, 50, 20, 60),
-            shape='medium_leaf'
+            count=components.STAR_COUNT // 2,
+            speed=anim.STAR_SPEED * 0.6,
+            size_range=(1.0, 2.0),
+            color=colors.star_color(120),
+            twinkle_speed_range=(anim.TWINKLE_SPEED_MIN, anim.TWINKLE_SPEED_MAX)
         )
 
-        # 光斑层 - 模拟树隙光
-        self._light_layer = LightRayLayer(
+        # Near layer - larger stars, faster
+        self._layer_near = StarLayer(
             screen_width, screen_height,
-            count=3, speed=0.1
+            count=components.STAR_COUNT // 4,
+            speed=anim.STAR_SPEED * 1.2,
+            size_range=(1.5, 3.0),
+            color=colors.star_color(160),
+            twinkle_speed_range=(anim.TWINKLE_SPEED_MIN, anim.TWINKLE_SPEED_MAX)
+        )
+
+        # Dust particles layer
+        self._dust_layer = DustLayer(
+            screen_width, screen_height,
+            count=components.PARTICLE_COUNT // 3,
+            speed_range=(anim.PARTICLE_SPEED_MIN, anim.PARTICLE_SPEED_MAX)
         )
 
     def _generate_gradient(self) -> None:
-        """生成雨林渐变背景 - 从顶部深绿到底部更亮的绿"""
+        """Generate deep space gradient background."""
         cache_key = (self.screen_width, self.screen_height)
-        if cache_key not in RainforestBackground._gradient_cache:
+        if cache_key not in SpaceBackground._gradient_cache:
             gradient = pygame.Surface((self.screen_width, self.screen_height))
+            colors = self.tokens.colors
+            bg_primary = colors.BACKGROUND_PRIMARY
+            bg_secondary = colors.BACKGROUND_SECONDARY
+
             for y in range(self.screen_height):
                 ratio = y / self.screen_height
-                # 从顶部深绿(8,15,8)渐变到底部较亮的绿(15,35,15)
-                r = int(8 + ratio * 12)
-                g = int(15 + ratio * 30)
-                b = int(8 + ratio * 12)
+                r = int(bg_primary[0] * (1 - ratio) + bg_secondary[0] * ratio)
+                g = int(bg_primary[1] * (1 - ratio) + bg_secondary[1] * ratio)
+                b = int(bg_primary[2] * (1 - ratio) + bg_secondary[2] * ratio)
                 pygame.draw.line(gradient, (r, g, b), (0, y), (self.screen_width, y))
-            RainforestBackground._gradient_cache[cache_key] = gradient
-        self._cached_gradient = RainforestBackground._gradient_cache[cache_key]
-
-    def _generate_leaf_shapes(self) -> None:
-        """预生成叶子形状到缓存"""
-        for size in [100, 150, 200]:
-            if size not in RainforestBackground._leaf_cache:
-                leaf_surf = pygame.Surface((size * 2, size * 2), pygame.SRCALPHA)
-                # 简单的椭圆叶子形状
-                center = size
-                # 叶身
-                for i in range(size // 2, 0, -2):
-                    alpha = int(60 * (1 - i / (size // 2)))
-                    pygame.draw.ellipse(
-                        leaf_surf,
-                        (20, 50, 20, alpha),
-                        (center - i, center - i * 2, i * 2, i * 4)
-                    )
-                RainforestBackground._leaf_cache[size] = leaf_surf
-
-    @classmethod
-    def clear_all_caches(cls) -> None:
-        cls._gradient_cache.clear()
-        cls._leaf_cache.clear()
+            SpaceBackground._gradient_cache[cache_key] = gradient
+        self._cached_gradient = SpaceBackground._gradient_cache[cache_key]
 
     def update(self, delta_time: float = 1.0) -> None:
         self.time += delta_time
         self._layer_far.update(delta_time)
         self._layer_mid.update(delta_time)
-        self._light_layer.update(delta_time)
+        self._layer_near.update(delta_time)
+        self._dust_layer.update(delta_time)
 
     def draw(self, surface: pygame.Surface) -> None:
-        # 绘制渐变背景
         if self._cached_gradient:
             surface.blit(self._cached_gradient, (0, 0))
 
-        # 绘制光斑层（最底层）
-        self._light_layer.render(surface)
-
-        # 绘制远景叶影层
-        self._layer_far.render(surface)
-
-        # 绘制中景叶影层
-        self._layer_mid.render(surface)
+        self._layer_far.render(surface, self.time)
+        self._layer_mid.render(surface, self.time)
+        self._layer_near.render(surface, self.time)
+        self._dust_layer.render(surface, self.time)
 
     def resize(self, screen_width: int, screen_height: int) -> None:
         self.screen_width = screen_width
@@ -116,10 +112,8 @@ class RainforestBackground:
         self._generate_gradient()
 
 
-class RainforestLayer:
-    """雨林叶影层"""
-
-    _leaf_surface_cache = {}
+class StarLayer:
+    """Parallax star layer with twinkling effect."""
 
     def __init__(
         self,
@@ -128,132 +122,152 @@ class RainforestLayer:
         count: int,
         speed: float,
         size_range: Tuple[float, float],
-        color: Tuple[int, int, int, int],
-        shape: str = 'large_leaf'
+        color: Tuple[int, int, int],
+        twinkle_speed_range: Tuple[float, float]
     ):
-        self._leaves: List[dict] = []
-        self._scroll_offset = 0.0
-        self._speed = speed
+        self._screen_width = screen_width
         self._screen_height = screen_height
-        self._count = count
+        self._speed = speed
         self._size_range = size_range
         self._color = color
-        self._shape = shape
-        self._screen_width = screen_width
-        self._init_leaves(screen_width, screen_height, count)
+        self._twinkle_speed_range = twinkle_speed_range
+        self._scroll_offset = 0.0
+        self._stars: List[dict] = []
+        self._init_stars(screen_width, screen_height, count)
 
-    def _get_leaf_surface(self, size: float) -> pygame.Surface:
-        size_key = int(size * 10)
-        if size_key not in RainforestLayer._leaf_surface_cache:
-            surf = pygame.Surface((int(size * 2), int(size * 3)), pygame.SRCALPHA)
-            pygame.draw.ellipse(
-                surf,
-                (*self._color[:3], self._color[3]),
-                (0, 0, int(size * 2), int(size * 3))
-            )
-            pygame.draw.line(
-                surf,
-                (*self._color[:3], self._color[3] + 20),
-                (size, size * 0.2),
-                (size, size * 2.8),
-                1
-            )
-            RainforestLayer._leaf_surface_cache[size_key] = surf
-        return RainforestLayer._leaf_surface_cache[size_key]
-
-    def _init_leaves(self, screen_width: int, screen_height: int, count: int) -> None:
-        self._leaves = []
+    def _init_stars(self, screen_width: int, screen_height: int, count: int) -> None:
+        import random
+        self._stars = []
         for _ in range(count):
-            self._leaves.append({
-                'x': random.randint(0, screen_width),
-                'base_y': random.randint(0, screen_height),
+            self._stars.append({
+                'x': random.random(),
+                'y': random.random(),
                 'size': random.uniform(self._size_range[0], self._size_range[1]),
-                'speed_factor': random.uniform(0.8, 1.2),
-                'sway_phase': random.uniform(0, math.tau),
-                'sway_amount': random.uniform(5, 15),
-                'alpha': random.randint(self._color[3] - 20, self._color[3])
+                'brightness': random.uniform(0.5, 1.0),
+                'twinkle_speed': random.uniform(
+                    self._twinkle_speed_range[0],
+                    self._twinkle_speed_range[1]
+                ),
+                'twinkle_offset': random.random() * math.tau,
             })
 
     def update(self, delta_time: float = 1.0) -> None:
         self._scroll_offset += self._speed * delta_time
 
-    def render(self, surface: pygame.Surface) -> None:
-        time = self.time
-        for leaf in self._leaves:
-            y = (leaf['base_y'] + self._scroll_offset * leaf['speed_factor']) % (self._screen_height + leaf['size'] * 2)
-            y = y - leaf['size']
+    def render(self, surface: pygame.Surface, time: float) -> None:
+        for star in self._stars:
+            # Scrolling vertical movement
+            y = (star['y'] + self._scroll_offset) % 1.0
 
-            sway = math.sin(time + leaf['sway_phase']) * leaf['sway_amount']
+            x = int(star['x'] * self._screen_width)
+            y_pos = int(y * self._screen_height)
 
-            leaf_surf = self._get_leaf_surface(leaf['size'])
-            leaf_surf.set_alpha(leaf['alpha'])
+            # Twinkle effect
+            twinkle = math.sin(time * star['twinkle_speed'] + star['twinkle_offset'])
+            brightness = int(star['brightness'] * (0.5 + 0.5 * twinkle) * 255)
 
-            x = leaf['x'] + sway
-            surface.blit(leaf_surf, (int(x - leaf['size']), int(y - leaf['size'])))
+            size = max(1, int(star['size']))
 
-    time = 0.0  # 类变量，用于同步摇摆
+            # Draw star with soft glow
+            if brightness > 30:
+                # Glow
+                glow_radius = size * 2
+                glow_surf = pygame.Surface((glow_radius * 2, glow_radius * 2), pygame.SRCALPHA)
+                glow_alpha = min(40, brightness // 4)
+                pygame.draw.circle(
+                    glow_surf,
+                    (*self._color, glow_alpha),
+                    (glow_radius, glow_radius),
+                    glow_radius
+                )
+                surface.blit(glow_surf, (x - glow_radius, y_pos - glow_radius),
+                           special_flags=pygame.BLEND_RGBA_ADD)
+
+            # Core
+            core_brightness = max(0, min(255, brightness))
+            pygame.draw.circle(
+                surface,
+                (core_brightness, core_brightness, min(255, core_brightness + 20)),
+                (x, y_pos),
+                size
+            )
 
 
-class LightRayLayer:
-    """光束层 - 模拟树隙透射的光线"""
-
-    _ray_surface_cache = {}
+class DustLayer:
+    """Space dust particles drifting slowly."""
 
     def __init__(
         self,
         screen_width: int,
         screen_height: int,
         count: int,
-        speed: float
+        speed_range: Tuple[float, float]
     ):
-        self._rays: List[dict] = []
         self._screen_width = screen_width
         self._screen_height = screen_height
-        self._speed = speed
-        self._time = 0.0
-        self._init_rays(screen_width, count)
+        self._dust: List[dict] = []
+        self._speed_range = speed_range
+        self._scroll_offset = 0.0
+        self._init_dust(screen_width, screen_height, count)
 
-    def _get_ray_surface(self, width: float, screen_height: int) -> pygame.Surface:
-        cache_key = (int(width * 10), screen_height)
-        if cache_key not in LightRayLayer._ray_surface_cache:
-            surf = pygame.Surface((int(width * 2), screen_height), pygame.SRCALPHA)
-            points = [
-                (width * 0.3, 0),
-                (width * 1.7, 0),
-                (width * 2, screen_height),
-                (0, screen_height)
-            ]
-            pygame.draw.polygon(surf, (180, 200, 100, 255), points)
-            LightRayLayer._ray_surface_cache[cache_key] = surf
-        return LightRayLayer._ray_surface_cache[cache_key]
+    def _init_dust(self, screen_width: int, screen_height: int, count: int) -> None:
+        import random
+        colors = get_design_tokens().colors
+        particle_color = colors.PARTICLE_PRIMARY
 
-    def _init_rays(self, screen_width: int, count: int) -> None:
-        self._rays = []
+        self._dust = []
         for _ in range(count):
-            self._rays.append({
-                'x': random.randint(0, screen_width),
-                'width': random.uniform(30, 80),
-                'alpha': random.randint(8, 15),
-                'speed_factor': random.uniform(0.5, 1.0),
-                'phase': random.uniform(0, math.tau),
-                'pulse_speed': random.uniform(0.01, 0.03)
+            speed = random.uniform(self._speed_range[0], self._speed_range[1])
+            self._dust.append({
+                'x': random.random(),
+                'y': random.random(),
+                'size': random.uniform(1.0, 2.5),
+                'speed': speed * 0.3,
+                'alpha': random.randint(30, 80),
+                'drift_x': random.uniform(-0.0001, 0.0001),
+                'pulse_speed': random.uniform(0.01, 0.03),
+                'pulse_offset': random.random() * math.tau,
             })
 
     def update(self, delta_time: float = 1.0) -> None:
-        self._time += delta_time
-        for ray in self._rays:
-            ray['x'] += ray['speed_factor'] * delta_time * 0.1
-            if ray['x'] > self._screen_width + ray['width']:
-                ray['x'] = -ray['width']
+        self._scroll_offset += delta_time * 0.02
 
-    def render(self, surface: pygame.Surface) -> None:
-        for ray in self._rays:
-            pulse = math.sin(self._time * ray['pulse_speed'] + ray['phase'])
-            alpha = int(ray['alpha'] * (0.7 + 0.3 * pulse))
+        for dust in self._dust:
+            dust['y'] -= dust['speed'] * delta_time * 0.01
+            dust['x'] += dust.get('drift_x', 0) * delta_time
 
-            ray_surf = self._get_ray_surface(ray['width'], self._screen_height)
-            ray_surf.set_alpha(alpha)
-            surface.blit(ray_surf, (int(ray['x'] - ray['width']), 0))
+            if dust['y'] < -0.05:
+                dust['y'] = 1.05
+                dust['x'] = random.random()
+            if dust['x'] < -0.05:
+                dust['x'] = 1.05
+            elif dust['x'] > 1.05:
+                dust['x'] = -0.05
+
+    def render(self, surface: pygame.Surface, time: float) -> None:
+        colors = get_design_tokens().colors
+        particle_color = colors.PARTICLE_PRIMARY
+
+        for d in self._dust:
+            x = int(d['x'] * self._screen_width)
+            y = int(d['y'] * self._screen_height)
+
+            pulse = math.sin(time * d['pulse_speed'] + d['pulse_offset'])
+            alpha = int(d['alpha'] * (0.6 + 0.4 * pulse))
+            size = max(1, int(d['size'] * (0.7 + 0.3 * pulse)))
+
+            dust_surf = pygame.Surface((size * 4, size * 4), pygame.SRCALPHA)
+            for layer in range(size * 2, 0, -2):
+                layer_alpha = int(alpha * (size * 2 - layer) / (size * 2) * 0.3)
+                pygame.draw.circle(
+                    dust_surf,
+                    (*particle_color, layer_alpha),
+                    (size * 2, size * 2),
+                    layer
+                )
+            surface.blit(dust_surf, (x - size * 2, y - size * 2),
+                        special_flags=pygame.BLEND_RGBA_ADD)
 
 
-RainforestBackground.time = 0.0
+# Keep alias for backwards compatibility
+RainforestBackground = SpaceBackground

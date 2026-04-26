@@ -1,3 +1,4 @@
+"""Game entity classes — Player, Enemy, Boss, Bullet."""
 from .base import Entity, Vector2, Rect, BulletData, EnemyData
 from .player import Player
 from .enemy import Enemy, EnemySpawner, Boss, BossData

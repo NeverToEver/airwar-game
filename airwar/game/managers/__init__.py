@@ -1,15 +1,16 @@
-"""游戏管理器模块
+"""Game Manager Module.
 
-集中管理游戏相关的专业管理器组件，遵循单一职责原则。
-各管理器负责特定领域的业务逻辑协调。
+Centralizes specialized manager components for game-related functionality,
+following the Single Responsibility Principle. Each manager coordinates
+business logic for a specific domain.
 
 Manager Classes:
-    BulletManager: 统一管理玩家子弹和敌人子弹的更新、碰撞和清理
-    BossManager: 管理 Boss 生命周期、行为和战斗逻辑
-    MilestoneManager: 处理里程碑触发和奖励选择流程
-    InputCoordinator: 统一管理输入事件处理和投降系统
-    UIManager: 统一管理游戏UI渲染
-    GameLoopManager: 统一管理游戏主循环逻辑
+    BulletManager: Manages player and enemy bullet updates, collisions, and cleanup.
+    BossManager: Manages boss lifecycle, behavior, and combat logic.
+    MilestoneManager: Handles milestone triggering and reward selection flow.
+    InputCoordinator: Manages input event handling and surrender system.
+    UIManager: Manages game UI rendering.
+    GameLoopManager: Manages the main game loop logic.
 
 Usage:
     from airwar.game.managers import BulletManager

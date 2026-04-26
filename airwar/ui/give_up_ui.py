@@ -1,3 +1,4 @@
+"""Give-up UI — surrender progress indicator overlay."""
 import pygame
 import math
 from airwar.config.design_tokens import get_design_tokens, ForestColors, MilitaryColors, MilitaryUI
@@ -5,6 +6,10 @@ from airwar.ui.chamfered_panel import draw_chamfered_panel
 
 
 class GiveUpUI:
+    """Give-up UI — surrender progress indicator overlay.
+    
+        Shows a progress bar that fills as the player holds the surrender key.
+        """
     def __init__(self, screen_width: int, screen_height: int):
         self._visible = False
         self._progress = 0.0

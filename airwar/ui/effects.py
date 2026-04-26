@@ -1,6 +1,8 @@
+"""UI effects — visual feedback effects for the interface."""
 import pygame
 import math
 from airwar.config.design_tokens import get_design_tokens, MilitaryColors, MilitaryUI
+from airwar.utils.responsive import ResponsiveHelper
 
 
 class EffectsRenderer:
@@ -9,6 +11,9 @@ class EffectsRenderer:
     def __init__(self):
         self._glow_cache = {}
         self._tokens = get_design_tokens()
+        self._chamfer_bg_cache = {}
+        self._chamfer_border_cache = {}
+        self._chamfer_glow_cache = {}
 
     def render_glow_text(
         self,
@@ -46,8 +51,6 @@ class EffectsRenderer:
         scale: float = 1.0
     ):
         """渲染选项框"""
-        from airwar.utils.responsive import ResponsiveHelper
-
         if option_width is None:
             option_width = self._tokens.spacing.BOX_WIDTH
         if option_height is None:
@@ -80,6 +83,43 @@ class EffectsRenderer:
             colors.get('selected', colors_config.HUD_AMBER) if is_selected else colors.get('unselected', colors_config.TEXT_MUTED))
         text_rect = option_text.get_rect(center=(center_x, y))
         surface.blit(option_text, text_rect)
+
+    @staticmethod
+    def _create_chamfered_points(width, height, chamfer):
+        """Create chamfered polygon points."""
+        return [
+            (chamfer, 0),
+            (width - chamfer, 0),
+            (width, chamfer),
+            (width, height - chamfer),
+            (width - chamfer, height),
+            (chamfer, height),
+            (0, height - chamfer),
+            (0, chamfer),
+        ]
+
+    @staticmethod
+    def _render_chamfered_glow_surface(width, height, chamfer, border_width, glow_color):
+        """Pre-render chamfered glow at full intensity."""
+        glow_surf = pygame.Surface((width + 8, height + 8), pygame.SRCALPHA)
+        glow_surf.fill((0, 0, 0, 0))
+        gw, gh = width + 8, height + 8
+        gch = chamfer + 4
+        glow_points = [
+            (gch, 0), (gw - gch, 0), (gw, gch), (gw, gh - gch),
+            (gw - gch, gh), (gch, gh), (0, gh - gch), (0, gch),
+        ]
+        for layer in range(3, 0, -1):
+            alpha = int(30 / layer)
+            layer_color = (*glow_color[:3], alpha)
+            pygame.draw.lines(glow_surf, layer_color, False, glow_points, border_width + layer)
+            inner_pts = [
+                (gch - 2, 2), (gw - gch + 2, 2), (gw - 2, gch - 2),
+                (gw - 2, gh - gch + 2), (gw - gch + 2, gh - 2),
+                (gch - 2, gh - 2), (2, gh - gch + 2), (2, gch - 2),
+            ]
+            pygame.draw.polygon(glow_surf, (*glow_color[:3], alpha // 2), inner_pts)
+        return glow_surf
 
     def render_chamfered_rect(
         self,
@@ -115,75 +155,44 @@ class EffectsRenderer:
 
         chamfer = MilitaryUI.CHAMFER_DEPTH
         border_width = MilitaryUI.CHAMFER_BORDER_WIDTH
+        cache_key = (width, height, chamfer)
 
-        # 绘制发光效果（如果启用）
+        # 绘制发光效果（从缓存读取）
         if glow_intensity > 0:
-            glow_surf = pygame.Surface((width + 8, height + 8), pygame.SRCALPHA)
-            glow_surf.fill((0, 0, 0, 0))
+            glow_key = (*cache_key, glow_color)
+            if glow_key not in self._chamfer_glow_cache:
+                self._chamfer_glow_cache[glow_key] = self._render_chamfered_glow_surface(
+                    width, height, chamfer, border_width, glow_color
+                )
+            cached_glow = self._chamfer_glow_cache[glow_key]
+            if glow_intensity >= 1.0:
+                surface.blit(cached_glow, (x - 4, y - 4))
+            else:
+                temp = cached_glow.copy()
+                temp.set_alpha(int(255 * glow_intensity))
+                surface.blit(temp, (x - 4, y - 4))
 
-            # 计算发光多边形点
-            gw, gh = width + 8, height + 8
-            gch = chamfer + 4
-            glow_points = [
-                (gch, 0),
-                (gw - gch, 0),
-                (gw, gch),
-                (gw, gh - gch),
-                (gw - gch, gh),
-                (gch, gh),
-                (0, gh - gch),
-                (0, gch),
-            ]
+        # 绘制背景（从缓存读取）
+        bg_key = (*cache_key, bg_color)
+        if bg_key not in self._chamfer_bg_cache:
+            bg_surf = pygame.Surface((width, height), pygame.SRCALPHA)
+            bg_surf.fill((0, 0, 0, 0))
+            points = self._create_chamfered_points(width, height, chamfer)
+            pygame.draw.polygon(bg_surf, bg_color if len(bg_color) == 3 else bg_color[:3], points)
+            self._chamfer_bg_cache[bg_key] = bg_surf
+        surface.blit(self._chamfer_bg_cache[bg_key], (x, y))
 
-            # 分层绘制发光
-            for layer in range(3, 0, -1):
-                alpha = int(30 * glow_intensity / layer)
-                layer_color = (*glow_color[:3], alpha) if len(glow_color) == 4 else (*glow_color, alpha)
-                pygame.draw.lines(glow_surf, layer_color, False, glow_points, border_width + layer)
-                # 填充内部
-                glow_fill = pygame.Surface((gw - 4, gh - 4), pygame.SRCALPHA)
-                glow_fill.fill((0, 0, 0, 0))
-                inner_points = [
-                    (gch - 2, 2),
-                    (gw - gch + 2, 2),
-                    (gw - 2, gch - 2),
-                    (gw - 2, gh - gch + 2),
-                    (gw - gch + 2, gh - 2),
-                    (gch - 2, gh - 2),
-                    (2, gh - gch + 2),
-                    (2, gch - 2),
-                ]
-                pygame.draw.polygon(glow_fill, (*glow_color[:3], alpha // 2), inner_points)
-                glow_surf.blit(glow_fill, (2, 2))
-
-            surface.blit(glow_surf, (x - 4, y - 4))
-
-        # 绘制背景
-        bg_surf = pygame.Surface((width, height), pygame.SRCALPHA)
-        bg_surf.fill((0, 0, 0, 0))
-
-        # 切角多边形
-        points = [
-            (chamfer, 0),
-            (width - chamfer, 0),
-            (width, chamfer),
-            (width, height - chamfer),
-            (width - chamfer, height),
-            (chamfer, height),
-            (0, height - chamfer),
-            (0, chamfer),
-        ]
-
-        # 填充背景
-        pygame.draw.polygon(bg_surf, bg_color if len(bg_color) == 3 else bg_color[:3], points)
-        surface.blit(bg_surf, (x, y))
-
-        # 绘制边框
-        border_surf = pygame.Surface((width, height), pygame.SRCALPHA)
-        border_surf.fill((0, 0, 0, 0))
-        border_col = border_color if len(border_color) == 4 else (*border_color, 255)
-        pygame.draw.lines(border_surf, border_col, False, points, border_width)
-        surface.blit(border_surf, (x, y))
+        # 绘制边框（从缓存读取）
+        if border_color is not None:
+            border_key = (*cache_key, border_color)
+            if border_key not in self._chamfer_border_cache:
+                border_surf = pygame.Surface((width, height), pygame.SRCALPHA)
+                border_surf.fill((0, 0, 0, 0))
+                points = self._create_chamfered_points(width, height, chamfer)
+                border_col = border_color if len(border_color) == 4 else (*border_color, 255)
+                pygame.draw.lines(border_surf, border_col, False, points, border_width)
+                self._chamfer_border_cache[border_key] = border_surf
+            surface.blit(self._chamfer_border_cache[border_key], (x, y))
 
     def render_military_text(
         self,

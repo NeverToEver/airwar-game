@@ -210,21 +210,20 @@ pub fn create_spread_bullet_glow(radius: f32) -> Vec<u8> {
 /// Create glow surface for a laser bullet
 #[pyfunction]
 pub fn create_laser_bullet_glow(height: f32) -> Vec<u8> {
-    let surf_w = 20usize;
-    let surf_h = (height + 8.0) as usize;
-    let cx = 10.0f32;
+    let surf_w = 24usize;
+    let surf_h = (height + 12.0) as usize;
+    let cx = 12.0f32;
 
     let mut data = vec![0u8; surf_w * surf_h * 4];
 
-    for i in (1..=8).rev().step_by(2) {
-        let alpha = ((8 - i) * 50 / 7) as u8;
+    for i in (1..=10).rev().step_by(2) {
+        let alpha = ((10 - i) * 70 / 9) as u8;
         let thickness = i as f32;
-        let glow_color = (255u8, 50u8, 150u8);
-        // Vertical line
+        let glow_color = (255u8, 20u8, 40u8);
         let min_x = (cx - thickness / 2.0) as isize;
         let max_x = (cx + thickness / 2.0) as isize;
-        let y_start = 2isize;
-        let y_end = (surf_h as isize) - 6;
+        let y_start = 4isize;
+        let y_end = (surf_h as isize) - 4;
         for x in min_x..max_x {
             for y in y_start..y_end {
                 let x_idx = x as usize;

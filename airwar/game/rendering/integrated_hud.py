@@ -1,9 +1,11 @@
+"""Integrated HUD — unified heads-up display combining all UI elements."""
 import pygame
 from typing import List, Dict, Any
 from airwar.config.design_tokens import get_design_tokens
 
 
 class IntegratedHUD:
+    """Integrated HUD — unified heads-up display combining all HUD elements."""
     def __init__(self):
         self._tokens = get_design_tokens()
         self._setup_layout()
@@ -14,6 +16,7 @@ class IntegratedHUD:
         self._buff_visible_count = self._tokens.components.BUFF_SCROLL_VISIBLE_COUNT
         self._panel_bg_cache = {}
         self._bar_bg_cache = {}
+        self._label_cache = {}
 
     def _setup_layout(self):
         colors = self._tokens.colors
@@ -34,6 +37,14 @@ class IntegratedHUD:
 
         self.bg_color = (*colors.BACKGROUND_PANEL, 230)
         self.border_color = (*colors.PANEL_BORDER, 180)
+
+    def _cached_label(self, font_size, text, color):
+        """Return a pre-rendered label surface, caching on first call."""
+        key = (font_size, text, color)
+        if key not in self._label_cache:
+            font = pygame.font.Font(None, font_size)
+            self._label_cache[key] = font.render(text, True, color)
+        return self._label_cache[key]
 
     def update_scroll(self, buff_count: int = 0):
         if not self._is_expanded or buff_count <= self._buff_visible_count:
@@ -77,7 +88,7 @@ class IntegratedHUD:
         panel_x = width - self._current_width - self.padding
         panel_y = self.padding
         panel_height = height - self.padding * 2
-        
+
         current_y = panel_y + self.padding
 
         panel_rect = pygame.Rect(panel_x, panel_y, self._current_width, panel_height)
@@ -109,6 +120,9 @@ class IntegratedHUD:
                     surface, unlocked_buffs, get_buff_color, colors, panel_x, current_y
                 )
         else:
+            self._render_collapsed_health(
+                surface, player_health, player_max_health, colors, panel_x, panel_y, panel_height
+            )
             self._render_expand_indicator(surface, panel_x, panel_y, panel_height, colors)
 
     def _render_panel_background(self, surface, rect, colors):
@@ -133,6 +147,96 @@ class IntegratedHUD:
         overlay, border_surf = self._panel_bg_cache[cache_key]
         surface.blit(overlay, rect.topleft)
         surface.blit(border_surf, rect.topleft)
+
+    def _render_collapsed_health(self, surface, health, max_health, colors,
+                                  panel_x, panel_y, panel_height):
+        """Render a compact battery-style segmented health indicator.
+
+        Vertical multi-segment display with flat bars. All filled segments
+        share one solid color — green at full HP, shifting to yellow then red
+        as health drops. Positioned in the lower half of the collapsed panel.
+        """
+        health_ratio = health / max_health if max_health > 0 else 0
+        segment_count = 8
+        filled_segments = max(0, int(segment_count * health_ratio + 0.5))
+
+        # Overall muted color based on health ratio: green(high) → amber(mid) → red(low)
+        if health_ratio > 0.5:
+            t = (1.0 - health_ratio) / 0.5
+            r = int(120 + 60 * t)
+            g = int(180 - 30 * t)
+            b = 60
+        else:
+            t = (0.5 - health_ratio) / 0.5
+            r = int(180 + 40 * t)
+            g = int(150 * (1.0 - t))
+            b = 60
+        fill_color = (r, g, b, 220)
+
+        # Position in the lower half of the panel
+        bar_width = self._current_width - self.padding * 2
+        segment_width = bar_width - 4
+        seg_x = panel_x + (self._current_width - segment_width) // 2
+
+        gap = 8
+        seg_height = 20
+        total_height = segment_count * seg_height + (segment_count - 1) * gap
+
+        # Anchor to the lower area — above the expand indicator
+        battery_bottom = panel_y + panel_height - self.padding - 45
+        battery_top = battery_bottom - total_height
+
+        # Outer frame — padded around all segments
+        frame_pad = 6
+        frame_rect = pygame.Rect(
+            seg_x - frame_pad,
+            battery_top - frame_pad,
+            segment_width + frame_pad * 2,
+            total_height + frame_pad * 2,
+        )
+
+        # Frame background
+        pygame.draw.rect(
+            surface,
+            (*colors.BACKGROUND_SECONDARY, 180),
+            frame_rect,
+            border_radius=5
+        )
+        # Frame border
+        pygame.draw.rect(
+            surface,
+            (*colors.PANEL_BORDER, 200),
+            frame_rect,
+            width=2,
+            border_radius=5
+        )
+
+        for i in range(segment_count):
+            seg_y = battery_bottom - (i + 1) * seg_height - i * gap
+
+            if i < filled_segments:
+                pygame.draw.rect(
+                    surface,
+                    fill_color,
+                    (seg_x, seg_y, segment_width, seg_height),
+                    border_radius=2
+                )
+            else:
+                pygame.draw.rect(
+                    surface,
+                    (*colors.BACKGROUND_PANEL, 100),
+                    (seg_x, seg_y, segment_width, seg_height),
+                    border_radius=2
+                )
+
+        # Percentage label below the segments
+        label_font = pygame.font.Font(None, max(12, self.label_font_size - 10))
+        label_text = f"{int(health_ratio * 100)}%"
+        label = label_font.render(label_text, True, (r, g, b))
+        label_rect = label.get_rect(
+            center=(panel_x + self._current_width // 2, battery_bottom + 9)
+        )
+        surface.blit(label, label_rect)
 
     def _render_expand_indicator(self, surface, panel_x, panel_y, panel_height, colors):
         components = self._tokens.components
@@ -183,9 +287,8 @@ class IntegratedHUD:
 
     def _render_score_module(self, surface, score, colors, x, y):
         content_x = x + self.padding
-        
-        label_font = pygame.font.Font(None, self.label_font_size)
-        label = label_font.render("SCORE", True, colors.TEXT_MUTED)
+
+        label = self._cached_label(self.label_font_size, "SCORE", colors.TEXT_MUTED)
         surface.blit(label, (content_x, y))
 
         value_font = pygame.font.Font(None, self.value_font_size)
@@ -198,8 +301,7 @@ class IntegratedHUD:
         components = self._tokens.components
         content_x = x + self.padding
         
-        label_font = pygame.font.Font(None, self.label_font_size)
-        label = label_font.render("COEFF", True, colors.TEXT_MUTED)
+        label = self._cached_label(self.label_font_size, "COEFF", colors.TEXT_MUTED)
         surface.blit(label, (content_x, y))
 
         delta = current - initial
@@ -243,8 +345,7 @@ class IntegratedHUD:
     def _render_difficulty_module(self, surface, difficulty, colors, x, y):
         content_x = x + self.padding
         
-        label_font = pygame.font.Font(None, self.label_font_size)
-        label = label_font.render("MODE", True, colors.TEXT_MUTED)
+        label = self._cached_label(self.label_font_size, "MODE", colors.TEXT_MUTED)
         surface.blit(label, (content_x, y))
 
         diff_colors = {
@@ -263,8 +364,7 @@ class IntegratedHUD:
     def _render_progress_module(self, surface, progress, colors, x, y):
         content_x = x + self.padding
         
-        label_font = pygame.font.Font(None, self.label_font_size)
-        label = label_font.render("PROGRESS", True, colors.TEXT_MUTED)
+        label = self._cached_label(self.label_font_size, "PROGRESS", colors.TEXT_MUTED)
         surface.blit(label, (content_x, y))
 
         value_font = pygame.font.Font(None, self.value_font_size)
@@ -297,8 +397,7 @@ class IntegratedHUD:
     def _render_health_module(self, surface, health, max_health, colors, x, y):
         content_x = x + self.padding
         
-        label_font = pygame.font.Font(None, self.label_font_size)
-        label = label_font.render("HP", True, colors.TEXT_MUTED)
+        label = self._cached_label(self.label_font_size, "HP", colors.TEXT_MUTED)
         surface.blit(label, (content_x, y))
 
         health_ratio = health / max_health if max_health > 0 else 0
@@ -329,22 +428,22 @@ class IntegratedHUD:
                 border_radius=8
             )
 
-            highlight_surf = pygame.Surface((fill_width - 4, 3), pygame.SRCALPHA)
-            pygame.draw.rect(
-                highlight_surf,
-                (*colors.TEXT_PRIMARY, 60),
-                highlight_surf.get_rect(),
-                border_radius=2
-            )
-            surface.blit(highlight_surf, (bar_x + 2, bar_y + 3))
+            if fill_width > 4:
+                highlight_surf = pygame.Surface((fill_width - 4, 3), pygame.SRCALPHA)
+                pygame.draw.rect(
+                    highlight_surf,
+                    (*colors.TEXT_PRIMARY, 60),
+                    highlight_surf.get_rect(),
+                    border_radius=2
+                )
+                surface.blit(highlight_surf, (bar_x + 2, bar_y + 3))
 
         return y + self.module_height + self.gap + 10
 
     def _render_kills_module(self, surface, kills, colors, x, y):
         content_x = x + self.padding
         
-        label_font = pygame.font.Font(None, self.label_font_size)
-        label = label_font.render("KILLS", True, colors.TEXT_MUTED)
+        label = self._cached_label(self.label_font_size, "KILLS", colors.TEXT_MUTED)
         surface.blit(label, (content_x, y))
 
         value_font = pygame.font.Font(None, self.value_font_size)
@@ -356,8 +455,7 @@ class IntegratedHUD:
     def _render_boss_module(self, surface, boss_kills, colors, x, y):
         content_x = x + self.padding
         
-        label_font = pygame.font.Font(None, self.label_font_size)
-        label = label_font.render("BOSS", True, colors.TEXT_MUTED)
+        label = self._cached_label(self.label_font_size, "BOSS", colors.TEXT_MUTED)
         surface.blit(label, (content_x, y))
 
         value_font = pygame.font.Font(None, self.value_font_size)
@@ -370,8 +468,7 @@ class IntegratedHUD:
         components = self._tokens.components
         content_x = panel_x + self.padding
         
-        label_font = pygame.font.Font(None, self.label_font_size)
-        label = label_font.render("BUFFS", True, colors.TEXT_MUTED)
+        label = self._cached_label(self.label_font_size, "BUFFS", colors.TEXT_MUTED)
         surface.blit(label, (content_x, start_y))
 
         current_y = start_y + 26

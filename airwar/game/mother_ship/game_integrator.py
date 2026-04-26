@@ -1,3 +1,4 @@
+"""Game integrator — bridges mothership state with game systems."""
 from typing import Dict, Any, List, TYPE_CHECKING
 import pygame
 import math
@@ -5,6 +6,7 @@ from .mother_ship_state import MotherShipState, GameSaveData
 from .progress_bar_ui import ProgressBarUI
 from airwar.entities.bullet import Bullet
 from airwar.entities.base import BulletData
+from airwar.config import get_screen_width
 
 if TYPE_CHECKING:
     from .event_bus import EventBus
@@ -15,9 +17,15 @@ if TYPE_CHECKING:
 
 
 class GameIntegrator:
+    """Game integrator — bridges mothership state with game systems.
+    
+        Coordinates between game state and mothership docking flow,
+        updating entity states and UI during the docking process.
+        """
     MOTHSHIP_BULLET_DAMAGE = 100
-    MOTHSHIP_FIRE_RATE = 30
+    MOTHSHIP_FIRE_RATE = 10       # 6 shots/sec at 60fps
     MOTHSHIP_BULLET_SPEED = 8
+    MOTHSHIP_TARGET_COUNT = 3     # fire at up to 3 closest enemies per volley
 
     BAR_TYPE_HOLD = "hold"
     BAR_TYPE_COOLDOWN = "cooldown"
@@ -119,6 +127,10 @@ class GameIntegrator:
         if self._state_machine.is_docked():
             self._update_mothership_firing()
             self._update_mothership_bullets()
+            # Player rides along with the mothership while docked
+            dock_pos = self._mother_ship.get_docking_position()
+            self._game_scene.player.rect.centerx = dock_pos[0]
+            self._game_scene.player.rect.centery = dock_pos[1]
             self._progress_bar_ui.update_progress(
                 self._state_machine.stay_progress.stay_progress,
                 (1.0 - self._state_machine.stay_progress.stay_progress) * 20.0
@@ -156,27 +168,17 @@ class GameIntegrator:
         if not enemies:
             return
 
-        closest_enemy = None
-        closest_dist = float('inf')
+        # Sort by distance and target the N closest
+        active_enemies = [(math.sqrt(
+            (e.rect.centerx - mother_ship_pos[0]) ** 2 +
+            (e.rect.centery - mother_ship_pos[1]) ** 2
+        ), e) for e in enemies if e.active]
+        active_enemies.sort(key=lambda x: x[0])
 
-        for enemy in enemies:
-            if not enemy.active:
-                continue
-            dist = math.sqrt(
-                (enemy.rect.centerx - mother_ship_pos[0]) ** 2 +
-                (enemy.rect.centery - mother_ship_pos[1]) ** 2
-            )
-            if dist < closest_dist:
-                closest_dist = dist
-                closest_enemy = enemy
-
-        if closest_enemy:
-            dx = closest_enemy.rect.centerx - mother_ship_pos[0]
-            dy = closest_enemy.rect.centery - mother_ship_pos[1]
-            dist = math.sqrt(dx * dx + dy * dy)
+        for dist, target in active_enemies[:self.MOTHSHIP_TARGET_COUNT]:
             if dist > 0:
-                vx = (dx / dist) * self.MOTHSHIP_BULLET_SPEED
-                vy = (dy / dist) * self.MOTHSHIP_BULLET_SPEED
+                vx = (target.rect.centerx - mother_ship_pos[0]) / dist * self.MOTHSHIP_BULLET_SPEED
+                vy = (target.rect.centery - mother_ship_pos[1]) / dist * self.MOTHSHIP_BULLET_SPEED
 
                 bullet = Bullet(
                     mother_ship_pos[0],
@@ -357,13 +359,12 @@ class GameIntegrator:
         if not self._game_scene:
             return
 
-        from airwar.config import get_screen_width
-
         self._undocking_animation_active = True
         self._undocking_animation_frame = 0
-        self._undocking_start_position = self._mother_ship.get_docking_position()
-        center_x = get_screen_width() // 2
-        self._undocking_animation_target = (center_x, 200)
+        # Release player at the mothership's current position, not a fixed point
+        release_pos = self._mother_ship.get_docking_position()
+        self._undocking_start_position = release_pos
+        self._undocking_animation_target = release_pos
         self._player_control_disabled = True
 
     def _on_undock_cancelled(self, **kwargs) -> None:

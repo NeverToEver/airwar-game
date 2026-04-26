@@ -1,3 +1,4 @@
+"""Settings — global constants for dimensions, speeds, and rendering."""
 from airwar.config.game_config import GameConfig, get_screen_width, get_screen_height, set_screen_size
 
 SCREEN_WIDTH = 1400
@@ -9,9 +10,6 @@ HEALTH_REGEN = {
     'medium': {'delay': 240, 'rate': 2, 'interval': 60},
     'hard': {'delay': 300, 'rate': 1, 'interval': 90},
 }
-
-def get_adaptive_screen_size():
-    return GameConfig.get_instance().get_adaptive_screen_size()
 
 PLAYER_SPEED = 5
 BULLET_SPEED = 10

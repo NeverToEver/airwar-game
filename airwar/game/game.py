@@ -1,11 +1,23 @@
-from airwar.scenes import SceneManager, GameScene, MenuScene, PauseScene, LoginScene, DeathScene, ExitConfirmScene, TutorialScene
-from airwar.utils.database import UserDB
-from airwar.window import create_window
-from airwar.game.scene_director import SceneDirector
-from airwar.config import SCREEN_WIDTH, SCREEN_HEIGHT
+"""Game bootstrap — window creation, scene registration, and main loop."""
+from ..scenes import SceneManager, GameScene, MenuScene, PauseScene, LoginScene, DeathScene, ExitConfirmScene, TutorialScene
+from ..utils.database import UserDB
+from ..window import create_window
+from .scene_director import SceneDirector
+from ..config import SCREEN_WIDTH, SCREEN_HEIGHT
+from ..utils.sprites import prewarm_glow_caches
 
 
 class Game:
+    """Game bootstrap — window creation, scene registration, and main loop.
+    
+        Creates the pygame window, registers all scenes, and runs the main
+        event loop. Delegates rendering to the active scene.
+    
+        Attributes:
+            window: Pygame display surface.
+            scene_manager: SceneManager handling active scene.
+            scene_director: SceneDirector for scene orchestration.
+        """
     def __init__(self):
         self._window = create_window(
             SCREEN_WIDTH, 
@@ -34,7 +46,6 @@ class Game:
     def run(self) -> None:
         try:
             # Pre-warm sprite glow caches for optimal performance
-            from airwar.utils.sprites import prewarm_glow_caches
             prewarm_glow_caches()
             self._director.run()
         finally:

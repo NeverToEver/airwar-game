@@ -1,3 +1,4 @@
+"""Mothership state machine — docking flow and state transitions."""
 from typing import Optional
 import pygame
 from .interfaces import IMotherShipStateMachine
@@ -6,6 +7,11 @@ from .event_bus import EventBus
 
 
 class MotherShipStateMachine(IMotherShipStateMachine):
+    """Mothership state machine — manages docking flow and state transitions.
+    
+        Handles the full docking lifecycle: approaching → docking → saving →
+        completion, with support for cancellation and error states.
+        """
     VALID_TRANSITIONS = {
         MotherShipState.IDLE: [MotherShipState.COOLDOWN, MotherShipState.PRESSING],
         MotherShipState.COOLDOWN: [MotherShipState.PRESSING],

@@ -1,9 +1,13 @@
+"""Game loop orchestration — coordinates all per-frame update logic."""
 from typing import Protocol, Callable, List
-from airwar.game.constants import PlayerConstants
-from airwar.config import get_screen_width, get_screen_height
+from ..constants import PlayerConstants
+from ...config import get_screen_width, get_screen_height
+from ..explosion_animation import ExplosionManager
+from .game_controller import GameplayState
 
 
 class GameControllerProtocol(Protocol):
+    """Protocol for game controller dependency injection."""
     @property
     def state(self): ...
     def update(self, player, has_regen: bool) -> None: ...
@@ -12,10 +16,12 @@ class GameControllerProtocol(Protocol):
 
 
 class GameRendererProtocol(Protocol):
+    """Protocol for game renderer dependency injection."""
     def update_death_animation(self) -> None: ...
 
 
 class SpawnControllerProtocol(Protocol):
+    """Protocol for spawn controller dependency injection."""
     def update(self, score: int, slow_factor: float) -> bool: ...
     def spawn_boss(self, cycle_count: int, bullet_damage: float): ...
     def cleanup(self) -> None: ...
@@ -27,6 +33,7 @@ class SpawnControllerProtocol(Protocol):
 
 
 class RewardSystemProtocol(Protocol):
+    """Protocol for reward system dependency injection."""
     @property
     def slow_factor(self) -> float: ...
     @property
@@ -35,17 +42,20 @@ class RewardSystemProtocol(Protocol):
 
 
 class BulletManagerProtocol(Protocol):
+    """Protocol for bullet manager dependency injection."""
     def update_all(self) -> None: ...
     def cleanup(self) -> None: ...
     def clear_enemy_bullets(self) -> None: ...
 
 
 class BossManagerProtocol(Protocol):
+    """Protocol for boss manager dependency injection."""
     def update(self, player) -> None: ...
     def on_boss_hit(self, score: int) -> None: ...
 
 
 class PlayerProtocol(Protocol):
+    """Protocol for player dependency injection."""
     def update(self) -> None: ...
     def auto_fire(self) -> None: ...
     def cleanup_inactive_bullets(self) -> None: ...
@@ -54,10 +64,19 @@ class PlayerProtocol(Protocol):
 
 
 class CollisionControllerProtocol(Protocol):
+    """Protocol for collision controller dependency injection."""
     def check_all_collisions(self, **kwargs) -> None: ...
 
 
 class GameLoopManager:
+    """Game loop manager — orchestrates all per-frame update logic.
+    
+        Coordinates the update order of all managers and systems each frame:
+        input → player update → spawn controller → boss → collision → UI.
+    
+        Attributes:
+            _controllers: Ordered list of per-frame update callables.
+        """
     def __init__(
         self,
         game_controller: GameControllerProtocol,
@@ -80,8 +99,6 @@ class GameLoopManager:
 
     def _init_explosion_system(self) -> None:
         """Initialize explosion animation system"""
-        from airwar.game.explosion_animation import ExplosionManager
-
         self._explosion_manager = ExplosionManager()
         self._collision_controller.set_explosion_callback(
             self._on_explosion
@@ -123,8 +140,6 @@ class GameLoopManager:
             return False
 
     def _update_core(self, player: PlayerProtocol) -> None:
-        from airwar.game.managers.game_controller import GameplayState
-
         has_regen = 'Regeneration' in self._reward_system.unlocked_buffs
         self._game_controller.update(player, has_regen)
 

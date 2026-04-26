@@ -1,11 +1,22 @@
+"""Health and regeneration system for player entities."""
 from typing import TYPE_CHECKING
-from airwar.config import HEALTH_REGEN
+from ...config import HEALTH_REGEN
+from ..constants import GAME_CONSTANTS
 
 if TYPE_CHECKING:
-    from airwar.entities.player import Player
+    from ...entities.player import Player
 
 
 class HealthSystem:
+    """Health system — manages player health regeneration and invincibility.
+    
+        Handles periodic health regen ticks and invincibility timer management
+        after the player takes damage.
+    
+        Attributes:
+            _regen_timer: Frames since last regen tick.
+            _regen_active: Whether regen is currently enabled.
+        """
     def __init__(self, difficulty: str = 'medium'):
         self._difficulty = difficulty
         self._regen_timer = 0
@@ -13,6 +24,9 @@ class HealthSystem:
         self._regen_active = False
 
     def update(self, player: 'Player', has_regen_buff: bool = False) -> None:
+        if player.health <= 0:
+            return
+
         settings = HEALTH_REGEN[self._difficulty]
 
         if has_regen_buff:
@@ -34,9 +48,9 @@ class HealthSystem:
 
     def _update_buff_regen(self, player: 'Player') -> None:
         self._regen_timer += 1
-        if self._regen_timer >= 60:
+        if self._regen_timer >= GAME_CONSTANTS.DAMAGE.REGEN_THRESHOLD:
             self._regen_timer = 0
-            player.health = min(player.health + 2, player.max_health)
+            player.health = min(player.health + GAME_CONSTANTS.DAMAGE.DEFAULT_REGEN_RATE, player.max_health)
 
     def reset(self) -> None:
         self._regen_timer = 0

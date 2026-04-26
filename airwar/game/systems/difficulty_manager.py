@@ -1,18 +1,31 @@
+"""Difficulty progression — scales enemy stats and spawn rates over time."""
 from typing import List, Dict, Optional
 import logging
 
-from airwar.game.systems.difficulty_strategies import (
+from .difficulty_strategies import (
     DifficultyStrategy,
     DifficultyStrategyFactory,
 )
+from ...config.difficulty_config import BASE_ENEMY_PARAMS
 
 
 class DifficultyListener:
+    """Listener interface for difficulty change notifications."""
     def on_difficulty_changed(self, params: Dict) -> None:
         raise NotImplementedError
 
 
 class DifficultyManager:
+    """Difficulty manager — progressive scaling of enemy stats over time.
+    
+        Increases difficulty based on boss kill count using strategy-specific
+        growth curves. Notifies registered listeners when difficulty changes.
+    
+        Attributes:
+            _boss_kill_count: Number of bosses killed this session.
+            _current_multiplier: Current difficulty multiplier value.
+            _strategy: DifficultyStrategy for scaling calculations.
+        """
     MAX_COMPLEXITY: int = 5
     MAX_MULTIPLIER_GLOBAL: float = 8.0
     MAX_BOSS_COUNT: int = 20
@@ -103,8 +116,6 @@ class DifficultyManager:
             f"boss_kills={self._boss_kill_count}, "
             f"multiplier={self._current_multiplier:.2f}"
         )
-
-        from airwar.config.difficulty_config import BASE_ENEMY_PARAMS
 
         speed_mult = self.get_speed_multiplier()
         fire_mult = self.get_fire_rate_multiplier()

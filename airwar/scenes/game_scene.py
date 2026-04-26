@@ -1,3 +1,4 @@
+"""Main game scene — gameplay loop, entity coordination, and rendering."""
 import pygame
 from typing import Tuple
 from .scene import Scene

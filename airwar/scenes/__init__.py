@@ -1,3 +1,4 @@
+"""Game scenes package — login, menu, game, pause, death, exit."""
 from .scene import Scene, SceneManager
 from .game_scene import GameScene
 from .menu_scene import MenuScene

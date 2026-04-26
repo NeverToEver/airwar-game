@@ -1,8 +1,11 @@
+"""UI coordination — manages rendering delegation and overlay display."""
 from typing import Protocol, List
 import pygame
+from ..buffs.buff_registry import get_buff_color
 
 
 class GameRendererProtocol(Protocol):
+    """Protocol for game renderer dependency injection."""
     def render(self, surface, state, entities) -> None: ...
     def render_hud(
         self, surface, score, difficulty, player_health, player_max_health,
@@ -14,11 +17,13 @@ class GameRendererProtocol(Protocol):
 
 
 class RewardSystemProtocol(Protocol):
+    """Protocol for reward system dependency injection."""
     @property
     def unlocked_buffs(self) -> List[str]: ...
 
 
 class GameControllerProtocol(Protocol):
+    """Protocol for game controller dependency injection."""
     @property
     def state(self): ...
     def get_next_threshold(self) -> float: ...
@@ -34,6 +39,7 @@ class GameControllerProtocol(Protocol):
 
 
 class PlayerProtocol(Protocol):
+    """Protocol for player dependency injection."""
     @property
     def health(self) -> int: ...
     @property
@@ -42,6 +48,7 @@ class PlayerProtocol(Protocol):
 
 
 class GameEntities:
+    """Game entities container — player, enemies, and boss references."""
     def __init__(self, player, enemies, boss):
         self.player = player
         self.enemies = enemies
@@ -49,6 +56,16 @@ class GameEntities:
 
 
 class UIManager:
+    """UI manager — coordinates rendering delegation and overlay display.
+    
+        Routes rendering calls to the appropriate renderer (GameRenderer,
+        HUDRenderer) and manages UI overlay state (reward selector, pause).
+    
+        Attributes:
+            _game_renderer: GameRenderer for entity and background rendering.
+            _reward_system: RewardSystem for buff stats display.
+            _game_controller: GameController for state access.
+        """
     def __init__(
         self,
         game_renderer: GameRendererProtocol,
@@ -79,8 +96,6 @@ class UIManager:
         state = self._game_controller.state
 
         unlocked_buffs = getattr(self._reward_system, 'unlocked_buffs', [])
-
-        from airwar.game.buffs.buff_registry import get_buff_color
 
         difficulty_manager = self._game_controller.difficulty_manager
         current_coefficient = difficulty_manager.get_current_multiplier()

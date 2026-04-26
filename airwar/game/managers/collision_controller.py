@@ -1,12 +1,16 @@
+"""Collision detection between entities using spatial hashing."""
 from dataclasses import dataclass, field
 from typing import List, Tuple, Callable, Optional, TYPE_CHECKING
 import pygame
 
+from ..constants import GAME_CONSTANTS
+from ...config import EXPLOSION_RADIUS
+
 if TYPE_CHECKING:
-    from airwar.entities.player import Player
-    from airwar.entities.enemy import Enemy
-    from airwar.entities.boss import Boss
-    from airwar.entities.bullet import Bullet, EnemyBullet
+    from ...entities.player import Player
+    from ...entities.enemy import Enemy
+    from ...entities.boss import Boss
+    from ...entities.bullet import Bullet, EnemyBullet
 
 # Try to import Rust collision functions
 try:
@@ -23,6 +27,7 @@ except ImportError:
 
 @dataclass
 class CollisionResult:
+    """Collision result dataclass — score gained and enemies killed."""
     player_damaged: bool = False
     enemies_killed: int = 0
     score_gained: int = 0
@@ -32,6 +37,7 @@ class CollisionResult:
 
 @dataclass
 class CollisionEvent:
+    """Collision event dataclass — callback registration for collision handling."""
     type: str
     source: any = None
     target: any = None
@@ -40,6 +46,16 @@ class CollisionEvent:
 
 
 class CollisionController:
+    """Collision controller — detects and handles entity collisions.
+    
+        Supports spatial hashing (Rust-accelerated when available) for efficient
+        collision detection between player bullets, enemy bullets, enemies,
+        bosses, and the player.
+    
+        Attributes:
+            _events: Registered collision event callbacks.
+            _use_rust: Whether Rust spatial hash acceleration is available.
+        """
     def __init__(self):
         self._events: List[CollisionEvent] = []
         self._explosion_callback: Optional[Callable[[float, float, int], None]] = None
@@ -317,9 +333,6 @@ class CollisionController:
         enemies: List['Enemy'],
         explosive_level: int
     ) -> None:
-        from airwar.config import EXPLOSION_RADIUS
-        from airwar.game.constants import GAME_CONSTANTS
-
         bullet_x = bullet.rect.centerx
         bullet_y = bullet.rect.centery
         explosion_radius_sq = (EXPLOSION_RADIUS * explosive_level) ** 2
@@ -374,7 +387,7 @@ class CollisionController:
         for enemy in enemies:
             if enemy.active and player_hitbox.colliderect(enemy.get_rect()):
                 if not try_dodge_func():
-                    on_player_hit_func(20)
+                    on_player_hit_func(GAME_CONSTANTS.DAMAGE.ENEMY_COLLISION_DAMAGE)
                     return True
 
         return False
@@ -406,7 +419,7 @@ class CollisionController:
         if boss and boss.active and not boss.is_entering():
             player_hitbox = player.get_hitbox()
             if boss.get_rect().colliderect(player_hitbox):
-                damage = calculate_damage_func(30)
+                damage = calculate_damage_func(GAME_CONSTANTS.DAMAGE.BOSS_COLLISION_DAMAGE)
                 on_player_hit_func(damage, player)
                 return True
 

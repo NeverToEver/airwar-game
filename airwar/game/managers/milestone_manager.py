@@ -23,6 +23,8 @@ if TYPE_CHECKING:
     from airwar.game.systems.reward_system import RewardSystem
     from airwar.ui.reward_selector import RewardSelector
 
+from .game_controller import GameplayState
+
 
 class MilestoneManager:
     """里程碑触发和奖励选择流程管理器
@@ -80,8 +82,6 @@ class MilestoneManager:
         Returns:
             bool: True 表示触发了里程碑，False 表示未触发
         """
-        from airwar.game.managers.game_controller import GameplayState
-
         if self._game_controller.state.gameplay_state != GameplayState.PLAYING:
             return False
 

@@ -1,3 +1,4 @@
+"""Rendering package — game renderer, HUD, and visual effects."""
 from .game_renderer import GameRenderer, GameEntities
 from .difficulty_indicator import DifficultyIndicator
 from .game_rendering_background import RainforestBackground

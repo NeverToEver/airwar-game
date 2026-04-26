@@ -1,4 +1,6 @@
+"""Responsive helper — adaptive sizing for varying screen dimensions."""
 class ResponsiveHelper:
+    """Responsive helper — adaptive sizing calculations for varying screen dimensions."""
     BASE_WIDTH = 1280
     BASE_HEIGHT = 720
     MIN_SCALE = 0.625

@@ -1,3 +1,4 @@
+"""Difficulty coefficient panel — visual indicator of current difficulty."""
 import pygame
 from typing import TYPE_CHECKING, Tuple, List
 
@@ -8,6 +9,11 @@ if TYPE_CHECKING:
 
 
 class DifficultyCoefficientPanel:
+    """Difficulty coefficient panel — visual indicator of current difficulty multiplier.
+    
+        Shows a stacked bar chart comparing initial vs current difficulty
+        across speed, fire rate, and aggression dimensions.
+        """
     PANEL_WIDTH = 120
     PANEL_HEIGHT = 140
     MARGIN_LEFT = 15

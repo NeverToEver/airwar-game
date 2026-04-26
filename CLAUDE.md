@@ -66,6 +66,20 @@ cd airwar/airwar_core && maturin develop --release
 
 Config at `airwar/tests/pytest.ini` — defaults: `-v --tb=short -ra`. Markers: `smoke` (core), `slow` (integration/performance). Fixtures: `temp_db`, `clean_imports`. Some tests require `pygame.init()`.
 
+### Validation Commands
+
+```bash
+# Check Python syntax on all files
+python3 -m py_compile airwar/airwar/**/*.py
+
+# Verify imports work
+python3 -c "from airwar.game import Game; from airwar.entities import Player, Enemy"
+
+# Check for prohibited local imports in methods (should return 0 results)
+grep -rn "^\s\+from airwar\." airwar/airwar/ --include="*.py" \
+  | grep -v "core_bindings" | grep -v "from airwar.core_bindings"
+```
+
 ---
 
 ## Rust Extension (`airwar_core/`)
@@ -80,9 +94,10 @@ PyO3 extension module providing performance-critical computation with graceful P
 |--------|-----------|----------------|
 | `vector2.rs` | vec2_length, normalize, add, sub, dot, cross, scale, distance, angle, lerp, clamp_length | `core_bindings.py` |
 | `collision.rs` | spatial_hash_collide, spatial_hash_collide_single | `core_bindings.py` |
-| `movement.rs` | update_movement | `core_bindings.py` |
+| `movement.rs` | update_movement (8 types: straight, sine, zigzag, dive, hover, spiral, noise, aggressive) | `core_bindings.py` |
 | `particles.rs` | update_particle, batch_update_particles, generate_explosion_particles | `core_bindings.py` |
 | `sprites.rs` | create_single_bullet_glow, create_spread_bullet_glow, create_laser_bullet_glow, create_explosive_missile_glow | `core_bindings.py` |
+| `bullets.rs` | batch_update_bullets | `core_bindings.py` |
 
 **Note:** `draw_glow_circle` uses pygame fallback only (Rust version has visual differences). Rust sprites acceleration covers bullet glow surfaces; enemy core glow uses pygame.
 
@@ -123,7 +138,7 @@ airwar/
 │   │   ├── systems/         # HealthSystem, RewardSystem, NotificationManager, DifficultyManager,
 │   │   │                    # MovementPatternGenerator
 │   │   ├── rendering/       # GameRenderer, HUDRenderer
-│   │   ├── buffs/           # 18 buff types (damage, speed, defense, special)
+│   │   ├── buffs/           # 13 buff types (health, offense, defense, utility)
 │   │   ├── mother_ship/     # Dock/save: state machine, persistence (JSON), event bus
 │   │   ├── give_up/         # Surrender system (hold-K detector)
 │   │   ├── explosion_animation/
@@ -199,13 +214,34 @@ PLAYING → DYING → GAME_OVER
 - **`config/design_tokens.py`** — Visual design system: color themes (`Colors`, `MilitaryColors`, `ForestColors`), typography, spacing.
 - **`config/game_config.py`** — `GameConfig` singleton with adaptive screen sizing.
 - **Rust native code always has a pure-Python fallback** — checked via `RUST_AVAILABLE` flag in `core_bindings.py`.
-- **Coding standards** — See `docs/REFACTORING_GUIDE.md` for naming conventions, import conventions (relative preferred within package), method ordering within classes, and documentation standards.
+- **Coding standards** — Full guide at `docs/REFACTORING_GUIDE.md`: naming conventions, import conventions, class method ordering, and docstring requirements.
 
-### Important Rules
+### Coding Standards
 
-- **Imports within the `airwar` package**: use relative imports (`from ..config import ...`) over absolute imports (`from airwar.config import ...`).
-- **Local imports inside methods** (`from airwar.config import ...` at method level): prohibited except to avoid circular dependencies or for optional dependencies.
-- **Glow circle rendering**: `draw_glow_circle` uses pygame fallback only. Rust `create_glow_circle` exists in `sprites.rs` but is not used for rendering.
+See `docs/REFACTORING_GUIDE.md` for full conventions. Key rules:
+
+**Imports (priority order):**
+1. Same package, same layer → relative: `from .base import Entity`
+2. Same package, different layer → relative: `from ..config import settings`
+3. Different package (including airwar subpackages) → absolute: `from airwar.config import SCREEN_WIDTH`
+4. Stdlib/third-party → absolute: `import pygame`
+
+**Class method order:**
+```
+1. Special methods (__init__, __repr__)
+2. Properties (@property)
+3. Lifecycle methods (enter, exit, update, render)
+4. Public behavior (fire, take_damage)
+5. Private lifecycle (_init_movement, _setup_weapons)
+6. Private behavior (_update_movement)
+7. Helper methods (_calculate_damage)
+```
+
+**Docstrings:** English, Google style, required for all public classes and methods.
+
+**Local imports in methods:** Prohibited except for optional dependencies or breaking circular imports.
+
+**Glow circle rendering:** `draw_glow_circle` uses pygame fallback only. Rust `create_glow_circle` exists in `sprites.rs` but is not used for rendering.
 
 ### Key Subsystems
 

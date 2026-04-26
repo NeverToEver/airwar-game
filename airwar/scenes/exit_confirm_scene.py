@@ -1,3 +1,4 @@
+"""Exit confirmation dialog overlay."""
 import pygame
 import math
 from .scene import Scene, ExitConfirmAction
@@ -8,9 +9,11 @@ from airwar.ui.effects import EffectsRenderer
 from airwar.config.design_tokens import get_design_tokens, ForestColors, MilitaryUI
 from airwar.utils.mouse_interaction import MouseSelectableMixin
 from airwar.ui.chamfered_panel import draw_chamfered_panel
+from airwar.ui.scene_rendering_utils import SceneRenderingUtils
 
 
 class ExitConfirmScene(Scene, MouseSelectableMixin):
+    """Exit confirmation scene — dialog confirming player wants to quit."""
     def __init__(self):
         Scene.__init__(self)
         MouseSelectableMixin.__init__(self)
@@ -116,62 +119,6 @@ class ExitConfirmScene(Scene, MouseSelectableMixin):
         self._particle_system._animation_time = self.animation_time
         self._particle_system.update(direction=-1)
 
-    def _draw_glow_text(self, surface: pygame.Surface, text: str, font: pygame.font.Font,
-                        pos: tuple, color: tuple, glow_color: tuple, glow_radius: int = None) -> None:
-        if glow_radius is None:
-            glow_radius = self._tokens.animation.GLOW_RADIUS_DEFAULT
-
-        for i in range(glow_radius, 0, -1):
-            alpha = int(100 / i)
-            glow_surf = font.render(text, True, glow_color)
-            glow_surf.set_alpha(alpha)
-            glow_rect = glow_surf.get_rect(center=(pos[0], pos[1] + i))
-            surface.blit(glow_surf, glow_rect)
-
-        main_text = font.render(text, True, color)
-        surface.blit(main_text, main_text.get_rect(center=pos))
-
-    def _draw_option_box(self, surface: pygame.Surface, text: str, y: int, is_selected: bool, scale: float = 1.0) -> None:
-        colors = self._tokens.colors
-        width, height = surface.get_size()
-        center_x = width // 2
-
-        box_width = ResponsiveHelper.scale(self.base_box_width, scale)
-        box_height = ResponsiveHelper.scale(self.base_box_height, scale)
-        box_rect = pygame.Rect(center_x - box_width // 2, y - box_height // 2, box_width, box_height)
-        self.append_option_rect(box_rect)
-
-        if is_selected:
-            glow_color = self.colors['selected_glow']
-            for i in range(4, 0, -1):
-                glow_rect = box_rect.inflate(i * 4, i * 4)
-                glow_surf = pygame.Surface((glow_rect.width, glow_rect.height), pygame.SRCALPHA)
-                pygame.draw.rect(glow_surf, (*glow_color, 50 // i), glow_surf.get_rect())
-                surface.blit(glow_surf, glow_rect)
-
-            pygame.draw.rect(surface, colors.BUTTON_SELECTED_BG, box_rect, border_radius=12)
-            pygame.draw.rect(surface, self.colors['selected'], box_rect, 3, border_radius=12)
-        else:
-            pygame.draw.rect(surface, colors.BUTTON_UNSELECTED_BG, box_rect, border_radius=12)
-            pygame.draw.rect(surface, self.colors['unselected'], box_rect, 2, border_radius=12)
-
-        arrow = ">> " if is_selected else "   "
-        option_text = self.option_font.render(f"{arrow}{text}", True,
-                                             self.colors['selected'] if is_selected else self.colors['unselected'])
-        text_rect = option_text.get_rect(center=(center_x, y))
-        surface.blit(option_text, text_rect)
-
-    def _draw_decorative_lines(self, surface: pygame.Surface) -> None:
-        width, height = surface.get_size()
-        center_x = width // 2
-
-        line_color = (*self.colors['selected_glow'], 40)
-        for i in range(3):
-            offset_y = -100 + i * 20
-            line_surf = pygame.Surface((300, 2), pygame.SRCALPHA)
-            line_surf.fill((*self.colors['particle'][:3], 30 - i * 8))
-            surface.blit(line_surf, (center_x - 150, height // 3 + offset_y))
-
     def _draw_success_indicator(self, surface: pygame.Surface, center_x: int, y: int, scale: float = 1.0) -> None:
         if self.saved:
             check_text = "✓ GAME SAVED"
@@ -203,13 +150,17 @@ class ExitConfirmScene(Scene, MouseSelectableMixin):
         if self.use_military_style:
             self._draw_military_title(surface, title_text, self.title_font, (center_x, title_y))
         else:
-            self._draw_glow_text(surface, title_text, self.title_font,
-                               (center_x, title_y), self.colors['title'], self.colors['title_glow'], 4)
+            SceneRenderingUtils.draw_glow_text(surface, title_text, self.title_font,
+                (center_x, title_y), self.colors['title'], self.colors['title_glow'],
+                glow_radius=4, glow_offset=1, alpha_divisor=100)
 
         if self.use_military_style:
             self._draw_military_decorations(surface, width, height)
         else:
-            self._draw_decorative_lines(surface)
+            SceneRenderingUtils.draw_decorative_lines(
+                surface, center_x, height // 3,
+                self.colors['particle'],
+            )
 
         if self.saved:
             if self.use_military_style:
@@ -226,7 +177,20 @@ class ExitConfirmScene(Scene, MouseSelectableMixin):
             if self.use_military_style:
                 self._draw_military_option_box(surface, option, start_y + i * option_spacing, i == effective_index, scale)
             else:
-                self._draw_option_box(surface, option, start_y + i * option_spacing, i == effective_index, scale)
+                box_width = ResponsiveHelper.scale(self.base_box_width, scale)
+                box_height = ResponsiveHelper.scale(self.base_box_height, scale)
+                SceneRenderingUtils.draw_option_box(
+                    surface, option, self.option_font,
+                    start_y + i * option_spacing, i == effective_index,
+                    box_width, box_height, self._option_rects,
+                    selected_bg_color=self._tokens.colors.BUTTON_SELECTED_BG,
+                    selected_border_color=self.colors['selected'],
+                    unselected_bg_color=self._tokens.colors.BUTTON_UNSELECTED_BG,
+                    unselected_border_color=self.colors['unselected'],
+                    selected_glow_color=self.colors['selected_glow'],
+                    selected_text_color=self.colors['selected'],
+                    unselected_text_color=self.colors['unselected'],
+                )
 
         blink_interval = self._tokens.animation.BLINK_INTERVAL
         blink = (self.animation_time // blink_interval) % 2 == 0

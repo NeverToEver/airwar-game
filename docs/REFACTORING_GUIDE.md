@@ -16,12 +16,13 @@
 | Rust 扩展 | `snake_case/` | `airwar_core/`（项目根目录下） |
 | 入口文件 | 项目根目录 | `main.py` |
 
-### 1.2 遗留目录清理
+### 1.2 遗留目录清理（已完成）
 
 ```
 遗留: airwar/airwar/airwar/data/  (多余的嵌套层次)
 迁移: airwar/airwar/airwar/data/users.json → airwar/data/
 删除: airwar/airwar/airwar/ 空目录树
+状态: ✅ 已完成（commit b0b155e）
 ```
 
 ---
@@ -77,15 +78,28 @@
 
 ### 3.2 局部导入（方法内）
 
-**禁止**：使用方法内导入来避免循环依赖
+**原则**：模块顶部导入优先，方法内导入仅作为补充手段。
 
-**允许**：可选依赖的延迟导入
+**允许的场景**：
+
 ```python
+# 1. 打破循环依赖（本项目 manager 模块最常见）
+def _lazy_load_controller(self):
+    from airwar.game.managers.game_controller import GameController
+    ...
+
+# 2. 可选依赖，延迟导入（避免硬依赖）
 def render(self, surface):
-    # 可选依赖，延迟导入
     from airwar.utils.sprites import get_enemy_sprite
     sprite = get_enemy_sprite(...)
+
+# 3. 大型模块按需加载
+def play_sound(self, path):
+    import pygame.mixer
+    pygame.mixer.Sound(path).play()
 ```
+
+**避免**：在无上述正当理由时使用方法内导入——这通常是模块职责不清的信号。
 
 ### 3.3 循环依赖处理
 
@@ -143,12 +157,12 @@ class MyClass:
 Module docstring in English. Describes purpose and usage.
 """
 
-# Standard library imports (alphabetical)
+# Standard library imports
 import abc
 import enum
 from typing import List, Optional
 
-# Third-party imports (alphabetical)
+# Third-party imports
 import pygame
 
 # Local imports - relative preferred
@@ -209,22 +223,10 @@ class Player(Entity):
 
 | 要求 | 说明 |
 |------|------|
-| 语言 | 英文 |
+| 语言 | 推荐英文（团队可自行决定） |
 | 内容 | 说明「为什么」，而非「是什么」 |
 | 分组注释 | 允许（如 `# === Movement ===`） |
-| 废弃注释 | 使用 `# TODO: ...` 或 `# FIXME: ...` |
-
-**错误示例：**
-```python
-# Set health to zero
-self.health = 0
-```
-
-**正确示例：**
-```python
-# Death triggered when health reaches zero
-self.health = 0
-```
+| 标记注释 | 常用 `# TODO:`、`# FIXME:`、`# DEPRECATED:` 等 |
 
 ---
 
@@ -262,43 +264,48 @@ DEFAULT_SPEED = 5.0
 
 ## 7. 已识别的问题与修复
 
-### 7.1 遗留嵌套目录
+### 7.1 方法内局部导入（识别与处理）
 
-```bash
-# 移动
-mv airwar/airwar/airwar/data/users.json airwar/data/
+当前代码库中存在约 22 处方法内局部导入（`boss_manager.py`、`milestone_manager.py`、`collision_controller.py` 等），绝大部分用于打破 manager 模块之间的循环依赖。
 
-# 删除空目录
-rm -rf airwar/airwar/airwar/
-```
-
-### 7.2 方法内局部导入（禁止模式）
+**已识别的情况：**
 
 ```python
-# 错误：在方法内导入（避免循环依赖）
-def update(self):
-    from airwar.config import get_screen_width
+# 合法：打破循环依赖（boss_manager → game_controller）
+def _setup_boss_spawn(self):
+    from airwar.game.managers.game_controller import GameController
     ...
 
-# 正确：移至模块顶部
-from ..config import get_screen_width
+# 合法：惰性加载避免类型导入时的循环
+def _on_collision(self):
+    from airwar.entities.player import Player
+    ...
 
+# 需优化：可以移到模块顶部
 def update(self):
+    from airwar.config import get_screen_width  # config 不会导致循环依赖
     ...
 ```
 
-### 7.3 Docstring 缺失
+**处理策略：**
+1. 如果导入不涉及循环依赖 → 移到模块顶部
+2. 如果导入用于打破循环依赖 → 保留，加 `# NOTE: Lazy import to avoid circular dependency` 注释
+3. 如果多个方法导入同一个模块 → 考虑重构模块边界，从根本上消除循环
 
-所有以下文件需要补全英文 docstring：
+### 7.2 Docstring 缺失
+
+**已完成**（已添加模块级 docstring）：
 - `entities/base.py`
 - `entities/player.py`
-- `entities/enemy.py`
 - `entities/bullet.py`
 - `game/constants.py`
-- `utils/mouse_interaction.py`
-- `scenes/game_scene.py`
-- `scenes/menu_scene.py`
-- `scenes/scene.py`
+
+**仍需补全**（缺少模块级 docstring 和/或公开 API docstring）：
+- `entities/enemy.py` — 缺少模块级 docstring；`Enemy` 和 `Boss` 类及其公开方法需补全
+- `utils/mouse_interaction.py` — 缺少模块级 docstring；Mixin 类需补全
+- `scenes/game_scene.py` — 缺少模块级 docstring；`GameScene` 关键方法需补全
+- `scenes/menu_scene.py` — 缺少模块级 docstring
+- `scenes/scene.py` — 缺少模块级 docstring；`Scene`、`SceneManager` 类已部分补全
 
 ---
 
@@ -306,7 +313,7 @@ def update(self):
 
 ```bash
 # 1. 语法检查所有 Python 文件
-python3 -m py_compile airwar/airwar/**/*.py
+find airwar/airwar -name "*.py" -exec python3 -m py_compile {} +
 
 # 2. 验证导入链
 python3 -c "from airwar.game import Game; from airwar.entities import Player, Enemy"
@@ -314,13 +321,15 @@ python3 -c "from airwar.game import Game; from airwar.entities import Player, En
 # 3. 运行所有测试
 cd airwar && python3 -m pytest -x -v
 
-# 4. 检查方法内局部导入（应为 0）
+# 4. 检查方法内局部导入（排查是否有不需要的惰性导入）
 grep -rn "^\s\+from airwar\." airwar/airwar/ --include="*.py" \
   | grep -v "core_bindings" \
-  | grep -v "from airwar.core_bindings"
+  | grep -v "from airwar.core_bindings" \
+  | grep -v "__init__\.py" \
+  | grep -v "/tests/"
 ```
 
 ---
 
-*文档版本：1.0*
-*更新日期：2026/04/25*
+*文档版本：1.1*
+*更新日期：2026/04/26*

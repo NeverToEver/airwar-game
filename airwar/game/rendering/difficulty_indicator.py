@@ -1,7 +1,9 @@
+"""Difficulty indicator — visual display of current difficulty level."""
 import pygame
 
 
 class DifficultyIndicator:
+    """Difficulty indicator — visual display of current difficulty multiplier."""
     def __init__(self, difficulty_manager: 'DifficultyManager'):
         self._manager = difficulty_manager
         self._show_details = False

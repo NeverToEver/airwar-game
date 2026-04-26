@@ -1,12 +1,24 @@
+"""Reward selector — buff selection interface at milestones."""
 import pygame
 import math
 from typing import List, Callable, Optional
 from airwar.utils.mouse_interaction import MouseSelectableMixin
-from airwar.config.design_tokens import ForestColors, MilitaryUI
+from airwar.config.design_tokens import ForestColors, MilitaryUI, get_design_tokens
 from airwar.ui.chamfered_panel import draw_chamfered_panel
+from airwar.game.systems.reward_system import REWARD_POOL
 
 
 class RewardSelector(MouseSelectableMixin):
+    """Reward selector — buff selection interface displayed at milestones.
+    
+        Shows 3 buff options in a horizontal layout, handles keyboard
+        navigation and selection, and triggers the chosen reward callback.
+    
+        Attributes:
+            visible: Whether the selector is currently displayed.
+            options: List of reward dicts to display.
+            selected_index: Currently highlighted option index.
+        """
     def __init__(self):
         MouseSelectableMixin.__init__(self)
         self.visible: bool = False
@@ -24,7 +36,6 @@ class RewardSelector(MouseSelectableMixin):
         self._init_visual_elements()
 
     def _init_visual_elements(self) -> None:
-        from airwar.config.design_tokens import get_design_tokens
         import random
 
         self._tokens = get_design_tokens()
@@ -32,27 +43,46 @@ class RewardSelector(MouseSelectableMixin):
         colors = tokens.colors
         self.use_military_style = True
 
+        # Use token values for counts
+        star_count = tokens.components.STAR_COUNT
+        particle_count = tokens.components.PARTICLE_COUNT
+        anim = tokens.animation
+
         self.stars = []
-        for _ in range(80):
+        for _ in range(star_count):
             self.stars.append({
                 'x': random.random(),
                 'y': random.random(),
-                'size': random.uniform(0.5, 2.0),
-                'brightness': random.randint(50, 150),
-                'twinkle_speed': random.uniform(tokens.animation.TWINKLE_SPEED_MIN, tokens.animation.TWINKLE_SPEED_MAX),
+                'size': random.uniform(0.5, 2.5),
+                'brightness': random.randint(80, 200),
+                'twinkle_speed': random.uniform(anim.TWINKLE_SPEED_MIN, anim.TWINKLE_SPEED_MAX),
                 'twinkle_offset': random.random() * math.pi * 2,
             })
 
         self.particles = []
-        for _ in range(30):
+        for _ in range(particle_count):
             self.particles.append({
                 'x': random.random(),
                 'y': random.random(),
-                'size': random.uniform(1.5, 3.0),
-                'speed': random.uniform(tokens.animation.PARTICLE_SPEED_MIN * 0.5, tokens.animation.PARTICLE_SPEED_MAX * 0.6),
-                'alpha': random.randint(80, 150),
-                'pulse_speed': random.uniform(0.02, 0.05),
+                'size': random.uniform(1.5, 4.0),
+                'speed': random.uniform(anim.PARTICLE_SPEED_MIN * 0.3, anim.PARTICLE_SPEED_MAX * 0.5),
+                'alpha': random.randint(100, 200),
+                'pulse_speed': random.uniform(0.01, 0.04),
                 'pulse_offset': random.random() * math.pi * 2,
+            })
+
+        # Nebula clouds - use token values
+        nebula_count = anim.NEBULA_COUNT
+        self.nebula_clouds = []
+        for _ in range(nebula_count):
+            self.nebula_clouds.append({
+                'x': random.random(),
+                'y': random.random(),
+                'radius': random.uniform(anim.NEBULA_RADIUS_MIN, anim.NEBULA_RADIUS_MAX),
+                'alpha': random.randint(anim.NEBULA_ALPHA_MIN, anim.NEBULA_ALPHA_MAX),
+                'color': tokens.forest.GOLD_GLOW,
+                'drift_x': random.uniform(-anim.NEBULA_DRIFT_X_RANGE, anim.NEBULA_DRIFT_X_RANGE),
+                'drift_y': random.uniform(-anim.NEBULA_DRIFT_Y_RANGE, anim.NEBULA_DRIFT_Y_RANGE),
             })
 
         pygame.font.init()
@@ -108,7 +138,6 @@ class RewardSelector(MouseSelectableMixin):
         }
 
     def generate_options(self, boss_kill_count: int, unlocked_buffs: list) -> list:
-        from airwar.game.systems.reward_system import REWARD_POOL
         import random
         options = []
         categories = list(REWARD_POOL.keys())
@@ -170,8 +199,6 @@ class RewardSelector(MouseSelectableMixin):
         if self.visible:
             self.animation_time += 1
             self.glow_offset = math.sin(self.animation_time * self._tokens.animation.GLOW_SPEED) * 8
-            self._update_stars()
-            self._update_particles()
 
     def _update_stars(self) -> None:
         import random
@@ -185,10 +212,29 @@ class RewardSelector(MouseSelectableMixin):
         import random
         for p in self.particles[:]:
             p['y'] -= p['speed'] * 0.002
+            p['x'] += p.get('drift_x', 0) if 'drift_x' in p else 0
             if p['y'] < -0.1:
                 p['y'] = 1.1
                 p['x'] = random.random()
-                p['alpha'] = random.randint(80, 150)
+                p['alpha'] = random.randint(100, 200)
+            if p['x'] < -0.1:
+                p['x'] = 1.1
+            elif p['x'] > 1.1:
+                p['x'] = -0.1
+
+    def _update_nebula_clouds(self) -> None:
+        for cloud in self.nebula_clouds:
+            cloud['x'] += cloud['drift_x']
+            cloud['y'] += cloud['drift_y']
+            # Wrap around
+            if cloud['x'] < -0.2:
+                cloud['x'] = 1.2
+            elif cloud['x'] > 1.2:
+                cloud['x'] = -0.2
+            if cloud['y'] < -0.2:
+                cloud['y'] = 1.2
+            elif cloud['y'] > 1.2:
+                cloud['y'] = -0.2
 
     def _draw_gradient_background(self, surface: pygame.Surface) -> None:
         width, height = surface.get_size()
@@ -210,24 +256,45 @@ class RewardSelector(MouseSelectableMixin):
             x = int(star['x'] * width)
             y = int(star['y'] * height)
             twinkle = math.sin(self.animation_time * star['twinkle_speed'] + star['twinkle_offset'])
-            brightness = int(star['brightness'] * (0.5 + 0.5 * twinkle))
-            pygame.draw.circle(surface, (brightness, brightness, brightness + 30), (x, y), int(star['size']))
+            brightness = int(star['brightness'] * (0.4 + 0.6 * twinkle))
+            size = int(star['size'] * (0.7 + 0.3 * twinkle))
+
+            # Draw star with soft glow
+            if size >= 1:
+                # Outer glow
+                glow_size = size * 2
+                glow_surf = pygame.Surface((glow_size * 2, glow_size * 2), pygame.SRCALPHA)
+                glow_r = max(0, min(255, brightness))
+                glow_g = max(0, min(255, brightness + 20))
+                glow_b = max(0, min(255, brightness + 40))
+                pygame.draw.circle(glow_surf, (glow_r, glow_g, glow_b, 30),
+                                (glow_size, glow_size), glow_size)
+                surface.blit(glow_surf, (x - glow_size, y - glow_size), special_flags=pygame.BLEND_RGBA_ADD)
+                # Core
+                core_r = max(0, min(255, brightness))
+                core_g = max(0, min(255, brightness + 30))
+                core_b = max(0, min(255, brightness + 50))
+                pygame.draw.circle(surface, (core_r, core_g, core_b), (x, y), size)
 
     def _draw_particles(self, surface: pygame.Surface) -> None:
         width, height = surface.get_size()
+        tokens = self._tokens
+        colors = tokens.colors
+        particle_color = colors.PARTICLE_PRIMARY
+
         for p in self.particles:
             x = int(p['x'] * width)
             y = int(p['y'] * height)
             pulse = math.sin(self.animation_time * p['pulse_speed'] + p['pulse_offset'])
-            alpha = int(p['alpha'] * (0.6 + 0.4 * pulse))
-            size = int(p['size'] * (0.7 + 0.3 * pulse))
+            alpha = int(p['alpha'] * (0.5 + 0.5 * pulse))
+            size = int(p['size'] * (0.6 + 0.4 * pulse))
 
             particle_surf = pygame.Surface((size * 4, size * 4), pygame.SRCALPHA)
             for i in range(size * 2, 0, -2):
-                layer_alpha = int(alpha * (size * 2 - i) / (size * 2) * 0.4)
-                pygame.draw.circle(particle_surf, (*self.colors['particle'], layer_alpha),
+                layer_alpha = int(alpha * (size * 2 - i) / (size * 2) * 0.5)
+                pygame.draw.circle(particle_surf, (*particle_color, layer_alpha),
                                  (size * 2, size * 2), i)
-            surface.blit(particle_surf, (x - size * 2, y - size * 2))
+            surface.blit(particle_surf, (x - size * 2, y - size * 2), special_flags=pygame.BLEND_RGBA_ADD)
 
     def _draw_glow_text(self, surface: pygame.Surface, text: str, font: pygame.font.Font,
                         pos: tuple, color: tuple, glow_color: tuple, glow_radius: int = 2) -> None:
@@ -360,8 +427,6 @@ class RewardSelector(MouseSelectableMixin):
             self._draw_military_background(surface)
         else:
             self._draw_gradient_background(surface)
-        self._draw_stars(surface)
-        self._draw_particles(surface)
 
         width, height = surface.get_size()
 
@@ -394,20 +459,19 @@ class RewardSelector(MouseSelectableMixin):
         self._draw_bottom_hint(surface)
 
     def _draw_military_background(self, surface: pygame.Surface) -> None:
-        """Draw military style background with grid effect."""
+        """Draw deep space gradient background."""
         width, height = surface.get_size()
-        # Fill with primary background
-        surface.fill(ForestColors.BG_PRIMARY)
+        tokens = self._tokens
+        colors = tokens.colors
 
-        # Draw grid overlay
-        spacing = MilitaryUI.GRID_SPACING
-        alpha = MilitaryUI.GRID_ALPHA
-        grid_color = (*ForestColors.GOLD_PRIMARY[:3], alpha)
-
-        for x in range(0, width, spacing):
-            pygame.draw.line(surface, grid_color, (x, 0), (x, height))
-        for y in range(0, height, spacing):
-            pygame.draw.line(surface, grid_color, (0, y), (width, y))
+        bg_primary = colors.BACKGROUND_PRIMARY
+        bg_secondary = colors.BACKGROUND_SECONDARY
+        for y in range(height):
+            ratio = y / height
+            r = int(bg_primary[0] * (1 - ratio) + bg_secondary[0] * ratio)
+            g = int(bg_primary[1] * (1 - ratio) + bg_secondary[1] * ratio)
+            b = int(bg_primary[2] * (1 - ratio) + bg_secondary[2] * ratio)
+            pygame.draw.line(surface, (r, g, b), (0, y), (width, y))
 
     def _draw_military_title(self, surface: pygame.Surface) -> None:
         """Draw title in military style."""

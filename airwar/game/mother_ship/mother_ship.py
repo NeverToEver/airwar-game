@@ -1,8 +1,14 @@
+"""Mothership entity — visual representation and docking zone."""
 import pygame
 import math
 
 
 class MotherShip:
+    """Mothership entity — visual representation and docking zone.
+    
+        Renders the mothership on screen and provides the docking area
+        where players can save their progress.
+        """
     DOCKING_BAY_X_OFFSET = 0
     DOCKING_BAY_Y_OFFSET = 50
 

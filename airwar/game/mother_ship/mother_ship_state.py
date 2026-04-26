@@ -1,3 +1,4 @@
+"""Mothership state — docking progress, player save data structures."""
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional
 from enum import Enum
@@ -14,6 +15,7 @@ class SaveDataCorruptedError(Exception):
 
 
 class MotherShipState(Enum):
+    """Mothership state enum — docking lifecycle states."""
     IDLE = "idle"
     COOLDOWN = "cooldown"
     PRESSING = "pressing"
@@ -24,6 +26,7 @@ class MotherShipState(Enum):
 
 @dataclass
 class DockingProgress:
+    """Docking progress dataclass — tracks current docking advancement."""
     is_pressing: bool = False
     press_start_time: float = 0.0
     current_progress: float = 0.0
@@ -99,6 +102,7 @@ class DockedStayProgress:
 
 @dataclass
 class GameSaveData:
+    """Game save data dataclass — serializable game state for persistence."""
     version: int = CURRENT_SAVE_VERSION
     score: int = 0
     cycle_count: int = 0

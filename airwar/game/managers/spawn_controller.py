@@ -1,13 +1,26 @@
+"""Enemy and boss spawning controller with wave management."""
 from typing import List, Optional, TYPE_CHECKING
-from airwar.entities import Enemy, Boss, EnemySpawner, BossData, Bullet
-from airwar.entities.interfaces import IBulletSpawner
-from airwar.config import get_screen_width, BASE_ENEMY_PARAMS
+from ...entities import Enemy, Boss, EnemySpawner, BossData, Bullet
+from ...entities.interfaces import IBulletSpawner
+from ...config import get_screen_width, BASE_ENEMY_PARAMS
 
 if TYPE_CHECKING:
-    from airwar.game.systems.difficulty_manager import DifficultyManager
+    from ..systems.difficulty_manager import DifficultyManager
+
+from ..spawners.enemy_bullet_spawner import EnemyBulletSpawner
 
 
 class SpawnController:
+    """Enemy and boss spawn controller with wave-based spawning.
+    
+        Manages enemy wave lifecycle and boss spawn timing. Uses EnemySpawner
+        for enemy creation and tracks boss state for escape/cleanup logic.
+    
+        Attributes:
+            enemies: List of active Enemy entities.
+            enemy_bullets: List of active enemy bullet entities.
+            boss: Current Boss instance or None.
+        """
     def __init__(self, settings: dict):
         self.enemy_spawner = EnemySpawner()
         self.enemy_spawner.set_params(
@@ -49,7 +62,6 @@ class SpawnController:
         }
 
     def init_bullet_system(self) -> None:
-        from airwar.game.spawners.enemy_bullet_spawner import EnemyBulletSpawner
         bullet_spawner = EnemyBulletSpawner(self.enemy_bullets)
         self.set_bullet_spawner(bullet_spawner)
 

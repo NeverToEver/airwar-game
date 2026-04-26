@@ -6,6 +6,8 @@ from airwar.config.design_tokens import MilitaryColors, MilitaryUI
 
 # Cache for rendered panels
 _panel_surface_cache = {}
+_bg_cache = {}
+_border_cache = {}
 
 
 def _get_chamfered_surface(width: int, height: int, chamfer_depth: int) -> pygame.Surface:
@@ -42,11 +44,6 @@ def _create_chamfered_surface(width: int, height: int, chamfer_depth: int) -> py
     pygame.draw.polygon(surface, (255, 255, 255, 255), points)
 
     return surface
-
-
-def clear_chamfered_cache() -> None:
-    """Clear the panel surface cache."""
-    _panel_surface_cache.clear()
 
 
 def draw_chamfered_panel(
@@ -100,8 +97,8 @@ def draw_chamfered_panel(
         glow_filled = pygame.Surface(glow_size, pygame.SRCALPHA)
         glow_filled.fill((0, 0, 0, 0))
 
-        # Create glow shape
-        glow_shape = _create_chamfered_surface(width + 4, height + 4, chamfer_depth + 2)
+        # Create glow shape (from cached base)
+        glow_shape = _get_chamfered_surface(width + 4, height + 4, chamfer_depth + 2).copy()
         glow_filled.blit(glow_shape, (0, 0))
         pygame.draw.polygon(glow_filled, scaled_glow,
                            [(chamfer_depth + 2, 0), (width + 2, 0),
@@ -109,24 +106,18 @@ def draw_chamfered_panel(
                             (0, chamfer_depth + 2), (width + 2, chamfer_depth + 2)][:4], 0)
 
         glow_filled.set_colorkey((0, 0, 0, 0))
-        glow_mask = _create_chamfered_surface(width + 4, height + 4, chamfer_depth + 2)
+        glow_mask = _get_chamfered_surface(width + 4, height + 4, chamfer_depth + 2).copy()
         glow_mask.set_colorkey((0, 0, 0, 0))
         pygame.draw.polygon(glow_mask, (255, 255, 255, 255),
                            [(chamfer_depth + 2, 0), (width + 2, 0),
                             (width + 2, height + 2), (0, height + 2),
                             (0, chamfer_depth + 2)])
 
-        glow_result = pygame.Surface(glow_size, pygame.SRCALPHA)
-        glow_result.fill((0, 0, 0, 0))
-        for i in range(3, 0, -1):
-            glow_result.blit(glow_filled, (0, 0))
-        glow_result.blit(glow_filled, (0, 0))
-
         surface.blit(glow_filled, (glow_blit_x, glow_blit_y))
 
     # Draw border (if specified)
     if border_color is not None:
-        border_surf = _get_chamfered_surface(width, height, chamfer_depth)
+        border_surf = _get_chamfered_surface(width, height, chamfer_depth).copy()
         border_surf.set_colorkey((0, 0, 0, 0))
         pygame.draw.polygon(border_surf, border_color if len(border_color) == 4 else (*border_color, 255),
                           [(chamfer_depth, 0), (width - chamfer_depth, 0),
@@ -135,38 +126,44 @@ def draw_chamfered_panel(
                            (0, height - chamfer_depth), (0, chamfer_depth)],
                           MilitaryUI.CHAMFER_BORDER_WIDTH)
 
-    # Draw background
-    bg_result = pygame.Surface((width, height), pygame.SRCALPHA)
-    bg_result.fill((0, 0, 0, 0))
-    chamfer_shape = _create_chamfered_surface(width, height, chamfer_depth)
-    chamfer_shape.set_colorkey((0, 0, 0, 0))
-    pygame.draw.polygon(chamfer_shape, bg_color if len(bg_color) == 3 else bg_color[:3],
-                       [(chamfer_depth, 0), (width - chamfer_depth, 0),
-                        (width, chamfer_depth), (width, height - chamfer_depth),
-                        (width - chamfer_depth, height), (chamfer_depth, height),
-                        (0, height - chamfer_depth), (0, chamfer_depth)])
-    bg_result.blit(chamfer_shape, (0, 0))
+    # Draw background (from cache)
+    bg_key = (width, height, chamfer_depth, bg_color)
+    if bg_key not in _bg_cache:
+        bg_result = pygame.Surface((width, height), pygame.SRCALPHA)
+        bg_result.fill((0, 0, 0, 0))
+        chamfer_shape = _get_chamfered_surface(width, height, chamfer_depth).copy()
+        chamfer_shape.set_colorkey((0, 0, 0, 0))
+        pygame.draw.polygon(chamfer_shape, bg_color if len(bg_color) == 3 else bg_color[:3],
+                           [(chamfer_depth, 0), (width - chamfer_depth, 0),
+                            (width, chamfer_depth), (width, height - chamfer_depth),
+                            (width - chamfer_depth, height), (chamfer_depth, height),
+                            (0, height - chamfer_depth), (0, chamfer_depth)])
+        bg_result.blit(chamfer_shape, (0, 0))
+        _bg_cache[bg_key] = bg_result
 
-    surface.blit(bg_result, (x, y))
+    surface.blit(_bg_cache[bg_key], (x, y))
 
-    # Draw border on top
+    # Draw border on top (from cache)
     if border_color is not None:
-        border_result = pygame.Surface((width, height), pygame.SRCALPHA)
-        border_result.fill((0, 0, 0, 0))
-        points = [
-            (chamfer_depth, 0),
-            (width - chamfer_depth, 0),
-            (width, chamfer_depth),
-            (width, height - chamfer_depth),
-            (width - chamfer_depth, height),
-            (chamfer_depth, height),
-            (0, height - chamfer_depth),
-            (0, chamfer_depth),
-        ]
-        pygame.draw.lines(border_result,
-                         border_color if len(border_color) == 4 else (*border_color, 255),
-                         False, points, MilitaryUI.CHAMFER_BORDER_WIDTH)
-        surface.blit(border_result, (x, y))
+        border_key = (width, height, chamfer_depth, border_color)
+        if border_key not in _border_cache:
+            border_result = pygame.Surface((width, height), pygame.SRCALPHA)
+            border_result.fill((0, 0, 0, 0))
+            points = [
+                (chamfer_depth, 0),
+                (width - chamfer_depth, 0),
+                (width, chamfer_depth),
+                (width, height - chamfer_depth),
+                (width - chamfer_depth, height),
+                (chamfer_depth, height),
+                (0, height - chamfer_depth),
+                (0, chamfer_depth),
+            ]
+            pygame.draw.lines(border_result,
+                             border_color if len(border_color) == 4 else (*border_color, 255),
+                             False, points, MilitaryUI.CHAMFER_BORDER_WIDTH)
+            _border_cache[border_key] = border_result
+        surface.blit(_border_cache[border_key], (x, y))
 
 
 class ChamferedPanel:

@@ -1,7 +1,10 @@
+"""Reward generation and application — buffs unlocked at score milestones."""
 import random
 from typing import List, Dict, Callable
-from airwar.game.buffs.buff_registry import BUFF_REGISTRY, create_buff
-from airwar.game.buffs.base_buff import Buff
+from ..buffs.buff_registry import BUFF_REGISTRY, create_buff
+from ..buffs.base_buff import Buff
+from ..constants import GAME_CONSTANTS
+from ...config import DIFFICULTY_SETTINGS
 
 
 REWARD_POOL = {
@@ -16,24 +19,31 @@ REWARD_POOL = {
         {'name': 'Piercing', 'desc': 'Bullets pierce 1 enemy', 'icon': 'PIR'},
         {'name': 'Spread Shot', 'desc': 'Fire 3 bullets at once', 'icon': 'SPD'},
         {'name': 'Explosive', 'desc': 'Bullets deal 30 AoE damage', 'icon': 'EXP'},
-        {'name': 'Shotgun', 'desc': 'Fire shotgun spread', 'icon': 'SHT'},
         {'name': 'Laser', 'desc': 'Laser beam attacks', 'icon': 'LSR'},
     ],
     'defense': [
-        {'name': 'Shield', 'desc': 'Block next hit', 'icon': 'SHD'},
         {'name': 'Armor', 'desc': '-15% damage taken', 'icon': 'ARM'},
         {'name': 'Evasion', 'desc': '+20% dodge chance', 'icon': 'EVD'},
         {'name': 'Barrier', 'desc': 'Gain 50 temporary HP', 'icon': 'BAR'},
     ],
     'utility': [
-        {'name': 'Speed Boost', 'desc': '+15% move speed', 'icon': 'SPD'},
-        {'name': 'Magnet', 'desc': '+30% score pickup range', 'icon': 'MAG'},
         {'name': 'Slow Field', 'desc': 'Slow enemies by 20%', 'icon': 'SLO'},
     ],
 }
 
 
 class RewardSystem:
+    """Reward system — generates and applies milestone buff rewards.
+    
+        Manages buff levels, applies buff effects to the player, and generates
+        reward options at score milestones. Tracks unlocked buffs and their
+        cumulative levels.
+    
+        Attributes:
+            unlocked_buffs: List of buff names the player has acquired.
+            buff_levels: Dict mapping buff names to current level counts.
+            active_buffs: Dict of currently active Buff instances.
+        """
     def __init__(self, difficulty: str = 'medium'):
         self.unlocked_buffs: List[str] = []
         self.active_buffs: Dict[str, Buff] = {}
@@ -51,22 +61,17 @@ class RewardSystem:
             'Explosive': 0,
             'Armor': 0,
             'Evasion': 0,
-            'Shotgun': 0,
             'Laser': 0,
             'Lifesteal': 0,
             'Regeneration': 0,
-            'Shield': 0,
             'Extra Life': 0,
             'Barrier': 0,
-            'Speed Boost': 0,
-            'Magnet': 0,
             'Slow Field': 0,
         }
 
         self.magnet_range: int = 0
         self.slow_factor: float = 1.0
 
-        from airwar.config import DIFFICULTY_SETTINGS
         settings = DIFFICULTY_SETTINGS.get(difficulty, DIFFICULTY_SETTINGS['medium'])
         self._base_bullet_damage = settings.get('bullet_damage', 50)
         self._base_max_health = settings.get('max_health', 100)
@@ -145,6 +150,11 @@ class RewardSystem:
         options = []
         categories = list(REWARD_POOL.keys())
 
+        # One-shot buffs: binary abilities that have no effect beyond level 1
+        ONE_SHOT_BUFFS = {'Spread Shot', 'Explosive', 'Laser'}
+
+        taken_one_shots = ONE_SHOT_BUFFS & set(self.buff_levels.keys())
+
         for _ in range(3):
             cat = random.choice(categories)
             rewards = REWARD_POOL[cat]
@@ -152,10 +162,15 @@ class RewardSystem:
             if cat == 'offense' and boss_kill_count < 3:
                 rewards = [r for r in rewards if r['name'] not in ['Explosive']]
 
-            reward = random.choice(rewards)
+            # Filter out already-taken one-shot buffs
+            available = [r for r in rewards if r['name'] not in taken_one_shots]
+            if not available:
+                available = rewards  # fallback if all filtered out
+
+            reward = random.choice(available)
             attempts = 0
             while reward in options and attempts < 10:
-                reward = random.choice(rewards)
+                reward = random.choice(available)
                 attempts += 1
 
             options.append(reward)
@@ -169,7 +184,6 @@ class RewardSystem:
             'Piercing': self._apply_piercing,
             'Spread Shot': self._apply_spread_shot,
             'Explosive': self._apply_explosive,
-            'Shotgun': self._apply_shotgun,
             'Laser': self._apply_laser,
             'Armor': self._apply_armor,
             'Evasion': self._apply_evasion,
@@ -199,13 +213,9 @@ class RewardSystem:
         if self.buff_levels.get('Explosive', 0) == 1:
             player.activate_explosive()
 
-    def _apply_shotgun(self, player) -> None:
-        if self.buff_levels.get('Shotgun', 0) == 1:
-            player.activate_shotgun()
-
     def _apply_laser(self, player) -> None:
         if self.buff_levels.get('Laser', 0) == 1:
-            player.activate_laser(180)
+            player.activate_laser(GAME_CONSTANTS.REWARD.LASER_DURATION)
 
     def _apply_armor(self, player) -> None:
         pass
@@ -271,7 +281,7 @@ class RewardSystem:
         for enemy in enemies:
             if enemy.active:
                 dist = ((enemy.rect.centerx - x) ** 2 + (enemy.rect.centery - y) ** 2) ** 0.5
-                if dist < 60:
+                if dist < GAME_CONSTANTS.REWARD.EXPLOSION_RADIUS:
                     enemy.take_damage(int(damage * 0.5))
 
     def get_buff_color(self, name: str) -> tuple:

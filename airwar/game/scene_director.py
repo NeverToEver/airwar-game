@@ -1,12 +1,26 @@
+"""Scene orchestration — manages scene transitions and lifecycle."""
 from typing import Optional, List
 import pygame
-from airwar.scenes import SceneManager, GameScene, MenuScene
-from airwar.scenes.scene import PauseAction, ExitConfirmAction
-from airwar.game.mother_ship import PersistenceManager, GameSaveData
+import logging
+from ..config import FPS, set_screen_size
+from ..scenes import SceneManager, GameScene, MenuScene
+from ..scenes.scene import PauseAction, ExitConfirmAction
+from .mother_ship import PersistenceManager, GameSaveData
 
 
 class SceneDirector:
+    """Scene director — orchestrates scene transitions and lifecycle.
+    
+        Manages the high-level scene flow: Login → Menu → Game, with support
+        for pause, death, and exit confirmation overlays. Preserves scene
+        state across transitions via SceneManager.
+    
+        Attributes:
+            _window: Pygame display window reference.
+            _scene_manager: SceneManager for registration and switching.
+        """
     def __init__(self, window, scene_manager: SceneManager, user_db=None):
+        self._logger = logging.getLogger(self.__class__.__name__)
         self._window = window
         self._scene_manager = scene_manager
         self._user_db = user_db
@@ -54,7 +68,7 @@ class SceneDirector:
             self._scene_manager.update()
             self._scene_manager.render(self._window.get_surface())
             self._window.flip()
-            self._window.tick(60)
+            self._window.tick(FPS)
 
         if hasattr(login_scene, 'should_quit') and login_scene.should_quit():
             return (False, None)
@@ -77,7 +91,7 @@ class SceneDirector:
             self._scene_manager.update()
             self._scene_manager.render(self._window.get_surface())
             self._window.flip()
-            self._window.tick(60)
+            self._window.tick(FPS)
 
             if isinstance(self._scene_manager.get_current_scene(), MenuScene):
                 ms = self._scene_manager.get_current_scene()
@@ -115,7 +129,7 @@ class SceneDirector:
                 tutorial_scene.update()
                 tutorial_scene.render(self._window.get_surface())
                 self._window.flip()
-                self._window.tick(60)
+                self._window.tick(FPS)
                 
                 if tutorial_scene.should_quit():
                     break
@@ -127,6 +141,7 @@ class SceneDirector:
             pygame.time.delay(100)
 
     def _run_game_flow(self) -> str:
+        self._logger.info(f"Starting game flow: difficulty={self._selected_difficulty}, user={self._current_user}")
         self._scene_manager.switch("game",
                                   difficulty=self._selected_difficulty,
                                   username=self._current_user or 'Guest')
@@ -135,6 +150,7 @@ class SceneDirector:
         if self._pending_save_data and isinstance(current_scene, GameScene):
             current_scene.restore_from_save(self._pending_save_data)
             self._pending_save_data = None
+            self._logger.info("Game restored from pending save data")
 
         while self._running:
             escape_handled = False
@@ -144,6 +160,7 @@ class SceneDirector:
             if not self._check_quit(events):
                 if isinstance(current_scene, GameScene):
                     self._save_game_on_quit(current_scene)
+                self._logger.info("Game flow ended: quit")
                 return "quit"
             self._handle_resize_if_needed(events)
 
@@ -151,20 +168,24 @@ class SceneDirector:
                 result = self._handle_pause_toggle(events, current_scene)
                 if result == "main_menu":
                     self._clear_saved_game()
+                    self._logger.info("Game flow ended: main_menu")
                     return "main_menu"
                 elif result == "save_and_quit":
                     self._save_and_quit(current_scene)
+                    self._logger.info("Game flow ended: save_and_quit")
                     return self._show_exit_confirm(saved=True)
                 elif result == "quit_without_saving":
+                    self._logger.info("Game flow ended: quit_without_saving")
                     return self._show_exit_confirm(saved=False)
                 elif result == "quit":
                     self._save_and_quit(current_scene)
+                    self._logger.info("Game flow ended: quit")
                     return self._show_exit_confirm(saved=True)
                 escape_handled = result is True
 
             self._handle_scene_events(events, escape_handled)
 
-            # 检查鼠标点击触发的暂停请求
+            # Check for pause requests triggered by mouse click
             if isinstance(current_scene, GameScene) and not escape_handled:
                 if current_scene.consume_pause_request():
                     current_scene.pause()
@@ -174,21 +195,25 @@ class SceneDirector:
                     elif action == PauseAction.MAIN_MENU:
                         self._clear_saved_game()
                         current_scene.resume()
+                        self._logger.info("Game flow ended from pause: main_menu")
                         return "main_menu"
                     elif action == PauseAction.SAVE_AND_QUIT:
                         self._save_and_quit(current_scene)
+                        self._logger.info("Game flow ended from pause: save_and_quit")
                         return self._show_exit_confirm(saved=True)
                     elif action == PauseAction.QUIT_WITHOUT_SAVING:
                         self._clear_saved_game()
+                        self._logger.info("Game flow ended from pause: quit_without_saving")
                         return self._show_exit_confirm(saved=False)
                     elif action == PauseAction.QUIT:
                         self._save_and_quit(current_scene)
+                        self._logger.info("Game flow ended from pause: quit")
                         return self._show_exit_confirm(saved=True)
 
             self._scene_manager.update()
             self._scene_manager.render(self._window.get_surface())
             self._window.flip()
-            self._window.tick(60)
+            self._window.tick(FPS)
 
             if isinstance(current_scene, GameScene):
                 if current_scene.is_game_over():
@@ -259,22 +284,22 @@ class SceneDirector:
             pause_scene.update()
             pause_scene.render(self._window.get_surface())
             self._window.flip()
-            self._window.tick(60)
+            self._window.tick(FPS)
 
         result = pause_scene.get_result()
         return result if result else PauseAction.RESUME
 
     def _show_exit_confirm(self, saved: bool) -> str:
-        """显示退出确认菜单
+        """Show exit confirmation menu.
 
-        在玩家选择保存退出或不保存退出后显示，
-        允许玩家选择返回主菜单、开始新游戏或真正退出游戏。
+        Displayed after the player chooses to save and quit or quit without saving.
+        Allows the player to return to main menu, start a new game, or exit.
 
         Args:
-            saved: 是否已经保存了游戏进度
+            saved: Whether the game progress has been saved.
 
         Returns:
-            str: 'main_menu' 返回主菜单, 'restart' 重新开始, 'quit' 退出游戏
+            str: 'main_menu' returns to main menu, 'restart' starts a new game, 'quit' exits.
         """
         exit_scene = self._scene_manager._scenes.get("exit_confirm")
         if not exit_scene:
@@ -295,7 +320,7 @@ class SceneDirector:
             exit_scene.update()
             exit_scene.render(self._window.get_surface())
             self._window.flip()
-            self._window.tick(60)
+            self._window.tick(FPS)
 
         result = exit_scene.get_result()
         if result == ExitConfirmAction.RETURN_TO_MENU:
@@ -335,7 +360,7 @@ class SceneDirector:
             death_scene.update()
             death_scene.render(self._window.get_surface())
             self._window.flip()
-            self._window.tick(60)
+            self._window.tick(FPS)
 
         result = death_scene.get_result()
         return result == 'return_to_menu'
@@ -359,7 +384,6 @@ class SceneDirector:
             self._scene_manager.handle_events(event)
 
     def _handle_resize(self, width: int, height: int) -> None:
-        from airwar.config import set_screen_size
         set_screen_size(width, height)
 
     def _check_and_get_saved_game(self, username: str) -> Optional[GameSaveData]:

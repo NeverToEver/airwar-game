@@ -1,3 +1,4 @@
+"""Death screen — score summary and continue/quit options."""
 import pygame
 import math
 from .scene import Scene
@@ -7,9 +8,15 @@ from airwar.ui.particles import ParticleSystem
 from airwar.ui.effects import EffectsRenderer
 from airwar.config.design_tokens import get_design_tokens, ForestColors
 from airwar.utils.mouse_interaction import MouseSelectableMixin
+from airwar.ui.scene_rendering_utils import SceneRenderingUtils
 
 
 class DeathScene(Scene, MouseSelectableMixin):
+    """Death scene — post-death score summary and continue options.
+    
+        Displays final score, kills, and boss kills. Offers options to
+        continue (return to menu) or quit.
+        """
     def __init__(self):
         Scene.__init__(self)
         MouseSelectableMixin.__init__(self)
@@ -116,61 +123,6 @@ class DeathScene(Scene, MouseSelectableMixin):
                         (ripple['x'] - int(ripple['radius']),
                          ripple['y'] - int(ripple['radius'])))
 
-    def _draw_glow_text(self, surface: pygame.Surface, text: str, font: pygame.font.Font,
-                        pos: tuple, color: tuple, glow_color: tuple, glow_radius: int = None) -> None:
-        if glow_radius is None:
-            glow_radius = self._tokens.animation.GLOW_RADIUS_TITLE
-
-        for i in range(glow_radius, 0, -1):
-            alpha = int(80 / i)
-            glow_surf = font.render(text, True, glow_color)
-            glow_surf.set_alpha(alpha)
-            glow_rect = glow_surf.get_rect(center=(pos[0], pos[1] + i * 2))
-            surface.blit(glow_surf, glow_rect)
-
-        main_text = font.render(text, True, color)
-        surface.blit(main_text, main_text.get_rect(center=pos))
-
-    def _draw_option_box(self, surface: pygame.Surface, text: str, y: int, is_selected: bool, scale: float = 1.0) -> None:
-        colors = self._tokens.colors
-        width, height = surface.get_size()
-        center_x = width // 2
-
-        box_width = ResponsiveHelper.scale(self.base_box_width, scale)
-        box_height = ResponsiveHelper.scale(self.base_box_height, scale)
-        box_rect = pygame.Rect(center_x - box_width // 2, y - box_height // 2, box_width, box_height)
-        self.append_option_rect(box_rect)
-
-        if is_selected:
-            glow_color = self.colors['selected_glow']
-            for i in range(5, 0, -1):
-                glow_rect = box_rect.inflate(i * 4, i * 4)
-                glow_surf = pygame.Surface((glow_rect.width, glow_rect.height), pygame.SRCALPHA)
-                pygame.draw.rect(glow_surf, (*glow_color, 40 // i), glow_surf.get_rect())
-                surface.blit(glow_surf, glow_rect)
-
-            pygame.draw.rect(surface, colors.BUTTON_SELECTED_BG, box_rect, border_radius=12)
-            pygame.draw.rect(surface, self.colors['selected'], box_rect, 3, border_radius=12)
-        else:
-            pygame.draw.rect(surface, colors.BUTTON_UNSELECTED_BG, box_rect, border_radius=12)
-            pygame.draw.rect(surface, self.colors['unselected'], box_rect, 2, border_radius=12)
-
-        arrow = ">> " if is_selected else "   "
-        option_text = self.option_font.render(f"{arrow}{text}", True,
-                                             self.colors['selected'] if is_selected else self.colors['unselected'])
-        text_rect = option_text.get_rect(center=(center_x, y))
-        surface.blit(option_text, text_rect)
-
-    def _draw_decorative_lines(self, surface: pygame.Surface) -> None:
-        width, height = surface.get_size()
-        center_x = width // 2
-
-        for i in range(3):
-            offset_y = -80 + i * 15
-            line_surf = pygame.Surface((250, 2), pygame.SRCALPHA)
-            line_surf.fill((*self.colors['particle'][:3], 25 - i * 6))
-            surface.blit(line_surf, (center_x - 125, height // 3 + offset_y))
-
     def render(self, surface: pygame.Surface) -> None:
         self._background_renderer.render(surface, self.colors)
         self._particle_system.render(surface, self.colors['particle'])
@@ -180,10 +132,16 @@ class DeathScene(Scene, MouseSelectableMixin):
         scale = ResponsiveHelper.get_scale_factor(width, height)
 
         title_y = height // 3 + self.glow_offset * 0.3
-        self._draw_glow_text(surface, "GAME OVER", self.title_font,
-                           (width // 2, title_y), self.colors['title'], self.colors['title_glow'], 5)
+        SceneRenderingUtils.draw_glow_text(surface, "GAME OVER", self.title_font,
+            (width // 2, title_y), self.colors['title'], self.colors['title_glow'],
+            glow_radius=5, glow_offset=2, alpha_divisor=80)
 
-        self._draw_decorative_lines(surface)
+        SceneRenderingUtils.draw_decorative_lines(
+            surface, width // 2, height // 3,
+            self.colors['particle'],
+            start_offset_y=-80, line_increment_y=15,
+            line_width=250, alpha_base=25, alpha_decrement=6,
+        )
 
         score_text = self.score_font.render(f"SCORE: {self.score}", True, self.colors['score'])
         surface.blit(score_text, score_text.get_rect(center=(width // 2, height // 2 - ResponsiveHelper.scale(30, scale))))
@@ -196,8 +154,23 @@ class DeathScene(Scene, MouseSelectableMixin):
         
         self.clear_option_rects()
         effective_index = self.get_effective_selected_index(self.selected_index)
+        colors = self._tokens.colors
+        box_width = ResponsiveHelper.scale(self.base_box_width, scale)
+        box_height = ResponsiveHelper.scale(self.base_box_height, scale)
         for i, option in enumerate(self.options):
-            self._draw_option_box(surface, option, start_y + i * option_spacing, i == effective_index, scale)
+            SceneRenderingUtils.draw_option_box(
+                surface, option, self.option_font,
+                start_y + i * option_spacing, i == effective_index,
+                box_width, box_height, self._option_rects,
+                selected_bg_color=colors.BUTTON_SELECTED_BG,
+                selected_border_color=self.colors['selected'],
+                unselected_bg_color=colors.BUTTON_UNSELECTED_BG,
+                unselected_border_color=self.colors['unselected'],
+                selected_glow_color=self.colors['selected_glow'],
+                selected_text_color=self.colors['selected'],
+                unselected_text_color=self.colors['unselected'],
+                glow_layers=4, glow_alpha_divisor=40,
+            )
 
         blink_interval = self._tokens.animation.BLINK_INTERVAL
         blink = (self.animation_time // blink_interval) % 2 == 0
