@@ -26,38 +26,66 @@ def draw_bullet(surface: pygame.Surface, x: float, y: float, width: float = 8, h
 def draw_single_bullet(surface: pygame.Surface, x: float, y: float, width: float, height: float, owner: str = "player") -> None:
     center_x = x + width / 2
     top_y = y
-    # Player bullets: golden/yellow, Enemy bullets: cyan/blue
     if owner == "enemy":
-        glow_colors = [(100, 200, 255, 30), (255, 220, 50)]
-        bullet_color = (100, 240, 255)
+        # Enemy bullets: bright magenta/pink - more visible
+        glow_color = (255, 100, 200, 50)
+        bullet_color = (255, 150, 220)
+        core_color = (255, 220, 255)
+        # Larger enemy bullet for visibility
+        ew, eh = int(width * 1.4), int(height * 1.3)
+        ex = center_x - ew / 2
+        ey = top_y
     else:
-        glow_colors = [(255, 200, 50, 30), (255, 220, 50)]
+        glow_color = (255, 200, 50, 30)
         bullet_color = (255, 220, 50)
-    cache_key = (int(width), int(height), owner)
+        core_color = None
+        ew, eh = width, height
+        ex, ey = x, y
+
+    cache_key = (int(ew), int(eh), owner)
     if cache_key not in _single_bullet_glow_cache:
         if RUST_AVAILABLE and create_single_bullet_glow:
-            data = create_single_bullet_glow(width, height)
-            surf_w = int(width + 16)
-            surf_h = int(height + 12)
+            data = create_single_bullet_glow(ew, eh)
+            surf_w = int(ew + 20)
+            surf_h = int(eh + 16)
             glow = _bytes_to_surface(data, surf_w, surf_h)
         else:
-            glow = pygame.Surface((int(width + 16), int(height + 12)), pygame.SRCALPHA)
-            for i in range(6, 0, -1):
-                alpha = 30 * (6 - i) // 5
-                glow_color = glow_colors[0][:3] + (alpha,)
-                pygame.draw.ellipse(glow, glow_color, (8 - i, 4 - i // 2, int(width) + i * 2 - 6, int(height) + i - 2))
+            glow = pygame.Surface((int(ew + 20), int(eh + 16)), pygame.SRCALPHA)
+            for i in range(8, 0, -1):
+                alpha = 40 * (8 - i) // 7
+                color = glow_color[:3] + (alpha,)
+                pygame.draw.ellipse(glow, color, (10 - i, 5 - i // 2, int(ew) + i * 2 - 10, int(eh) + i - 4))
         _single_bullet_glow_cache[cache_key] = glow
     else:
         glow = _single_bullet_glow_cache[cache_key]
-    surface.blit(glow, (int(x - 8), int(top_y - 4)))
 
-    points = [
-        (center_x, top_y),
-        (x + width, y + height * 0.3),
-        (center_x, y + height),
-        (x, y + height * 0.3),
-    ]
-    pygame.draw.polygon(surface, bullet_color, points)
+    if owner == "enemy":
+        surface.blit(glow, (int(center_x - ew / 2 - 10), int(top_y - 5)))
+        # Draw larger diamond shape for enemy
+        points = [
+            (center_x, top_y),
+            (center_x + ew * 0.5, top_y + eh * 0.4),
+            (center_x, top_y + eh),
+            (center_x - ew * 0.5, top_y + eh * 0.4),
+        ]
+        pygame.draw.polygon(surface, bullet_color, points)
+        # Bright core
+        core_points = [
+            (center_x, top_y + eh * 0.15),
+            (center_x + ew * 0.2, top_y + eh * 0.45),
+            (center_x, top_y + eh * 0.7),
+            (center_x - ew * 0.2, top_y + eh * 0.45),
+        ]
+        pygame.draw.polygon(surface, core_color, core_points)
+    else:
+        surface.blit(glow, (int(x - 8), int(top_y - 4)))
+        points = [
+            (center_x, top_y),
+            (x + width, y + height * 0.3),
+            (center_x, y + height),
+            (x, y + height * 0.3),
+        ]
+        pygame.draw.polygon(surface, bullet_color, points)
 
 
 def draw_spread_bullet(surface: pygame.Surface, x: float, y: float, width: float, height: float, owner: str = "player") -> None:
