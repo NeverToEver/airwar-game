@@ -5,7 +5,7 @@ from typing import List
 from .hud_renderer import HUDRenderer
 from .integrated_hud import IntegratedHUD
 from ..managers.game_controller import GameState, GameplayState
-from .game_rendering_background import RainforestBackground
+from .game_rendering_background import SpaceBackground
 from ..death_animation import DeathAnimation
 
 
@@ -26,19 +26,19 @@ class GameRenderer:
     
         Attributes:
             hud_renderer: HUDRenderer for heads-up display.
-            background_renderer: RainforestBackground for parallax starfield.
+            background_renderer: SpaceBackground for parallax starfield.
             _death_animation: DeathAnimation instance during player death.
         """
     def __init__(self, hud_renderer: HUDRenderer = None, use_integrated_hud: bool = True):
         self.hud_renderer = hud_renderer or HUDRenderer()
         self.integrated_hud = IntegratedHUD() if use_integrated_hud else None
-        self.background_renderer: RainforestBackground = None
+        self.background_renderer: SpaceBackground = None
         self._death_animation = None
         self._screen_diagonal = 0
         self._was_in_dying_state = False
 
     def init_background(self, screen_width: int, screen_height: int) -> None:
-        self.background_renderer = RainforestBackground(screen_width, screen_height)
+        self.background_renderer = SpaceBackground(screen_width, screen_height)
         self._screen_diagonal = int((screen_width ** 2 + screen_height ** 2) ** 0.5)
 
     def render(self, surface: pygame.Surface, state: GameState, entities: GameEntities) -> None:

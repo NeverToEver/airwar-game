@@ -6,7 +6,7 @@ from airwar.utils.responsive import ResponsiveHelper
 from airwar.ui.menu_background import MenuBackground
 from airwar.ui.particles import ParticleSystem
 from airwar.ui.effects import EffectsRenderer
-from airwar.config.design_tokens import get_design_tokens, ForestColors, MilitaryUI
+from airwar.config.design_tokens import get_design_tokens, SceneColors, SystemUI
 from airwar.utils.mouse_interaction import MouseSelectableMixin
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.ui.scene_rendering_utils import SceneRenderingUtils
@@ -27,7 +27,7 @@ class ExitConfirmScene(Scene, MouseSelectableMixin):
         self.difficulty = kwargs.get('difficulty', 'medium')
         self.animation_time = 0
         self.glow_offset = 0
-        self.use_military_style = True
+        self.use_themed_style = True
 
         self._tokens = get_design_tokens()
 
@@ -48,7 +48,7 @@ class ExitConfirmScene(Scene, MouseSelectableMixin):
         self._particle_system.reset(self._tokens.components.PARTICLE_PARTICLE_ALT_COUNT, 'particle')
 
         self._init_colors()
-        self._init_military_colors()
+        self._init_themed_colors()
 
     def _init_colors(self) -> None:
         colors = self._tokens.colors
@@ -66,18 +66,18 @@ class ExitConfirmScene(Scene, MouseSelectableMixin):
             'success': colors.SUCCESS,
         }
 
-    def _init_military_colors(self) -> None:
-        self.military_colors = {
-            'bg': ForestColors.BG_PRIMARY,
-            'bg_gradient': ForestColors.BG_PANEL,
-            'title': ForestColors.TEXT_PRIMARY,
-            'title_glow': ForestColors.GOLD_GLOW,
-            'selected': ForestColors.GOLD_PRIMARY,
-            'selected_glow': ForestColors.GOLD_BRIGHT,
-            'unselected': ForestColors.TEXT_DIM,
-            'hint': ForestColors.TEXT_DIM,
-            'particle': ForestColors.GOLD_PRIMARY,
-            'success': ForestColors.FOREST_GREEN,
+    def _init_themed_colors(self) -> None:
+        self.themed_colors = {
+            'bg': SceneColors.BG_PRIMARY,
+            'bg_gradient': SceneColors.BG_PANEL,
+            'title': SceneColors.TEXT_PRIMARY,
+            'title_glow': SceneColors.GOLD_GLOW,
+            'selected': SceneColors.GOLD_PRIMARY,
+            'selected_glow': SceneColors.GOLD_BRIGHT,
+            'unselected': SceneColors.TEXT_DIM,
+            'hint': SceneColors.TEXT_DIM,
+            'particle': SceneColors.GOLD_PRIMARY,
+            'success': SceneColors.FOREST_GREEN,
         }
 
     def exit(self) -> None:
@@ -130,9 +130,9 @@ class ExitConfirmScene(Scene, MouseSelectableMixin):
             surface.blit(check_surface, check_rect)
 
     def render(self, surface: pygame.Surface) -> None:
-        if self.use_military_style:
-            self._background_renderer.render_military_style(surface, self.military_colors)
-            self._particle_system.render(surface, self.military_colors['particle'])
+        if self.use_themed_style:
+            self._background_renderer.render_themed_style(surface, self.themed_colors)
+            self._particle_system.render(surface, self.themed_colors['particle'])
         else:
             self._background_renderer.render(surface, self.colors)
             self._particle_system.render(surface, self.colors['particle'])
@@ -147,15 +147,15 @@ class ExitConfirmScene(Scene, MouseSelectableMixin):
         else:
             title_text = "EXIT GAME"
 
-        if self.use_military_style:
-            self._draw_military_title(surface, title_text, self.title_font, (center_x, title_y))
+        if self.use_themed_style:
+            self._draw_themed_title(surface, title_text, self.title_font, (center_x, title_y))
         else:
             SceneRenderingUtils.draw_glow_text(surface, title_text, self.title_font,
                 (center_x, title_y), self.colors['title'], self.colors['title_glow'],
                 glow_radius=4, glow_offset=1, alpha_divisor=100)
 
-        if self.use_military_style:
-            self._draw_military_decorations(surface, width, height)
+        if self.use_themed_style:
+            self._draw_themed_decorations(surface, width, height)
         else:
             SceneRenderingUtils.draw_decorative_lines(
                 surface, center_x, height // 3,
@@ -163,8 +163,8 @@ class ExitConfirmScene(Scene, MouseSelectableMixin):
             )
 
         if self.saved:
-            if self.use_military_style:
-                self._draw_military_success_indicator(surface, center_x, title_y + ResponsiveHelper.scale(50, scale), scale)
+            if self.use_themed_style:
+                self._draw_themed_success_indicator(surface, center_x, title_y + ResponsiveHelper.scale(50, scale), scale)
             else:
                 self._draw_success_indicator(surface, center_x, title_y + ResponsiveHelper.scale(50, scale), scale)
 
@@ -174,8 +174,8 @@ class ExitConfirmScene(Scene, MouseSelectableMixin):
         self.clear_option_rects()
         effective_index = self.get_effective_selected_index(self.selected_index)
         for i, option in enumerate(self.options):
-            if self.use_military_style:
-                self._draw_military_option_box(surface, option, start_y + i * option_spacing, i == effective_index, scale)
+            if self.use_themed_style:
+                self._draw_themed_option_box(surface, option, start_y + i * option_spacing, i == effective_index, scale)
             else:
                 box_width = ResponsiveHelper.scale(self.base_box_width, scale)
                 box_height = ResponsiveHelper.scale(self.base_box_height, scale)
@@ -195,20 +195,20 @@ class ExitConfirmScene(Scene, MouseSelectableMixin):
         blink_interval = self._tokens.animation.BLINK_INTERVAL
         blink = (self.animation_time // blink_interval) % 2 == 0
         hint_text = "CLICK or ENTER to confirm" if blink else "                         "
-        hint_color = ForestColors.TEXT_DIM if self.use_military_style else self.colors['hint']
+        hint_color = SceneColors.TEXT_DIM if self.use_themed_style else self.colors['hint']
         hint = self.hint_font.render(hint_text, True, hint_color)
         surface.blit(hint, hint.get_rect(center=(center_x, height - ResponsiveHelper.scale(120, scale))))
 
-        controls_color = ForestColors.TEXT_DIM if self.use_military_style else (60, 60, 100)
+        controls_color = SceneColors.TEXT_DIM if self.use_themed_style else (60, 60, 100)
         controls = self.desc_font.render("Click or W/S to select", True, controls_color)
         surface.blit(controls, controls.get_rect(center=(center_x, height - ResponsiveHelper.scale(80, scale))))
 
         esc_hint = self.desc_font.render("ESC to return to menu", True, controls_color)
         surface.blit(esc_hint, esc_hint.get_rect(center=(center_x, height - ResponsiveHelper.scale(50, scale))))
 
-    def _draw_military_title(self, surface: pygame.Surface, text: str, font: pygame.font.Font, pos: tuple) -> None:
+    def _draw_themed_title(self, surface: pygame.Surface, text: str, font: pygame.font.Font, pos: tuple) -> None:
         """Draw title in military style with amber glow."""
-        for blur, alpha, color in [(4, 20, ForestColors.GOLD_DIM), (2, 35, ForestColors.GOLD_PRIMARY)]:
+        for blur, alpha, color in [(4, 20, SceneColors.GOLD_DIM), (2, 35, SceneColors.GOLD_PRIMARY)]:
             glow_surf = font.render(text, True, color)
             glow_surf.set_alpha(alpha)
             for offset_x in range(-blur, blur + 1, 2):
@@ -217,16 +217,16 @@ class ExitConfirmScene(Scene, MouseSelectableMixin):
                         glow_rect = glow_surf.get_rect(center=(pos[0] + offset_x, pos[1] + offset_y))
                         surface.blit(glow_surf, glow_rect)
 
-        title = font.render(text, True, ForestColors.GOLD_PRIMARY)
+        title = font.render(text, True, SceneColors.GOLD_PRIMARY)
         surface.blit(title, title.get_rect(center=pos))
 
-    def _draw_military_decorations(self, surface: pygame.Surface, width: int, height: int) -> None:
+    def _draw_themed_decorations(self, surface: pygame.Surface, width: int, height: int) -> None:
         """Draw military style decorations."""
         center_x = width // 2
 
         # Corner brackets
         bracket_size = 20
-        bracket_color = ForestColors.BORDER_DIM
+        bracket_color = SceneColors.BORDER_DIM
 
         # Top bracket
         pygame.draw.lines(surface, bracket_color, False,
@@ -240,17 +240,17 @@ class ExitConfirmScene(Scene, MouseSelectableMixin):
         pygame.draw.lines(surface, bracket_color, False,
                         [(center_x + 100, height // 3 + 50), (center_x + 100, height // 3 + 50 + bracket_size), (center_x + 100 - bracket_size, height // 3 + 50 + bracket_size)], 2)
 
-    def _draw_military_success_indicator(self, surface: pygame.Surface, center_x: int, y: int, scale: float = 1.0) -> None:
+    def _draw_themed_success_indicator(self, surface: pygame.Surface, center_x: int, y: int, scale: float = 1.0) -> None:
         if self.saved:
             check_text = ">> GAME SAVED <<"
-            check_surface = self.hint_font.render(check_text, True, ForestColors.FOREST_GREEN)
+            check_surface = self.hint_font.render(check_text, True, SceneColors.FOREST_GREEN)
             check_rect = check_surface.get_rect(center=(center_x, y))
             pulse = math.sin(self.animation_time * 0.1)
             alpha = int(200 + 55 * pulse)
             check_surface.set_alpha(alpha)
             surface.blit(check_surface, check_rect)
 
-    def _draw_military_option_box(self, surface: pygame.Surface, text: str, y: int, is_selected: bool, scale: float = 1.0) -> None:
+    def _draw_themed_option_box(self, surface: pygame.Surface, text: str, y: int, is_selected: bool, scale: float = 1.0) -> None:
         """Draw option box in military style with chamfered corners."""
         width, height = surface.get_size()
         center_x = width // 2
@@ -266,9 +266,9 @@ class ExitConfirmScene(Scene, MouseSelectableMixin):
                 surface,
                 box_rect.x - 4, box_rect.y - 4,
                 box_rect.width + 8, box_rect.height + 8,
-                ForestColors.BG_PANEL,
-                ForestColors.GOLD_GLOW,
-                ForestColors.GOLD_GLOW,
+                SceneColors.BG_PANEL,
+                SceneColors.GOLD_GLOW,
+                SceneColors.GOLD_GLOW,
                 10
             )
 
@@ -277,15 +277,15 @@ class ExitConfirmScene(Scene, MouseSelectableMixin):
             surface,
             box_rect.x, box_rect.y,
             box_rect.width, box_rect.height,
-            ForestColors.BG_PANEL if is_selected else ForestColors.BG_PANEL_LIGHT,
-            ForestColors.GOLD_PRIMARY if is_selected else ForestColors.BORDER_DIM,
+            SceneColors.BG_PANEL if is_selected else SceneColors.BG_PANEL_LIGHT,
+            SceneColors.GOLD_PRIMARY if is_selected else SceneColors.BORDER_DIM,
             None,
             8
         )
 
         arrow = ">> " if is_selected else "   "
         option_text = self.option_font.render(f"{arrow}{text}", True,
-                                             ForestColors.GOLD_PRIMARY if is_selected else ForestColors.TEXT_DIM)
+                                             SceneColors.GOLD_PRIMARY if is_selected else SceneColors.TEXT_DIM)
         text_rect = option_text.get_rect(center=(center_x, y))
         surface.blit(option_text, text_rect)
 

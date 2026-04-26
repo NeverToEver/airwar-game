@@ -1,7 +1,7 @@
 """Chamfered (cut-corner) panel component for military UI style."""
 import pygame
 from typing import Optional, Tuple
-from airwar.config.design_tokens import MilitaryColors, MilitaryUI
+from airwar.config.design_tokens import SystemColors, SystemUI
 
 
 # Cache for rendered panels
@@ -68,10 +68,10 @@ def draw_chamfered_panel(
         bg_color: Background color (RGB)
         border_color: Border color (RGBA), optional
         glow_color: Glow color (RGBA), optional
-        chamfer_depth: Cut corner depth, defaults to MilitaryUI.CHAMFER_DEPTH
+        chamfer_depth: Cut corner depth, defaults to SystemUI.CHAMFER_DEPTH
     """
     if chamfer_depth is None:
-        chamfer_depth = MilitaryUI.CHAMFER_DEPTH
+        chamfer_depth = SystemUI.CHAMFER_DEPTH
 
     # Get cached chamfered surface
     panel_surf = _get_chamfered_surface(width, height, chamfer_depth)
@@ -124,7 +124,7 @@ def draw_chamfered_panel(
                            (width, chamfer_depth), (width, height - chamfer_depth),
                            (width - chamfer_depth, height), (chamfer_depth, height),
                            (0, height - chamfer_depth), (0, chamfer_depth)],
-                          MilitaryUI.CHAMFER_BORDER_WIDTH)
+                          SystemUI.CHAMFER_BORDER_WIDTH)
 
     # Draw background (from cache)
     bg_key = (width, height, chamfer_depth, bg_color)
@@ -161,7 +161,7 @@ def draw_chamfered_panel(
             ]
             pygame.draw.lines(border_result,
                              border_color if len(border_color) == 4 else (*border_color, 255),
-                             False, points, MilitaryUI.CHAMFER_BORDER_WIDTH)
+                             False, points, SystemUI.CHAMFER_BORDER_WIDTH)
             _border_cache[border_key] = border_result
         surface.blit(_border_cache[border_key], (x, y))
 
@@ -183,17 +183,17 @@ class ChamferedPanel:
         Args:
             width: Panel width
             height: Panel height
-            bg_color: Background color, defaults to MilitaryColors.BG_PANEL
-            border_color: Border color, defaults to MilitaryColors.BORDER_GLOW
+            bg_color: Background color, defaults to SystemColors.BG_PANEL
+            border_color: Border color, defaults to SystemColors.BORDER_GLOW
             glow_color: Glow color for outer glow effect
-            chamfer_depth: Cut corner depth, defaults to MilitaryUI.CHAMFER_DEPTH
+            chamfer_depth: Cut corner depth, defaults to SystemUI.CHAMFER_DEPTH
         """
         self.width = width
         self.height = height
-        self.bg_color = bg_color or MilitaryColors.BG_PANEL
-        self.border_color = border_color or MilitaryColors.BORDER_GLOW
+        self.bg_color = bg_color or SystemColors.BG_PANEL
+        self.border_color = border_color or SystemColors.BORDER_GLOW
         self.glow_color = glow_color
-        self.chamfer_depth = chamfer_depth or MilitaryUI.CHAMFER_DEPTH
+        self.chamfer_depth = chamfer_depth or SystemUI.CHAMFER_DEPTH
 
         # Pre-render the panel
         self._rendered_surface = None
@@ -268,7 +268,7 @@ class ChamferedPanel:
         ]
         pygame.draw.lines(panel_surf,
                          self.border_color if len(self.border_color) == 4 else (*self.border_color, 255),
-                         False, points, MilitaryUI.CHAMFER_BORDER_WIDTH)
+                         False, points, SystemUI.CHAMFER_BORDER_WIDTH)
 
         # Apply content if provided
         if content_renderer:

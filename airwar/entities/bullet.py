@@ -77,8 +77,8 @@ class Bullet(Entity):
             surface.blit(self._sprite, self.get_rect())
 
         if (self.data.bullet_type == "laser" or self.data.is_laser) and self._trail:
-            # Player laser: red, Enemy laser: green
-            if self.data.owner == "enemy":
+            # Player laser: green, Enemy laser: red
+            if self.data.owner == "player":
                 trail_color = (30, 255, 100)
             else:
                 trail_color = (255, 30, 30)

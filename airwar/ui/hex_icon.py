@@ -2,7 +2,7 @@
 import pygame
 import math
 from typing import Tuple, Optional
-from airwar.config.design_tokens import MilitaryColors, MilitaryUI
+from airwar.config.design_tokens import SystemColors, SystemUI
 
 
 # Icon types as constants
@@ -18,14 +18,14 @@ ICON_STAR = "star"
 
 # Color mapping for icon types
 ICON_COLORS = {
-    ICON_POWER: MilitaryColors.ICON_POWER,
-    ICON_DEFENSE: MilitaryColors.ICON_DEFENSE,
-    ICON_SPEED: MilitaryColors.ICON_SPEED,
-    ICON_LASER: MilitaryColors.ICON_LASER,
-    ICON_MISSILE: MilitaryColors.ICON_MISSILE,
-    ICON_HEALTH: MilitaryColors.HEALTH_FULL,
-    ICON_SHIELD: MilitaryColors.ICON_DEFENSE,
-    ICON_STAR: MilitaryColors.AMBER_BRIGHT,
+    ICON_POWER: SystemColors.ICON_POWER,
+    ICON_DEFENSE: SystemColors.ICON_DEFENSE,
+    ICON_SPEED: SystemColors.ICON_SPEED,
+    ICON_LASER: SystemColors.ICON_LASER,
+    ICON_MISSILE: SystemColors.ICON_MISSILE,
+    ICON_HEALTH: SystemColors.HEALTH_FULL,
+    ICON_SHIELD: SystemColors.ICON_DEFENSE,
+    ICON_STAR: SystemColors.AMBER_BRIGHT,
 }
 
 
@@ -117,7 +117,7 @@ def draw_icon(
         glow: 是否发光
     """
     if color is None:
-        color = ICON_COLORS.get(icon_type, MilitaryColors.AMBER_PRIMARY)
+        color = ICON_COLORS.get(icon_type, SystemColors.AMBER_PRIMARY)
 
     # 设置线条宽度
     line_width = max(2, int(size / 6))
@@ -204,7 +204,7 @@ def _draw_icon_shape(
         ]
         pygame.draw.polygon(surface, color, points)
         # 火焰
-        pygame.draw.polygon(surface, MilitaryColors.DANGER_RED, [
+        pygame.draw.polygon(surface, SystemColors.DANGER_RED, [
             (cx, cy + size * 0.5),
             (cx + size * 0.08, cy + size * 0.35),
             (cx - size * 0.08, cy + size * 0.35),
@@ -252,7 +252,7 @@ class HexIcon:
     def __init__(
         self,
         icon_type: str = ICON_POWER,
-        size: float = MilitaryUI.HEXAGON_SIZE,
+        size: float = SystemUI.HEXAGON_SIZE,
         fill_color: Tuple[int, int, int] = None,
         border_color: Tuple[int, int, int, int] = None,
         glow_color: Tuple[int, int, int, int] = None,
@@ -272,9 +272,9 @@ class HexIcon:
         """
         self.icon_type = icon_type
         self.size = size
-        self.fill_color = fill_color or MilitaryColors.BG_PANEL_LIGHT
-        self.border_color = border_color or MilitaryColors.BORDER_GLOW
-        self.glow_color = glow_color or MilitaryColors.AMBER_GLOW
+        self.fill_color = fill_color or SystemColors.BG_PANEL_LIGHT
+        self.border_color = border_color or SystemColors.BORDER_GLOW
+        self.glow_color = glow_color or SystemColors.AMBER_GLOW
         self.is_active = is_active
         self.is_max_level = is_max_level
 
@@ -292,17 +292,17 @@ class HexIcon:
             icon_color: 图标颜色，默认根据类型自动选择
         """
         if icon_color is None:
-            icon_color = ICON_COLORS.get(self.icon_type, MilitaryColors.AMBER_PRIMARY)
+            icon_color = ICON_COLORS.get(self.icon_type, SystemColors.AMBER_PRIMARY)
 
         # 满级时使用金色边框
         if self.is_max_level:
-            border_color = MilitaryColors.AMBER_BRIGHT
-            glow_color = (*MilitaryColors.AMBER_BRIGHT, 80)
+            border_color = SystemColors.AMBER_BRIGHT
+            glow_color = (*SystemColors.AMBER_BRIGHT, 80)
         elif self.is_active:
             border_color = self.border_color
             glow_color = self.glow_color
         else:
-            border_color = MilitaryColors.BORDER_DIM
+            border_color = SystemColors.BORDER_DIM
             glow_color = None
 
         # 绘制六边形底
@@ -310,7 +310,7 @@ class HexIcon:
             surface, center, self.size,
             self.fill_color,
             border_color=border_color,
-            border_width=MilitaryUI.HEXAGON_BORDER_WIDTH,
+            border_width=SystemUI.HEXAGON_BORDER_WIDTH,
             glow_color=glow_color if self.is_active else None
         )
 
@@ -350,7 +350,7 @@ class HexIcon:
         # 渲染等级数字（如果提供）
         if level is not None and level > 0:
             level_text = f"+{level}"
-            level_surf = font.render(level_text, True, MilitaryColors.AMBER_BRIGHT)
+            level_surf = font.render(level_text, True, SystemColors.AMBER_BRIGHT)
             level_rect = level_surf.get_rect(center=(center[0] + self.size * 0.6,
                                                     center[1] + self.size * 0.6))
             surface.blit(level_surf, level_rect)

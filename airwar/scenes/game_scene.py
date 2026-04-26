@@ -37,6 +37,9 @@ from airwar.config import DIFFICULTY_SETTINGS, get_screen_width, get_screen_heig
 from airwar.input import PygameInputHandler
 from airwar.utils.mouse_interaction import MouseInteractiveMixin
 from airwar.config.design_tokens import get_design_tokens
+from airwar.utils.sprites import prewarm_glow_caches
+
+
 class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     """Main game scene controller coordinating game loop and subsystems.
 
@@ -57,6 +60,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         Scene.__init__(self)
         MouseInteractiveMixin.__init__(self)
         self._pause_requested = False
+        self._is_loading = True
+        self._loading_progress = 0
         self._tokens = get_design_tokens()
         self._pause_btn_layout = None
         self._pause_btn_cache = {}
@@ -95,9 +100,17 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         - MotherShip system: Mothership interaction system.
         """
         self._pause_requested = False
+        self._is_loading = True
+        self._loading_progress = 0
         self.clear_hover()
         self.clear_buttons()
         self._pause_btn_cache.clear()
+
+        # Prewarm glow caches before gameplay starts
+        self._loading_progress = 20
+        prewarm_glow_caches()
+        self._loading_progress = 100
+        self._is_loading = False
 
         screen_width = get_screen_width()
         screen_height = get_screen_height()
@@ -312,6 +325,11 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         Args:
             surface: pygame rendering surface.
         """
+        # Show loading screen while warming caches
+        if self._is_loading:
+            self._render_loading_screen(surface)
+            return
+
         self._ui_manager.render_game(
             surface,
             self.player,
@@ -420,6 +438,38 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         bar_color = self._tokens.colors.HUD_AMBER if is_hovered else self._tokens.colors.TEXT_MUTED
         pygame.draw.rect(surface, bar_color, layout['left_bar'], border_radius=1)
         pygame.draw.rect(surface, bar_color, layout['right_bar'], border_radius=1)
+
+    def _render_loading_screen(self, surface: pygame.Surface) -> None:
+        """Render loading screen while prewarming caches.
+
+        Args:
+            surface: pygame rendering surface.
+        """
+        colors = self._tokens.colors
+        screen_width = surface.get_width()
+        screen_height = surface.get_height()
+
+        # Dark overlay
+        overlay = pygame.Surface((screen_width, screen_height), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 200))
+        surface.blit(overlay, (0, 0))
+
+        # Loading text
+        font_large = pygame.font.Font(None, 72)
+        font_small = pygame.font.Font(None, 36)
+
+        title = font_large.render("正在加载...", True, colors.TEXT_PRIMARY)
+        title_rect = title.get_rect(center=(screen_width // 2, screen_height // 2 - 40))
+
+        progress_text = font_small.render(f"{self._loading_progress}%", True, colors.HUD_AMBER)
+        progress_rect = progress_text.get_rect(center=(screen_width // 2, screen_height // 2 + 20))
+
+        hint = font_small.render("请稍候，正在优化游戏体验", True, colors.TEXT_MUTED)
+        hint_rect = hint.get_rect(center=(screen_width // 2, screen_height // 2 + 70))
+
+        surface.blit(title, title_rect)
+        surface.blit(progress_text, progress_rect)
+        surface.blit(hint, hint_rect)
 
     @property
     def score(self) -> int:

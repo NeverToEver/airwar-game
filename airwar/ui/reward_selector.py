@@ -3,7 +3,7 @@ import pygame
 import math
 from typing import List, Callable, Optional
 from airwar.utils.mouse_interaction import MouseSelectableMixin
-from airwar.config.design_tokens import ForestColors, MilitaryUI, get_design_tokens
+from airwar.config.design_tokens import SceneColors, SystemUI, get_design_tokens
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.game.systems.reward_system import REWARD_POOL
 
@@ -41,7 +41,7 @@ class RewardSelector(MouseSelectableMixin):
         self._tokens = get_design_tokens()
         tokens = self._tokens
         colors = tokens.colors
-        self.use_military_style = True
+        self.use_themed_style = True
 
         # Use token values for counts
         star_count = tokens.components.STAR_COUNT
@@ -112,29 +112,29 @@ class RewardSelector(MouseSelectableMixin):
             'upgraded_bg': colors.BUTTON_SELECTED_BG,
         }
 
-        self._init_military_colors()
+        self._init_themed_colors()
 
-    def _init_military_colors(self) -> None:
-        self.military_colors = {
-            'bg': ForestColors.BG_PRIMARY,
-            'bg_gradient': ForestColors.BG_PANEL,
-            'title': ForestColors.TEXT_PRIMARY,
-            'title_glow': ForestColors.GOLD_GLOW,
-            'selected': ForestColors.GOLD_PRIMARY,
-            'selected_glow': ForestColors.GOLD_BRIGHT,
-            'unselected': ForestColors.TEXT_DIM,
-            'desc_selected': ForestColors.FOREST_GREEN,
-            'desc_unselected': ForestColors.TEXT_DIM,
-            'hint': ForestColors.TEXT_DIM,
-            'particle': ForestColors.GOLD_PRIMARY,
-            'panel': ForestColors.BG_PANEL,
-            'panel_border': ForestColors.BORDER_GLOW,
-            'option_selected_bg': ForestColors.BG_PANEL,
-            'option_unselected_bg': ForestColors.BG_PANEL_LIGHT,
-            'upgraded': ForestColors.GOLD_BRIGHT,
-            'upgraded_glow': ForestColors.GOLD_GLOW,
-            'new_buff': ForestColors.FOREST_GREEN,
-            'upgraded_bg': ForestColors.BG_PANEL,
+    def _init_themed_colors(self) -> None:
+        self.themed_colors = {
+            'bg': SceneColors.BG_PRIMARY,
+            'bg_gradient': SceneColors.BG_PANEL,
+            'title': SceneColors.TEXT_PRIMARY,
+            'title_glow': SceneColors.GOLD_GLOW,
+            'selected': SceneColors.GOLD_PRIMARY,
+            'selected_glow': SceneColors.GOLD_BRIGHT,
+            'unselected': SceneColors.TEXT_DIM,
+            'desc_selected': SceneColors.FOREST_GREEN,
+            'desc_unselected': SceneColors.TEXT_DIM,
+            'hint': SceneColors.TEXT_DIM,
+            'particle': SceneColors.GOLD_PRIMARY,
+            'panel': SceneColors.BG_PANEL,
+            'panel_border': SceneColors.BORDER_GLOW,
+            'option_selected_bg': SceneColors.BG_PANEL,
+            'option_unselected_bg': SceneColors.BG_PANEL_LIGHT,
+            'upgraded': SceneColors.GOLD_BRIGHT,
+            'upgraded_glow': SceneColors.GOLD_GLOW,
+            'new_buff': SceneColors.FOREST_GREEN,
+            'upgraded_bg': SceneColors.BG_PANEL,
         }
 
     def generate_options(self, boss_kill_count: int, unlocked_buffs: list) -> list:
@@ -405,11 +405,11 @@ class RewardSelector(MouseSelectableMixin):
     def _draw_bottom_hint(self, surface: pygame.Surface) -> None:
         width, height = surface.get_size()
 
-        if self.use_military_style:
+        if self.use_themed_style:
             if (self.animation_time // 25) % 2 == 0:
-                hint_color = ForestColors.TEXT_DIM
+                hint_color = SceneColors.TEXT_DIM
             else:
-                hint_color = ForestColors.TEXT_PRIMARY
+                hint_color = SceneColors.TEXT_PRIMARY
             hint = self.hint_font.render("Click or W/S to select, ENTER to confirm", True, hint_color)
         else:
             if (self.animation_time // 25) % 2 == 0:
@@ -423,20 +423,20 @@ class RewardSelector(MouseSelectableMixin):
         if not self.visible:
             return
 
-        if self.use_military_style:
-            self._draw_military_background(surface)
+        if self.use_themed_style:
+            self._draw_themed_background(surface)
         else:
             self._draw_gradient_background(surface)
 
         width, height = surface.get_size()
 
-        if self.use_military_style:
-            self._draw_military_title(surface)
+        if self.use_themed_style:
+            self._draw_themed_title(surface)
         else:
             self._draw_title(surface)
 
-        if self.use_military_style:
-            self._draw_military_panel(surface)
+        if self.use_themed_style:
+            self._draw_themed_panel(surface)
         else:
             self._draw_panel(surface)
 
@@ -451,14 +451,14 @@ class RewardSelector(MouseSelectableMixin):
         self.clear_option_rects()
         effective_index = self.get_effective_selected_index(self.selected_index)
         for i, option in enumerate(self.options):
-            if self.use_military_style:
-                self._draw_military_option_item(surface, option, i, center_x, start_y, i == effective_index)
+            if self.use_themed_style:
+                self._draw_themed_option_item(surface, option, i, center_x, start_y, i == effective_index)
             else:
                 self._draw_option_item(surface, option, i, center_x, start_y, i == effective_index)
 
         self._draw_bottom_hint(surface)
 
-    def _draw_military_background(self, surface: pygame.Surface) -> None:
+    def _draw_themed_background(self, surface: pygame.Surface) -> None:
         """Draw deep space gradient background."""
         width, height = surface.get_size()
         tokens = self._tokens
@@ -473,13 +473,13 @@ class RewardSelector(MouseSelectableMixin):
             b = int(bg_primary[2] * (1 - ratio) + bg_secondary[2] * ratio)
             pygame.draw.line(surface, (r, g, b), (0, y), (width, y))
 
-    def _draw_military_title(self, surface: pygame.Surface) -> None:
+    def _draw_themed_title(self, surface: pygame.Surface) -> None:
         """Draw title in military style."""
         width, height = surface.get_size()
         title_y = 130 + self.glow_offset * 0.5
         title_text = "CHOOSE YOUR REWARD"
 
-        for blur, alpha, color in [(3, 15, ForestColors.GOLD_DIM), (2, 25, ForestColors.GOLD_PRIMARY)]:
+        for blur, alpha, color in [(3, 15, SceneColors.GOLD_DIM), (2, 25, SceneColors.GOLD_PRIMARY)]:
             glow_surf = self.title_font.render(title_text, True, color)
             glow_surf.set_alpha(alpha)
             for offset_x in range(-blur, blur + 1, 2):
@@ -488,10 +488,10 @@ class RewardSelector(MouseSelectableMixin):
                         glow_rect = glow_surf.get_rect(center=(width // 2 + offset_x, title_y + offset_y))
                         surface.blit(glow_surf, glow_rect)
 
-        title = self.title_font.render(title_text, True, ForestColors.GOLD_PRIMARY)
+        title = self.title_font.render(title_text, True, SceneColors.GOLD_PRIMARY)
         surface.blit(title, title.get_rect(center=(width // 2, title_y)))
 
-    def _draw_military_panel(self, surface: pygame.Surface) -> None:
+    def _draw_themed_panel(self, surface: pygame.Surface) -> None:
         """Draw panel in military style with chamfered corners."""
         width, height = surface.get_size()
 
@@ -505,13 +505,13 @@ class RewardSelector(MouseSelectableMixin):
             surface,
             panel_x, panel_y,
             panel_width, panel_height,
-            ForestColors.BG_PANEL,
-            ForestColors.BORDER_GLOW,
-            ForestColors.GOLD_GLOW,
-            MilitaryUI.CHAMFER_DEPTH
+            SceneColors.BG_PANEL,
+            SceneColors.BORDER_GLOW,
+            SceneColors.GOLD_GLOW,
+            SystemUI.CHAMFER_DEPTH
         )
 
-    def _draw_military_option_item(self, surface: pygame.Surface, option: dict, index: int,
+    def _draw_themed_option_item(self, surface: pygame.Surface, option: dict, index: int,
                           center_x: int, start_y: int, is_selected: bool) -> None:
         """Draw option item in military style with chamfered corners."""
         option_height = 80
@@ -528,9 +528,9 @@ class RewardSelector(MouseSelectableMixin):
         is_upgraded = buff_name in self.unlocked_buffs and level > 0
 
         if is_upgraded:
-            glow_color = ForestColors.GOLD_GLOW
+            glow_color = SceneColors.GOLD_GLOW
         elif is_selected:
-            glow_color = ForestColors.GOLD_GLOW
+            glow_color = SceneColors.GOLD_GLOW
         else:
             glow_color = None
 
@@ -540,7 +540,7 @@ class RewardSelector(MouseSelectableMixin):
                 surface,
                 box_rect.x - 3, box_rect.y - 3,
                 box_width + 6, box_height + 6,
-                ForestColors.BG_PANEL,
+                SceneColors.BG_PANEL,
                 glow_color,
                 glow_color,
                 10
@@ -548,14 +548,14 @@ class RewardSelector(MouseSelectableMixin):
 
         # Draw chamfered box
         if is_upgraded:
-            bg_color = ForestColors.BG_PANEL
-            border_color = ForestColors.GOLD_BRIGHT
+            bg_color = SceneColors.BG_PANEL
+            border_color = SceneColors.GOLD_BRIGHT
         elif is_selected:
-            bg_color = ForestColors.BG_PANEL
-            border_color = ForestColors.GOLD_PRIMARY
+            bg_color = SceneColors.BG_PANEL
+            border_color = SceneColors.GOLD_PRIMARY
         else:
-            bg_color = ForestColors.BG_PANEL_LIGHT
-            border_color = ForestColors.BORDER_DIM
+            bg_color = SceneColors.BG_PANEL_LIGHT
+            border_color = SceneColors.BORDER_DIM
 
         draw_chamfered_panel(
             surface,
@@ -571,16 +571,16 @@ class RewardSelector(MouseSelectableMixin):
 
         if is_upgraded:
             name_text = f"{arrow} {buff_name} [Lv.{level}]"
-            text_color = ForestColors.GOLD_BRIGHT if is_selected else ForestColors.TEXT_DIM
+            text_color = SceneColors.GOLD_BRIGHT if is_selected else SceneColors.TEXT_DIM
         else:
             name_text = f"{arrow} {buff_name}"
-            text_color = ForestColors.GOLD_PRIMARY if is_selected else ForestColors.TEXT_DIM
+            text_color = SceneColors.GOLD_PRIMARY if is_selected else SceneColors.TEXT_DIM
 
         text = self.option_font.render(name_text, True, text_color)
         text_rect = text.get_rect(midleft=(box_rect.x + 25, box_rect.centery - 8))
         surface.blit(text, text_rect)
 
-        desc_color = ForestColors.FOREST_GREEN if is_selected else ForestColors.TEXT_DIM
+        desc_color = SceneColors.FOREST_GREEN if is_selected else SceneColors.TEXT_DIM
         desc = self.hint_font.render(option['desc'], True, desc_color)
         desc_rect = desc.get_rect(midleft=(box_rect.x + 35, box_rect.centery + 16))
         surface.blit(desc, desc_rect)

@@ -1,7 +1,7 @@
 """UI effects — visual feedback effects for the interface."""
 import pygame
 import math
-from airwar.config.design_tokens import get_design_tokens, MilitaryColors, MilitaryUI
+from airwar.config.design_tokens import get_design_tokens, SystemColors, SystemUI
 from airwar.utils.responsive import ResponsiveHelper
 
 
@@ -147,14 +147,14 @@ class EffectsRenderer:
             glow_intensity: 发光强度 0.0-1.0
         """
         if bg_color is None:
-            bg_color = MilitaryColors.BG_PANEL
+            bg_color = SystemColors.BG_PANEL
         if border_color is None:
-            border_color = MilitaryColors.BORDER_GLOW
+            border_color = SystemColors.BORDER_GLOW
         if glow_color is None:
-            glow_color = MilitaryColors.AMBER_GLOW
+            glow_color = SystemColors.AMBER_GLOW
 
-        chamfer = MilitaryUI.CHAMFER_DEPTH
-        border_width = MilitaryUI.CHAMFER_BORDER_WIDTH
+        chamfer = SystemUI.CHAMFER_DEPTH
+        border_width = SystemUI.CHAMFER_BORDER_WIDTH
         cache_key = (width, height, chamfer)
 
         # 绘制发光效果（从缓存读取）
@@ -194,7 +194,7 @@ class EffectsRenderer:
                 self._chamfer_border_cache[border_key] = border_surf
             surface.blit(self._chamfer_border_cache[border_key], (x, y))
 
-    def render_military_text(
+    def render_glow_text(
         self,
         surface: pygame.Surface,
         text: str,
@@ -216,11 +216,11 @@ class EffectsRenderer:
             glow: 是否发光
         """
         if color is None:
-            color = MilitaryColors.TEXT_PRIMARY
+            color = SystemColors.TEXT_PRIMARY
 
         if glow:
             # 发光层
-            glow_color = MilitaryColors.AMBER_PRIMARY
+            glow_color = SystemColors.AMBER_PRIMARY
             for i in range(3, 0, -1):
                 alpha = int(60 / i)
                 glow_surf = font.render(text, True, glow_color)
@@ -246,15 +246,15 @@ class EffectsRenderer:
             alpha: 扫描线透明度
         """
         if alpha is None:
-            alpha = MilitaryUI.SCANLINE_ALPHA
+            alpha = SystemUI.SCANLINE_ALPHA
         if rect is None:
             rect = surface.get_rect()
 
         # 每隔 SCANLINE_SPACING 像素画一条线
-        for ly in range(rect.top, rect.bottom, MilitaryUI.SCANLINE_SPACING):
+        for ly in range(rect.top, rect.bottom, SystemUI.SCANLINE_SPACING):
             pygame.draw.line(
                 surface,
-                (*MilitaryColors.AMBER_PRIMARY[:3], alpha),
+                (*SystemColors.AMBER_PRIMARY[:3], alpha),
                 (rect.left, ly),
                 (rect.right, ly)
             )

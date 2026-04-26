@@ -7,7 +7,7 @@ from airwar.ui.menu_background import MenuBackground
 from airwar.ui.particles import ParticleSystem
 from airwar.ui.effects import EffectsRenderer
 from airwar.ui.chamfered_panel import draw_chamfered_panel
-from airwar.config.design_tokens import get_design_tokens, MilitaryColors, ForestColors
+from airwar.config.design_tokens import get_design_tokens, SystemColors, SceneColors
 from airwar.utils.mouse_interaction import MouseSelectableMixin
 
 
@@ -81,27 +81,27 @@ class MenuScene(Scene, MouseSelectableMixin):
             'selected_glow': colors.HUD_AMBER_BRIGHT,
             'unselected': colors.TEXT_MUTED,
             'hint': colors.TEXT_HINT,
-            'back': ForestColors.BACK_BUTTON,
+            'back': SceneColors.BACK_BUTTON,
             'particle': colors.PARTICLE_PRIMARY,
             'panel': colors.BACKGROUND_PANEL,
             'panel_border': colors.PANEL_BORDER,
             'option_selected_bg': colors.BUTTON_SELECTED_BG,
             'option_unselected_bg': colors.BUTTON_UNSELECTED_BG,
         }
-        self.military_colors = {
-            'bg': MilitaryColors.BG_PRIMARY,
-            'bg_gradient': MilitaryColors.BG_PANEL,
-            'title': MilitaryColors.AMBER_PRIMARY,
-            'title_glow': MilitaryColors.AMBER_GLOW,
-            'selected': MilitaryColors.AMBER_PRIMARY,
-            'selected_glow': MilitaryColors.AMBER_GLOW,
-            'unselected': MilitaryColors.TEXT_DIM,
-            'panel': MilitaryColors.BG_PANEL,
-            'panel_border': MilitaryColors.BORDER_GLOW,
-            'option_selected_bg': MilitaryColors.BG_PANEL_LIGHT,
-            'option_unselected_bg': MilitaryColors.BG_PANEL,
+        self.themed_colors = {
+            'bg': SystemColors.BG_PRIMARY,
+            'bg_gradient': SystemColors.BG_PANEL,
+            'title': SystemColors.AMBER_PRIMARY,
+            'title_glow': SystemColors.AMBER_GLOW,
+            'selected': SystemColors.AMBER_PRIMARY,
+            'selected_glow': SystemColors.AMBER_GLOW,
+            'unselected': SystemColors.TEXT_DIM,
+            'panel': SystemColors.BG_PANEL,
+            'panel_border': SystemColors.BORDER_GLOW,
+            'option_selected_bg': SystemColors.BG_PANEL_LIGHT,
+            'option_unselected_bg': SystemColors.BG_PANEL,
         }
-        self.use_military_style = True
+        self.use_themed_style = True
 
     def exit(self) -> None:
         self.running = False
@@ -177,12 +177,12 @@ class MenuScene(Scene, MouseSelectableMixin):
         panel_x = width // 2 - panel_width // 2
         panel_y = height // 2 - panel_height // 2 + ResponsiveHelper.scale(30, scale)
 
-        if self.use_military_style:
+        if self.use_themed_style:
             draw_chamfered_panel(
                 surface, panel_x, panel_y, panel_width, panel_height,
-                self.military_colors['panel'],
-                self.military_colors['panel_border'],
-                self.military_colors['selected_glow'],
+                self.themed_colors['panel'],
+                self.themed_colors['panel_border'],
+                self.themed_colors['selected_glow'],
                 chamfer_depth=12
             )
 
@@ -205,8 +205,8 @@ class MenuScene(Scene, MouseSelectableMixin):
         box_rect = pygame.Rect(center_x - box_width // 2, y, box_width, box_height)
         self.append_option_rect(box_rect)
 
-        if self.use_military_style:
-            m_colors = self.military_colors
+        if self.use_themed_style:
+            m_colors = self.themed_colors
             if is_selected:
                 glow_rect = box_rect.inflate(6, 6)
                 draw_chamfered_panel(
@@ -253,14 +253,14 @@ class MenuScene(Scene, MouseSelectableMixin):
 
         blink_interval = self._tokens.animation.BLINK_INTERVAL
         if (self.animation_time // blink_interval) % 2 == 0:
-            hint_color = ForestColors.HINT_DIM
+            hint_color = SceneColors.HINT_DIM
         else:
-            hint_color = ForestColors.HINT_BRIGHT
+            hint_color = SceneColors.HINT_BRIGHT
 
         start_text = self.hint_font.render("CLICK or ENTER to select", True, hint_color)
         surface.blit(start_text, start_text.get_rect(center=(width // 2, height - ResponsiveHelper.scale(self._tokens.components.HINT_Y_OFFSET, scale))))
 
-        controls = self.desc_font.render("W/S to select", True, ForestColors.DESC_TEXT)
+        controls = self.desc_font.render("W/S to select", True, SceneColors.DESC_TEXT)
         surface.blit(controls, controls.get_rect(center=(width // 2, height - ResponsiveHelper.scale(self._tokens.components.CONTROLS_Y_OFFSET, scale))))
 
     def render(self, surface: pygame.Surface) -> None:
@@ -268,8 +268,8 @@ class MenuScene(Scene, MouseSelectableMixin):
         scale = ResponsiveHelper.get_scale_factor(width, height)
         self._init_fonts(scale)
 
-        if self.use_military_style:
-            self._background_renderer.render_military_style(surface, self.military_colors)
+        if self.use_themed_style:
+            self._background_renderer.render_themed_style(surface, self.themed_colors)
         else:
             self._background_renderer.render(surface, self.colors)
 

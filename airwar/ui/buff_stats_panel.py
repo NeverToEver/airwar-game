@@ -5,7 +5,7 @@ import math
 import pygame
 import logging
 
-from airwar.config.design_tokens import MilitaryColors, MilitaryUI, get_design_tokens
+from airwar.config.design_tokens import SystemColors, SystemUI, get_design_tokens
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.ui.hex_icon import HexIcon, ICON_POWER, ICON_DEFENSE, ICON_SPEED
 from airwar.game.buffs.buff_registry import create_buff
@@ -62,7 +62,7 @@ class BuffStatsAggregator:
         try:
             return create_buff(name).get_color()
         except (ValueError, AttributeError):
-            return MilitaryColors.STATS_TEXT
+            return SystemColors.STATS_TEXT
 
     def _get_buff_category(self, name: str) -> str:
         category_map = {
@@ -234,7 +234,7 @@ class BuffStatsPanel:
         player,
         screen_width: int,
         screen_height: int,
-        use_military: bool = True
+        use_themed_style: bool = True
     ) -> None:
         if not reward_system or not reward_system.unlocked_buffs:
             return
@@ -253,8 +253,8 @@ class BuffStatsPanel:
             if panel_y < 50:
                 panel_y = 50
 
-            if use_military:
-                self._render_military_style(
+            if use_themed_style:
+                self._render_themed_style(
                     surface, buff_entries, summary,
                     self._panel_width, panel_height,
                     panel_x, panel_y
@@ -307,12 +307,12 @@ class BuffStatsPanel:
         name_text = self._name_font.render(entry.short_name, True, entry.color)
         surface.blit(name_text, (x + 5, y_offset + 4))
 
-        value_text = self._value_font.render(entry.value, True, MilitaryColors.STATS_TEXT_BRIGHT)
+        value_text = self._value_font.render(entry.value, True, SystemColors.STATS_TEXT_BRIGHT)
         value_rect = value_text.get_rect(right=x + item_width - 5, centery=y_offset + item_height // 2)
         surface.blit(value_text, value_rect)
 
         if entry.level > 1:
-            level_text = self._value_font.render(f"x{entry.level}", True, MilitaryColors.STATS_TEXT_DIM)
+            level_text = self._value_font.render(f"x{entry.level}", True, SystemColors.STATS_TEXT_DIM)
             surface.blit(level_text, (x + 5, y_offset + item_height - 14))
 
     def _render_summary(self, surface: pygame.Surface, summary: Dict[str, str]) -> None:
@@ -332,14 +332,14 @@ class BuffStatsPanel:
         x = self._panel_padding + 5
 
         for key, value in list(summary.items())[:4]:
-            text = self._summary_font.render(f"{key}:{value}", True, MilitaryColors.STATS_TEXT)
+            text = self._summary_font.render(f"{key}:{value}", True, SystemColors.STATS_TEXT)
             surface.blit(text, (x, y_offset))
             x += text.get_width() + 12
 
             if x > surface.get_width() - 80:
                 break
 
-    def _render_military_style(
+    def _render_themed_style(
         self,
         surface: pygame.Surface,
         buff_entries: List[BuffStatEntry],
@@ -353,9 +353,9 @@ class BuffStatsPanel:
         # Draw chamfered panel background
         draw_chamfered_panel(
             surface, panel_x, panel_y, panel_width, panel_height,
-            MilitaryColors.BG_PANEL,
-            MilitaryColors.BORDER_GLOW,
-            MilitaryColors.AMBER_GLOW,
+            SystemColors.BG_PANEL,
+            SystemColors.BORDER_GLOW,
+            SystemColors.AMBER_GLOW,
             chamfer_depth=8
         )
 
@@ -364,40 +364,40 @@ class BuffStatsPanel:
         content_surf.fill((0, 0, 0, 0))
 
         # Title
-        title_font = pygame.font.Font(None, MilitaryUI.MILITARY_LABEL_SIZE)
-        title = title_font.render("ACTIVE", True, MilitaryColors.TEXT_DIM)
+        title_font = pygame.font.Font(None, SystemUI.MILITARY_LABEL_SIZE)
+        title = title_font.render("ACTIVE", True, SystemColors.TEXT_DIM)
         title_rect = title.get_rect(centerx=panel_width // 2, top=10)
         content_surf.blit(title, title_rect)
 
         # Divider line
         pygame.draw.line(
-            content_surf, MilitaryColors.BORDER_DIM,
+            content_surf, SystemColors.BORDER_DIM,
             (10, 30), (panel_width - 10, 30), 1
         )
 
         # Buff items
         y_offset = 40
         for entry in buff_entries:
-            self._render_military_buff_item(content_surf, entry, y_offset, panel_width)
+            self._render_themed_buff_item(content_surf, entry, y_offset, panel_width)
             y_offset += 32
 
         # Summary (if any)
         if summary:
             pygame.draw.line(
-                content_surf, MilitaryColors.BORDER_DIM,
+                content_surf, SystemColors.BORDER_DIM,
                 (10, y_offset + 5), (panel_width - 10, y_offset + 5), 1
             )
             y_offset += 15
-            summary_font = pygame.font.Font(None, MilitaryUI.MILITARY_SMALL_SIZE)
+            summary_font = pygame.font.Font(None, SystemUI.MILITARY_SMALL_SIZE)
             x_offset = 10
             for key, value in list(summary.items())[:4]:
-                text = summary_font.render(f"{key}:{value}", True, MilitaryColors.AMBER_PRIMARY)
+                text = summary_font.render(f"{key}:{value}", True, SystemColors.AMBER_PRIMARY)
                 content_surf.blit(text, (x_offset, y_offset))
                 x_offset += text.get_width() + 15
 
         surface.blit(content_surf, (panel_x, panel_y))
 
-    def _render_military_buff_item(
+    def _render_themed_buff_item(
         self,
         surface: pygame.Surface,
         entry: BuffStatEntry,
@@ -417,18 +417,18 @@ class BuffStatsPanel:
         icon.render(surface, (20, y_offset + 10), entry.color)
 
         # Buff name
-        name_font = pygame.font.Font(None, MilitaryUI.MILITARY_SMALL_SIZE)
-        name_text = name_font.render(entry.short_name, True, MilitaryColors.TEXT_PRIMARY)
+        name_font = pygame.font.Font(None, SystemUI.MILITARY_SMALL_SIZE)
+        name_text = name_font.render(entry.short_name, True, SystemColors.TEXT_PRIMARY)
         surface.blit(name_text, (38, y_offset + 2))
 
         # Buff value
-        value_text = name_font.render(entry.value, True, MilitaryColors.AMBER_PRIMARY)
+        value_text = name_font.render(entry.value, True, SystemColors.AMBER_PRIMARY)
         value_rect = value_text.get_rect(right=panel_width - 10, top=y_offset + 2)
         surface.blit(value_text, value_rect)
 
         # Level indicator
         if entry.level > 1:
-            level_text = name_font.render(f"x{entry.level}", True, MilitaryColors.TEXT_DIM)
+            level_text = name_font.render(f"x{entry.level}", True, SystemColors.TEXT_DIM)
             surface.blit(level_text, (38, y_offset + 16))
 
 
@@ -450,9 +450,9 @@ class AttackModePanel:
 
     def __init__(self):
         pygame.font.init()
-        self._colors = MilitaryColors
-        self._font = pygame.font.Font(None, MilitaryUI.MILITARY_LABEL_SIZE)
-        self._name_font = pygame.font.Font(None, MilitaryUI.MILITARY_LABEL_SIZE)
+        self._colors = SystemColors
+        self._font = pygame.font.Font(None, SystemUI.MILITARY_LABEL_SIZE)
+        self._name_font = pygame.font.Font(None, SystemUI.MILITARY_LABEL_SIZE)
 
     def render(
         self,
@@ -473,9 +473,9 @@ class AttackModePanel:
 
         draw_chamfered_panel(
             surface, panel_x, panel_y, self.PANEL_WIDTH, self.PANEL_HEIGHT,
-            MilitaryColors.BG_PANEL,
-            MilitaryColors.BORDER_GLOW,
-            MilitaryColors.AMBER_GLOW,
+            SystemColors.BG_PANEL,
+            SystemColors.BORDER_GLOW,
+            SystemColors.AMBER_GLOW,
             chamfer_depth=5
         )
 
@@ -483,7 +483,7 @@ class AttackModePanel:
         content_surf.fill((0, 0, 0, 0))
 
         # Title
-        title = self._font.render("ATTACK", True, MilitaryColors.TEXT_BRIGHT)
+        title = self._font.render("ATTACK", True, SystemColors.TEXT_BRIGHT)
         title_rect = title.get_rect(left=12, top=6)
         content_surf.blit(title, title_rect)
 

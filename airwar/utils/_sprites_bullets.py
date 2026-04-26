@@ -26,28 +26,26 @@ def draw_bullet(surface: pygame.Surface, x: float, y: float, width: float = 8, h
 def draw_single_bullet(surface: pygame.Surface, x: float, y: float, width: float, height: float, owner: str = "player") -> None:
     center_x = x + width / 2
     top_y = y
-    if owner == "enemy":
-        # Enemy bullets: bright magenta/pink - more visible
+    if owner == "player":
+        # Player bullets: bright magenta/pink - more visible
         glow_color = (255, 100, 200, 50)
         bullet_color = (255, 150, 220)
         core_color = (255, 220, 255)
-        # Larger enemy bullet for visibility
+        # Larger player bullet for visibility
         ew, eh = int(width * 1.4), int(height * 1.3)
-        ex = center_x - ew / 2
-        ey = top_y
     else:
         glow_color = (255, 200, 50, 30)
         bullet_color = (255, 220, 50)
         core_color = None
         ew, eh = width, height
-        ex, ey = x, y
 
     cache_key = (int(ew), int(eh), owner)
     if cache_key not in _single_bullet_glow_cache:
-        if RUST_AVAILABLE and create_single_bullet_glow:
-            data = create_single_bullet_glow(ew, eh)
-            surf_w = int(ew + 20)
-            surf_h = int(eh + 16)
+        # Player bullets use pure Python glow for custom sizing
+        if RUST_AVAILABLE and create_single_bullet_glow and owner != "player":
+            data = create_single_bullet_glow(width, height)
+            surf_w = int(width + 16)
+            surf_h = int(height + 12)
             glow = _bytes_to_surface(data, surf_w, surf_h)
         else:
             glow = pygame.Surface((int(ew + 20), int(eh + 16)), pygame.SRCALPHA)
@@ -59,9 +57,9 @@ def draw_single_bullet(surface: pygame.Surface, x: float, y: float, width: float
     else:
         glow = _single_bullet_glow_cache[cache_key]
 
-    if owner == "enemy":
+    if owner == "player":
         surface.blit(glow, (int(center_x - ew / 2 - 10), int(top_y - 5)))
-        # Draw larger diamond shape for enemy
+        # Draw larger diamond shape for player
         points = [
             (center_x, top_y),
             (center_x + ew * 0.5, top_y + eh * 0.4),
@@ -91,8 +89,8 @@ def draw_single_bullet(surface: pygame.Surface, x: float, y: float, width: float
 def draw_spread_bullet(surface: pygame.Surface, x: float, y: float, width: float, height: float, owner: str = "player") -> None:
     center = (int(x + width / 2), int(y + height / 2))
     radius = int(width / 2)
-    # Player bullets: orange/yellow, Enemy bullets: purple/magenta
-    if owner == "enemy":
+    # Player bullets: purple/magenta, Enemy bullets: orange/yellow
+    if owner == "player":
         glow_color = (200, 100, 255, 40)
         outer_color = (200, 120, 255)
         inner_color = (230, 180, 255)
@@ -122,8 +120,8 @@ def draw_spread_bullet(surface: pygame.Surface, x: float, y: float, width: float
 
 def draw_laser_bullet(surface: pygame.Surface, x: float, y: float, width: float, height: float, owner: str = "player") -> None:
     center_x = x + width / 2
-    # Player: red/orange laser, Enemy: green laser for distinction
-    if owner == "enemy":
+    # Player: green laser, Enemy: red/orange laser for distinction
+    if owner == "player":
         glow_line_color = (20, 255, 100, 70)
         outer_color = (30, 200, 80)
         inner_color = (80, 255, 150)

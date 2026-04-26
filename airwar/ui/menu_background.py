@@ -2,29 +2,54 @@
 import pygame
 import math
 import random
-from airwar.config.design_tokens import get_design_tokens, ForestColors
+from airwar.config.design_tokens import get_design_tokens, SceneColors
+
+
+class _ScanBeam:
+    """单个雷达扫描束 — 带随机目标点和平滑插值移动。"""
+
+    def __init__(self, orientation: str, screen_size: float):
+        self.orientation = orientation
+        self._screen_size = screen_size
+        self.position = random.uniform(0, screen_size)
+        self.target = random.uniform(0, screen_size)
+        self.speed = random.uniform(0.6, 2.0)
+        self.glow_radius = random.randint(6, 14)
+        self.alpha = random.randint(25, 55)
+        self._phase = random.random() * math.tau
+
+    def update(self) -> None:
+        diff = self.target - self.position
+        if abs(diff) < 2.0:
+            self.target = random.uniform(0, self._screen_size)
+            self.speed = random.uniform(0.6, 2.0)
+        self.position += diff * self.speed * 0.03
+
+    def pulse(self, time: float) -> float:
+        return 0.7 + 0.3 * math.sin(time * 0.04 + self._phase)
 
 
 class MenuBackground:
-    """雨林风格菜单背景渲染器
+    """菜单背景渲染器 — 渐变背景、雷达扫描束、微粒、光斑。
 
     性能优化：
     - 预渲染渐变背景到缓存
-    - 使用简单的半透明形状代替复杂图形
-    - 限制叶子/微粒数量
-    - 动画使用简单的数学计算
-    - 预渲染叶子/光斑表面到缓存
+    - 扫描束发光表面缓存
+    - 限制微粒数量
+    - 全部动画使用数学计算，无表面重建
     """
 
     _gradient_cache = {}
     _leaf_surface_cache = {}
     _light_surface_cache = {}
-    _marquee_cache = {}
+    _scan_glow_cache = {}
 
     def __init__(self):
         self._animation_time = 0
         self._tokens = get_design_tokens()
         self._screen_size = None
+        self._scan_beams = []
+        self._scan_beams_initialized = False
         # 远景叶子层
         self._leaves_far = []
         self._init_leaves_far()
@@ -34,10 +59,6 @@ class MenuBackground:
         # 光斑位置
         self._light_spots = []
         self._init_light_spots()
-        # 跑马灯效果 - 使用令牌配置
-        self._marquee_time = 0.0
-        self._marquee_speed = ForestColors.MARQUEE_SPEED
-        self._marquee_strip_height = ForestColors.MARQUEE_STRIP_SIZE
 
     def _ensure_cached_surfaces(self, width: int, height: int):
         """确保缓存的表面尺寸与屏幕尺寸匹配"""
@@ -91,11 +112,23 @@ class MenuBackground:
         """初始化光斑"""
         self._light_spots = []
 
+    def _ensure_scan_beams(self, width: int, height: int) -> None:
+        """确保扫描束已按屏幕尺寸初始化"""
+        if self._scan_beams_initialized:
+            return
+        self._scan_beams = []
+        # 3 条水平扫描线 + 2 条垂直扫描线
+        for _ in range(3):
+            self._scan_beams.append(_ScanBeam('h', height))
+        for _ in range(2):
+            self._scan_beams.append(_ScanBeam('v', width))
+        self._scan_beams_initialized = True
+
     def update(self):
         """更新动画状态"""
         self._animation_time += 1
-        # 更新跑马灯时间（非线性移动）
-        self._marquee_time += self._marquee_speed
+        for beam in self._scan_beams:
+            beam.update()
         # 更新叶子位置
         for leaf in self._leaves_far:
             leaf['y'] += leaf['speed']
@@ -154,23 +187,25 @@ class MenuBackground:
             brightness = int(star['brightness'] * (0.5 + 0.5 * twinkle))
             pygame.draw.circle(surface, star_color(brightness), (x, y), int(star['size']))
 
-    def render_military_style(self, surface: pygame.Surface, colors: dict):
-        """渲染雨林风格背景
+    def render_themed_style(self, surface: pygame.Surface, colors: dict):
+        """渲染菜单背景
 
         Args:
             surface: 目标 surface
             colors: 颜色配置
         """
         width, height = surface.get_size()
-        bg_color = colors.get('bg', ForestColors.BG_PRIMARY)
-        bg_gradient = colors.get('bg_gradient', ForestColors.BG_PANEL)
+        bg_color = colors.get('bg', SceneColors.BG_PRIMARY)
+        bg_gradient = colors.get('bg_gradient', SceneColors.BG_PANEL)
+
+        self._ensure_scan_beams(width, height)
 
         # 渲染渐变背景
         gradient = self._get_cached_gradient(surface, bg_color, bg_gradient)
         surface.blit(gradient, (0, 0))
 
-        # 渲染跑马灯效果
-        self._render_marquee(surface, width, height)
+        # 渲染雷达扫描束
+        self._render_scan_beams(surface, width, height)
 
         # 渲染光斑层
         self._render_light_spots(surface, width, height)
@@ -223,33 +258,53 @@ class MenuBackground:
             # 绘制微粒
             pygame.draw.circle(
                 surface,
-                ForestColors.PARTICLE_COLOR,
+                SceneColors.PARTICLE_COLOR,
                 (int(x), int(y)),
                 int(p['size'])
             )
 
-    def _render_marquee(self, surface: pygame.Surface, width: int, height: int) -> None:
-        """渲染跑马灯效果 - 使用ForestColors令牌"""
-        strip_color = ForestColors.MARQUEE_COLOR
-        strip_size = ForestColors.MARQUEE_STRIP_SIZE
+    def _get_scan_glow_surface(self, orientation: str, length: int, radius: int,
+                                base_alpha: int) -> pygame.Surface:
+        """获取或创建扫描束发光渐变表面缓存"""
+        cache_key = (orientation, length, radius, base_alpha)
+        if cache_key not in MenuBackground._scan_glow_cache:
+            thickness = radius * 2 + 4
+            if orientation == 'h':
+                surf = pygame.Surface((length, thickness), pygame.SRCALPHA)
+            else:
+                surf = pygame.Surface((thickness, length), pygame.SRCALPHA)
 
-        # Cache marquee surfaces to avoid recreating every frame
-        cache_key_v = ('v', width, strip_size, strip_color)
-        cache_key_h = ('h', strip_size, height, strip_color)
+            accel_color = SceneColors.ACCENT_PRIMARY
+            # 垂直于扫描方向的发光渐变
+            for i in range(thickness):
+                dist = abs(i - thickness / 2) / (thickness / 2)
+                falloff = max(0.0, 1.0 - dist) ** 2.2
+                alpha = int(base_alpha * falloff * 0.7)
+                if alpha > 0:
+                    if orientation == 'h':
+                        pygame.draw.line(surf, (*accel_color, alpha),
+                                         (0, i), (length, i))
+                    else:
+                        pygame.draw.line(surf, (*accel_color, alpha),
+                                         (i, 0), (i, length))
+            MenuBackground._scan_glow_cache[cache_key] = surf
+        return MenuBackground._scan_glow_cache[cache_key]
 
-        if cache_key_v not in MenuBackground._marquee_cache:
-            v_strip_surf = pygame.Surface((width, strip_size), pygame.SRCALPHA)
-            v_strip_surf.fill(strip_color)
-            MenuBackground._marquee_cache[cache_key_v] = v_strip_surf
-        if cache_key_h not in MenuBackground._marquee_cache:
-            h_strip_surf = pygame.Surface((strip_size, height), pygame.SRCALPHA)
-            h_strip_surf.fill(strip_color)
-            MenuBackground._marquee_cache[cache_key_h] = h_strip_surf
+    def _render_scan_beams(self, surface: pygame.Surface, width: int,
+                            height: int) -> None:
+        """渲染雷达扫描束 — 随机目标点、平滑插值、发光渐变。"""
+        for beam in self._scan_beams:
+            pulse = beam.pulse(self._animation_time)
+            glow_radius = int(beam.glow_radius * pulse)
+            alpha = int(beam.alpha * pulse)
 
-        # 纵向条带 - 线性移动
-        marquee_y = (self._marquee_time % (height + strip_size * 2)) - strip_size
-        surface.blit(MenuBackground._marquee_cache[cache_key_v], (0, int(marquee_y)))
-
-        # 横向条带 - 线性移动
-        marquee_x = (self._marquee_time % (width + strip_size * 2)) - strip_size
-        surface.blit(MenuBackground._marquee_cache[cache_key_h], (int(marquee_x), 0))
+            if beam.orientation == 'h':
+                glow_surf = self._get_scan_glow_surface(
+                    'h', width, glow_radius, alpha)
+                y_pos = int(beam.position) - glow_radius - 2
+                surface.blit(glow_surf, (0, y_pos))
+            else:
+                glow_surf = self._get_scan_glow_surface(
+                    'v', height, glow_radius, alpha)
+                x_pos = int(beam.position) - glow_radius - 2
+                surface.blit(glow_surf, (x_pos, 0))

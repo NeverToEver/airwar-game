@@ -269,5 +269,3 @@ class DustLayer:
                         special_flags=pygame.BLEND_RGBA_ADD)
 
 
-# Keep alias for backwards compatibility
-RainforestBackground = SpaceBackground

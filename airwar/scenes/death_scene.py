@@ -6,7 +6,7 @@ from airwar.utils.responsive import ResponsiveHelper
 from airwar.ui.menu_background import MenuBackground
 from airwar.ui.particles import ParticleSystem
 from airwar.ui.effects import EffectsRenderer
-from airwar.config.design_tokens import get_design_tokens, ForestColors
+from airwar.config.design_tokens import get_design_tokens, SceneColors
 from airwar.utils.mouse_interaction import MouseSelectableMixin
 from airwar.ui.scene_rendering_utils import SceneRenderingUtils
 
@@ -178,7 +178,7 @@ class DeathScene(Scene, MouseSelectableMixin):
         hint = self.hint_font.render(hint_text, True, self.colors['hint'])
         surface.blit(hint, hint.get_rect(center=(width // 2, height - ResponsiveHelper.scale(100, scale))))
 
-        controls = self.desc_font.render("Click or W/S to select", True, ForestColors.DESC_TEXT)
+        controls = self.desc_font.render("Click or W/S to select", True, SceneColors.DESC_TEXT)
         surface.blit(controls, controls.get_rect(center=(width // 2, height - ResponsiveHelper.scale(70, scale))))
 
     def get_result(self):

@@ -2,7 +2,7 @@
 from enum import Enum
 from typing import Optional, Tuple
 import pygame
-from airwar.config.design_tokens import get_design_tokens, ForestColors, MilitaryUI
+from airwar.config.design_tokens import get_design_tokens, SceneColors, SystemUI
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 
 
@@ -24,7 +24,7 @@ class GameOverScreen:
         self._buttons = {}
         self._mouse_pos = (0, 0)
         self._tokens = get_design_tokens()
-        self._use_military_style = True
+        self._use_themed_style = True
 
     def show(self, score: int, kills: int, username: Optional[str] = None,
              high_score: Optional[int] = None) -> ScreenAction:
@@ -151,13 +151,13 @@ class GameOverScreen:
         font_small = pygame.font.Font(None, int(tokens.typography.CAPTION_SIZE * scale))
         font_button = pygame.font.Font(None, int(tokens.typography.SMALL_SIZE * scale))
 
-        if self._use_military_style:
+        if self._use_themed_style:
             # Military style background
-            surface.fill(ForestColors.BG_PRIMARY)
+            surface.fill(SceneColors.BG_PRIMARY)
 
             # Draw grid overlay
-            spacing = MilitaryUI.GRID_SPACING
-            grid_color = (*ForestColors.GOLD_PRIMARY[:3], MilitaryUI.GRID_ALPHA)
+            spacing = SystemUI.GRID_SPACING
+            grid_color = (*SceneColors.GOLD_PRIMARY[:3], SystemUI.GRID_ALPHA)
             for x in range(0, screen_width, spacing):
                 pygame.draw.line(surface, grid_color, (x, 0), (x, screen_height))
             for y in range(0, screen_height, spacing):
@@ -165,7 +165,7 @@ class GameOverScreen:
 
             # Military style title with glow
             title_text = "GAME OVER"
-            for blur, alpha, color in [(4, 20, ForestColors.DANGER_RED_DIM), (2, 35, ForestColors.DANGER_RED)]:
+            for blur, alpha, color in [(4, 20, SceneColors.DANGER_RED_DIM), (2, 35, SceneColors.DANGER_RED)]:
                 glow_surf = font_large.render(title_text, True, color)
                 glow_surf.set_alpha(alpha)
                 for offset_x in range(-blur, blur + 1, 2):
@@ -174,22 +174,22 @@ class GameOverScreen:
                             glow_rect = glow_surf.get_rect(center=(screen_width // 2 + offset_x, int(150 * scale) + offset_y))
                             surface.blit(glow_surf, glow_rect)
 
-            title = font_large.render(title_text, True, ForestColors.DANGER_RED)
+            title = font_large.render(title_text, True, SceneColors.DANGER_RED)
             surface.blit(title, title.get_rect(center=(screen_width // 2, int(150 * scale))))
 
             # Military style stats
-            score_text = font_medium.render(f"SCORE: {score:,}", True, ForestColors.GOLD_PRIMARY)
+            score_text = font_medium.render(f"SCORE: {score:,}", True, SceneColors.GOLD_PRIMARY)
             surface.blit(score_text, score_text.get_rect(center=(screen_width // 2, int(280 * scale))))
 
-            kills_text = font_medium.render(f"KILLS: {kills}", True, ForestColors.TEXT_PRIMARY)
+            kills_text = font_medium.render(f"KILLS: {kills}", True, SceneColors.TEXT_PRIMARY)
             surface.blit(kills_text, kills_text.get_rect(center=(screen_width // 2, int(330 * scale))))
 
             if username and high_score is not None:
-                hs_text = font_small.render(f"HIGH SCORE: {high_score}", True, ForestColors.FOREST_GREEN)
+                hs_text = font_small.render(f"HIGH SCORE: {high_score}", True, SceneColors.FOREST_GREEN)
                 surface.blit(hs_text, hs_text.get_rect(center=(screen_width // 2, int(400 * scale))))
 
-            self._render_military_button(surface, 'menu', "RETURN TO MAIN MENU", font_button, scale)
-            self._render_military_button(surface, 'quit', "QUIT GAME", font_button, scale)
+            self._render_themed_button(surface, 'menu', "RETURN TO MAIN MENU", font_button, scale)
+            self._render_themed_button(surface, 'quit', "QUIT GAME", font_button, scale)
         else:
             # Original style
             colors = tokens.colors
@@ -270,7 +270,7 @@ class GameOverScreen:
         text_rect = text_surf.get_rect(center=scaled_rect.center)
         surface.blit(text_surf, text_rect)
 
-    def _render_military_button(self, surface, btn_key: str, text: str, font, scale: float):
+    def _render_themed_button(self, surface, btn_key: str, text: str, font, scale: float):
         """Render button in military style with chamfered corners."""
         btn_rect = self._buttons[btn_key]
         is_hovered = btn_rect.collidepoint(self._mouse_pos)
@@ -291,22 +291,22 @@ class GameOverScreen:
 
         if btn_key == 'menu':
             if is_hovered:
-                base_color = ForestColors.FOREST_GREEN
-                border_color = ForestColors.GOLD_PRIMARY
-                text_color = ForestColors.TEXT_BRIGHT
+                base_color = SceneColors.FOREST_GREEN
+                border_color = SceneColors.GOLD_PRIMARY
+                text_color = SceneColors.TEXT_BRIGHT
             else:
-                base_color = ForestColors.BG_PANEL_LIGHT
-                border_color = ForestColors.BORDER_DIM
-                text_color = ForestColors.TEXT_PRIMARY
+                base_color = SceneColors.BG_PANEL_LIGHT
+                border_color = SceneColors.BORDER_DIM
+                text_color = SceneColors.TEXT_PRIMARY
         else:
             if is_hovered:
-                base_color = ForestColors.DANGER_RED_DIM
-                border_color = ForestColors.DANGER_RED
-                text_color = ForestColors.TEXT_BRIGHT
+                base_color = SceneColors.DANGER_RED_DIM
+                border_color = SceneColors.DANGER_RED
+                text_color = SceneColors.TEXT_BRIGHT
             else:
-                base_color = ForestColors.BG_PANEL_LIGHT
-                border_color = ForestColors.BORDER_DIM
-                text_color = ForestColors.TEXT_PRIMARY
+                base_color = SceneColors.BG_PANEL_LIGHT
+                border_color = SceneColors.BORDER_DIM
+                text_color = SceneColors.TEXT_PRIMARY
 
         # Draw glow for hovered
         if is_hovered or self._button_click_animation[btn_key] > 0:
@@ -314,9 +314,9 @@ class GameOverScreen:
                 surface,
                 scaled_rect.x - 4, scaled_rect.y - 4,
                 scaled_rect.width + 8, scaled_rect.height + 8,
-                ForestColors.BG_PANEL,
-                ForestColors.GOLD_GLOW if btn_key == 'menu' else ForestColors.DANGER_RED,
-                ForestColors.GOLD_GLOW if btn_key == 'menu' else ForestColors.DANGER_RED,
+                SceneColors.BG_PANEL,
+                SceneColors.GOLD_GLOW if btn_key == 'menu' else SceneColors.DANGER_RED,
+                SceneColors.GOLD_GLOW if btn_key == 'menu' else SceneColors.DANGER_RED,
                 10
             )
 
