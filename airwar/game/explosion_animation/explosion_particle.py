@@ -1,3 +1,4 @@
+"""Explosion particle — single particle in an explosion effect."""
 import math
 from typing import Tuple
 
@@ -13,7 +14,8 @@ class ExplosionParticle:
         vy: float,
         life: int,
         max_life: int,
-        size: float
+        size: float,
+        particle_type: str = "main"
     ) -> None:
         self.x = x
         self.y = y
@@ -22,6 +24,7 @@ class ExplosionParticle:
         self.life = life
         self.max_life = max_life
         self.size = size
+        self.particle_type = particle_type
 
     def update(self, dt: float = 1.0) -> None:
         """Update particle state
@@ -31,8 +34,17 @@ class ExplosionParticle:
         """
         self.x += self.vx * dt
         self.y += self.vy * dt
-        self.vx *= 0.98
-        self.vy *= 0.98
+
+        if self.particle_type == "spark":
+            self.vx *= 0.96
+            self.vy *= 0.96
+        elif self.particle_type == "debris":
+            self.vx *= 0.94
+            self.vy *= 0.94
+        else:
+            self.vx *= 0.98
+            self.vy *= 0.98
+
         self.life -= 1
 
     def get_alpha(self) -> int:
@@ -42,11 +54,24 @@ class ExplosionParticle:
     def get_color(self) -> Tuple[int, int, int]:
         """Get color (changes with lifecycle)
 
-        Transitions from orange-red to yellow"""
+        Transitions from orange-red to yellow for main particles.
+        Sparks are brighter, debris is grayer.
+        """
         life_ratio = self.life / self.max_life
-        r = 255
-        g = int(150 * life_ratio)
-        b = int(30 * life_ratio)
+
+        if self.particle_type == "spark":
+            r = 255
+            g = int(220 * life_ratio)
+            b = int(100 * life_ratio)
+        elif self.particle_type == "debris":
+            r = 180 + int(75 * life_ratio)
+            g = int(100 * life_ratio)
+            b = int(40 * life_ratio)
+        else:
+            r = 255
+            g = int(150 * life_ratio)
+            b = int(30 * life_ratio)
+
         return (r, g, b)
 
     def is_alive(self) -> bool:

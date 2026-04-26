@@ -1,8 +1,10 @@
-from typing import Tuple, Dict, Any
+"""Design tokens — color themes, typography, spacing, and animation values."""
+from typing import Tuple
 import pygame
 
 
 class Colors:
+    """Color theme dataclass — all color values for a visual theme."""
     BACKGROUND_PRIMARY = (5, 5, 8)
     BACKGROUND_SECONDARY = (12, 10, 8)
     BACKGROUND_PANEL = (8, 6, 5)
@@ -59,6 +61,7 @@ class Colors:
 
 
 class Typography:
+    """Typography dataclass — font sizes for all UI text elements."""
     DISPLAY_SIZE = 110
     TITLE_SIZE = 100
     HEADING_SIZE = 72
@@ -74,6 +77,7 @@ class Typography:
 
 
 class Spacing:
+    """Spacing dataclass — margin, padding, and layout spacing values."""
     SPACE_XS = 4
     SPACE_SM = 8
     SPACE_MD = 12
@@ -99,6 +103,7 @@ class Spacing:
 
 
 class Animation:
+    """Animation dataclass — timing and easing values for animations."""
     GLOW_SPEED = 0.08
     GLOW_RADIUS_DEFAULT = 4
     GLOW_RADIUS_TITLE = 6
@@ -116,8 +121,18 @@ class Animation:
     PARTICLE_SPEED_MAX = 1.0
     STAR_SPEED = 0.01
 
+    # Nebula effect tokens
+    NEBULA_COUNT = 5
+    NEBULA_RADIUS_MIN = 150
+    NEBULA_RADIUS_MAX = 350
+    NEBULA_ALPHA_MIN = 15
+    NEBULA_ALPHA_MAX = 35
+    NEBULA_DRIFT_X_RANGE = 0.0002
+    NEBULA_DRIFT_Y_RANGE = 0.0001
+
 
 class UIComponents:
+    """UI components dataclass — dimensions for standard UI elements."""
     BUTTON_WIDTH = 280
     BUTTON_HEIGHT = 60
     TITLE_Y = 100
@@ -277,6 +292,10 @@ class MilitaryUI:
     PULSE_SLOW = 60
     FLASH_DURATION = 10
 
+    # Scanline overlay
+    SCANLINE_ALPHA = 25
+    SCANLINE_SPACING = 4
+
     # Font sizes for military HUD
     MILITARY_LABEL_SIZE = 18
     MILITARY_VALUE_SIZE = 24
@@ -397,6 +416,11 @@ class ForestColors:
 
 
 class DesignTokens:
+    """Design tokens singleton — centralized visual design system.
+    
+        Provides themed colors (Military, Forest), typography, spacing,
+        animation, and UI component dimensions.
+        """
     def __init__(self):
         self.colors = Colors
         self.typography = Typography
@@ -428,13 +452,3 @@ def get_colors() -> type:
     return Colors
 
 
-def get_typography() -> type:
-    return Typography
-
-
-def get_spacing() -> type:
-    return Spacing
-
-
-def get_animation() -> type:
-    return Animation

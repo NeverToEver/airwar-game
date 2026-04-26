@@ -12,12 +12,14 @@ from typing import Tuple, List, Dict
 
 
 class StepType(Enum):
+    """Tutorial step type enum — panel, button, or content card."""
     WELCOME = 'welcome'
     KEY_LIST = 'key_list'
 
 
 @dataclass
 class PanelConfig:
+    """Tutorial panel config dataclass — position and size for a step panel."""
     WIDTH: int = 800
     HEIGHT: int = 700
     BORDER_RADIUS: int = 15
@@ -26,6 +28,7 @@ class PanelConfig:
 
 @dataclass
 class ButtonConfig:
+    """Tutorial button config dataclass — label and action for a step button."""
     WIDTH: int = 200
     HEIGHT: int = 55
     BORDER_RADIUS: int = 10
@@ -34,6 +37,7 @@ class ButtonConfig:
 
 @dataclass
 class ContentCardConfig:
+    """Tutorial content card config dataclass — title and body for a step."""
     PADDING: int = 20
     SPACING: int = 12
     BORDER_RADIUS: int = 10

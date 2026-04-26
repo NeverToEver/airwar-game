@@ -1,3 +1,4 @@
+"""Mouse interaction — mixins for clickable and hoverable UI elements."""
 import pygame
 from typing import List, Optional, Callable, Dict
 

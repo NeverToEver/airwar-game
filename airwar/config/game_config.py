@@ -1,8 +1,14 @@
+"""Game config — singleton configuration with adaptive screen sizing."""
 from typing import Tuple
 import pygame
 
 
 class GameConfig:
+    """Game config singleton — manages screen dimensions and scaling.
+    
+        Provides adaptive screen sizing functions and caches computed
+        dimension values for the current display.
+        """
     _instance = None
 
     def __init__(self):

@@ -1,3 +1,5 @@
+"""Game engine package — scene management, game loop, and rendering."""
+
 # Systems modules
 from airwar.game.systems.health_system import HealthSystem
 from airwar.game.systems.reward_system import RewardSystem

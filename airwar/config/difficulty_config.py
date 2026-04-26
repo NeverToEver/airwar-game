@@ -1,3 +1,4 @@
+"""Difficulty config — difficulty level presets and enemy parameter tables."""
 DIFFICULTY_CONFIGS = {
     'easy': {
         'growth_rate': 0.5,

@@ -16,7 +16,7 @@ Usage:
     boss_manager.update(player)
 """
 
-from typing import TYPE_CHECKING, Optional, Callable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from airwar.game.managers.spawn_controller import SpawnController

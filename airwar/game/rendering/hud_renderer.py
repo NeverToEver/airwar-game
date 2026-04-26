@@ -1,12 +1,16 @@
+"""HUD renderer — score, health bar, boss HP, buff stats panel."""
 from typing import Optional, List
 import pygame
-from airwar.ui.buff_stats_panel import BuffStatsPanel, AttackModePanel
-from airwar.ui.chamfered_panel import draw_chamfered_panel
-from airwar.ui.segmented_bar import BossHealthBar
-from airwar.config.design_tokens import get_design_tokens, MilitaryColors, MilitaryUI
+from ...ui.buff_stats_panel import BuffStatsPanel, AttackModePanel
+from ...ui.chamfered_panel import draw_chamfered_panel
+from ...ui.segmented_bar import BossHealthBar
+from ...config.design_tokens import get_design_tokens, MilitaryColors, MilitaryUI
+from ..constants import GAME_CONSTANTS
+from ...utils.sprites import draw_ripple
 
 
 class HUDLayout:
+    """HUD layout constants — positions for score, health, kills, boss info."""
     SCORE_POS = (15, 15)
     PROGRESS_POS = (15, 45)
     DIFFICULTY_OFFSET_X = -110
@@ -27,6 +31,15 @@ class HUDLayout:
 
 
 class HUDRenderer:
+    """HUD renderer — score, health bar, boss HP, buff stats, notifications.
+    
+        Renders all heads-up display elements including military-style and
+        original-style boss health bars.
+    
+        Attributes:
+            hud_font: Primary font for HUD text elements.
+            _buff_stats_panel: BuffStatsPanel for active buff display.
+        """
     def __init__(self):
         pygame.font.init()
         self._tokens = get_design_tokens()
@@ -93,7 +106,7 @@ class HUDRenderer:
         if timer > 0 and notification:
             colors = self._tokens.colors
             alpha = min(255, timer * 4)
-            color = colors.INFO if alpha > 150 else (150, 255, 200)
+            color = colors.INFO if alpha > GAME_CONSTANTS.TIMING.NOTIFICATION_ALPHA_THRESHOLD else (150, 255, 200)
             text = self.notif_font.render(notification, True, color)
             text.set_alpha(alpha)
             x = surface.get_width() // 2 - text.get_width() // 2
@@ -197,7 +210,6 @@ class HUDRenderer:
             surface.blit(warning_text, warning_rect)
 
     def render_ripples(self, surface: pygame.Surface, ripples: List[dict]) -> None:
-        from airwar.utils.sprites import draw_ripple
         for ripple in ripples:
             pulse = ripple.get('pulse', 0)
             draw_ripple(surface, ripple['x'], ripple['y'], ripple['radius'], ripple['alpha'], pulse)

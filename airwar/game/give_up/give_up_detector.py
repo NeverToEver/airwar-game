@@ -1,8 +1,14 @@
+"""Give-up detector — hold-key-to-surrender input detection."""
 import pygame
 from typing import Callable
 
 
 class GiveUpDetector:
+    """Give-up detector — detects hold-key-to-surrender input pattern.
+    
+        Monitors a specific key (K) for sustained press duration to trigger
+        the voluntary surrender flow.
+        """
     K_KEY = pygame.K_k
     HOLD_DURATION = 3.0
 

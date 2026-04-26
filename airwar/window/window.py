@@ -1,8 +1,11 @@
+"""Window — resizable display window with event handling."""
 import pygame
 from typing import Optional, Tuple, List
+from airwar.config import set_screen_size
 
 
 class Window:
+    """Resizable pygame window with event handling and mode management."""
     def __init__(self, width: int = 1400, height: int = 800, title: str = 'Air War', resizable: bool = True):
         self._running = False
         self._screen: Optional[pygame.Surface] = None
@@ -27,11 +30,12 @@ class Window:
         else:
             self._width, self._height = self._get_adaptive_size()
 
-        flags = pygame.RESIZABLE if self._resizable else 0
+        flags = pygame.RESIZABLE | pygame.SCALED if self._resizable else pygame.SCALED
         self._screen = pygame.display.set_mode((self._width, self._height), flags)
         pygame.display.set_caption(self._title)
         self._clock = pygame.time.Clock()
         self._running = True
+        set_screen_size(self._width, self._height)
 
     def _get_adaptive_size(self) -> Tuple[int, int]:
         try:
@@ -92,13 +96,14 @@ class Window:
     def resize(self, width: int, height: int) -> None:
         if self._is_fullscreen:
             return
-        
+
         width = max(self._min_size[0], min(width, self._max_size[0]))
         height = max(self._min_size[1], min(height, self._max_size[1]))
         self._width = width
         self._height = height
         if self._screen:
-            self._screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
+            self._screen = pygame.display.set_mode((width, height), pygame.RESIZABLE | pygame.SCALED)
+        set_screen_size(width, height)
 
     def flip(self) -> None:
         if self._screen:
@@ -147,10 +152,10 @@ class Window:
     def toggle_fullscreen(self) -> None:
         if self._screen is None:
             return
-        
+
         if self._is_fullscreen:
             self._width, self._height = self._windowed_size
-            flags = pygame.RESIZABLE if self._resizable else 0
+            flags = (pygame.RESIZABLE | pygame.SCALED) if self._resizable else pygame.SCALED
             self._screen = pygame.display.set_mode((self._width, self._height), flags)
             self._is_fullscreen = False
         else:
@@ -161,6 +166,9 @@ class Window:
             flags = pygame.FULLSCREEN | (pygame.RESIZABLE if self._resizable else 0)
             self._screen = pygame.display.set_mode((self._width, self._height), flags)
             self._is_fullscreen = True
+        # Get actual surface size after display mode change
+        self._width, self._height = self._screen.get_size()
+        set_screen_size(self._width, self._height)
 
     def is_fullscreen(self) -> bool:
         return self._is_fullscreen

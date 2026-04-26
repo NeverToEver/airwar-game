@@ -1,3 +1,4 @@
+"""Game systems package — health, difficulty, rewards, notifications."""
 from .health_system import HealthSystem
 from .reward_system import RewardSystem
 from .difficulty_manager import DifficultyManager, DifficultyListener

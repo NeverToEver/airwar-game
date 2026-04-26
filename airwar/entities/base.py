@@ -17,8 +17,6 @@ class Vector2:
 
     x: float = 0
     y: float = 0
-    x: float = 0
-    y: float = 0
 
     def __add__(self, other: 'Vector2') -> 'Vector2':
         return Vector2(self.x + other.x, self.y + other.y)

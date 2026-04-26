@@ -78,14 +78,14 @@ class Bullet(Entity):
 
         if (self.data.bullet_type == "laser" or self.data.is_laser) and self._trail:
             for i, trail_rect in enumerate(self._trail):
-                alpha = int(100 * (i / len(self._trail)))
+                alpha = int(120 * (i / len(self._trail)))
                 cache_key = (trail_rect.width, trail_rect.height, alpha)
                 if cache_key not in Bullet._trail_surface_cache:
                     if len(Bullet._trail_surface_cache) >= Bullet._TRAIL_CACHE_MAX_SIZE:
                         oldest = Bullet._trail_cache_order.pop(0)
                         Bullet._trail_surface_cache.pop(oldest, None)
                     trail_surface = pygame.Surface((trail_rect.width, trail_rect.height), pygame.SRCALPHA)
-                    trail_surface.fill((255, 0, 100, alpha))
+                    trail_surface.fill((255, 30, 30, alpha))
                     Bullet._trail_surface_cache[cache_key] = trail_surface
                     Bullet._trail_cache_order.append(cache_key)
                 else:

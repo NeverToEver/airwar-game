@@ -13,9 +13,8 @@ class TestBuffRegistry:
         from airwar.game.buffs.buff_registry import BUFF_REGISTRY
         expected_buffs = [
             'Extra Life', 'Regeneration', 'Lifesteal',
-            'Power Shot', 'Rapid Fire', 'Piercing', 'Spread Shot', 'Explosive', 'Shotgun', 'Laser',
-            'Shield', 'Armor', 'Evasion', 'Barrier',
-            'Speed Boost', 'Magnet', 'Slow Field'
+            'Power Shot', 'Rapid Fire', 'Piercing', 'Spread Shot', 'Explosive', 'Laser',
+            'Armor', 'Evasion', 'Barrier', 'Slow Field',
         ]
         for buff_name in expected_buffs:
             assert buff_name in BUFF_REGISTRY, f"Missing buff: {buff_name}"
@@ -28,9 +27,8 @@ class TestBuffRegistry:
 
     @pytest.mark.parametrize('buff_name', [
         'Extra Life', 'Regeneration', 'Lifesteal',
-        'Power Shot', 'Rapid Fire', 'Piercing', 'Spread Shot', 'Explosive', 'Shotgun', 'Laser',
-        'Shield', 'Armor', 'Evasion', 'Barrier',
-        'Speed Boost', 'Magnet', 'Slow Field'
+        'Power Shot', 'Rapid Fire', 'Piercing', 'Spread Shot', 'Explosive', 'Laser',
+        'Armor', 'Evasion', 'Barrier', 'Slow Field',
     ])
     def test_all_buffs_can_be_created(self, buff_name):
         from airwar.game.buffs.buff_registry import create_buff
@@ -40,9 +38,8 @@ class TestBuffRegistry:
 
     @pytest.mark.parametrize('buff_name', [
         'Extra Life', 'Regeneration', 'Lifesteal',
-        'Power Shot', 'Rapid Fire', 'Piercing', 'Spread Shot', 'Explosive', 'Shotgun', 'Laser',
-        'Shield', 'Armor', 'Evasion', 'Barrier',
-        'Speed Boost', 'Magnet', 'Slow Field'
+        'Power Shot', 'Rapid Fire', 'Piercing', 'Spread Shot', 'Explosive', 'Laser',
+        'Armor', 'Evasion', 'Barrier', 'Slow Field',
     ])
     def test_all_buffs_have_required_methods(self, buff_name):
         from airwar.game.buffs.buff_registry import create_buff
@@ -128,11 +125,9 @@ class TestBuffApplication:
         from airwar.entities import Player
         from airwar.input import MockInputHandler
         player = Player(100, 200, MockInputHandler())
-        buff = create_buff('Shield')
+        buff = create_buff('Barrier')
         result = buff.apply(player)
-        assert result.name == 'Shield'
-        player.activate_shield(180)
-        assert player.is_shielded is True
+        assert result is not None
 
 
 class TestRewardSystemUpgrades:

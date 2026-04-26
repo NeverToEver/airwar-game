@@ -31,8 +31,8 @@ class TestSpriteBindings:
             pytest.skip("Rust not available")
 
         data = create_laser_bullet_glow(20.0)
-        # Surface should be 20 by height+8
-        expected_size = 20 * (20 + 8) * 4
+        # Surface is now 24 by height+12 (wider more intense glow)
+        expected_size = 24 * (20 + 12) * 4
         assert len(data) == expected_size
 
     def test_explosive_missile_glow_creates_surface(self):

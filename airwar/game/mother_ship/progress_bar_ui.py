@@ -1,9 +1,10 @@
+"""Progress bar UI — visual docking progress indicator."""
 import pygame
-from typing import Optional, Literal
 from .interfaces import IMotherShipUI
 
 
 class ProgressBarUI(IMotherShipUI):
+    """Progress bar UI — visual docking progress indicator."""
     BAR_TYPE_HOLD = "hold"
     BAR_TYPE_COOLDOWN = "cooldown"
     BAR_TYPE_STAY = "stay"
@@ -15,18 +16,18 @@ class ProgressBarUI(IMotherShipUI):
         self._screen_height = screen_height
         self._bar_type = self.BAR_TYPE_HOLD
 
-        self._bar_width = 300
-        self._bar_height = 20
-        self._corner_radius = 10
-        self._border_width = 2
+        self._bar_width = 200
+        self._bar_height = 10
+        self._corner_radius = 5
+        self._border_width = 1
 
-        self._bg_color = (30, 30, 50, 200)
-        self._progress_color_inactive = (80, 80, 120)
-        self._progress_color_active = (60, 180, 255)
-        self._progress_color_complete = (80, 255, 120)
-        self._progress_color_cooldown = (180, 140, 60)
-        self._progress_color_stay = (80, 200, 120)
-        self._border_color = (120, 120, 160)
+        self._bg_color = (20, 20, 40, 180)
+        self._progress_color_inactive = (60, 60, 100)
+        self._progress_color_active = (60, 160, 220)
+        self._progress_color_complete = (80, 220, 120)
+        self._progress_color_cooldown = (160, 120, 50)
+        self._progress_color_stay = (80, 180, 110)
+        self._border_color = (100, 100, 140)
 
         self._completion_animation_progress = 0.0
         self._is_playing_complete_animation = False
@@ -34,7 +35,7 @@ class ProgressBarUI(IMotherShipUI):
         self._current_value = 0.0
 
         pygame.font.init()
-        self._font = pygame.font.Font(None, 24)
+        self._font = pygame.font.Font(None, 18)
 
     def show(self, bar_type: str = BAR_TYPE_HOLD, max_value: float = 3.0) -> None:
         self._visible = True
@@ -63,18 +64,16 @@ class ProgressBarUI(IMotherShipUI):
             return
 
         center_x = self._screen_width // 2
-        center_y = self._screen_height - 150
+        center_y = 40
 
         bar_x = center_x - self._bar_width // 2
         bar_y = center_y - self._bar_height // 2
-
-        self._render_mothership_icon(surface, center_x, center_y - 60)
 
         if self._is_playing_complete_animation:
             self._render_complete_animation(surface, center_x, center_y, bar_x, bar_y)
         else:
             self._render_progress_bar(surface, bar_x, bar_y)
-            self._render_progress_text(surface, center_x, center_y)
+            self._render_progress_text(surface, center_x, center_y + 5)
 
     def _render_progress_bar(self, surface: pygame.Surface, bar_x: int, bar_y: int) -> None:
         bg_rect = pygame.Rect(bar_x, bar_y, self._bar_width, self._bar_height)
@@ -106,26 +105,26 @@ class ProgressBarUI(IMotherShipUI):
             )
             surface.blit(progress_surface, (bar_x, bar_y))
 
-            if progress_width > 4:
-                highlight_rect = pygame.Rect(bar_x + 2, bar_y + 2, progress_width - 4, 4)
-                highlight_surface = pygame.Surface((progress_width - 4, 4), pygame.SRCALPHA)
-                pygame.draw.rect(highlight_surface, (*progress_color, 100), (0, 0, progress_width - 4, 4))
-                surface.blit(highlight_surface, (bar_x + 2, bar_y + 2))
+            if progress_width > 2:
+                hw = max(1, progress_width - 2)
+                highlight_surface = pygame.Surface((hw, 2), pygame.SRCALPHA)
+                pygame.draw.rect(highlight_surface, (*progress_color, 120), (0, 0, hw, 2))
+                surface.blit(highlight_surface, (bar_x + 1, bar_y + 2))
 
     def _render_progress_text(self, surface: pygame.Surface, center_x: int, center_y: int) -> None:
         if self._bar_type == self.BAR_TYPE_HOLD:
             seconds = int(self._progress * 3)
-            text = self._font.render(f"HOLD {seconds}/3", True, (200, 200, 220))
+            text = self._font.render(f"HOLD {seconds}/3", True, (180, 200, 220))
         elif self._bar_type == self.BAR_TYPE_COOLDOWN:
             remaining = int((1.0 - self._progress) * self._max_value)
-            text = self._font.render(f"COOLDOWN {remaining}s", True, (200, 180, 140))
+            text = self._font.render(f"COOLDOWN {remaining}s", True, (180, 160, 120))
         elif self._bar_type == self.BAR_TYPE_STAY:
             remaining = int((1.0 - self._progress) * self._max_value)
-            text = self._font.render(f"STAY {remaining}s [H]2s EXIT", True, (140, 200, 160))
+            text = self._font.render(f"STAY {remaining}s", True, (120, 180, 140))
         else:
-            text = self._font.render(f"{self._progress:.1%}", True, (200, 200, 220))
+            text = self._font.render(f"{self._progress:.1%}", True, (180, 200, 220))
 
-        text_rect = text.get_rect(center=(center_x, center_y + 30))
+        text_rect = text.get_rect(center=(center_x, center_y + 16))
         surface.blit(text, text_rect)
 
     def _render_mothership_icon(self, surface: pygame.Surface, center_x: int, center_y: int) -> None:

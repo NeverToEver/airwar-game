@@ -1,3 +1,4 @@
+"""Mothership package — docking system for saving game progress."""
 from .interfaces import (
     IInputDetector,
     IMotherShipUI,

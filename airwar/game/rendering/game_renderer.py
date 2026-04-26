@@ -1,21 +1,34 @@
+"""Game renderer — entity rendering, background, and death animation."""
 import pygame
 from dataclasses import dataclass
 from typing import List
-from airwar.game.rendering.hud_renderer import HUDRenderer
-from airwar.game.rendering.integrated_hud import IntegratedHUD
-from airwar.game.managers.game_controller import GameState, GameplayState
-from airwar.game.rendering.game_rendering_background import RainforestBackground
-from airwar.game.death_animation import DeathAnimation
+from .hud_renderer import HUDRenderer
+from .integrated_hud import IntegratedHUD
+from ..managers.game_controller import GameState, GameplayState
+from .game_rendering_background import RainforestBackground
+from ..death_animation import DeathAnimation
 
 
 @dataclass
 class GameEntities:
+    """Game entities container dataclass — player, enemies, boss."""
     player: any
     enemies: List
     boss: any
 
 
 class GameRenderer:
+    """Game renderer — entity rendering, background, and death animation.
+    
+        Handles the main game rendering pipeline: background → entities →
+        effects → HUD. Supports entrance animation zoom effect and death
+        animation transitions.
+    
+        Attributes:
+            hud_renderer: HUDRenderer for heads-up display.
+            background_renderer: RainforestBackground for parallax starfield.
+            _death_animation: DeathAnimation instance during player death.
+        """
     def __init__(self, hud_renderer: HUDRenderer = None, use_integrated_hud: bool = True):
         self.hud_renderer = hud_renderer or HUDRenderer()
         self.integrated_hud = IntegratedHUD() if use_integrated_hud else None

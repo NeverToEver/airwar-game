@@ -1,8 +1,10 @@
-from typing import List, Any, Dict, Optional, Callable
+"""Explosion manager — unified trigger and update for explosions."""
+from typing import Any, Dict
 
 import pygame
 
-from airwar.game.explosion_animation.explosion_pool import ExplosionPool
+from .explosion_pool import ExplosionPool
+from ..constants import GAME_CONSTANTS
 
 
 class ExplosionManager:
@@ -61,7 +63,7 @@ class ExplosionManager:
         """
         self._time_accumulator += dt
 
-        if self._time_accumulator >= 60:
+        if self._time_accumulator >= GAME_CONSTANTS.ANIMATION.ENTRANCE_DURATION:
             self._explosions_this_second = 0
             self._time_accumulator = 0.0
 

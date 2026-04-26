@@ -1,3 +1,4 @@
+"""Login scene — player name entry and difficulty selection."""
 import pygame
 import math
 from .scene import Scene
@@ -11,6 +12,11 @@ from airwar.ui.chamfered_panel import draw_chamfered_panel
 
 
 class LoginScene(Scene, MouseInteractiveMixin):
+    """Login scene — player name entry and difficulty selection.
+    
+        First scene shown on game launch. Player enters username and chooses
+        difficulty before proceeding to MenuScene.
+        """
     def __init__(self):
         Scene.__init__(self)
         MouseInteractiveMixin.__init__(self)
@@ -592,12 +598,15 @@ class LoginScene(Scene, MouseInteractiveMixin):
         hint_surf = self.hint_font.render(hints, True, hint_color)
         surface.blit(hint_surf, hint_surf.get_rect(center=(width // 2, height - 50)))
 
+    def _is_error_message(self) -> bool:
+        return "Invalid" in self.message or "min" in self.message or "exists" in self.message
+
     def _render_message(self, surface, width, height):
         scale = ResponsiveHelper.get_scale_factor(width, height)
         if self.use_military_style:
-            msg_color = ForestColors.DANGER_RED if "Invalid" in self.message or "min" in self.message or "exists" in self.message else ForestColors.FOREST_GREEN
+            msg_color = ForestColors.DANGER_RED if self._is_error_message() else ForestColors.FOREST_GREEN
         else:
-            msg_color = self.colors['error'] if "Invalid" in self.message or "min" in self.message or "exists" in self.message else self.colors['success']
+            msg_color = self.colors['error'] if self._is_error_message() else self.colors['success']
         msg_surf = self.input_font.render(self.message, True, msg_color)
         msg_y = self.password_input_y + self.input_height + ResponsiveHelper.scale(70, scale)
         surface.blit(msg_surf, msg_surf.get_rect(center=(width // 2, msg_y)))

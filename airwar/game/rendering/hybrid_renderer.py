@@ -1,10 +1,10 @@
 """渲染器 - pygame CPU 后端"""
 import pygame
 
-from airwar.game.rendering.game_renderer import GameRenderer, GameEntities
-from airwar.game.rendering.hud_renderer import HUDRenderer
-from airwar.game.managers.game_controller import GameState
-from airwar.entities.player import Player
+from .game_renderer import GameRenderer, GameEntities
+from .hud_renderer import HUDRenderer
+from ..managers.game_controller import GameState
+from ...entities.player import Player
 
 
 class HybridRenderer:

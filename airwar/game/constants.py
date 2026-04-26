@@ -7,8 +7,6 @@ throughout the codebase. Follows architectural standards:
 - Maintainability: Centralized management for easy modification
 
 Usage:
-    from airwar.game.constants import GAME_CONSTANTS, PlayerConstants
-
     # Access player constants
     player_y = PlayerConstants.INITIAL_Y
 
@@ -35,6 +33,10 @@ class PlayerConstants:
         INVINCIBILITY_DURATION: Invincibility duration in frames.
         MOTHERSHIP_Y_POSITION: Player Y position when docked with mothership.
         DEFAULT_SCREEN_WIDTH: Default screen width.
+        MAX_HEALTH: Maximum player health.
+        SPEED: Player movement speed.
+        BULLET_DAMAGE: Player bullet damage.
+        FIRE_COOLDOWN: Fire cooldown in frames.
     """
     INITIAL_X_OFFSET: int = 25
     INITIAL_Y: int = -80
@@ -43,6 +45,10 @@ class PlayerConstants:
     INVINCIBILITY_DURATION: int = 90
     MOTHERSHIP_Y_POSITION: int = 200
     DEFAULT_SCREEN_WIDTH: int = 800
+    MAX_HEALTH: int = 100
+    SPEED: int = 5
+    BULLET_DAMAGE: int = 10
+    FIRE_COOLDOWN: int = 8
 
 
 @dataclass(frozen=True)
@@ -72,9 +78,11 @@ class TimingConstants:
     Attributes:
         FIXED_DELTA_TIME: Fixed frame time step (~16.67ms @60fps).
         NOTIFICATION_DURATION: Notification display duration in frames.
+        NOTIFICATION_ALPHA_THRESHOLD: Alpha threshold for notification color change.
     """
     FIXED_DELTA_TIME: float = 1 / 60
     NOTIFICATION_DURATION: int = 90
+    NOTIFICATION_ALPHA_THRESHOLD: int = 150
 
 
 @dataclass(frozen=True)
@@ -86,11 +94,27 @@ class AnimationConstants:
         RIPPLE_INITIAL_RADIUS: Ripple effect initial radius.
         RIPPLE_INITIAL_ALPHA: Ripple effect initial alpha.
         NOTIFICATION_DECAY_RATE: Notification decay rate.
+        PARTICLE_ALPHA_VISIBILITY_THRESHOLD: Minimum alpha for particle visibility.
+        PARTICLE_SIZE_THRESHOLD_LARGE: Large particle size threshold.
+        PARTICLE_SIZE_THRESHOLD_MEDIUM: Medium particle size threshold.
+        PARTICLE_SIZE_THRESHOLD_SMALL: Small particle size threshold.
+        PARTICLE_BASE_SIZE_LARGE: Base texture size for large particles.
+        PARTICLE_BASE_SIZE_MEDIUM: Base texture size for medium particles.
+        PARTICLE_BASE_SIZE_SMALL: Base texture size for small particles.
+        PARTICLE_BASE_SIZE_TINY: Base texture size for tiny particles.
     """
     ENTRANCE_DURATION: int = 60
     RIPPLE_INITIAL_RADIUS: int = 15
     RIPPLE_INITIAL_ALPHA: int = 350
     NOTIFICATION_DECAY_RATE: int = 1
+    PARTICLE_ALPHA_VISIBILITY_THRESHOLD: int = 10
+    PARTICLE_SIZE_THRESHOLD_LARGE: int = 18
+    PARTICLE_SIZE_THRESHOLD_MEDIUM: int = 14
+    PARTICLE_SIZE_THRESHOLD_SMALL: int = 10
+    PARTICLE_BASE_SIZE_LARGE: int = 20
+    PARTICLE_BASE_SIZE_MEDIUM: int = 16
+    PARTICLE_BASE_SIZE_SMALL: int = 12
+    PARTICLE_BASE_SIZE_TINY: int = 8
 
 
 @dataclass(frozen=True)
@@ -109,7 +133,7 @@ class GameBalanceConstants:
     BASE_THRESHOLDS: Tuple[int, ...] = (3000, 6000, 10000, 16000, 25000, 38000, 55000, 80000)
     CYCLE_MULTIPLIER: float = 1.35
     DIFFICULTY_MULTIPLIERS: Tuple[float, float, float] = (1.0, 1.5, 2.0)
-    WAVE_SIZE: int = 9
+    WAVE_SIZE: int = 11
     EXPLOSION_RADIUS: int = 50
 
 
@@ -157,6 +181,32 @@ class BossConstants:
     })
 
 
+@dataclass(frozen=True)
+class EnemyConstants:
+    """Enemy-related constants.
+
+    Attributes:
+        LIFETIME: Enemy lifetime in frames (15 seconds = 900 frames @ 60fps).
+        MOVE_TIMER: Enemy movement pattern timer threshold.
+        ESCAPE_WARNING: Escape warning time before boss escapes.
+    """
+    LIFETIME: int = 900  # 15 seconds * 60 fps
+    MOVE_TIMER: int = 60
+    ESCAPE_WARNING: int = 180
+
+
+@dataclass(frozen=True)
+class RewardConstants:
+    """Reward-related constants.
+
+    Attributes:
+        LASER_DURATION: Laser buff duration in frames.
+        EXPLOSION_RADIUS: Explosion effect radius.
+    """
+    LASER_DURATION: int = 180
+    EXPLOSION_RADIUS: int = 60
+
+
 @dataclass
 class GameConstants:
     """Aggregates all game constants with unified access.
@@ -171,6 +221,8 @@ class GameConstants:
         BALANCE: Game balance-related constants.
         TIMING: Timing-related constants.
         BOSS: Boss battle-related constants.
+        ENEMY: Enemy-related constants.
+        REWARD: Reward-related constants.
 
     Methods:
         get_difficulty_multiplier(difficulty: str) -> float:
@@ -184,6 +236,8 @@ class GameConstants:
     BALANCE: GameBalanceConstants = field(default_factory=GameBalanceConstants)
     TIMING: TimingConstants = field(default_factory=TimingConstants)
     BOSS: BossConstants = field(default_factory=BossConstants)
+    ENEMY: EnemyConstants = field(default_factory=EnemyConstants)
+    REWARD: RewardConstants = field(default_factory=RewardConstants)
     
     def get_difficulty_multiplier(self, difficulty: str) -> float:
         """Returns the score multiplier for the given difficulty.

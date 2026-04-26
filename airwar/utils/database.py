@@ -1,9 +1,11 @@
+"""Database — SimpleDB and UserDB for player statistics persistence."""
 import json
 import os
 import hashlib
 
 
 class SimpleDB:
+    """Simple key-value database backed by a JSON file."""
     def __init__(self, db_path: str = "airwar/data/users.json"):
         self.db_path = db_path
         self._ensure_dir()
@@ -29,6 +31,11 @@ class SimpleDB:
 
 
 class UserDB(SimpleDB):
+    """User database — persists player stats (high score, kills, games played).
+    
+        Wraps SimpleDB with user-specific operations for tracking statistics
+        across game sessions.
+        """
     def __init__(self):
         super().__init__()
 

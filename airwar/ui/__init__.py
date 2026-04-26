@@ -1,3 +1,4 @@
+"""UI package — panels, particles, effects, and interactive components."""
 from .game_over_screen import GameOverScreen, ScreenAction
 from .reward_selector import RewardSelector
 from .buff_stats_panel import BuffStatsPanel

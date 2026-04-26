@@ -1,3 +1,4 @@
+"""Persistence manager — JSON save/load for full game state."""
 import json
 import os
 import logging
@@ -10,6 +11,11 @@ logger = logging.getLogger(__name__)
 
 
 class PersistenceManager(IPersistenceManager):
+    """Persistence manager — JSON save/load for full game state.
+    
+        Serializes and deserializes game state including player stats, buffs,
+        and difficulty progression to/from JSON files.
+        """
     DEFAULT_SAVE_FILE_NAME = "user_docking_save.json"
     DEFAULT_SAVE_DIRECTORY = "airwar/data"
 

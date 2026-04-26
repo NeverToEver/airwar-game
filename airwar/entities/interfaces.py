@@ -1,3 +1,4 @@
+"""Entity interfaces — IBulletSpawner and IEntityObserver protocols."""
 from abc import ABC, abstractmethod
 from typing import List, TYPE_CHECKING
 
@@ -6,12 +7,14 @@ if TYPE_CHECKING:
 
 
 class IBulletSpawner(ABC):
+    """Interface for bullet spawning — implemented by enemy and boss spawners."""
     @abstractmethod
     def spawn_bullet(self, bullet: 'Bullet') -> None:
         pass
 
 
 class IEntityObserver(ABC):
+    """Interface for entity event observation — enemy/boss fire and destroy events."""
     @abstractmethod
     def on_enemy_fired(self, enemy_id: int, bullets: List['Bullet']) -> None:
         pass

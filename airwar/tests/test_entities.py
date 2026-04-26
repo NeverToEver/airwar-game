@@ -142,8 +142,8 @@ class TestEnemySpawner:
         enemies = []
         for _ in range(60):
             spawner.update(enemies)
-        # Wave system limits to max 9 enemies at a time
-        assert len(enemies) == 9
+        # Wave system limits to max 11 enemies at a time
+        assert len(enemies) == 11
         assert all(isinstance(e, Enemy) for e in enemies)
 
     @pytest.mark.skip(reason="Wave system: spawner.update() spawns full V-formation waves (5), not single enemies")

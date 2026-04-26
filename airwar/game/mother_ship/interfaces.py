@@ -1,9 +1,11 @@
+"""Mothership interfaces — protocols for input, UI, events, persistence."""
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Callable, Optional
+from typing import Any, Callable, Optional
 from .mother_ship_state import MotherShipState, DockingProgress, GameSaveData
 
 
 class IInputDetector(ABC):
+    """Interface for docking input detection."""
     @abstractmethod
     def update(self) -> None:
         pass
@@ -18,6 +20,7 @@ class IInputDetector(ABC):
 
 
 class IMotherShipUI(ABC):
+    """Interface for mothership UI rendering and state display."""
     @abstractmethod
     def show(self) -> None:
         pass
@@ -40,6 +43,7 @@ class IMotherShipUI(ABC):
 
 
 class IEventBus(ABC):
+    """Interface for mothership event publish/subscribe."""
     @abstractmethod
     def subscribe(self, event: str, callback: Callable) -> None:
         pass
@@ -54,6 +58,7 @@ class IEventBus(ABC):
 
 
 class IPersistenceManager(ABC):
+    """Interface for game state save/load operations."""
     @abstractmethod
     def save_game(self, data: GameSaveData) -> bool:
         pass
@@ -72,6 +77,7 @@ class IPersistenceManager(ABC):
 
 
 class IMotherShipStateMachine(ABC):
+    """Interface for mothership docking state machine."""
     @property
     @abstractmethod
     def current_state(self) -> MotherShipState:

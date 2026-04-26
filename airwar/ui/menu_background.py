@@ -1,3 +1,4 @@
+"""Menu background — animated background rendering for menu scenes."""
 import pygame
 import math
 import random

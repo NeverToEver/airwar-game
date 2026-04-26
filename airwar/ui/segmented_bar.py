@@ -91,27 +91,25 @@ class SegmentedProgressBar:
         border_color: Tuple[int, int, int]
     ) -> None:
         """绘制切角段"""
-        chamfer = min(3, rect.width // 4, rect.height // 2)
-
-        # 切角多边形点
-        points = [
-            (chamfer, 0),
-            (rect.width - chamfer, 0),
-            (rect.width, chamfer),
-            (rect.width, rect.height - chamfer),
-            (rect.width - chamfer, rect.height),
-            (chamfer, rect.height),
-            (0, rect.height - chamfer),
-            (0, chamfer),
-        ]
-
-        # 创建本地 surface 绘制
-        seg_surf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
-        seg_surf.fill((0, 0, 0, 0))
-        pygame.draw.polygon(seg_surf, fill_color, points)
-        pygame.draw.lines(seg_surf, border_color, False, points, 1)
-
-        surface.blit(seg_surf, (rect.x, rect.y))
+        cache_key = (self.segment_width, self.height, fill_color, border_color)
+        if cache_key not in self._rendered_cache:
+            chamfer = min(3, rect.width // 4, rect.height // 2)
+            points = [
+                (chamfer, 0),
+                (rect.width - chamfer, 0),
+                (rect.width, chamfer),
+                (rect.width, rect.height - chamfer),
+                (rect.width - chamfer, rect.height),
+                (chamfer, rect.height),
+                (0, rect.height - chamfer),
+                (0, chamfer),
+            ]
+            seg_surf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
+            seg_surf.fill((0, 0, 0, 0))
+            pygame.draw.polygon(seg_surf, fill_color, points)
+            pygame.draw.lines(seg_surf, border_color, False, points, 1)
+            self._rendered_cache[cache_key] = seg_surf
+        surface.blit(self._rendered_cache[cache_key], (rect.x, rect.y))
 
     def render_with_glow(
         self,
@@ -145,12 +143,15 @@ class SegmentedProgressBar:
         if bg_color is None:
             bg_color = MilitaryColors.HEALTH_LOW
 
-        # 首先渲染发光层
-        glow_rect = pygame.Rect(x - 2, y - 2, self.width + 4, self.height + 4)
-        glow_surf = pygame.Surface((glow_rect.width, glow_rect.height), pygame.SRCALPHA)
-        glow_surf.fill((0, 0, 0, 0))
-        pygame.draw.rect(glow_surf, glow_color, glow_surf.get_rect(), border_radius=2)
-        surface.blit(glow_surf, glow_rect)
+        # 首先渲染发光层 (from cache)
+        glow_key = (self.width, self.height, glow_color)
+        if glow_key not in self._rendered_cache:
+            glow_rect = pygame.Rect(0, 0, self.width + 4, self.height + 4)
+            glow_surf = pygame.Surface((glow_rect.width, glow_rect.height), pygame.SRCALPHA)
+            glow_surf.fill((0, 0, 0, 0))
+            pygame.draw.rect(glow_surf, glow_color, glow_surf.get_rect(), border_radius=2)
+            self._rendered_cache[glow_key] = glow_surf
+        surface.blit(self._rendered_cache[glow_key], (x - 2, y - 2))
 
         # 然后渲染进度条
         self.render(
@@ -184,10 +185,11 @@ class SegmentedProgressBar:
 
         # 添加脉冲闪烁
         if pulse_alpha > 0:
-            pulse_surf = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
-            pulse_surf.fill((0, 0, 0, 0))
-            pygame.draw.rect(pulse_surf, (*danger_color, pulse_alpha), pulse_surf.get_rect())
-            surface.blit(pulse_surf, (x, y))
+            if not hasattr(self, '_pulse_surf') or self._pulse_surf.get_size() != (self.width, self.height):
+                self._pulse_surf = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+            self._pulse_surf.fill((0, 0, 0, 0))
+            pygame.draw.rect(self._pulse_surf, (*danger_color, pulse_alpha), self._pulse_surf.get_rect())
+            surface.blit(self._pulse_surf, (x, y))
 
 
 class BossHealthBar:

@@ -31,6 +31,8 @@ try:
         create_laser_bullet_glow,
         create_explosive_missile_glow,
         create_glow_circle,
+        # Bullet functions
+        batch_update_bullets,
     )
     RUST_AVAILABLE = True
 except ImportError:
@@ -68,5 +70,7 @@ __all__ = [
     'create_laser_bullet_glow',
     'create_explosive_missile_glow',
     'create_glow_circle',
+    # Bullet functions
+    'batch_update_bullets',
     'RUST_AVAILABLE',
 ]

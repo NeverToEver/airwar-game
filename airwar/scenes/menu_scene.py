@@ -1,3 +1,4 @@
+"""Main menu scene with game mode selection and settings."""
 import pygame
 import math
 from .scene import Scene

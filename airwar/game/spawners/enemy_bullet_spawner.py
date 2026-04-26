@@ -1,9 +1,15 @@
+"""Enemy bullet spawner — creates and manages enemy bullet entities."""
 from typing import List
 from airwar.entities.interfaces import IBulletSpawner
 from airwar.entities.bullet import Bullet
 
 
 class EnemyBulletSpawner(IBulletSpawner):
+    """Enemy bullet spawner — creates and manages enemy bullet entities.
+    
+        Implements IBulletSpawner to spawn enemy bullets from various
+        attack patterns (single, spread, laser, wave).
+        """
     def __init__(self, bullet_list: List[Bullet] = None):
         self.bullet_list = bullet_list if bullet_list is not None else []
 

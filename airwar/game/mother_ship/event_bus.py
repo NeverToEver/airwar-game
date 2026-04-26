@@ -1,8 +1,15 @@
+"""Event bus — publish/subscribe messaging for mothership events."""
+import logging
 from typing import Dict, List, Callable, Any
 from .interfaces import IEventBus
 
 
 class EventBus(IEventBus):
+    """Event bus — publish/subscribe messaging for mothership events.
+    
+        Decouples mothership components by providing typed event channels
+        for docking progress, state changes, and save completion.
+        """
     def __init__(self):
         self._subscribers: Dict[str, List[Callable]] = {}
 
@@ -24,4 +31,4 @@ class EventBus(IEventBus):
                 try:
                     callback(**kwargs)
                 except Exception as e:
-                    print(f"Event callback error [{event}]: {e}")
+                    logging.error(f"Event callback error [{event}]: {e}")

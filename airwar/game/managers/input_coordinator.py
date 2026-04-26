@@ -1,33 +1,39 @@
+"""Input routing — coordinates player input with current game state."""
 from typing import Protocol
 import pygame
-from airwar.game.constants import GAME_CONSTANTS
+from ..constants import GAME_CONSTANTS
 
 
 class PlayerProtocol(Protocol):
+    """Protocol for player input methods."""
     def fire(self) -> None: ...
     def get_bullets(self): ...
     def render(self, surface) -> None: ...
 
 
 class RewardSelectorProtocol(Protocol):
+    """Protocol for reward selector input methods."""
     def handle_input(self, event) -> None: ...
     @property
     def visible(self) -> bool: ...
 
 
 class GameControllerProtocol(Protocol):
+    """Protocol for game controller state methods."""
     @property
     def state(self): ...
     def is_playing(self) -> bool: ...
 
 
 class GiveUpDetectorProtocol:
+    """Protocol for give-up detector methods."""
     def update(self, delta: float) -> None: ...
     def is_active(self) -> bool: ...
     def get_progress(self) -> float: ...
 
 
 class GiveUpUIProtocol:
+    """Protocol for give-up UI methods."""
     def show(self) -> None: ...
     def hide(self) -> None: ...
     def update_progress(self, progress: float) -> None: ...
@@ -35,6 +41,16 @@ class GiveUpUIProtocol:
 
 
 class InputCoordinator:
+    """Input coordinator — routes player input to the active game subsystem.
+    
+        Disambiguates input between gameplay, reward selection, and give-up
+        states. Uses protocol-based dependency injection for all subsystems.
+    
+        Attributes:
+            _player: Player instance for movement/fire input.
+            _game_controller: GameController for state queries.
+            _give_up_detector: GiveUpDetector for surrender key handling.
+        """
     def __init__(
         self,
         player: PlayerProtocol,

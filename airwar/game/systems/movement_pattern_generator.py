@@ -1,3 +1,4 @@
+"""Procedural movement pattern generation for enemy entities."""
 import random
 from typing import Dict
 
@@ -5,6 +6,11 @@ from airwar.config.difficulty_config import MOVEMENT_PATTERNS
 
 
 class MovementPatternGenerator:
+    """Procedural movement pattern generator for enemy entities.
+    
+        Generates randomized movement parameters for enemy movement types
+        based on difficulty complexity level.
+        """
     DEFAULT_SPEED_MULTIPLIER: float = 1.0
 
     _ENHANCEMENT_COEFFICIENTS: Dict[str, Dict[str, float]] = {

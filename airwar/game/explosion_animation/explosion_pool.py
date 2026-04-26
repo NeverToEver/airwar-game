@@ -1,6 +1,7 @@
+"""Explosion pool — object pool for reusing explosion effects."""
 from typing import List, Dict
 
-from airwar.game.explosion_animation.explosion_effect import ExplosionEffect
+from .explosion_effect import ExplosionEffect
 
 
 class ExplosionPool:
