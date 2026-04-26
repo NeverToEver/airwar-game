@@ -197,7 +197,8 @@ class Player(Entity):
     def cleanup_inactive_bullets(self) -> None:
         if not self._bullets:
             return
-        self._bullets = [b for b in self._bullets if b.active]
+        # 原地过滤以避免每次创建新列表
+        self._bullets[:] = [b for b in self._bullets if b.active]
 
     def is_colliding_with(self, other) -> bool:
         return self.get_hitbox().colliderect(other.rect)

@@ -356,8 +356,6 @@ class Enemy(Entity):
             self.agg_amplitude_x = random.uniform(0.5, 0.8)
             self.agg_amplitude_y = random.uniform(0.4, 0.7)
             self.agg_seed = random.randint(0, 9999)
-            self.agg_tracking_x = 0.0  # smooth tracking toward player
-            self.agg_tracking_y = 0.0
 
         else:
             self.move_type = "straight"

@@ -15,6 +15,8 @@ from ..constants import GAME_CONSTANTS
 
 
 # Pre-rendered glow texture cache — avoids per-frame pygame.draw.circle() loops
+# 限制缓存大小防止内存泄漏
+_MAX_CACHE_SIZE = 64
 _glow_texture_cache = {}
 _spark_core_cache = {}
 
@@ -26,6 +28,9 @@ def _get_glow_texture(radius: int, base_color=(255, 120, 20), alpha_mult=0.15) -
     """
     cache_key = (radius, base_color, alpha_mult)
     if cache_key not in _glow_texture_cache:
+        if len(_glow_texture_cache) >= _MAX_CACHE_SIZE:
+            # 淘汰最旧的条目防止内存无限增长
+            _glow_texture_cache.pop(next(iter(_glow_texture_cache)))
         size = radius * 2 + 2
         surf = pygame.Surface((size, size), pygame.SRCALPHA)
         for r in range(radius, 0, -1):
@@ -44,6 +49,8 @@ def _get_glow_texture(radius: int, base_color=(255, 120, 20), alpha_mult=0.15) -
 def _get_spark_core(size: int) -> pygame.Surface:
     """Get or create a cached bright dot for spark particle cores."""
     if size not in _spark_core_cache:
+        if len(_spark_core_cache) >= _MAX_CACHE_SIZE:
+            _spark_core_cache.pop(next(iter(_spark_core_cache)))
         s = size * 2 + 2
         surf = pygame.Surface((s, s), pygame.SRCALPHA)
         pygame.draw.circle(surf, (255, 255, 255, 255), (size + 1, size + 1), size)
