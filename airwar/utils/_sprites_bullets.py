@@ -14,19 +14,26 @@ from ._sprites_common import (
 )
 
 
-def draw_bullet(surface: pygame.Surface, x: float, y: float, width: float = 8, height: float = 16, bullet_type: str = "single") -> None:
+def draw_bullet(surface: pygame.Surface, x: float, y: float, width: float = 8, height: float = 16, bullet_type: str = "single", owner: str = "player") -> None:
     if bullet_type == "spread" or bullet_type == "spread_laser":
-        draw_spread_bullet(surface, x, y, width, height)
+        draw_spread_bullet(surface, x, y, width, height, owner)
     elif bullet_type == "laser":
-        draw_laser_bullet(surface, x, y, width, height)
+        draw_laser_bullet(surface, x, y, width, height, owner)
     else:
-        draw_single_bullet(surface, x, y, width, height)
+        draw_single_bullet(surface, x, y, width, height, owner)
 
 
-def draw_single_bullet(surface: pygame.Surface, x: float, y: float, width: float, height: float) -> None:
+def draw_single_bullet(surface: pygame.Surface, x: float, y: float, width: float, height: float, owner: str = "player") -> None:
     center_x = x + width / 2
     top_y = y
-    cache_key = (int(width), int(height))
+    # Player bullets: golden/yellow, Enemy bullets: cyan/blue
+    if owner == "enemy":
+        glow_colors = [(100, 200, 255, 30), (255, 220, 50)]
+        bullet_color = (100, 240, 255)
+    else:
+        glow_colors = [(255, 200, 50, 30), (255, 220, 50)]
+        bullet_color = (255, 220, 50)
+    cache_key = (int(width), int(height), owner)
     if cache_key not in _single_bullet_glow_cache:
         if RUST_AVAILABLE and create_single_bullet_glow:
             data = create_single_bullet_glow(width, height)
@@ -37,7 +44,7 @@ def draw_single_bullet(surface: pygame.Surface, x: float, y: float, width: float
             glow = pygame.Surface((int(width + 16), int(height + 12)), pygame.SRCALPHA)
             for i in range(6, 0, -1):
                 alpha = 30 * (6 - i) // 5
-                glow_color = (255, 200, 50, alpha)
+                glow_color = glow_colors[0][:3] + (alpha,)
                 pygame.draw.ellipse(glow, glow_color, (8 - i, 4 - i // 2, int(width) + i * 2 - 6, int(height) + i - 2))
         _single_bullet_glow_cache[cache_key] = glow
     else:
@@ -50,13 +57,22 @@ def draw_single_bullet(surface: pygame.Surface, x: float, y: float, width: float
         (center_x, y + height),
         (x, y + height * 0.3),
     ]
-    pygame.draw.polygon(surface, (255, 220, 50), points)
+    pygame.draw.polygon(surface, bullet_color, points)
 
 
-def draw_spread_bullet(surface: pygame.Surface, x: float, y: float, width: float, height: float) -> None:
+def draw_spread_bullet(surface: pygame.Surface, x: float, y: float, width: float, height: float, owner: str = "player") -> None:
     center = (int(x + width / 2), int(y + height / 2))
     radius = int(width / 2)
-    cache_key = (radius)
+    # Player bullets: orange/yellow, Enemy bullets: purple/magenta
+    if owner == "enemy":
+        glow_color = (200, 100, 255, 40)
+        outer_color = (200, 120, 255)
+        inner_color = (230, 180, 255)
+    else:
+        glow_color = (255, 150, 50, 40)
+        outer_color = (255, 180, 80)
+        inner_color = (255, 220, 150)
+    cache_key = (radius, owner)
     if cache_key not in _spread_bullet_glow_cache:
         if RUST_AVAILABLE and create_spread_bullet_glow:
             data = create_spread_bullet_glow(float(radius))
@@ -66,18 +82,30 @@ def draw_spread_bullet(surface: pygame.Surface, x: float, y: float, width: float
             glow = pygame.Surface((radius * 4 + 8, radius * 4 + 8), pygame.SRCALPHA)
             for i in range(radius + 4, 0, -2):
                 alpha = 40 * (radius + 4 - i) // (radius + 4)
-                pygame.draw.circle(glow, (255, 150, 50, alpha), (radius * 2 + 4, radius * 2 + 4), i)
+                color = glow_color[:3] + (alpha,)
+                pygame.draw.circle(glow, color, (radius * 2 + 4, radius * 2 + 4), i)
         _spread_bullet_glow_cache[cache_key] = glow
     else:
         glow = _spread_bullet_glow_cache[cache_key]
     surface.blit(glow, (center[0] - radius * 2 - 4, center[1] - radius * 2 - 4))
-    pygame.draw.circle(surface, (255, 180, 80), center, radius + 2)
-    pygame.draw.circle(surface, (255, 220, 150), center, radius)
+    pygame.draw.circle(surface, outer_color, center, radius + 2)
+    pygame.draw.circle(surface, inner_color, center, radius)
 
 
-def draw_laser_bullet(surface: pygame.Surface, x: float, y: float, width: float, height: float) -> None:
+def draw_laser_bullet(surface: pygame.Surface, x: float, y: float, width: float, height: float, owner: str = "player") -> None:
     center_x = x + width / 2
-    cache_key = (int(height))
+    # Player: red/orange laser, Enemy: green laser for distinction
+    if owner == "enemy":
+        glow_line_color = (20, 255, 100, 70)
+        outer_color = (30, 200, 80)
+        inner_color = (80, 255, 150)
+        core_color = (200, 255, 220)
+    else:
+        glow_line_color = (255, 20, 40, 70)
+        outer_color = (255, 30, 60)
+        inner_color = (255, 80, 120)
+        core_color = (255, 255, 255)
+    cache_key = (int(height), owner)
     if cache_key not in _laser_bullet_glow_cache:
         if RUST_AVAILABLE and create_laser_bullet_glow:
             data = create_laser_bullet_glow(height)
@@ -86,16 +114,17 @@ def draw_laser_bullet(surface: pygame.Surface, x: float, y: float, width: float,
             glow = pygame.Surface((24, int(height) + 12), pygame.SRCALPHA)
             for i in range(10, 0, -2):
                 alpha = 70 * (10 - i) // 9
-                pygame.draw.line(glow, (255, 20, 40, alpha), (12, 4), (12, int(height) + 8), i)
+                color = glow_line_color[:3] + (alpha,)
+                pygame.draw.line(glow, color, (12, 4), (12, int(height) + 8), i)
         _laser_bullet_glow_cache[cache_key] = glow
     else:
         glow = _laser_bullet_glow_cache[cache_key]
     surface.blit(glow, (int(center_x - 12), int(y - 4)))
     # Double outer glow for intensity
-    pygame.draw.line(surface, (255, 30, 60), (center_x, y), (center_x, y + height), 6)
-    pygame.draw.line(surface, (255, 80, 120), (center_x, y), (center_x, y + height), 4)
+    pygame.draw.line(surface, outer_color, (center_x, y), (center_x, y + height), 6)
+    pygame.draw.line(surface, inner_color, (center_x, y), (center_x, y + height), 4)
     # Bright white-hot core
-    pygame.draw.line(surface, (255, 255, 255), (center_x, y), (center_x, y + height), 2)
+    pygame.draw.line(surface, core_color, (center_x, y), (center_x, y + height), 2)
 
 
 def draw_explosive_missile(surface: pygame.Surface, x: float, y: float, width: float, height: float) -> None:

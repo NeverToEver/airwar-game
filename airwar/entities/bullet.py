@@ -72,20 +72,26 @@ class Bullet(Entity):
             if self.data.is_explosive:
                 draw_explosive_missile(surface, self.rect.x, self.rect.y, self.rect.width, self.rect.height)
             else:
-                draw_bullet(surface, self.rect.x, self.rect.y, self.rect.width, self.rect.height, self.data.bullet_type)
+                draw_bullet(surface, self.rect.x, self.rect.y, self.rect.width, self.rect.height, self.data.bullet_type, self.data.owner)
         else:
             surface.blit(self._sprite, self.get_rect())
 
         if (self.data.bullet_type == "laser" or self.data.is_laser) and self._trail:
+            # Player laser: red, Enemy laser: green
+            if self.data.owner == "enemy":
+                trail_color = (30, 255, 100)
+            else:
+                trail_color = (255, 30, 30)
             for i, trail_rect in enumerate(self._trail):
                 alpha = int(120 * (i / len(self._trail)))
-                cache_key = (trail_rect.width, trail_rect.height, alpha)
+                cache_key = (trail_rect.width, trail_rect.height, alpha, self.data.owner)
                 if cache_key not in Bullet._trail_surface_cache:
                     if len(Bullet._trail_surface_cache) >= Bullet._TRAIL_CACHE_MAX_SIZE:
                         oldest = Bullet._trail_cache_order.pop(0)
                         Bullet._trail_surface_cache.pop(oldest, None)
                     trail_surface = pygame.Surface((trail_rect.width, trail_rect.height), pygame.SRCALPHA)
-                    trail_surface.fill((255, 30, 30, alpha))
+                    trail_color_with_alpha = trail_color + (alpha,)
+                    trail_surface.fill(trail_color_with_alpha)
                     Bullet._trail_surface_cache[cache_key] = trail_surface
                     Bullet._trail_cache_order.append(cache_key)
                 else:
