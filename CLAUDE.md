@@ -262,3 +262,9 @@ See `docs/REFACTORING_GUIDE.md` for full conventions. Key rules:
 
 Pure pygame rendering (no GPU/ModernGL). The rendering pipeline draws in order:
 Parallax starfield background → Entities → Effects (explosions, ripples) → MotherShip → HUD → UI overlays (pause, reward selector, notifications)
+
+---
+
+## 语言偏好
+
+- **所有回复使用中文** — 代码注释、文档、审查报告等所有面向人类的文字输出均使用中文

@@ -17,6 +17,7 @@ Usage:
 """
 
 from typing import Protocol
+import pygame
 
 # Try to import Rust batch update function
 try:
@@ -184,7 +185,6 @@ class BulletManager:
         results = batch_update_bullets(bullet_data)
 
         # Apply results back to bullets
-        bullets_to_remove = []
         for bullet_id, new_x, new_y, is_active in results:
             if bullet_id not in bullet_map:
                 continue
@@ -196,7 +196,6 @@ class BulletManager:
 
             # Handle laser trail (still needs Python for pygame operations)
             if bullet.data.bullet_type == "laser" or bullet.data.is_laser:
-                import pygame
                 bullet._trail.append(pygame.Rect(
                     bullet.rect.x, bullet.rect.y,
                     bullet.rect.width, bullet.rect.height
@@ -208,14 +207,9 @@ class BulletManager:
             if not is_active:
                 bullet.active = False
 
-            # Mark for removal if cleanup is requested
-            if cleanup and not bullet.active:
-                bullets_to_remove.append(bullet)
-
-        # Remove inactive bullets if cleanup requested
-        if cleanup and bullets_to_remove:
-            for bullet in bullets_to_remove:
-                self._player.remove_bullet(bullet)
+        # 注意：cleanup 由调用者处理
+        # - 玩家子弹：由 Player.cleanup_inactive_bullets() 清理
+        # - 敌人子弹：由 _cleanup_enemy_bullets() 清理
 
     def _cleanup_enemy_bullets(self) -> None:
         """清理敌人子弹列表中的非活跃子弹"""
