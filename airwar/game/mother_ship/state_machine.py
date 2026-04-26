@@ -54,9 +54,6 @@ class MotherShipStateMachine(IMotherShipStateMachine):
     def stay_progress(self) -> DockedStayProgress:
         return self._stay_progress
 
-    def transition(self, event: str, **kwargs) -> None:
-        pass
-
     def _on_h_pressed(self, **kwargs) -> None:
         if self._current_state == MotherShipState.DOCKED:
             if self._can_transition_to(MotherShipState.UNDOCKING):

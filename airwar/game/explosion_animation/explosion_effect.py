@@ -19,6 +19,7 @@ from ..constants import GAME_CONSTANTS
 _MAX_CACHE_SIZE = 64
 _glow_texture_cache = {}
 _spark_core_cache = {}
+_flash_cache = {}
 
 
 def _get_glow_texture(radius: int, base_color=(255, 120, 20), alpha_mult=0.15) -> pygame.Surface:
@@ -56,6 +57,33 @@ def _get_spark_core(size: int) -> pygame.Surface:
         pygame.draw.circle(surf, (255, 255, 255, 255), (size + 1, size + 1), size)
         _spark_core_cache[size] = surf
     return _spark_core_cache[size]
+
+
+def _get_flash_surface(radius: int) -> pygame.Surface:
+    """Get or create a cached flash surface with dual circles.
+
+    The flash consists of an outer white circle and an inner warm-tinted circle.
+    """
+    if radius not in _flash_cache:
+        if len(_flash_cache) >= _MAX_CACHE_SIZE:
+            _flash_cache.pop(next(iter(_flash_cache)))
+        size = radius * 4 + 2
+        surf = pygame.Surface((size, size), pygame.SRCALPHA)
+        surf.fill((0, 0, 0, 0))
+        pygame.draw.circle(
+            surf,
+            (255, 255, 255, 255),
+            (radius * 2 + 1, radius * 2 + 1),
+            radius
+        )
+        pygame.draw.circle(
+            surf,
+            (255, 240, 200, int(255 * 0.8)),
+            (radius * 2 + 1, radius * 2 + 1),
+            int(radius * 0.6)
+        )
+        _flash_cache[radius] = surf
+    return _flash_cache[radius]
 
 
 class ExplosionEffect:
@@ -314,24 +342,12 @@ class ExplosionEffect:
         center = (int(self._x), int(self._y))
         alpha = int(255 * self._core_flash)
 
-        flash_surf = pygame.Surface((flash_radius * 4 + 2, flash_radius * 4 + 2), pygame.SRCALPHA)
-        flash_surf.fill((0, 0, 0, 0))
-
-        pygame.draw.circle(
-            flash_surf,
-            (255, 255, 255, alpha),
-            (flash_radius * 2 + 1, flash_radius * 2 + 1),
-            flash_radius
-        )
-        pygame.draw.circle(
-            flash_surf,
-            (255, 240, 200, int(alpha * 0.8)),
-            (flash_radius * 2 + 1, flash_radius * 2 + 1),
-            int(flash_radius * 0.6)
-        )
+        flash_surf = _get_flash_surface(flash_radius)
+        cached_flash = flash_surf.copy()
+        cached_flash.set_alpha(alpha)
 
         surface.blit(
-            flash_surf,
+            cached_flash,
             (center[0] - flash_radius * 2 - 1, center[1] - flash_radius * 2 - 1)
         )
 

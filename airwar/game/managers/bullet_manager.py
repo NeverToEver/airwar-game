@@ -123,8 +123,8 @@ class BulletManager:
         else:
             for bullet in self._player.get_bullets():
                 bullet.update()
-                if cleanup and not bullet.active:
-                    self._player.remove_bullet(bullet)
+        if cleanup:
+            self._player.cleanup_inactive_bullets()
 
     def _update_enemy_bullets(self, cleanup: bool) -> None:
         """更新敌人子弹

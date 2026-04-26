@@ -79,7 +79,7 @@ class TestBulletManager:
         with patch('airwar.game.managers.bullet_manager.batch_update_bullets', None):
             manager = BulletManager(player, spawn_controller)
             manager.update_with_cleanup()
-            player.remove_bullet.assert_called_once_with(inactive_bullet)
+            player.cleanup_inactive_bullets.assert_called_once()
 
     def test_cleanup_removes_inactive_enemy_bullets(self):
         from airwar.game.managers import BulletManager
