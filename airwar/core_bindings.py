@@ -19,6 +19,7 @@ try:
         # Collision functions
         spatial_hash_collide,
         spatial_hash_collide_single,
+        PersistentSpatialHash,
         # Movement functions
         update_movement,
         # Particle functions
@@ -58,6 +59,7 @@ __all__ = [
     # Collision functions
     'spatial_hash_collide',
     'spatial_hash_collide_single',
+    'PersistentSpatialHash',
     # Movement functions
     'update_movement',
     # Particle functions
