@@ -27,56 +27,54 @@ pip install -r requirements.txt
 ### Run the Game
 
 ```bash
-# As ubt user (recommended — uses locally installed packages)
-cd /home/ubt/airwar && sudo -u ubt python3 main.py
-
-# With explicit PYTHONPATH (if running as root)
-cd /home/ubt/airwar && PYTHONPATH=/home/ubt/.local/lib/python3.12/site-packages python3 main.py
+cd /Users/xiepeilin/ccProject/airwar-game && python3 main.py
 ```
 
 ### Test
 
 ```bash
 # All tests
-cd airwar && python3 -m pytest
+python3 -m pytest
 
 # Smoke tests (core functionality)
-cd airwar && python3 -m pytest -m smoke
+python3 -m pytest -m smoke
 
 # Exclude slow tests
-cd airwar && python3 -m pytest -m "not slow"
+python3 -m pytest -m "not slow"
 
 # Specific test file
-cd airwar && python3 -m pytest tests/test_entities.py
+python3 -m pytest airwar/tests/test_entities.py
 
 # Specific test class/method
-cd airwar && python3 -m pytest tests/test_entities.py::TestPlayer -v
+python3 -m pytest airwar/tests/test_entities.py::TestPlayer -v
 
 # Rust binding tests
-cd airwar && python3 -m pytest tests/test_vector2_bindings.py tests/test_collision_bindings.py tests/test_movement_bindings.py tests/test_particle_bindings.py
+python3 -m pytest airwar/tests/test_vector2_bindings.py airwar/tests/test_collision_bindings.py airwar/tests/test_movement_bindings.py airwar/tests/test_particle_bindings.py
 ```
 
 ### Build Rust Extension
 
 ```bash
-cd airwar/airwar_core && maturin develop --release
+cd airwar_core && maturin develop --release
 ```
 
 ### Test Configuration
 
 Config at `airwar/tests/pytest.ini` — defaults: `-v --tb=short -ra`. Markers: `smoke` (core), `slow` (integration/performance). Fixtures: `temp_db`, `clean_imports`. Some tests require `pygame.init()`.
 
+**Note:** Tests must be run from the project root directory (`/Users/xiepeilin/ccProject/airwar-game`), not from within the `airwar/` subdirectory.
+
 ### Validation Commands
 
 ```bash
 # Check Python syntax on all files
-python3 -m py_compile airwar/airwar/**/*.py
+python3 -m py_compile airwar/**/*.py
 
 # Verify imports work
 python3 -c "from airwar.game import Game; from airwar.entities import Player, Enemy"
 
 # Check for prohibited local imports in methods (should return 0 results)
-grep -rn "^\s\+from airwar\." airwar/airwar/ --include="*.py" \
+grep -rn "^\s\+from airwar\." airwar/ --include="*.py" \
   | grep -v "core_bindings" | grep -v "from airwar.core_bindings"
 ```
 
@@ -86,7 +84,7 @@ grep -rn "^\s\+from airwar\." airwar/airwar/ --include="*.py" \
 
 PyO3 extension module providing performance-critical computation with graceful Python fallback.
 
-**Location:** `airwar/airwar_core/` — Rust workspace with Cargo.
+**Location:** `airwar_core/` — Rust workspace with Cargo.
 
 **Modules:**
 
@@ -119,11 +117,11 @@ except ImportError:
 
 ### Package Structure
 
-Source code lives under `airwar/airwar/` (Python package). Entry point: `airwar/main.py`.
+Source code lives under `airwar/` (Python package). Entry point: `main.py` (project root).
 
 ```
-airwar/
-├── main.py                  # Entry: from airwar.game import Game; Game().run()
+airwar-game/                  # Project root
+├── main.py                  # Entry: python3 main.py
 ├── airwar/                  # Python package (all source)
 │   ├── config/              # Settings, game_config, design_tokens, difficulty_config, tutorial/
 │   ├── entities/            # Entity base, Player, Enemy (+ Boss subclass), Bullet
