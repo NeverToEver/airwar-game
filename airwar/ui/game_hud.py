@@ -1,14 +1,14 @@
-"""军事风格 HUD 渲染器 - 整合所有军事 UI 组件"""
+"""HUD 渲染器 - 整合所有 UI 组件"""
 import pygame
 from typing import Optional, Tuple, List
-from airwar.config.design_tokens import MilitaryColors, MilitaryUI, get_design_tokens
+from airwar.config.design_tokens import SystemColors, SystemUI, get_design_tokens
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.ui.segmented_bar import SegmentedProgressBar
 from airwar.ui.hex_icon import HexIcon, ICON_POWER, ICON_DEFENSE, ICON_SPEED, ICON_HEALTH, ICON_SHIELD
 
 
-class MilitaryHUD:
-    """军事风格 HUD 渲染器"""
+class GameHUD:
+    """游戏内 HUD 渲染器"""
 
     def __init__(self):
         self._tokens = get_design_tokens()
@@ -24,16 +24,16 @@ class MilitaryHUD:
     def _init_fonts(self):
         """初始化字体"""
         self._font_label = pygame.font.Font(
-            pygame.font.get_default_font(), MilitaryUI.MILITARY_LABEL_SIZE
+            pygame.font.get_default_font(), SystemUI.HUD_LABEL_SIZE
         )
         self._font_value = pygame.font.Font(
-            pygame.font.get_default_font(), MilitaryUI.MILITARY_VALUE_SIZE
+            pygame.font.get_default_font(), SystemUI.HUD_VALUE_SIZE
         )
         self._font_small = pygame.font.Font(
-            pygame.font.get_default_font(), MilitaryUI.MILITARY_SMALL_SIZE
+            pygame.font.get_default_font(), SystemUI.HUD_SMALL_SIZE
         )
         self._font_title = pygame.font.Font(
-            pygame.font.get_default_font(), MilitaryUI.MILITARY_TITLE_SIZE
+            pygame.font.get_default_font(), SystemUI.HUD_TITLE_SIZE
         )
 
     def render_hud_frame(
@@ -86,7 +86,7 @@ class MilitaryHUD:
             (x + length * w, y - 5),
         ]
 
-        pygame.draw.lines(surface, MilitaryColors.BORDER_DIM, flip, points, 1)
+        pygame.draw.lines(surface, SystemColors.BORDER_DIM, flip, points, 1)
 
     def render_top_bar(
         self,
@@ -121,9 +121,9 @@ class MilitaryHUD:
         # 绘制面板背景
         draw_chamfered_panel(
             surface, x, y, bar_width, bar_height,
-            MilitaryColors.BG_PANEL,
-            MilitaryColors.BORDER_GLOW,
-            MilitaryColors.AMBER_GLOW
+            SystemColors.BG_PANEL,
+            SystemColors.BORDER_GLOW,
+            SystemColors.ACCENT_GLOW
         )
 
         # 信息布局
@@ -132,13 +132,13 @@ class MilitaryHUD:
 
         # 分数
         score_text = f"SCORE: {score:,}"
-        score_surf = self._font_value.render(score_text, True, MilitaryColors.AMBER_PRIMARY)
+        score_surf = self._font_value.render(score_text, True, SystemColors.ACCENT_PRIMARY)
         score_rect = score_surf.get_rect(left=x + padding, centery=y + bar_height // 2)
         surface.blit(score_surf, score_rect)
 
         # 里程碑进度
         milestone_text = f"MILESTONE: {int(milestone_progress * 100)}%"
-        milestone_surf = self._font_small.render(milestone_text, True, MilitaryColors.TEXT_DIM)
+        milestone_surf = self._font_small.render(milestone_text, True, SystemColors.TEXT_DIM)
         milestone_rect = milestone_surf.get_rect(
             left=x + padding + segment_width,
             centery=y + bar_height // 2 - 4
@@ -152,14 +152,14 @@ class MilitaryHUD:
             y + bar_height // 2 + 6,
             milestone_progress * milestone_max,
             milestone_max,
-            MilitaryColors.AMBER_PRIMARY,
-            MilitaryColors.BG_PANEL_LIGHT,
-            MilitaryColors.AMBER_DIM
+            SystemColors.ACCENT_PRIMARY,
+            SystemColors.BG_PANEL_LIGHT,
+            SystemColors.ACCENT_DIM
         )
 
         # 击杀数
         kills_text = f"KILLS: {kills}"
-        kills_surf = self._font_value.render(kills_text, True, MilitaryColors.TEXT_PRIMARY)
+        kills_surf = self._font_value.render(kills_text, True, SystemColors.TEXT_PRIMARY)
         kills_rect = kills_surf.get_rect(
             left=x + padding + segment_width * 2,
             centery=y + bar_height // 2
@@ -168,7 +168,7 @@ class MilitaryHUD:
 
         # BOSS 击杀
         boss_text = f" BOSS: {boss_kills}"
-        boss_surf = self._font_value.render(boss_text, True, MilitaryColors.DANGER_RED)
+        boss_surf = self._font_value.render(boss_text, True, SystemColors.DANGER_RED)
         boss_rect = boss_surf.get_rect(
             left=x + padding + segment_width * 3,
             centery=y + bar_height // 2
@@ -202,22 +202,22 @@ class MilitaryHUD:
         # 绘制面板
         draw_chamfered_panel(
             surface, x, y, panel_width, panel_height,
-            MilitaryColors.BG_PANEL,
-            MilitaryColors.BORDER_GLOW
+            SystemColors.BG_PANEL,
+            SystemColors.BORDER_GLOW
         )
 
         padding = 15
 
         # 生命值图标 + 文字
-        hp_icon = HexIcon(ICON_HEALTH, 14, fill_color=MilitaryColors.HEALTH_FULL)
+        hp_icon = HexIcon(ICON_HEALTH, 14, fill_color=SystemColors.HEALTH_FULL)
         hp_icon.render(surface, (x + padding + 10, y + 20))
 
         # 标签
-        hp_label = self._font_small.render("HP", True, MilitaryColors.TEXT_DIM)
+        hp_label = self._font_small.render("HP", True, SystemColors.TEXT_DIM)
         surface.blit(hp_label, (x + padding + 28, y + 12))
 
         # 生命值数值
-        hp_value = self._font_value.render(f"{int(health)}", True, MilitaryColors.HEALTH_FULL)
+        hp_value = self._font_value.render(f"{int(health)}", True, SystemColors.HEALTH_FULL)
         surface.blit(hp_value, (x + padding + 50, y + 10))
 
         # 生命值进度条
@@ -229,11 +229,11 @@ class MilitaryHUD:
         # 根据血量选择颜色
         ratio = health / max_health if max_health > 0 else 0
         if ratio > 0.6:
-            fill_color = MilitaryColors.HEALTH_FULL
+            fill_color = SystemColors.HEALTH_FULL
         elif ratio > 0.3:
-            fill_color = MilitaryColors.HEALTH_MEDIUM
+            fill_color = SystemColors.HEALTH_MEDIUM
         else:
-            fill_color = MilitaryColors.HEALTH_LOW
+            fill_color = SystemColors.HEALTH_LOW
 
         # 分段进度条
         health_bar = SegmentedProgressBar(bar_width, bar_height, 10)
@@ -241,14 +241,14 @@ class MilitaryHUD:
             surface, bar_x, bar_y,
             health, max_health,
             fill_color,
-            MilitaryColors.BG_PANEL_LIGHT,
-            MilitaryColors.SEGMENT_BORDER,
+            SystemColors.BG_PANEL_LIGHT,
+            SystemColors.SEGMENT_BORDER,
             is_chamfered=True
         )
 
         # 百分比
         percent_text = f"{int(ratio * 100)}%"
-        percent_surf = self._font_small.render(percent_text, True, MilitaryColors.TEXT_DIM)
+        percent_surf = self._font_small.render(percent_text, True, SystemColors.TEXT_DIM)
         percent_rect = percent_surf.get_rect(right=x + panel_width - padding, centery=y + 20)
         surface.blit(percent_surf, percent_rect)
 
@@ -283,30 +283,30 @@ class MilitaryHUD:
         # 绘制面板
         draw_chamfered_panel(
             surface, x, y, panel_width, panel_height,
-            MilitaryColors.BG_PANEL,
-            MilitaryColors.BORDER_GLOW
+            SystemColors.BG_PANEL,
+            SystemColors.BORDER_GLOW
         )
 
         padding = 15
 
         # COEFF 标签
-        coeff_label = self._font_small.render("COEFF", True, MilitaryColors.TEXT_DIM)
+        coeff_label = self._font_small.render("COEFF", True, SystemColors.TEXT_DIM)
         surface.blit(coeff_label, (x + padding, y + padding))
 
         # COEFF 数值
-        coeff_value = self._font_value.render(f"{coefficient:.1f}x", True, MilitaryColors.AMBER_PRIMARY)
+        coeff_value = self._font_value.render(f"{coefficient:.1f}x", True, SystemColors.ACCENT_PRIMARY)
         surface.blit(coeff_value, (x + padding, y + padding + 18))
 
         # 难度标签
-        diff_label = self._font_small.render("DIFFICULTY", True, MilitaryColors.TEXT_DIM)
+        diff_label = self._font_small.render("DIFFICULTY", True, SystemColors.TEXT_DIM)
         surface.blit(diff_label, (x + padding, y + 42))
 
         # 难度名称
-        diff_color = MilitaryColors.TEXT_PRIMARY
+        diff_color = SystemColors.TEXT_PRIMARY
         if difficulty.upper() == "HARD":
-            diff_color = MilitaryColors.DANGER_RED
+            diff_color = SystemColors.DANGER_RED
         elif difficulty.upper() == "MEDIUM":
-            diff_color = MilitaryColors.AMBER_PRIMARY
+            diff_color = SystemColors.ACCENT_PRIMARY
 
         diff_value = self._font_value.render(difficulty.upper(), True, diff_color)
         surface.blit(diff_value, (x + padding + 80, y + 38))
@@ -340,12 +340,12 @@ class MilitaryHUD:
         # 绘制面板
         draw_chamfered_panel(
             surface, x, y, panel_width, panel_height,
-            MilitaryColors.BG_PANEL,
-            MilitaryColors.BORDER_GLOW
+            SystemColors.BG_PANEL,
+            SystemColors.BORDER_GLOW
         )
 
         # 标题
-        title = self._font_small.render("ACTIVE", True, MilitaryColors.TEXT_DIM)
+        title = self._font_small.render("ACTIVE", True, SystemColors.TEXT_DIM)
         surface.blit(title, (x + 10, y + 8))
 
         # 绘制每个 buff
@@ -361,11 +361,11 @@ class MilitaryHUD:
             icon.render(surface, (x + 20, buff_y + 12))
 
             # Buff 名称和等级
-            buff_label = self._font_small.render(buff.get('name', 'BUFF'), True, MilitaryColors.TEXT_PRIMARY)
+            buff_label = self._font_small.render(buff.get('name', 'BUFF'), True, SystemColors.TEXT_PRIMARY)
             surface.blit(buff_label, (x + 42, buff_y + 2))
 
             level_text = f"+{level}"
-            level_color = MilitaryColors.AMBER_BRIGHT if is_max else MilitaryColors.AMBER_PRIMARY
+            level_color = SystemColors.ACCENT_BRIGHT if is_max else SystemColors.ACCENT_PRIMARY
             level_surf = self._font_small.render(level_text, True, level_color)
             surface.blit(level_surf, (x + 42, buff_y + 18))
 
@@ -405,14 +405,14 @@ class MilitaryHUD:
         # 绘制面板
         draw_chamfered_panel(
             surface, x, y, bar_width, bar_height,
-            MilitaryColors.BG_PANEL,
-            MilitaryColors.BORDER_GLOW,
-            MilitaryColors.AMBER_GLOW,
+            SystemColors.BG_PANEL,
+            SystemColors.BORDER_GLOW,
+            SystemColors.ACCENT_GLOW,
             chamfer_depth=10
         )
 
         # 标签
-        label_text = self._font_small.render("NEXT REWARD:", True, MilitaryColors.TEXT_DIM)
+        label_text = self._font_small.render("NEXT REWARD:", True, SystemColors.TEXT_DIM)
         surface.blit(label_text, (x + 15, y + 8))
 
         # 进度条
@@ -424,15 +424,15 @@ class MilitaryHUD:
         milestone_bar.render(
             surface, bar_x, bar_y,
             progress * 100, 100,
-            MilitaryColors.AMBER_PRIMARY,
-            MilitaryColors.BG_PANEL_LIGHT,
-            MilitaryColors.AMBER_DIM,
+            SystemColors.ACCENT_PRIMARY,
+            SystemColors.BG_PANEL_LIGHT,
+            SystemColors.ACCENT_DIM,
             is_chamfered=True
         )
 
         # 百分比
         percent_text = f"{int(progress * 100)}%"
-        percent_surf = self._font_small.render(percent_text, True, MilitaryColors.AMBER_PRIMARY)
+        percent_surf = self._font_small.render(percent_text, True, SystemColors.ACCENT_PRIMARY)
         percent_rect = percent_surf.get_rect(right=x + bar_width - 15, centery=y + bar_height // 2)
         surface.blit(percent_surf, percent_rect)
 
