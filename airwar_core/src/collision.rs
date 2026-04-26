@@ -237,6 +237,111 @@ pub fn spatial_hash_collide_single(
     collisions
 }
 
+/// Persistent spatial hash for incremental collision detection
+/// Avoids rebuilding the grid every frame
+#[pyclass]
+pub struct PersistentSpatialHash {
+    inner: SpatialHashGrid,
+}
+
+#[pymethods]
+impl PersistentSpatialHash {
+    #[new]
+    pub fn new(cell_size: i32) -> Self {
+        Self {
+            inner: SpatialHashGrid::new(cell_size),
+        }
+    }
+
+    /// Clear all entities from the hash
+    pub fn clear(&mut self) {
+        self.inner.clear();
+    }
+
+    /// Insert or update an entity's position
+    pub fn update_entity(&mut self, id: i32, x: f32, y: f32, half_size: f32) {
+        // Remove from old cells first if entity exists
+        if let Some((old_x, old_y, old_half)) = self.inner.entity_positions.get(&id).copied() {
+            Self::remove_from_cells(&mut self.inner, id, old_x, old_y, old_half);
+        }
+        // Insert at new position
+        self.inner.insert(id, x, y, half_size);
+    }
+
+    /// Batch update multiple entities
+    pub fn update_entities(&mut self, entities: Vec<(i32, f32, f32, f32)>) {
+        for (id, x, y, half_size) in entities {
+            self.update_entity(id, x, y, half_size);
+        }
+    }
+
+    /// Remove an entity from the hash
+    pub fn remove_entity(&mut self, id: i32) {
+        if let Some((x, y, half_size)) = self.inner.entity_positions.get(&id).copied() {
+            Self::remove_from_cells(&mut self.inner, id, x, y, half_size);
+            self.inner.entity_positions.remove(&id);
+        }
+    }
+
+    /// Get all collision pairs among entities in the hash
+    pub fn get_collisions(&self) -> Vec<(i32, i32)> {
+        let mut collision_pairs = Vec::new();
+        let mut checked = std::collections::HashSet::new();
+
+        for (&id, &(x, y, half_size)) in &self.inner.entity_positions {
+            let potential = self.inner.get_potential_collisions(x, y, half_size);
+
+            for &other_id in &potential {
+                if other_id == id {
+                    continue;
+                }
+
+                let (smaller, larger) = if id < other_id { (id, other_id) } else { (other_id, id) };
+                let pair_key = ((smaller as i64) << 32) | (larger as i64);
+
+                if checked.contains(&pair_key) {
+                    continue;
+                }
+                checked.insert(pair_key);
+
+                if let (Some((ox, oy, o_half)), Some((_, _, _))) = (
+                    self.inner.get_position(other_id),
+                    self.inner.get_position(id),
+                ) {
+                    if check_entity_collision(x, y, half_size, ox, oy, o_half) {
+                        collision_pairs.push((id, other_id));
+                    }
+                }
+            }
+        }
+
+        collision_pairs
+    }
+
+    /// Query entities that might collide with a given position
+    pub fn query(&self, x: f32, y: f32, half_size: f32) -> Vec<i32> {
+        self.inner.get_potential_collisions(x, y, half_size)
+    }
+}
+
+impl PersistentSpatialHash {
+    fn remove_from_cells(grid: &mut SpatialHashGrid, id: i32, x: f32, y: f32, half_size: f32) {
+        let min_x = (x - half_size) as i32 / grid.cell_size;
+        let max_x = (x + half_size) as i32 / grid.cell_size;
+        let min_y = (y - half_size) as i32 / grid.cell_size;
+        let max_y = (y + half_size) as i32 / grid.cell_size;
+
+        for gx in min_x..=max_x {
+            for gy in min_y..=max_y {
+                let key = SpatialHashGrid::pos_to_key(gx, gy);
+                if let Some(cell) = grid.cells.get_mut(&key) {
+                    cell.retain(|&e| e != id);
+                }
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
