@@ -1,6 +1,6 @@
 """Mothership interfaces — protocols for input, UI, events, persistence."""
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Dict, List, Optional
 from .mother_ship_state import MotherShipState, DockingProgress, GameSaveData
 
 
@@ -84,9 +84,123 @@ class IMotherShipStateMachine(ABC):
         pass
 
     @abstractmethod
-    def transition(self, event: str, **kwargs) -> None:
+    def update(self) -> None:
+        pass
+
+
+class IGameScene(ABC):
+    """Interface for game scene access from GameIntegrator.
+
+    Defines the contract for GameIntegrator to access GameScene
+    without violating layer boundaries.
+    """
+
+    @abstractmethod
+    def set_player_position(self, x: float, y: float) -> None:
+        """Set player rect center position."""
         pass
 
     @abstractmethod
-    def update(self) -> None:
+    def set_player_position_topleft(self, x: float, y: float) -> None:
+        """Set player rect top-left position."""
+        pass
+
+    @abstractmethod
+    def add_score(self, amount: int) -> None:
+        """Add to score."""
+        pass
+
+    @abstractmethod
+    def add_kill(self) -> None:
+        """Increment kill count and update score."""
+        pass
+
+    @abstractmethod
+    def add_boss_kill(self) -> None:
+        """Increment boss kill count."""
+        pass
+
+    @abstractmethod
+    def show_notification(self, message: str) -> None:
+        """Show a notification message."""
+        pass
+
+    @abstractmethod
+    def get_enemies(self) -> List:
+        """Get current enemy list."""
+        pass
+
+    @abstractmethod
+    def get_boss(self):
+        """Get current boss or None."""
+        pass
+
+    @abstractmethod
+    def clear_boss(self) -> None:
+        """Clear the current boss."""
+        pass
+
+    @abstractmethod
+    def set_player_invincible(self, invincible: bool, timer: int) -> None:
+        """Set player invincibility state."""
+        pass
+
+    @abstractmethod
+    def get_score(self) -> int:
+        """Get current score."""
+        pass
+
+    @abstractmethod
+    def get_cycle_count(self) -> int:
+        """Get current cycle count."""
+        pass
+
+    @abstractmethod
+    def get_kill_count(self) -> int:
+        """Get total kill count."""
+        pass
+
+    @abstractmethod
+    def get_boss_kill_count(self) -> int:
+        """Get boss kill count."""
+        pass
+
+    @abstractmethod
+    def get_unlocked_buffs(self) -> List:
+        """Get list of unlocked buff names."""
+        pass
+
+    @abstractmethod
+    def get_buff_levels(self) -> Dict[str, int]:
+        """Get buff levels dictionary."""
+        pass
+
+    @abstractmethod
+    def get_player_health(self) -> int:
+        """Get player current health."""
+        pass
+
+    @abstractmethod
+    def get_player_max_health(self) -> int:
+        """Get player max health."""
+        pass
+
+    @abstractmethod
+    def get_difficulty(self) -> str:
+        """Get game difficulty setting."""
+        pass
+
+    @abstractmethod
+    def get_username(self) -> str:
+        """Get player username."""
+        pass
+
+    @abstractmethod
+    def set_paused(self, paused: bool) -> None:
+        """Set game paused state."""
+        pass
+
+    @abstractmethod
+    def clear_ripple_effects(self) -> None:
+        """Clear all ripple effects."""
         pass

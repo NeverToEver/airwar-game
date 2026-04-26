@@ -1,6 +1,6 @@
 """Main game scene — gameplay loop, entity coordination, and rendering."""
 import pygame
-from typing import Tuple
+from typing import Dict, Tuple
 from .scene import Scene
 from airwar.entities import Player, EnemySpawner, Boss, BossData
 from airwar.game.systems.health_system import HealthSystem
@@ -21,6 +21,7 @@ from airwar.game.mother_ship import (
     MotherShip,
     GameIntegrator,
 )
+from airwar.game.mother_ship.interfaces import IGameScene
 from airwar.game.constants import PlayerConstants, GAME_CONSTANTS
 from airwar.ui.give_up_ui import GiveUpUI
 from airwar.game.give_up import GiveUpDetector
@@ -36,12 +37,14 @@ from airwar.config import DIFFICULTY_SETTINGS, get_screen_width, get_screen_heig
 from airwar.input import PygameInputHandler
 from airwar.utils.mouse_interaction import MouseInteractiveMixin
 from airwar.config.design_tokens import get_design_tokens
-class GameScene(Scene, MouseInteractiveMixin):
+class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     """Main game scene controller coordinating game loop and subsystems.
 
     GameScene is the primary controller for the gameplay scene. It coordinates
     all subsystems including GameController, SpawnController, CollisionController,
     Player, and MotherShip systems.
+
+    Implements IGameScene for clean integration with GameIntegrator.
     """
 
     PAUSE_BUTTON_SIZE = 30
@@ -633,3 +636,117 @@ class GameScene(Scene, MouseInteractiveMixin):
         else:
             self.player.rect.y = PlayerConstants.MOTHERSHIP_Y_POSITION
             self.player.rect.x = PlayerConstants.DEFAULT_SCREEN_WIDTH // 2
+
+    # IGameScene implementation for GameIntegrator layer compliance
+
+    def set_player_position(self, x: float, y: float) -> None:
+        """Set player rect center position."""
+        if self.player:
+            self.player.rect.centerx = x
+            self.player.rect.centery = y
+
+    def set_player_position_topleft(self, x: float, y: float) -> None:
+        """Set player rect top-left position."""
+        if self.player:
+            self.player.rect.x = x
+            self.player.rect.y = y
+
+    def add_score(self, amount: int) -> None:
+        """Add to score."""
+        if self.game_controller:
+            self.game_controller.state.score += amount
+
+    def add_kill(self) -> None:
+        """Increment kill count."""
+        if self.game_controller:
+            self.game_controller.state.kill_count += 1
+
+    def add_boss_kill(self) -> None:
+        """Increment boss kill count."""
+        if self.game_controller:
+            self.game_controller.state.boss_kill_count += 1
+
+    def show_notification(self, message: str) -> None:
+        """Show a notification message."""
+        if self.notification_manager:
+            self.notification_manager.show(message)
+
+    def get_enemies(self) -> list:
+        """Get current enemy list."""
+        if self.spawn_controller:
+            return list(self.spawn_controller.enemies)
+        return []
+
+    def get_boss(self):
+        """Get current boss or None."""
+        return self.spawn_controller.boss if self.spawn_controller else None
+
+    def clear_boss(self) -> None:
+        """Clear the current boss."""
+        if self.spawn_controller:
+            self.spawn_controller.boss = None
+
+    def set_player_invincible(self, invincible: bool, timer: int) -> None:
+        """Set player invincibility state."""
+        if self.game_controller:
+            self.game_controller.state.player_invincible = invincible
+            self.game_controller.state.invincibility_timer = timer
+
+    def get_score(self) -> int:
+        """Get current score."""
+        return self.score
+
+    def get_cycle_count(self) -> int:
+        """Get current cycle count."""
+        return self.cycle_count
+
+    def get_kill_count(self) -> int:
+        """Get total kill count."""
+        return self.game_controller.state.kill_count if self.game_controller else 0
+
+    def get_boss_kill_count(self) -> int:
+        """Get boss kill count."""
+        return self.game_controller.state.boss_kill_count if self.game_controller else 0
+
+    def get_unlocked_buffs(self) -> list:
+        """Get list of unlocked buff names."""
+        return self.unlocked_buffs
+
+    def get_buff_levels(self) -> Dict[str, int]:
+        """Get buff levels dictionary."""
+        if not self.reward_system:
+            return {}
+        return {
+            'piercing_level': self.reward_system.piercing_level,
+            'spread_level': self.reward_system.spread_level,
+            'explosive_level': self.reward_system.explosive_level,
+            'armor_level': self.reward_system.armor_level,
+            'evasion_level': self.reward_system.evasion_level,
+            'rapid_fire_level': self.reward_system.rapid_fire_level,
+        }
+
+    def get_player_health(self) -> int:
+        """Get player current health."""
+        return self.player.health if self.player else 0
+
+    def get_player_max_health(self) -> int:
+        """Get player max health."""
+        return self.player.max_health if self.player else 0
+
+    def get_difficulty(self) -> str:
+        """Get game difficulty setting."""
+        return self.difficulty
+
+    def get_username(self) -> str:
+        """Get player username."""
+        return self.game_controller.state.username if self.game_controller else 'Player'
+
+    def set_paused(self, paused: bool) -> None:
+        """Set game paused state."""
+        self.paused = paused
+
+    def clear_ripple_effects(self) -> None:
+        """Clear all ripple effects."""
+        if self.game_controller:
+            self.game_controller.state.ripple_effects.clear()
+

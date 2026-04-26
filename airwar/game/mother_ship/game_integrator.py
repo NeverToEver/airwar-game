@@ -129,8 +129,7 @@ class GameIntegrator:
             self._update_mothership_bullets()
             # Player rides along with the mothership while docked
             dock_pos = self._mother_ship.get_docking_position()
-            self._game_scene.player.rect.centerx = dock_pos[0]
-            self._game_scene.player.rect.centery = dock_pos[1]
+            self._game_scene.set_player_position(dock_pos[0], dock_pos[1])
             self._progress_bar_ui.update_progress(
                 self._state_machine.stay_progress.stay_progress,
                 (1.0 - self._state_machine.stay_progress.stay_progress) * 20.0
@@ -159,11 +158,10 @@ class GameIntegrator:
 
         mother_ship_pos = self._mother_ship.get_docking_position()
 
-        enemies = []
-        if hasattr(self._game_scene, 'spawn_controller') and self._game_scene.spawn_controller:
-            enemies = list(self._game_scene.spawn_controller.enemies)
-            if self._game_scene.spawn_controller.boss:
-                enemies.append(self._game_scene.spawn_controller.boss)
+        enemies = list(self._game_scene.get_enemies())
+        boss = self._game_scene.get_boss()
+        if boss:
+            enemies.append(boss)
 
         if not enemies:
             return
@@ -190,10 +188,11 @@ class GameIntegrator:
                 self._mothership_bullets.append(bullet)
 
     def _update_mothership_bullets(self) -> None:
-        if not self._game_scene or not hasattr(self._game_scene, 'spawn_controller'):
+        if not self._game_scene:
             return
 
-        spawn_controller = self._game_scene.spawn_controller
+        enemies = self._game_scene.get_enemies()
+        boss = self._game_scene.get_boss()
         screen_height = pygame.display.get_surface().get_height()
 
         for bullet in self._mothership_bullets[:]:
@@ -204,7 +203,7 @@ class GameIntegrator:
 
             bullet_damage = bullet.data.damage
 
-            for enemy in spawn_controller.enemies[:]:
+            for enemy in enemies:
                 if not enemy.active:
                     continue
                 if bullet.rect.colliderect(enemy.rect):
@@ -214,12 +213,12 @@ class GameIntegrator:
                         self._on_mothership_kill_enemy(enemy)
                     break
 
-            if spawn_controller.boss and spawn_controller.boss.active:
-                if bullet.rect.colliderect(spawn_controller.boss.rect):
-                    spawn_controller.boss.take_damage(bullet_damage)
+            if boss and boss.active:
+                if bullet.rect.colliderect(boss.rect):
+                    boss.take_damage(bullet_damage)
                     bullet.active = False
-                    if not spawn_controller.boss.active:
-                        self._on_mothership_kill_boss(spawn_controller.boss)
+                    if not boss.active:
+                        self._on_mothership_kill_boss(boss)
 
             if bullet.rect.y < -50 or bullet.rect.y > screen_height + 50:
                 bullet.active = False
@@ -233,11 +232,9 @@ class GameIntegrator:
         base_score = getattr(enemy, 'score', 100)
         reduced_score = int(base_score * self._score_reduction_factor)
 
-        self._game_scene.game_controller.state.score += reduced_score
-        self._game_scene.game_controller.state.kill_count += 1
-
-        if hasattr(self._game_scene, 'notification_manager'):
-            self._game_scene.notification_manager.show(f"+{reduced_score} (MOTHERSHIP)")
+        self._game_scene.add_score(reduced_score)
+        self._game_scene.add_kill()
+        self._game_scene.show_notification(f"+{reduced_score} (MOTHERSHIP)")
 
     def _on_mothership_kill_boss(self, boss) -> None:
         if not self._game_scene:
@@ -246,12 +243,10 @@ class GameIntegrator:
         base_score = getattr(boss, 'score', 1000)
         reduced_score = int(base_score * self._score_reduction_factor)
 
-        self._game_scene.game_controller.state.score += reduced_score
-        self._game_scene.game_controller.state.boss_kill_count += 1
-        self._game_scene.spawn_controller.boss = None
-
-        if hasattr(self._game_scene, 'notification_manager'):
-            self._game_scene.notification_manager.show(f"BOSS +{reduced_score} (MOTHERSHIP)")
+        self._game_scene.add_score(reduced_score)
+        self._game_scene.add_boss_kill()
+        self._game_scene.clear_boss()
+        self._game_scene.show_notification(f"BOSS +{reduced_score} (MOTHERSHIP)")
 
     def _on_state_changed(self, state, **kwargs) -> None:
         if state == MotherShipState.PRESSING:
@@ -281,9 +276,8 @@ class GameIntegrator:
             self._clear_ripple_effects()
 
     def _activate_invincibility(self) -> None:
-        if self._game_scene and self._game_scene.game_controller:
-            self._game_scene.game_controller.state.player_invincible = True
-            self._game_scene.game_controller.state.invincibility_timer = 1200
+        if self._game_scene:
+            self._game_scene.set_player_invincible(True, 1200)
 
     def _on_cooldown_started(self, **kwargs) -> None:
         self._progress_bar_ui.show(self.BAR_TYPE_COOLDOWN, 120.0)
@@ -309,9 +303,8 @@ class GameIntegrator:
             self._progress_bar_ui.update_progress(exit_progress, remaining)
 
     def _deactivate_invincibility(self) -> None:
-        if self._game_scene and self._game_scene.game_controller:
-            self._game_scene.game_controller.state.player_invincible = False
-            self._game_scene.game_controller.state.invincibility_timer = 0
+        if self._game_scene:
+            self._game_scene.set_player_invincible(False, 0)
 
     def _on_save_game_request(self, **kwargs) -> None:
         if not self._game_scene:
@@ -328,17 +321,17 @@ class GameIntegrator:
         is_docked = self._state_machine.current_state == MotherShipState.DOCKED
 
         return GameSaveData(
-            score=self._game_scene.score,
-            cycle_count=self._game_scene.cycle_count,
-            kill_count=self._game_scene.game_controller.state.kill_count,
-            boss_kill_count=self._game_scene.game_controller.state.boss_kill_count,
-            unlocked_buffs=self._game_scene.unlocked_buffs,
+            score=self._game_scene.get_score(),
+            cycle_count=self._game_scene.get_cycle_count(),
+            kill_count=self._game_scene.get_kill_count(),
+            boss_kill_count=self._game_scene.get_boss_kill_count(),
+            unlocked_buffs=self._game_scene.get_unlocked_buffs(),
             buff_levels=self._get_buff_levels(),
-            player_health=self._game_scene.player.health,
-            player_max_health=self._game_scene.player.max_health,
-            difficulty=self._game_scene.difficulty,
+            player_health=self._game_scene.get_player_health(),
+            player_max_health=self._game_scene.get_player_max_health(),
+            difficulty=self._game_scene.get_difficulty(),
             is_in_mothership=is_docked,
-            username=self._game_scene.game_controller.state.username,
+            username=self._game_scene.get_username(),
         )
 
     def _on_game_resume(self, **kwargs) -> None:
@@ -391,8 +384,7 @@ class GameIntegrator:
         current_x = start_x + (target_x - start_x) * eased_progress
         current_y = start_y + (target_y - start_y) * eased_progress
 
-        self._game_scene.player.rect.x = current_x
-        self._game_scene.player.rect.y = current_y
+        self._game_scene.set_player_position_topleft(current_x, current_y)
 
         if progress >= 1.0:
             self._docking_animation_active = False
@@ -416,8 +408,7 @@ class GameIntegrator:
         current_x = start_x + (target_x - start_x) * eased_progress
         current_y = start_y + (target_y - start_y) * eased_progress
 
-        self._game_scene.player.rect.x = current_x
-        self._game_scene.player.rect.y = current_y
+        self._game_scene.set_player_position_topleft(current_x, current_y)
 
         if progress >= 1.0:
             self._undocking_animation_active = False
@@ -440,10 +431,10 @@ class GameIntegrator:
         self._mothership_fire_timer = 0
 
     def _clear_ripple_effects(self) -> None:
-        if not self._game_scene or not self._game_scene.game_controller:
+        if not self._game_scene:
             return
 
-        self._game_scene.game_controller.state.ripple_effects.clear()
+        self._game_scene.clear_ripple_effects()
 
     def get_docking_animation_progress(self) -> float:
         if not self._docking_animation_active:
@@ -462,16 +453,9 @@ class GameIntegrator:
         return self._undocking_start_position if self._undocking_start_position else (0, 0)
 
     def _get_buff_levels(self) -> Dict[str, int]:
-        if not self._game_scene or not self._game_scene.reward_system:
+        if not self._game_scene:
             return {}
-        return {
-            'piercing_level': self._game_scene.reward_system.piercing_level,
-            'spread_level': self._game_scene.reward_system.spread_level,
-            'explosive_level': self._game_scene.reward_system.explosive_level,
-            'armor_level': self._game_scene.reward_system.armor_level,
-            'evasion_level': self._game_scene.reward_system.evasion_level,
-            'rapid_fire_level': self._game_scene.reward_system.rapid_fire_level,
-        }
+        return self._game_scene.get_buff_levels()
 
     def render(self, surface) -> None:
         self._mother_ship.render(surface)
