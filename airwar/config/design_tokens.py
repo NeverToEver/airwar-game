@@ -4,64 +4,70 @@ import pygame
 
 
 class Colors:
-    """Color theme dataclass — all color values for a visual theme."""
-    BACKGROUND_PRIMARY = (5, 5, 8)
-    BACKGROUND_SECONDARY = (12, 10, 8)
-    BACKGROUND_PANEL = (8, 6, 5)
+    """Base color theme — cold steel palette matching ship armor."""
+    BACKGROUND_PRIMARY = (6, 8, 16)
+    BACKGROUND_SECONDARY = (10, 12, 22)
+    BACKGROUND_PANEL = (8, 10, 18)
     BACKGROUND_OVERLAY = (0, 0, 0, 200)
 
-    HUD_AMBER = (255, 180, 50)
-    HUD_AMBER_BRIGHT = (255, 200, 80)
-    HUD_ORANGE = (255, 140, 0)
-    HUD_ORANGE_DEEP = (200, 100, 0)
+    ACCENT_PRIMARY = (140, 170, 210)
+    ACCENT_BRIGHT = (170, 195, 230)
+    ACCENT_WARM = (180, 150, 120)
+    ACCENT_WARM_DEEP = (140, 110, 80)
 
-    PARTICLE_PRIMARY = (255, 150, 50)
-    PARTICLE_ALT = (255, 100, 80)
+    # Legacy aliases
+    HUD_AMBER = ACCENT_PRIMARY
+    HUD_AMBER_BRIGHT = ACCENT_BRIGHT
+    HUD_ORANGE = ACCENT_WARM
+    HUD_ORANGE_DEEP = ACCENT_WARM_DEEP
 
-    TEXT_PRIMARY = (255, 220, 180)
-    TEXT_SECONDARY = (220, 180, 150)
-    TEXT_MUTED = (150, 120, 100)
-    TEXT_HINT = (120, 100, 80)
+    PARTICLE_PRIMARY = (120, 150, 200)
+    PARTICLE_ALT = (140, 120, 180)
 
-    HEALTH_NORMAL = (255, 180, 80)
-    HEALTH_DANGER = (255, 80, 60)
-    SCORE_COLOR = (255, 220, 180)
-    PROGRESS_COLOR = (255, 160, 80)
-    KILLS_COLOR = (220, 180, 150)
-    BOSS_COLOR = (255, 100, 80)
+    TEXT_PRIMARY = (210, 215, 230)
+    TEXT_SECONDARY = (175, 180, 200)
+    TEXT_MUTED = (130, 140, 160)
+    TEXT_HINT = (100, 110, 135)
 
-    BUTTON_SELECTED_BG = (50, 35, 25)
-    BUTTON_UNSELECTED_BG = (30, 20, 15)
-    PANEL_BORDER = (150, 110, 80)
+    HEALTH_NORMAL = (170, 180, 110)
+    HEALTH_DANGER = (220, 70, 55)
+    SCORE_COLOR = (210, 215, 230)
+    PROGRESS_COLOR = (140, 170, 210)
+    KILLS_COLOR = (170, 175, 200)
+    BOSS_COLOR = (210, 90, 70)
 
-    BUTTON_SELECTED_PRIMARY = (255, 160, 60)
-    BUTTON_SELECTED_GLOW = (255, 200, 100)
-    BUTTON_SELECTED_TEXT = (255, 240, 220)
+    BUTTON_SELECTED_BG = (30, 38, 55)
+    BUTTON_UNSELECTED_BG = (18, 24, 38)
+    PANEL_BORDER = (120, 140, 170)
 
-    BUTTON_UNSELECTED_PRIMARY = (180, 130, 80)
-    BUTTON_UNSELECTED_GLOW = (220, 170, 100)
-    BUTTON_UNSELECTED_TEXT = (200, 170, 140)
+    BUTTON_SELECTED_PRIMARY = (160, 185, 220)
+    BUTTON_SELECTED_GLOW = (140, 170, 210)
+    BUTTON_SELECTED_TEXT = (230, 235, 245)
 
-    DANGER_BUTTON_SELECTED_PRIMARY = (255, 100, 60)
-    DANGER_BUTTON_SELECTED_GLOW = (255, 140, 100)
-    DANGER_BUTTON_UNSELECTED_PRIMARY = (180, 60, 40)
-    DANGER_BUTTON_UNSELECTED_GLOW = (220, 80, 60)
+    BUTTON_UNSELECTED_PRIMARY = (120, 140, 170)
+    BUTTON_UNSELECTED_GLOW = (140, 155, 180)
+    BUTTON_UNSELECTED_TEXT = (170, 175, 195)
 
-    BOSS_HEALTH_HIGH = (255, 140, 60)
-    BOSS_HEALTH_MED = (255, 100, 60)
-    BOSS_HEALTH_LOW = (255, 80, 60)
+    DANGER_BUTTON_SELECTED_PRIMARY = (220, 85, 55)
+    DANGER_BUTTON_SELECTED_GLOW = (230, 110, 85)
+    DANGER_BUTTON_UNSELECTED_PRIMARY = (150, 50, 35)
+    DANGER_BUTTON_UNSELECTED_GLOW = (180, 70, 50)
 
-    WARNING = (255, 100, 80)
-    SUCCESS = (255, 180, 100)
-    INFO = (255, 200, 120)
+    BOSS_HEALTH_HIGH = (210, 120, 55)
+    BOSS_HEALTH_MED = (220, 90, 55)
+    BOSS_HEALTH_LOW = (220, 70, 55)
+
+    WARNING = (210, 90, 70)
+    SUCCESS = (140, 180, 110)
+    INFO = (140, 170, 210)
 
     @staticmethod
     def star_color(brightness: int) -> Tuple[int, int, int]:
-        return (brightness + 20, brightness + 10, brightness)
+        return (brightness + 50, brightness + 50, brightness + 70)
 
 
 class Typography:
-    """Typography dataclass — font sizes for all UI text elements."""
+    """Typography — font sizes for all UI text elements."""
     DISPLAY_SIZE = 110
     TITLE_SIZE = 100
     HEADING_SIZE = 72
@@ -77,7 +83,7 @@ class Typography:
 
 
 class Spacing:
-    """Spacing dataclass — margin, padding, and layout spacing values."""
+    """Spacing — margin, padding, and layout spacing values."""
     SPACE_XS = 4
     SPACE_SM = 8
     SPACE_MD = 12
@@ -103,7 +109,7 @@ class Spacing:
 
 
 class Animation:
-    """Animation dataclass — timing and easing values for animations."""
+    """Animation — timing and easing values."""
     GLOW_SPEED = 0.08
     GLOW_RADIUS_DEFAULT = 4
     GLOW_RADIUS_TITLE = 6
@@ -121,7 +127,6 @@ class Animation:
     PARTICLE_SPEED_MAX = 1.0
     STAR_SPEED = 0.01
 
-    # Nebula effect tokens
     NEBULA_COUNT = 5
     NEBULA_RADIUS_MIN = 150
     NEBULA_RADIUS_MAX = 350
@@ -132,7 +137,7 @@ class Animation:
 
 
 class UIComponents:
-    """UI components dataclass — dimensions for standard UI elements."""
+    """UI components — dimensions for standard UI elements."""
     BUTTON_WIDTH = 280
     BUTTON_HEIGHT = 60
     TITLE_Y = 100
@@ -187,249 +192,248 @@ class UIComponents:
     BUFF_SCROLL_VISIBLE_COUNT = 6
 
 
-class MilitaryColors:
-    """Military HUD color palette - hard-core military style"""
-    # Primary amber tones
-    AMBER_PRIMARY = (255, 180, 50)
-    AMBER_DIM = (204, 144, 38)
-    AMBER_BRIGHT = (255, 200, 80)
-    AMBER_GLOW = (255, 180, 50, 100)
+# ─── System (HUD / in-game) theme ────────────────────────────────────────
 
-    # Military green accents
-    MILITARY_GREEN = (74, 124, 89)
-    MILITARY_GREEN_DIM = (60, 100, 70)
+class SystemColors:
+    """System color palette — in-game HUD and overlay elements."""
+    ACCENT_PRIMARY = (140, 170, 210)
+    ACCENT_DIM = (110, 140, 175)
+    ACCENT_BRIGHT = (170, 195, 230)
+    ACCENT_GLOW = (140, 170, 210, 80)
 
-    # Background colors
-    BG_PRIMARY = (10, 10, 15)
-    BG_PANEL = (18, 20, 26)
-    BG_PANEL_LIGHT = (25, 28, 35)
+    ACCENT_TEAL = (80, 140, 180)
+    ACCENT_TEAL_DIM = (60, 110, 145)
 
-    # Border and glow
-    BORDER_GLOW = (255, 180, 50, 100)
-    BORDER_DIM = (150, 110, 50)
-    GRID_LINE = (255, 180, 50, 25)
+    BG_PRIMARY = (8, 10, 16)
+    BG_PANEL = (14, 17, 24)
+    BG_PANEL_LIGHT = (20, 24, 33)
 
-    # Danger indicators
-    DANGER_RED = (255, 68, 68)
-    DANGER_RED_DIM = (180, 50, 50)
-    WARNING_AMBER = (255, 140, 50)
+    BORDER_GLOW = (140, 170, 210, 80)
+    BORDER_DIM = (100, 120, 150)
+    GRID_LINE = (140, 170, 210, 20)
 
-    # Text colors
-    TEXT_PRIMARY = (255, 228, 181)
-    TEXT_DIM = (139, 139, 122)
-    TEXT_BRIGHT = (255, 245, 220)
+    DANGER_RED = (220, 65, 60)
+    DANGER_RED_DIM = (160, 45, 45)
+    WARNING_ACCENT = (190, 150, 85)
 
-    # Health bar colors
-    HEALTH_FULL = (100, 220, 100)
-    HEALTH_MEDIUM = (255, 180, 50)
-    HEALTH_LOW = (255, 68, 68)
-    HEALTH_CRITICAL = (255, 50, 50)
+    TEXT_PRIMARY = (215, 220, 235)
+    TEXT_DIM = (135, 142, 160)
+    TEXT_BRIGHT = (235, 240, 250)
 
-    # Boss bar colors
-    BOSS_BAR_FULL = (255, 140, 60)
-    BOSS_BAR_EMPTY = (40, 35, 30)
+    HEALTH_FULL = (90, 200, 115)
+    HEALTH_MEDIUM = (185, 170, 100)
+    HEALTH_LOW = (220, 65, 60)
+    HEALTH_CRITICAL = (230, 45, 45)
 
-    # Segment bar
-    SEGMENT_FILL = (255, 180, 50)
-    SEGMENT_EMPTY = (30, 28, 35)
-    SEGMENT_BORDER = (80, 70, 50)
+    BOSS_BAR_FULL = (200, 120, 60)
+    BOSS_BAR_EMPTY = (30, 28, 35)
 
-    # Icon colors
-    ICON_POWER = (255, 200, 80)
-    ICON_DEFENSE = (100, 200, 150)
-    ICON_SPEED = (100, 200, 255)
-    ICON_LASER = (255, 100, 200)
-    ICON_MISSILE = (255, 150, 100)
+    SEGMENT_FILL = (140, 170, 210)
+    SEGMENT_EMPTY = (22, 25, 33)
+    SEGMENT_BORDER = (75, 85, 105)
 
-    # Stats panel text colors
-    STATS_TEXT = (200, 200, 200)
-    STATS_TEXT_BRIGHT = (220, 220, 240)
-    STATS_TEXT_DIM = (150, 150, 180)
+    ICON_POWER = (220, 190, 90)
+    ICON_DEFENSE = (100, 190, 210)
+    ICON_SPEED = (120, 180, 240)
+    ICON_LASER = (210, 120, 190)
+    ICON_MISSILE = (210, 140, 100)
 
-    # Give up UI
-    GIVE_UP_BG = (40, 10, 10)
+    STATS_TEXT = (200, 205, 220)
+    STATS_TEXT_BRIGHT = (225, 230, 245)
+    STATS_TEXT_DIM = (145, 150, 170)
 
-    # Difficulty coefficient
-    COEFFICIENT_EASY = (100, 255, 100)
-    COEFFICIENT_MEDIUM = (255, 255, 100)
-    COEFFICIENT_HARD = (255, 150, 50)
-    COEFFICIENT_BAR_BG = (40, 40, 70)
-    COEFFICIENT_BAR_FILL = (20, 20, 40)
+    GIVE_UP_BG = (35, 10, 12)
 
-    # Panel overlay
-    PANEL_OVERLAY_DARK = (25, 35, 65)
-    PANEL_OVERLAY_LIGHT = (18, 20, 40)
+    COEFFICIENT_EASY = (90, 210, 110)
+    COEFFICIENT_MEDIUM = (200, 190, 100)
+    COEFFICIENT_HARD = (220, 140, 50)
+    COEFFICIENT_BAR_BG = (30, 35, 55)
+    COEFFICIENT_BAR_FILL = (16, 18, 32)
+
+    PANEL_OVERLAY_DARK = (20, 25, 45)
+    PANEL_OVERLAY_LIGHT = (14, 17, 32)
 
 
-class MilitaryUI:
-    """Military UI component sizing and styling constants"""
-    # Chamfered border settings
+class SystemUI:
+    """System UI component sizing and styling constants."""
     CHAMFER_DEPTH = 12
     CHAMFER_BORDER_WIDTH = 2
     CHAMFER_GLOW_WIDTH = 1
     CHAMFER_CORNER_RADIUS = 0
 
-    # Grid overlay (deprecated, kept for compatibility)
     GRID_ALPHA = 10
     GRID_SPACING = 40
 
-    # Hexagon icon
     HEXAGON_SIZE = 24
     HEXAGON_BORDER_WIDTH = 2
 
-    # Military panel
     PANEL_PADDING = 15
     PANEL_MARGIN = 10
     PANEL_CORNER_CHAMFER = 12
 
-    # Segment bar
     SEGMENT_GAP = 2
     SEGMENT_MIN_WIDTH = 8
 
-    # Animation timings (in frames at 60fps)
     PULSE_FAST = 15
     PULSE_NORMAL = 30
     PULSE_SLOW = 60
     FLASH_DURATION = 10
 
-    # Scanline overlay
     SCANLINE_ALPHA = 25
     SCANLINE_SPACING = 4
 
-    # Font sizes for military HUD
-    MILITARY_LABEL_SIZE = 18
-    MILITARY_VALUE_SIZE = 24
-    MILITARY_TITLE_SIZE = 36
-    MILITARY_SMALL_SIZE = 14
+    HUD_LABEL_SIZE = 18
+    HUD_VALUE_SIZE = 24
+    HUD_TITLE_SIZE = 36
+    HUD_SMALL_SIZE = 14
 
 
-class ForestColors:
-    """Forest/Nature style color palette - soft and easy on eyes"""
-    # Primary accent (muted gold)
-    GOLD_PRIMARY = (180, 150, 90)
-    GOLD_DIM = (140, 120, 70)
-    GOLD_BRIGHT = (210, 180, 120)
-    GOLD_GLOW = (180, 150, 90, 60)
+# ─── Scene (menu / pause / login) theme ──────────────────────────────────
 
-    # Marquee effect
-    MARQUEE_COLOR = (180, 150, 90, 40)
+class SceneColors:
+    """Scene color palette — menus, pause, login, and overlay screens."""
+    ACCENT_PRIMARY = (140, 170, 210)
+    ACCENT_DIM = (110, 140, 175)
+    ACCENT_BRIGHT = (170, 195, 230)
+    ACCENT_GLOW = (140, 170, 210, 60)
+
+    ACCENT_TEAL = (80, 130, 170)
+    ACCENT_TEAL_DIM = (60, 100, 140)
+    ACCENT_TEAL_BRIGHT = (100, 155, 195)
+
+    BG_PRIMARY = (6, 8, 14)
+    BG_PANEL = (12, 15, 22)
+    BG_PANEL_LIGHT = (18, 22, 30)
+
+    BORDER_GLOW = (140, 170, 210, 60)
+    BORDER_DIM = (90, 110, 135)
+    BORDER_TEAL = (80, 130, 170, 70)
+
+    MARQUEE_COLOR = (140, 170, 210, 35)
     MARQUEE_STRIP_SIZE = 24
     MARQUEE_SPEED = 0.4
 
-    # Forest green accents
-    FOREST_GREEN = (60, 90, 60)
-    FOREST_GREEN_DIM = (45, 70, 45)
-    FOREST_GREEN_BRIGHT = (80, 120, 80)
+    DANGER_RED = (180, 55, 48)
+    DANGER_RED_DIM = (120, 38, 32)
+    WARNING_ACCENT = (185, 145, 80)
 
-    # Background colors (dark forest)
-    BG_PRIMARY = (8, 10, 8)
-    BG_PANEL = (15, 18, 15)
-    BG_PANEL_LIGHT = (20, 25, 20)
+    TEXT_PRIMARY = (210, 215, 230)
+    TEXT_DIM = (130, 140, 160)
+    TEXT_BRIGHT = (230, 235, 245)
 
-    # Border and glow
-    BORDER_GLOW = (180, 150, 90, 60)
-    BORDER_DIM = (100, 90, 70)
-    BORDER_FOREST = (60, 90, 60, 80)
+    HEALTH_FULL = (85, 190, 110)
+    HEALTH_MEDIUM = (185, 165, 100)
+    HEALTH_LOW = (200, 75, 55)
+    HEALTH_CRITICAL = (210, 55, 48)
 
-    # Danger indicators (muted)
-    DANGER_RED = (150, 60, 50)
-    DANGER_RED_DIM = (100, 40, 35)
-    WARNING_AMBER = (160, 110, 50)
+    BOSS_BAR_FULL = (190, 110, 60)
+    BOSS_BAR_EMPTY = (28, 27, 30)
 
-    # Text colors
-    TEXT_PRIMARY = (200, 190, 170)
-    TEXT_DIM = (130, 120, 100)
-    TEXT_BRIGHT = (220, 210, 190)
+    SEGMENT_FILL = (140, 170, 210)
+    SEGMENT_EMPTY = (20, 23, 30)
+    SEGMENT_BORDER = (75, 90, 110)
 
-    # Health bar colors
-    HEALTH_FULL = (80, 160, 80)
-    HEALTH_MEDIUM = (180, 150, 90)
-    HEALTH_LOW = (180, 80, 60)
-    HEALTH_CRITICAL = (200, 60, 50)
+    ICON_POWER = (220, 190, 90)
+    ICON_DEFENSE = (100, 190, 210)
+    ICON_SPEED = (120, 180, 240)
+    ICON_LASER = (210, 120, 190)
+    ICON_MISSILE = (210, 140, 100)
 
-    # Boss bar colors
-    BOSS_BAR_FULL = (180, 100, 60)
-    BOSS_BAR_EMPTY = (30, 28, 25)
+    INPUT_BG = (16, 20, 36)
+    INPUT_ACTIVE = (24, 30, 52)
+    INPUT_TEXT = (210, 215, 230)
+    INPUT_PLACEHOLDER = (75, 85, 110)
 
-    # Segment bar
-    SEGMENT_FILL = (180, 150, 90)
-    SEGMENT_EMPTY = (25, 23, 20)
-    SEGMENT_BORDER = (70, 65, 50)
+    BUTTON_LOGIN = (25, 55, 105)
+    BUTTON_REGISTER = (45, 75, 115)
+    BUTTON_QUIT = (170, 50, 38)
+    BUTTON_FULLSCREEN = (28, 55, 95)
+    BUTTON_TEXT = (235, 240, 250)
 
-    # Icon colors
-    ICON_POWER = (200, 170, 100)
-    ICON_DEFENSE = (80, 140, 100)
-    ICON_SPEED = (80, 150, 160)
-    ICON_LASER = (180, 120, 150)
-    ICON_MISSILE = (180, 130, 90)
+    HINT_DIM = (70, 80, 110)
+    HINT_BRIGHT = (100, 110, 150)
 
-    # Input colors
-    INPUT_BG = (20, 28, 55)
-    INPUT_ACTIVE = (30, 45, 75)
-    INPUT_TEXT = (200, 190, 170)
-    INPUT_PLACEHOLDER = (60, 70, 100)
+    TITLE_GLOW_INNER = (120, 180, 230)
+    TITLE_GLOW_MIDDLE = (80, 150, 210)
+    TITLE_GLOW_OUTER = (50, 110, 170)
+    TITLE_SHADOW = (18, 45, 85)
 
-    # Button colors
-    BUTTON_LOGIN = (20, 50, 100)
-    BUTTON_REGISTER = (40, 80, 60)
-    BUTTON_QUIT = (180, 60, 40)
-    BUTTON_FULLSCREEN = (30, 60, 90)
-    BUTTON_TEXT = (245, 250, 255)
+    PARTICLE_COLOR = (140, 170, 210)
 
-    # Hint colors
-    HINT_DIM = (70, 75, 120)
-    HINT_BRIGHT = (100, 105, 150)
+    PANEL_OVERLAY_DARK = (18, 25, 50)
+    PANEL_OVERLAY_LIGHT = (14, 17, 35)
 
-    # Title glow colors
-    TITLE_GLOW_INNER = (100, 200, 255)
-    TITLE_GLOW_MIDDLE = (70, 160, 220)
-    TITLE_GLOW_OUTER = (50, 120, 180)
-    TITLE_SHADOW = (20, 60, 100)
+    BACK_BUTTON = (200, 100, 90)
+    DESC_TEXT = (60, 65, 90)
 
-    # Particle color
-    PARTICLE_COLOR = (180, 200, 120)
+    STATS_TEXT = (200, 205, 220)
+    STATS_TEXT_BRIGHT = (225, 230, 245)
+    STATS_TEXT_DIM = (145, 150, 170)
 
-    # Panel overlay colors
-    PANEL_OVERLAY_DARK = (25, 35, 65)
-    PANEL_OVERLAY_LIGHT = (18, 20, 40)
+    GIVE_UP_BG = (35, 10, 12)
 
-    # Back button
-    BACK_BUTTON = (220, 110, 110)
+    COEFFICIENT_EASY = (90, 210, 110)
+    COEFFICIENT_MEDIUM = (200, 190, 100)
+    COEFFICIENT_HARD = (220, 140, 50)
+    COEFFICIENT_BAR_BG = (30, 35, 55)
+    COEFFICIENT_BAR_FILL = (16, 18, 32)
 
-    # Description text
-    DESC_TEXT = (50, 50, 80)
 
-    # Stats panel text
-    STATS_TEXT = (200, 200, 200)
-    STATS_TEXT_BRIGHT = (220, 220, 240)
-    STATS_TEXT_DIM = (150, 150, 180)
+# ─── Backward-compatible aliases ──────────────────────────────────────────
 
-    # Give up UI
-    GIVE_UP_BG = (40, 10, 10)
+MilitaryColors = SystemColors
+MilitaryUI = SystemUI
+ForestColors = SceneColors
 
-    # Difficulty coefficient
-    COEFFICIENT_EASY = (100, 255, 100)
-    COEFFICIENT_MEDIUM = (255, 255, 100)
-    COEFFICIENT_HARD = (255, 150, 50)
-    COEFFICIENT_BAR_BG = (40, 40, 70)
-    COEFFICIENT_BAR_FILL = (20, 20, 40)
+# Legacy constant aliases on SystemColors
+SystemColors.AMBER_PRIMARY = SystemColors.ACCENT_PRIMARY
+SystemColors.AMBER_DIM = SystemColors.ACCENT_DIM
+SystemColors.AMBER_BRIGHT = SystemColors.ACCENT_BRIGHT
+SystemColors.AMBER_GLOW = SystemColors.ACCENT_GLOW
+SystemColors.MILITARY_GREEN = SystemColors.ACCENT_TEAL
+SystemColors.MILITARY_GREEN_DIM = SystemColors.ACCENT_TEAL_DIM
+SystemColors.WARNING_AMBER = SystemColors.WARNING_ACCENT
+SystemColors.MILITARY_LABEL_SIZE = SystemUI.HUD_LABEL_SIZE
+SystemColors.MILITARY_VALUE_SIZE = SystemUI.HUD_VALUE_SIZE
+SystemColors.MILITARY_TITLE_SIZE = SystemUI.HUD_TITLE_SIZE
+SystemColors.MILITARY_SMALL_SIZE = SystemUI.HUD_SMALL_SIZE
 
+# Legacy constant aliases on SceneColors
+SceneColors.GOLD_PRIMARY = SceneColors.ACCENT_PRIMARY
+SceneColors.GOLD_DIM = SceneColors.ACCENT_DIM
+SceneColors.GOLD_BRIGHT = SceneColors.ACCENT_BRIGHT
+SceneColors.GOLD_GLOW = SceneColors.ACCENT_GLOW
+SceneColors.FOREST_GREEN = SceneColors.ACCENT_TEAL
+SceneColors.FOREST_GREEN_DIM = SceneColors.ACCENT_TEAL_DIM
+SceneColors.FOREST_GREEN_BRIGHT = SceneColors.ACCENT_TEAL_BRIGHT
+SceneColors.BORDER_FOREST = SceneColors.BORDER_TEAL
+SceneColors.WARNING_AMBER = SceneColors.WARNING_ACCENT
+
+# Legacy constant aliases on SystemUI
+SystemUI.MILITARY_LABEL_SIZE = SystemUI.HUD_LABEL_SIZE
+SystemUI.MILITARY_VALUE_SIZE = SystemUI.HUD_VALUE_SIZE
+SystemUI.MILITARY_TITLE_SIZE = SystemUI.HUD_TITLE_SIZE
+SystemUI.MILITARY_SMALL_SIZE = SystemUI.HUD_SMALL_SIZE
+
+
+# ─── DesignTokens singleton ───────────────────────────────────────────────
 
 class DesignTokens:
-    """Design tokens singleton — centralized visual design system.
-    
-        Provides themed colors (Military, Forest), typography, spacing,
-        animation, and UI component dimensions.
-        """
+    """Design tokens singleton — centralized visual design system."""
+
     def __init__(self):
         self.colors = Colors
         self.typography = Typography
         self.spacing = Spacing
         self.animation = Animation
         self.components = UIComponents
-        self.military = MilitaryColors
-        self.military_ui = MilitaryUI
-        self.forest = ForestColors
+        self.system = SystemColors
+        self.system_ui = SystemUI
+        self.scene = SceneColors
+        # Backward-compatible aliases
+        self.military = SystemColors
+        self.military_ui = SystemUI
+        self.forest = SceneColors
 
     def get_font(self, size: int):
         return pygame.font.Font(pygame.font.get_default_font(), size)
@@ -450,5 +454,3 @@ def get_design_tokens() -> DesignTokens:
 
 def get_colors() -> type:
     return Colors
-
-

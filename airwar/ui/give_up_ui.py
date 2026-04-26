@@ -1,7 +1,7 @@
 """Give-up UI — surrender progress indicator overlay."""
 import pygame
 import math
-from airwar.config.design_tokens import get_design_tokens, ForestColors, MilitaryColors, MilitaryUI
+from airwar.config.design_tokens import get_design_tokens, SceneColors, SystemColors, SystemUI
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 
 
@@ -16,7 +16,7 @@ class GiveUpUI:
         self._screen_width = screen_width
         self._screen_height = screen_height
         self._animation_time = 0
-        self._use_military_style = True
+        self._use_themed_style = True
 
         self._tokens = get_design_tokens()
         colors = self._tokens.colors
@@ -26,7 +26,7 @@ class GiveUpUI:
         self._corner_radius = 8
         self._border_width = 2
 
-        self._bg_color = MilitaryColors.GIVE_UP_BG
+        self._bg_color = SystemColors.GIVE_UP_BG
         self._progress_color = colors.HEALTH_DANGER
         self._border_color = colors.WARNING
         self._text_color = colors.HEALTH_DANGER
@@ -57,21 +57,21 @@ class GiveUpUI:
 
         alpha = 180 + int(75 * math.sin(self._animation_time * 0.2))
 
-        if self._use_military_style:
-            self._render_military_text(surface, center_x, center_y - 30, alpha)
-            self._render_military_progress_bar(surface, center_x, center_y, alpha)
+        if self._use_themed_style:
+            self._render_glow_text(surface, center_x, center_y - 30, alpha)
+            self._render_themed_progress_bar(surface, center_x, center_y, alpha)
         else:
             self._render_text(surface, center_x, center_y - 30, alpha)
             self._render_progress_bar(surface, center_x, center_y, alpha)
 
-    def _render_military_text(self, surface: pygame.Surface, center_x: int, y: int, alpha: int) -> None:
+    def _render_glow_text(self, surface: pygame.Surface, center_x: int, y: int, alpha: int) -> None:
         """Render text in military style."""
-        text = self._font.render("GIVE UP", True, ForestColors.DANGER_RED)
+        text = self._font.render("GIVE UP", True, SceneColors.DANGER_RED)
         text.set_alpha(alpha)
         text_rect = text.get_rect(center=(center_x, y))
         surface.blit(text, text_rect)
 
-    def _render_military_progress_bar(self, surface: pygame.Surface, center_x: int, center_y: int, alpha: int) -> None:
+    def _render_themed_progress_bar(self, surface: pygame.Surface, center_x: int, center_y: int, alpha: int) -> None:
         """Render progress bar in military style with chamfered corners."""
         bar_x = center_x - self._bar_width // 2
         bar_y = center_y - self._bar_height // 2
@@ -81,8 +81,8 @@ class GiveUpUI:
             surface,
             bar_x, bar_y,
             self._bar_width, self._bar_height,
-            ForestColors.BG_PANEL_LIGHT,
-            ForestColors.DANGER_RED,
+            SceneColors.BG_PANEL_LIGHT,
+            SceneColors.DANGER_RED,
             None,
             4
         )
@@ -94,8 +94,8 @@ class GiveUpUI:
                 surface,
                 bar_x + 2, bar_y + 2,
                 progress_width - 4, self._bar_height - 4,
-                ForestColors.DANGER_RED,
-                ForestColors.DANGER_RED,
+                SceneColors.DANGER_RED,
+                SceneColors.DANGER_RED,
                 None,
                 4
             )

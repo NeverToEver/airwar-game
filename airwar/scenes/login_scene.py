@@ -5,7 +5,7 @@ from .scene import Scene
 from airwar.utils.database import UserDB
 from airwar.utils.responsive import ResponsiveHelper
 from airwar.ui.menu_background import MenuBackground
-from airwar.config.design_tokens import get_design_tokens, ForestColors, MilitaryUI
+from airwar.config.design_tokens import get_design_tokens, SceneColors, SystemUI
 from airwar.window.window import get_window
 from airwar.utils.mouse_interaction import MouseInteractiveMixin
 from airwar.ui.chamfered_panel import draw_chamfered_panel
@@ -56,7 +56,7 @@ class LoginScene(Scene, MouseInteractiveMixin):
 
         self._background_renderer = MenuBackground()
         self._init_colors()
-        self._init_military_colors()
+        self._init_themed_colors()
 
     def _init_colors(self) -> None:
         colors = self._tokens.colors
@@ -82,28 +82,28 @@ class LoginScene(Scene, MouseInteractiveMixin):
             'particle': colors.PARTICLE_PRIMARY,
         }
 
-    def _init_military_colors(self) -> None:
-        self.use_military_style = True
-        self.military_colors = {
-            'bg': ForestColors.BG_PRIMARY,
-            'bg_gradient': ForestColors.BG_PANEL,
-            'panel': ForestColors.BG_PANEL,
-            'panel_border': ForestColors.BORDER_GLOW,
-            'title': ForestColors.TEXT_PRIMARY,
-            'title_glow': ForestColors.GOLD_GLOW,
-            'input_bg': ForestColors.BG_PANEL_LIGHT,
-            'input_active': ForestColors.BG_PANEL,
-            'input_text': ForestColors.TEXT_PRIMARY,
-            'input_hint': ForestColors.TEXT_DIM,
-            'hint': ForestColors.TEXT_DIM,
-            'button_login': ForestColors.FOREST_GREEN,
-            'button_register': ForestColors.GOLD_DIM,
-            'button_quit': ForestColors.DANGER_RED_DIM,
-            'button_hover': ForestColors.GOLD_PRIMARY,
-            'button_fullscreen': ForestColors.BG_PANEL_LIGHT,
-            'error': ForestColors.DANGER_RED,
-            'success': ForestColors.FOREST_GREEN,
-            'particle': ForestColors.GOLD_PRIMARY,
+    def _init_themed_colors(self) -> None:
+        self.use_themed_style = True
+        self.themed_colors = {
+            'bg': SceneColors.BG_PRIMARY,
+            'bg_gradient': SceneColors.BG_PANEL,
+            'panel': SceneColors.BG_PANEL,
+            'panel_border': SceneColors.BORDER_GLOW,
+            'title': SceneColors.TEXT_PRIMARY,
+            'title_glow': SceneColors.GOLD_GLOW,
+            'input_bg': SceneColors.BG_PANEL_LIGHT,
+            'input_active': SceneColors.BG_PANEL,
+            'input_text': SceneColors.TEXT_PRIMARY,
+            'input_hint': SceneColors.TEXT_DIM,
+            'hint': SceneColors.TEXT_DIM,
+            'button_login': SceneColors.FOREST_GREEN,
+            'button_register': SceneColors.GOLD_DIM,
+            'button_quit': SceneColors.DANGER_RED_DIM,
+            'button_hover': SceneColors.GOLD_PRIMARY,
+            'button_fullscreen': SceneColors.BG_PANEL_LIGHT,
+            'error': SceneColors.DANGER_RED,
+            'success': SceneColors.FOREST_GREEN,
+            'particle': SceneColors.GOLD_PRIMARY,
         }
 
     def _reset_rects(self, width, height):
@@ -247,8 +247,8 @@ class LoginScene(Scene, MouseInteractiveMixin):
 
     def render(self, surface: pygame.Surface) -> None:
         width, height = surface.get_size()
-        if self.use_military_style:
-            self._background_renderer.render_military_style(surface, self.military_colors)
+        if self.use_themed_style:
+            self._background_renderer.render_themed_style(surface, self.themed_colors)
         else:
             self._background_renderer.render(surface, self.colors)
 
@@ -266,9 +266,9 @@ class LoginScene(Scene, MouseInteractiveMixin):
     def _render_panel(self, surface, width, height):
         scale = ResponsiveHelper.get_scale_factor(width, height)
 
-        if self.use_military_style:
+        if self.use_themed_style:
             # Military style: chamfered panel
-            colors = self.military_colors
+            colors = self.themed_colors
             draw_chamfered_panel(
                 surface,
                 self.panel_x,
@@ -278,12 +278,12 @@ class LoginScene(Scene, MouseInteractiveMixin):
                 colors['panel'],
                 colors['panel_border'],
                 colors['title_glow'],
-                MilitaryUI.CHAMFER_DEPTH
+                SystemUI.CHAMFER_DEPTH
             )
             # Decorative line
             pygame.draw.line(
                 surface,
-                ForestColors.BORDER_DIM,
+                SceneColors.BORDER_DIM,
                 (self.panel_x + ResponsiveHelper.scale(25, scale), self.panel_y + ResponsiveHelper.scale(85, scale)),
                 (self.panel_x + self.panel_width - ResponsiveHelper.scale(25, scale), self.panel_y + ResponsiveHelper.scale(85, scale)),
                 1
@@ -320,10 +320,10 @@ class LoginScene(Scene, MouseInteractiveMixin):
         glow_offset = math.sin(self.animation_time * 0.05) * 3
         title_y = self.panel_y + ResponsiveHelper.scale(45, scale)
 
-        if self.use_military_style:
+        if self.use_themed_style:
             # Military style: amber glow
-            colors = self.military_colors
-            for blur, alpha, color in [(4, 15, ForestColors.GOLD_DIM), (2, 25, ForestColors.GOLD_PRIMARY)]:
+            colors = self.themed_colors
+            for blur, alpha, color in [(4, 15, SceneColors.GOLD_DIM), (2, 25, SceneColors.GOLD_PRIMARY)]:
                 glow_surf = self.title_font.render(title_text, True, color)
                 glow_surf.set_alpha(alpha)
                 for offset_x in range(-blur, blur + 1, 2):
@@ -333,19 +333,19 @@ class LoginScene(Scene, MouseInteractiveMixin):
                                 center=(width // 2 + offset_x, int(title_y + glow_offset) + offset_y))
                             surface.blit(glow_surf, glow_rect)
 
-            title_shadow = self.title_font.render(title_text, True, ForestColors.BG_PANEL)
+            title_shadow = self.title_font.render(title_text, True, SceneColors.BG_PANEL)
             surface.blit(title_shadow, title_shadow.get_rect(
                 center=(width // 2 + 2, int(title_y + glow_offset) + 2)))
 
-            title = self.title_font.render(title_text, True, ForestColors.GOLD_PRIMARY)
+            title = self.title_font.render(title_text, True, SceneColors.GOLD_PRIMARY)
             surface.blit(title, title.get_rect(center=(width // 2, int(title_y + glow_offset))))
         else:
             # Original style
             colors = self.colors
             for blur, alpha, color in [
-                (6, 18, ForestColors.TITLE_GLOW_OUTER),
-                (4, 30, ForestColors.TITLE_GLOW_MIDDLE),
-                (2, 45, ForestColors.TITLE_GLOW_INNER)
+                (6, 18, SceneColors.TITLE_GLOW_OUTER),
+                (4, 30, SceneColors.TITLE_GLOW_MIDDLE),
+                (2, 45, SceneColors.TITLE_GLOW_INNER)
             ]:
                 glow_surf = self.title_font.render(title_text, True, color)
                 glow_surf.set_alpha(alpha)
@@ -356,7 +356,7 @@ class LoginScene(Scene, MouseInteractiveMixin):
                                 center=(width // 2 + offset_x, int(title_y + glow_offset) + offset_y))
                             surface.blit(glow_surf, glow_rect)
 
-            title_shadow = self.title_font.render(title_text, True, ForestColors.TITLE_SHADOW)
+            title_shadow = self.title_font.render(title_text, True, SceneColors.TITLE_SHADOW)
             surface.blit(title_shadow, title_shadow.get_rect(
                 center=(width // 2 + 2, int(title_y + glow_offset) + 2)))
 
@@ -379,9 +379,9 @@ class LoginScene(Scene, MouseInteractiveMixin):
         is_active = self.input_active == label.split('_')[0].lower()
         is_hovered = self.is_button_hovered(label.split('_')[0].lower())
 
-        if self.use_military_style:
-            colors = self.military_colors
-            self._draw_military_input(surface, rect, label, text, is_username, is_active, is_hovered)
+        if self.use_themed_style:
+            colors = self.themed_colors
+            self._draw_themed_input(surface, rect, label, text, is_username, is_active, is_hovered)
         else:
             colors = self.colors
             self._draw_input_glow(surface, rect, is_active or is_hovered, colors)
@@ -389,19 +389,19 @@ class LoginScene(Scene, MouseInteractiveMixin):
             self._draw_input_label(surface, rect, label, is_active, colors)
             self._draw_input_content(surface, rect, text, is_username, colors)
 
-    def _draw_military_input(self, surface, rect, label, text, is_username, is_active, is_hovered):
+    def _draw_themed_input(self, surface, rect, label, text, is_username, is_active, is_hovered):
         """Draw input box in military style with chamfered corners."""
-        colors = self.military_colors
+        colors = self.themed_colors
         scale = ResponsiveHelper.get_scale_factor(surface.get_width(), surface.get_height())
 
         # Draw glow if active
         if is_active:
-            glow_color = ForestColors.GOLD_GLOW
+            glow_color = SceneColors.GOLD_GLOW
             draw_chamfered_panel(
                 surface,
                 rect.x - 3, rect.y - 3,
                 rect.width + 6, rect.height + 6,
-                ForestColors.BG_PANEL,
+                SceneColors.BG_PANEL,
                 glow_color,
                 glow_color,
                 8
@@ -412,15 +412,15 @@ class LoginScene(Scene, MouseInteractiveMixin):
             surface,
             rect.x, rect.y,
             rect.width, rect.height,
-            colors['input_bg'] if is_active else ForestColors.BG_PANEL_LIGHT,
-            ForestColors.BORDER_DIM if is_active else ForestColors.BG_PANEL,
+            colors['input_bg'] if is_active else SceneColors.BG_PANEL_LIGHT,
+            SceneColors.BORDER_DIM if is_active else SceneColors.BG_PANEL,
             None,
             6
         )
 
         # Draw label
         label_y = rect.y - ResponsiveHelper.scale(28, scale)
-        label_color = ForestColors.GOLD_PRIMARY if is_active else ForestColors.TEXT_DIM
+        label_color = SceneColors.GOLD_PRIMARY if is_active else SceneColors.TEXT_DIM
         label_surf = self.input_font.render(label, True, label_color)
         surface.blit(label_surf, (rect.x + ResponsiveHelper.scale(10, scale), label_y))
 
@@ -428,19 +428,19 @@ class LoginScene(Scene, MouseInteractiveMixin):
         display_text = text if text else ""
         if not is_username and display_text:
             display_text = '*' * len(display_text)
-        text_surf = self.input_font.render(display_text, True, ForestColors.TEXT_PRIMARY)
+        text_surf = self.input_font.render(display_text, True, SceneColors.TEXT_PRIMARY)
         text_rect = text_surf.get_rect(midleft=(rect.x + ResponsiveHelper.scale(20, scale), rect.y + rect.height // 2))
         surface.blit(text_surf, text_rect)
 
         if not text:
             placeholder = "Enter username..." if is_username else "Enter password..."
-            ph_surf = self.input_font.render(placeholder, True, ForestColors.TEXT_DIM)
+            ph_surf = self.input_font.render(placeholder, True, SceneColors.TEXT_DIM)
             ph_rect = ph_surf.get_rect(midleft=(rect.x + ResponsiveHelper.scale(20, scale), rect.y + rect.height // 2))
             surface.blit(ph_surf, ph_rect)
 
         if self.cursor_visible:
             cursor_x = text_rect.right + 3 if text else rect.x + ResponsiveHelper.scale(20, scale)
-            pygame.draw.line(surface, ForestColors.GOLD_PRIMARY,
+            pygame.draw.line(surface, SceneColors.GOLD_PRIMARY,
                            (cursor_x, rect.y + ResponsiveHelper.scale(15, scale)), (cursor_x, rect.y + rect.height - ResponsiveHelper.scale(15, scale)), 2)
 
     def _draw_input_glow(self, surface, rect, is_active, colors):
@@ -492,7 +492,7 @@ class LoginScene(Scene, MouseInteractiveMixin):
         surface.blit(text_surf, text_rect)
         if not text:
             placeholder = "Enter username..." if is_username else "Enter password..."
-            ph_surf = self.input_font.render(placeholder, True, ForestColors.INPUT_PLACEHOLDER)
+            ph_surf = self.input_font.render(placeholder, True, SceneColors.INPUT_PLACEHOLDER)
             ph_rect = ph_surf.get_rect(midleft=(rect.x + ResponsiveHelper.scale(20, scale), rect.y + rect.height // 2))
             surface.blit(ph_surf, ph_rect)
         if self.cursor_visible:
@@ -501,10 +501,10 @@ class LoginScene(Scene, MouseInteractiveMixin):
                            (cursor_x, rect.y + ResponsiveHelper.scale(15, scale)), (cursor_x, rect.y + rect.height - ResponsiveHelper.scale(15, scale)), 2)
 
     def _render_buttons(self, surface):
-        if self.use_military_style:
-            self._render_military_button(surface, self.login_btn, "LOGIN", ForestColors.FOREST_GREEN, True, 'login')
-            self._render_military_button(surface, self.register_btn, "REGISTER", ForestColors.GOLD_DIM, False, 'register')
-            self._render_military_button(surface, self.quit_btn, "QUIT", ForestColors.DANGER_RED_DIM, False, 'quit')
+        if self.use_themed_style:
+            self._render_themed_button(surface, self.login_btn, "LOGIN", SceneColors.FOREST_GREEN, True, 'login')
+            self._render_themed_button(surface, self.register_btn, "REGISTER", SceneColors.GOLD_DIM, False, 'register')
+            self._render_themed_button(surface, self.quit_btn, "QUIT", SceneColors.DANGER_RED_DIM, False, 'quit')
         else:
             self._render_button(surface, self.login_btn, "LOGIN", self.colors['button_login'], True, 'login')
             self._render_button(surface, self.register_btn, "REGISTER", self.colors['button_register'], False, 'register')
@@ -512,12 +512,12 @@ class LoginScene(Scene, MouseInteractiveMixin):
 
         window = get_window()
         fullscreen_text = "Exit Fullscreen" if window.is_fullscreen() else "Enter Fullscreen"
-        if self.use_military_style:
-            self._render_military_button(surface, self.fullscreen_btn, fullscreen_text, ForestColors.BG_PANEL_LIGHT, False, 'fullscreen')
+        if self.use_themed_style:
+            self._render_themed_button(surface, self.fullscreen_btn, fullscreen_text, SceneColors.BG_PANEL_LIGHT, False, 'fullscreen')
         else:
             self._render_button(surface, self.fullscreen_btn, fullscreen_text, self.colors['button_fullscreen'], False, 'fullscreen')
 
-    def _render_military_button(self, surface, rect, text, color, is_primary, button_name=None):
+    def _render_themed_button(self, surface, rect, text, color, is_primary, button_name=None):
         """Render button in military style with chamfered corners."""
         self.register_button(button_name, rect)
         hover = self.is_button_hovered(button_name) if button_name else False
@@ -532,9 +532,9 @@ class LoginScene(Scene, MouseInteractiveMixin):
                 surface,
                 rect.x - 4, rect.y - 4,
                 rect.width + 8, rect.height + 8,
-                ForestColors.BG_PANEL,
-                ForestColors.GOLD_GLOW,
-                ForestColors.GOLD_GLOW,
+                SceneColors.BG_PANEL,
+                SceneColors.GOLD_GLOW,
+                SceneColors.GOLD_GLOW,
                 8
             )
 
@@ -544,12 +544,12 @@ class LoginScene(Scene, MouseInteractiveMixin):
             rect.x, rect.y,
             rect.width, rect.height,
             btn_color,
-            ForestColors.GOLD_PRIMARY if hover else ForestColors.BORDER_DIM,
+            SceneColors.GOLD_PRIMARY if hover else SceneColors.BORDER_DIM,
             None,
             6
         )
 
-        text_color = ForestColors.TEXT_BRIGHT if hover else ForestColors.TEXT_PRIMARY
+        text_color = SceneColors.TEXT_BRIGHT if hover else SceneColors.TEXT_PRIMARY
         text_surf = self.button_font.render(text, True, text_color)
         text_rect = text_surf.get_rect(center=rect.center)
         surface.blit(text_surf, text_rect)
@@ -576,23 +576,23 @@ class LoginScene(Scene, MouseInteractiveMixin):
                         border_surf.get_rect(), width=2, border_radius=10)
         surface.blit(border_surf, rect.topleft)
 
-        text_surf = self.button_font.render(text, True, ForestColors.BUTTON_TEXT)
+        text_surf = self.button_font.render(text, True, SceneColors.BUTTON_TEXT)
         text_rect = text_surf.get_rect(center=rect.center)
         surface.blit(text_surf, text_rect)
 
     def _render_hints(self, surface, width, height):
         pulse = (math.sin(self.animation_time * 0.08) + 1) / 2
-        if self.use_military_style:
-            hint_color = ForestColors.TEXT_DIM
+        if self.use_themed_style:
+            hint_color = SceneColors.TEXT_DIM
             if (self.animation_time // 60) % 2 == 0:
-                hint_color = ForestColors.TEXT_DIM
+                hint_color = SceneColors.TEXT_DIM
             else:
-                hint_color = ForestColors.TEXT_PRIMARY
+                hint_color = SceneColors.TEXT_PRIMARY
         else:
             if (self.animation_time // 60) % 2 == 0:
-                hint_color = ForestColors.HINT_DIM
+                hint_color = SceneColors.HINT_DIM
             else:
-                hint_color = ForestColors.HINT_BRIGHT
+                hint_color = SceneColors.HINT_BRIGHT
 
         hints = "TAB: switch  |  ENTER: submit  |  ESC: quit"
         hint_surf = self.hint_font.render(hints, True, hint_color)
@@ -603,8 +603,8 @@ class LoginScene(Scene, MouseInteractiveMixin):
 
     def _render_message(self, surface, width, height):
         scale = ResponsiveHelper.get_scale_factor(width, height)
-        if self.use_military_style:
-            msg_color = ForestColors.DANGER_RED if self._is_error_message() else ForestColors.FOREST_GREEN
+        if self.use_themed_style:
+            msg_color = SceneColors.DANGER_RED if self._is_error_message() else SceneColors.FOREST_GREEN
         else:
             msg_color = self.colors['error'] if self._is_error_message() else self.colors['success']
         msg_surf = self.input_font.render(self.message, True, msg_color)

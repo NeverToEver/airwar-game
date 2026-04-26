@@ -4,7 +4,7 @@ import pygame
 from ...ui.buff_stats_panel import BuffStatsPanel, AttackModePanel
 from ...ui.chamfered_panel import draw_chamfered_panel
 from ...ui.segmented_bar import BossHealthBar
-from ...config.design_tokens import get_design_tokens, MilitaryColors, MilitaryUI
+from ...config.design_tokens import get_design_tokens, SystemColors, SystemUI
 from ..constants import GAME_CONSTANTS
 from ...utils.sprites import draw_ripple
 
@@ -113,12 +113,12 @@ class HUDRenderer:
             y = 100
             surface.blit(text, (x, y))
 
-    def render_boss_health_bar(self, surface: pygame.Surface, boss, use_military: bool = True) -> None:
+    def render_boss_health_bar(self, surface: pygame.Surface, boss, use_themed_style: bool = True) -> None:
         if not boss:
             return
 
-        if use_military:
-            self.render_boss_health_bar_military(surface, boss)
+        if use_themed_style:
+            self.render_boss_health_bar_themed(surface, boss)
         else:
             self._render_boss_health_bar_original(surface, boss)
 
@@ -155,8 +155,8 @@ class HUDRenderer:
             warning_rect = warning_text.get_rect(left=x + 8, centery=y + bar_height // 2)
             surface.blit(warning_text, warning_rect)
 
-    def render_boss_health_bar_military(self, surface: pygame.Surface, boss) -> None:
-        """Military-style boss health bar rendering"""
+    def render_boss_health_bar_themed(self, surface: pygame.Surface, boss) -> None:
+        """Themed-style boss health bar rendering"""
         components = self._tokens.components
         bar_width = components.HEALTH_BAR_WIDTH
         bar_height = components.HEALTH_BAR_HEIGHT
@@ -168,15 +168,15 @@ class HUDRenderer:
         # Draw chamfered panel background
         draw_chamfered_panel(
             surface, x - 4, y - 4, bar_width + 8, bar_height + 8,
-            MilitaryColors.BG_PANEL,
-            MilitaryColors.BORDER_GLOW,
-            MilitaryColors.AMBER_GLOW,
+            SystemColors.BG_PANEL,
+            SystemColors.BORDER_GLOW,
+            SystemColors.AMBER_GLOW,
             chamfer_depth=8
         )
 
         # Draw segmented progress bar
         boss_bar = BossHealthBar(bar_width, bar_height)
-        font = pygame.font.Font(None, MilitaryUI.MILITARY_LABEL_SIZE)
+        font = pygame.font.Font(None, SystemUI.MILITARY_LABEL_SIZE)
 
         # Determine boss name
         boss_name = getattr(boss, 'name', 'BOSS') if boss else 'BOSS'
@@ -197,15 +197,15 @@ class HUDRenderer:
         # Time remaining
         time_remaining = getattr(boss, 'get_time_remaining', lambda: 0)()
         if time_remaining > 0:
-            time_text = font.render(f"{time_remaining:.1f}s", True, MilitaryColors.WARNING_AMBER)
+            time_text = font.render(f"{time_remaining:.1f}s", True, SystemColors.WARNING_AMBER)
             time_rect = time_text.get_rect(right=x + bar_width - 8, centery=y + bar_height // 2)
             surface.blit(time_text, time_rect)
 
         # Hurry warning
         progress = getattr(boss, 'get_survival_progress', lambda: 0)()
         if progress > 0.7:
-            warning_font = pygame.font.Font(None, MilitaryUI.MILITARY_SMALL_SIZE)
-            warning_text = warning_font.render("HURRY!", True, MilitaryColors.DANGER_RED)
+            warning_font = pygame.font.Font(None, SystemUI.MILITARY_SMALL_SIZE)
+            warning_text = warning_font.render("HURRY!", True, SystemColors.DANGER_RED)
             warning_rect = warning_text.get_rect(left=x + 8, centery=y + bar_height // 2)
             surface.blit(warning_text, warning_rect)
 

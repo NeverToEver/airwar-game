@@ -156,17 +156,36 @@ class Window:
         if self._is_fullscreen:
             self._width, self._height = self._windowed_size
             flags = (pygame.RESIZABLE | pygame.SCALED) if self._resizable else pygame.SCALED
-            self._screen = pygame.display.set_mode((self._width, self._height), flags)
+            try:
+                self._screen = pygame.display.set_mode((self._width, self._height), flags)
+            except pygame.error:
+                self._screen = pygame.display.set_mode((self._width, self._height), pygame.SHOWN)
             self._is_fullscreen = False
         else:
             info = pygame.display.Info()
             self._windowed_size = (self._width, self._height)
             self._width = info.current_w
             self._height = info.current_h
-            flags = pygame.FULLSCREEN | (pygame.RESIZABLE if self._resizable else 0)
-            self._screen = pygame.display.set_mode((self._width, self._height), flags)
+            flags = pygame.FULLSCREEN | pygame.SCALED
+            if self._resizable:
+                flags |= pygame.RESIZABLE
+            try:
+                self._screen = pygame.display.set_mode((self._width, self._height), flags)
+            except pygame.error:
+                # Fallback: try without FULLSCREEN (borderless maximized)
+                try:
+                    self._screen = pygame.display.set_mode(
+                        (self._width, self._height),
+                        pygame.NOFRAME | pygame.SCALED)
+                except pygame.error:
+                    # Last resort: revert to original windowed size
+                    self._width, self._height = self._windowed_size
+                    self._screen = pygame.display.set_mode(
+                        (self._width, self._height),
+                        pygame.RESIZABLE | pygame.SCALED)
+                    self._is_fullscreen = False
+                    return
             self._is_fullscreen = True
-        # Get actual surface size after display mode change
         self._width, self._height = self._screen.get_size()
         set_screen_size(self._width, self._height)
 

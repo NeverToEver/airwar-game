@@ -1,7 +1,7 @@
 """分段进度条组件 - 军事风格 HUD"""
 import pygame
 from typing import Optional, Tuple
-from airwar.config.design_tokens import MilitaryColors, MilitaryUI
+from airwar.config.design_tokens import SystemColors, SystemUI
 
 
 class SegmentedProgressBar:
@@ -25,7 +25,7 @@ class SegmentedProgressBar:
         self.width = width
         self.height = height
         self.segments = segments
-        self.segment_gap = segment_gap or MilitaryUI.SEGMENT_GAP
+        self.segment_gap = segment_gap or SystemUI.SEGMENT_GAP
         self.segment_width = (width - (segments - 1) * self.segment_gap) // segments
         self._rendered_cache = {}
 
@@ -55,11 +55,11 @@ class SegmentedProgressBar:
             is_chamfered: 是否使用切角样式
         """
         if fill_color is None:
-            fill_color = MilitaryColors.HEALTH_MEDIUM
+            fill_color = SystemColors.HEALTH_MEDIUM
         if bg_color is None:
-            bg_color = MilitaryColors.HEALTH_LOW
+            bg_color = SystemColors.HEALTH_LOW
         if border_color is None:
-            border_color = MilitaryColors.SEGMENT_BORDER
+            border_color = SystemColors.SEGMENT_BORDER
 
         ratio = min(max(value / max_value, 0.0), 1.0)
         filled_count = int(ratio * self.segments)
@@ -137,11 +137,11 @@ class SegmentedProgressBar:
             is_chamfered: 是否使用切角样式
         """
         if glow_color is None:
-            glow_color = MilitaryColors.AMBER_GLOW
+            glow_color = SystemColors.AMBER_GLOW
         if fill_color is None:
-            fill_color = MilitaryColors.HEALTH_MEDIUM
+            fill_color = SystemColors.HEALTH_MEDIUM
         if bg_color is None:
-            bg_color = MilitaryColors.HEALTH_LOW
+            bg_color = SystemColors.HEALTH_LOW
 
         # 首先渲染发光层 (from cache)
         glow_key = (self.width, self.height, glow_color)
@@ -156,7 +156,7 @@ class SegmentedProgressBar:
         # 然后渲染进度条
         self.render(
             surface, x, y, value, max_value,
-            fill_color, bg_color, MilitaryColors.SEGMENT_BORDER, is_chamfered
+            fill_color, bg_color, SystemColors.SEGMENT_BORDER, is_chamfered
         )
 
     def render_danger_pulse(
@@ -178,10 +178,10 @@ class SegmentedProgressBar:
             max_value: 最大值
             pulse_alpha: 脉冲透明度 0-255
         """
-        danger_color = MilitaryColors.DANGER_RED
+        danger_color = SystemColors.DANGER_RED
 
         # 绘制普通进度条
-        self.render(surface, x, y, value, max_value, danger_color, MilitaryColors.HEALTH_LOW)
+        self.render(surface, x, y, value, max_value, danger_color, SystemColors.HEALTH_LOW)
 
         # 添加脉冲闪烁
         if pulse_alpha > 0:
@@ -247,19 +247,19 @@ class BossHealthBar:
 
         # 绘制血条背景
         bg_rect = pygame.Rect(bar_x, bar_y, self.width - label_width, self.height - 8)
-        pygame.draw.rect(surface, MilitaryColors.BG_PANEL, bg_rect, border_radius=2)
-        pygame.draw.rect(surface, MilitaryColors.BORDER_DIM, bg_rect, 1, border_radius=2)
+        pygame.draw.rect(surface, SystemColors.BG_PANEL, bg_rect, border_radius=2)
+        pygame.draw.rect(surface, SystemColors.BORDER_DIM, bg_rect, 1, border_radius=2)
 
         # 绘制分段血条
         ratio = min(current_hp / max_hp, 1.0)
 
         # 根据血量选择颜色
         if ratio > 0.6:
-            fill_color = MilitaryColors.BOSS_BAR_FULL
+            fill_color = SystemColors.BOSS_BAR_FULL
         elif ratio > 0.3:
-            fill_color = MilitaryColors.HEALTH_MEDIUM
+            fill_color = SystemColors.HEALTH_MEDIUM
         else:
-            fill_color = MilitaryColors.HEALTH_LOW
+            fill_color = SystemColors.HEALTH_LOW
 
         # 计算填充段数
         filled_segments = int(ratio * self.segment_count)
@@ -273,7 +273,7 @@ class BossHealthBar:
 
         # 绘制百分比
         percent_text = f"{int(ratio * 100)}%"
-        text_surf = font.render(percent_text, True, MilitaryColors.TEXT_PRIMARY)
+        text_surf = font.render(percent_text, True, SystemColors.TEXT_PRIMARY)
         text_rect = text_surf.get_rect(right=bar_x + self.width - label_width - 10,
                                        centery=y + self.height // 2)
         surface.blit(text_surf, text_rect)
@@ -281,14 +281,14 @@ class BossHealthBar:
         # 绘制阶段指示器
         if total_phases > 1:
             phase_text = f"PHASE {current_phase}/{total_phases}"
-            phase_surf = font.render(phase_text, True, MilitaryColors.AMBER_DIM)
+            phase_surf = font.render(phase_text, True, SystemColors.AMBER_DIM)
             phase_rect = phase_surf.get_rect(right=bar_x + self.width - label_width - 10,
                                             top=y - 22)
             surface.blit(phase_surf, phase_rect)
 
         # 绘制 Boss 名称
         if boss_name:
-            name_surf = font.render(boss_name, True, MilitaryColors.TEXT_PRIMARY)
+            name_surf = font.render(boss_name, True, SystemColors.TEXT_PRIMARY)
             name_rect = name_surf.get_rect(left=bar_x,
                                           centery=y + self.height // 2)
             surface.blit(name_surf, name_rect)

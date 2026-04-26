@@ -37,46 +37,107 @@ def _bytes_to_surface(data: bytes, width: int, height: int) -> pygame.Surface:
 
 def prewarm_glow_caches() -> None:
     """Pre-generate all glow surfaces at startup to eliminate cache misses during gameplay."""
-    if not RUST_AVAILABLE:
-        return
+    # Prewarm player bullet caches (uses Rust when available)
+    if RUST_AVAILABLE:
+        for width, height in [(8, 16), (6, 12), (10, 20), (4, 8)]:
+            key = (width, height, "player")
+            if key not in _single_bullet_glow_cache:
+                data = create_single_bullet_glow(float(width), float(height))
+                surf_w = width + 16
+                surf_h = height + 12
+                _single_bullet_glow_cache[key] = _bytes_to_surface(data, surf_w, surf_h)
 
-    for width, height in [(8, 16), (6, 12), (10, 20), (4, 8)]:
-        key = (width, height)
+        for width in [8, 10, 12, 14, 16]:
+            radius = width // 2
+            key = (radius, "player")
+            if key not in _spread_bullet_glow_cache:
+                data = create_spread_bullet_glow(float(radius))
+                surf_size = radius * 4 + 8
+                _spread_bullet_glow_cache[key] = _bytes_to_surface(data, surf_size, surf_size)
+
+        for height in [16, 20, 24, 28, 32]:
+            key = (height, "player")
+            if key not in _laser_bullet_glow_cache:
+                data = create_laser_bullet_glow(float(height))
+                _laser_bullet_glow_cache[key] = _bytes_to_surface(data, 24, height + 12)
+
+        for width, height in [(10, 20), (8, 16), (12, 24)]:
+            bw = int(width * 0.8)
+            key = (bw, height)
+            if key not in _explosive_missile_cache:
+                data = create_explosive_missile_glow(float(width), float(height))
+                surf_w = int(width * 0.8 * 3 + 12)
+                surf_h = height + 10
+                _explosive_missile_cache[key] = _bytes_to_surface(data, surf_w, surf_h)
+
+        for radius, glow_radius in [(8, 8), (10, 10), (12, 12), (15, 15), (20, 15)]:
+            key = (radius, (255, 100, 50), glow_radius)
+            if key not in _glow_circle_cache:
+                data = create_glow_circle(radius, 255, 100, 50, glow_radius)
+                surf_size = (radius + glow_radius) * 2 + 4
+                _glow_circle_cache[key] = _bytes_to_surface(data, surf_size, surf_size)
+
+    # Prewarm player bullet caches (pure Python - larger sizes, magenta/pink)
+    for ew, eh in [(11, 21), (12, 23), (14, 26), (10, 19)]:
+        key = (ew, eh, "player")
         if key not in _single_bullet_glow_cache:
-            data = create_single_bullet_glow(float(width), float(height))
-            surf_w = width + 16
-            surf_h = height + 12
-            _single_bullet_glow_cache[key] = _bytes_to_surface(data, surf_w, surf_h)
+            glow = pygame.Surface((int(ew + 20), int(eh + 16)), pygame.SRCALPHA)
+            for i in range(8, 0, -1):
+                alpha = 40 * (8 - i) // 7
+                pygame.draw.ellipse(glow, (255, 100, 200, alpha),
+                    (10 - i, 5 - i // 2, int(ew) + i * 2 - 10, int(eh) + i - 4))
+            _single_bullet_glow_cache[key] = glow
 
-    for width in [8, 10, 12, 14, 16]:
-        radius = width // 2
-        key = (radius)
+    # Prewarm player spread bullet caches (purple/magenta)
+    for radius in [6, 8, 10]:
+        key = (radius, "player")
         if key not in _spread_bullet_glow_cache:
-            data = create_spread_bullet_glow(float(radius))
-            surf_size = radius * 4 + 8
-            _spread_bullet_glow_cache[key] = _bytes_to_surface(data, surf_size, surf_size)
+            glow = pygame.Surface((radius * 4 + 8, radius * 4 + 8), pygame.SRCALPHA)
+            for i in range(radius + 4, 0, -2):
+                alpha = 40 * (radius + 4 - i) // (radius + 4)
+                pygame.draw.circle(glow, (200, 100, 255, alpha), (radius * 2 + 4, radius * 2 + 4), i)
+            _spread_bullet_glow_cache[key] = glow
 
-    for height in [16, 20, 24, 28, 32]:
-        key = (height)
+    # Prewarm player laser bullet caches (green)
+    for height in [16, 20, 24]:
+        key = (height, "player")
         if key not in _laser_bullet_glow_cache:
-            data = create_laser_bullet_glow(float(height))
-            _laser_bullet_glow_cache[key] = _bytes_to_surface(data, 24, height + 12)
+            glow = pygame.Surface((24, height + 12), pygame.SRCALPHA)
+            for i in range(10, 0, -2):
+                alpha = 70 * (10 - i) // 9
+                pygame.draw.line(glow, (20, 255, 100, alpha), (12, 4), (12, height + 8), i)
+            _laser_bullet_glow_cache[key] = glow
 
-    for width, height in [(10, 20), (8, 16), (12, 24)]:
-        bw = int(width * 0.8)
-        key = (bw, height)
-        if key not in _explosive_missile_cache:
-            data = create_explosive_missile_glow(float(width), float(height))
-            surf_w = int(width * 0.8 * 3 + 12)
-            surf_h = height + 10
-            _explosive_missile_cache[key] = _bytes_to_surface(data, surf_w, surf_h)
+    # Prewarm enemy bullet caches (golden/yellow, standard size)
+    for ew, eh in [(8, 16), (10, 20), (12, 24)]:
+        key = (ew, eh, "enemy")
+        if key not in _single_bullet_glow_cache:
+            glow = pygame.Surface((int(ew + 20), int(eh + 16)), pygame.SRCALPHA)
+            for i in range(6, 0, -1):
+                alpha = 30 * (6 - i) // 5
+                pygame.draw.ellipse(glow, (255, 200, 50, alpha),
+                    (8 - i, 4 - i // 2, int(ew) + i * 2 - 6, int(eh) + i - 2))
+            _single_bullet_glow_cache[key] = glow
 
-    for radius, glow_radius in [(8, 8), (10, 10), (12, 12), (15, 15), (20, 15)]:
-        key = (radius, (255, 100, 50), glow_radius)
-        if key not in _glow_circle_cache:
-            data = create_glow_circle(radius, 255, 100, 50, glow_radius)
-            surf_size = (radius + glow_radius) * 2 + 4
-            _glow_circle_cache[key] = _bytes_to_surface(data, surf_size, surf_size)
+    # Prewarm enemy spread bullet caches (orange/yellow)
+    for radius in [6, 8, 10]:
+        key = (radius, "enemy")
+        if key not in _spread_bullet_glow_cache:
+            glow = pygame.Surface((radius * 4 + 8, radius * 4 + 8), pygame.SRCALPHA)
+            for i in range(radius + 4, 0, -2):
+                alpha = 40 * (radius + 4 - i) // (radius + 4)
+                pygame.draw.circle(glow, (255, 150, 50, alpha), (radius * 2 + 4, radius * 2 + 4), i)
+            _spread_bullet_glow_cache[key] = glow
+
+    # Prewarm enemy laser bullet caches (red/orange)
+    for height in [16, 20, 24]:
+        key = (height, "enemy")
+        if key not in _laser_bullet_glow_cache:
+            glow = pygame.Surface((24, height + 12), pygame.SRCALPHA)
+            for i in range(10, 0, -2):
+                alpha = 70 * (10 - i) // 9
+                pygame.draw.line(glow, (255, 20, 40, alpha), (12, 4), (12, height + 8), i)
+            _laser_bullet_glow_cache[key] = glow
 
 
 def create_gradient_surface(width: int, height: int, color1: tuple, color2: tuple, vertical: bool = True) -> pygame.Surface:

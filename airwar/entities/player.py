@@ -48,7 +48,7 @@ class Player(Entity):
 
     def __init__(self, x: float, y: float, input_handler: InputHandler):
         constants = get_game_constants()
-        super().__init__(x, y, 50, 60)
+        super().__init__(x, y, 68, 82)
         self._constants = constants  # Cache for hot path access
         self._input_handler = input_handler
         self.health = constants.PLAYER.MAX_HEALTH
@@ -63,8 +63,8 @@ class Player(Entity):
         self._bullets: List = []
         self.is_shielded = False
         self._shield_duration = 0
-        self.hitbox_width = 12
-        self.hitbox_height = 16
+        self.hitbox_width = 10
+        self.hitbox_height = 14
         self._hitbox_timer = 0
         self._render_hitbox = False
         self._hitbox_glow_surf = None
@@ -106,7 +106,7 @@ class Player(Entity):
         Args:
             surface: Pygame surface to render onto.
         """
-        draw_player_ship(surface, self.rect.x, self.rect.y, self.rect.width, self.rect.height)
+        draw_player_ship(surface, self.rect.centerx, self.rect.centery, self.rect.width, self.rect.height)
 
         self._render_hitbox_indicator(surface)
 
@@ -230,7 +230,7 @@ class Player(Entity):
 
     def _create_bullets_for_shot_mode(self, return_first: bool = False) -> Optional[Bullet]:
         center_x = self.rect.x + self.rect.width / 2
-        bullet_y = self.rect.y - 10
+        bullet_y = self.rect.y - 36
 
         if self._has_spread:
             bullet_x = center_x - 5

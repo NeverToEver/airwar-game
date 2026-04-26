@@ -252,7 +252,7 @@ class Enemy(Entity):
         """
         if not self._sprite:
             health_ratio = self.health / self.max_health if self.max_health > 0 else 1.0
-            draw_enemy_ship(surface, self.rect.x, self.rect.y,
+            draw_enemy_ship(surface, self.rect.centerx, self.rect.centery,
                           self.rect.width, self.rect.height, health_ratio)
         else:
             surface.blit(self._sprite, self.get_rect())
@@ -867,7 +867,7 @@ class Boss(Entity):
         surface: Pygame surface to render onto.
         """
         health_ratio = self.health / self.max_health if self.max_health > 0 else 1.0
-        draw_boss_ship(surface, self.rect.x, self.rect.y, self.rect.width, self.rect.height, health_ratio)
+        draw_boss_ship(surface, self.rect.centerx, self.rect.centery, self.rect.width, self.rect.height, health_ratio)
 
         if self.entering:
             warning_y = 20
