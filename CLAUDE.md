@@ -137,12 +137,12 @@ airwar-game/                  # Project root
 │   │   │                    # MovementPatternGenerator
 │   │   ├── rendering/       # GameRenderer, HUDRenderer
 │   │   ├── buffs/           # 13 buff types (health, offense, defense, utility)
-│   │   ├── mother_ship/     # Dock/save: state machine, persistence (JSON), event bus
+│   │   ├── mother_ship/     # Dock/save: state machine, persistence (JSON), event bus, interfaces, GameIntegrator
 │   │   ├── give_up/         # Surrender system (hold-K detector)
 │   │   ├── explosion_animation/
 │   │   └── death_animation/
 │   ├── scenes/              # Scene base, 7 scenes: login, menu, game, pause, death, exit_confirm, tutorial
-│   ├── ui/                  # Reward selector, buff_stats, chamfered_panel, military_hud, particles,
+│   ├── ui/                  # GameHUD (integrated HUD), reward_selector, buff_stats, chamfered_panel,
 │   │                        # hex_icon, segmented_bar, game_over_screen, give_up_ui, effects, menu_background
 │   ├── input/               # PygameInputHandler
 │   ├── utils/               # UserDB, mouse_interaction mixins, sprites, responsive
@@ -209,14 +209,24 @@ PLAYING → DYING → GAME_OVER
 ### Important Design Decisions
 
 - **`game/constants.py`** — All tuning values in a single `GameConstants` dataclass (player stats, damage values, timing, animation, balance). Edit here for game balance.
-- **`config/design_tokens.py`** — Visual design system: color themes (`Colors`, `MilitaryColors`, `ForestColors`), typography, spacing.
+- **`config/design_tokens.py`** — Visual design system: color themes (`Colors`, `SystemColors`, `SceneColors`), typography, spacing.
 - **`config/game_config.py`** — `GameConfig` singleton with adaptive screen sizing.
 - **Rust native code always has a pure-Python fallback** — checked via `RUST_AVAILABLE` flag in `core_bindings.py`.
 - **Coding standards** — Full guide at `docs/REFACTORING_GUIDE.md`: naming conventions, import conventions, class method ordering, and docstring requirements.
 
+### Game Controls
+
+| Key | Action |
+|-----|--------|
+| Arrow keys / WASD | Move ship |
+| Space | Fire |
+| ESC | Pause |
+| H (hold) | Dock with mothership to save progress |
+| K (hold 3s) | Surrender |
+
 ### Coding Standards
 
-See `docs/REFACTORING_GUIDE.md` for full conventions. Key rules:
+See `docs/REFACTORING_GUIDE.md` for full conventions and `docs/MAINTENANCE_GUIDE.md` for maintenance procedures. Key rules:
 
 **Imports (priority order):**
 1. Same package, same layer → relative: `from .base import Entity`
@@ -241,7 +251,22 @@ See `docs/REFACTORING_GUIDE.md` for full conventions. Key rules:
 
 **Glow circle rendering:** `draw_glow_circle` uses pygame fallback only. Rust `create_glow_circle` exists in `sprites.rs` but is not used for rendering.
 
-### Key Subsystems
+### MotherShip Subsystem — Interface-Driven Architecture
+
+The mothership docking/save system uses an interface-driven design with 6 ABCs in `game/mother_ship/interfaces.py`:
+
+| Interface | Role |
+|-----------|------|
+| `IInputDetector` | Docking input detection (hold-H) |
+| `IMotherShipUI` | Mothership visual state display |
+| `IEventBus` | Publish/subscribe for cross-system events |
+| `IPersistenceManager` | Save/load game state (JSON) |
+| `IMotherShipStateMachine` | Docking state machine (`APPROACHING` → `DOCKING` → `DOCKED` → `UNDOCKING` → `COOLDOWN`) |
+| `IGameScene` | Contract for `GameIntegrator` to access `GameScene` without layer violations (30+ methods: score, health, buffs, enemies, etc.) |
+
+`GameIntegrator` (`game/mother_ship/game_integrator.py`) bridges mothership state with game systems — coordinates entity states, player position, and UI during the docking process. MotherShip also auto-attacks up to 3 closest enemies during docking.
+
+### Other Key Subsystems
 
 | Subsystem | Location | Responsibility |
 |-----------|----------|----------------|
@@ -251,9 +276,7 @@ See `docs/REFACTORING_GUIDE.md` for full conventions. Key rules:
 | BulletManager | `game/managers/bullet_manager.py` | Player/enemy bullet pools |
 | BossManager | `game/managers/boss_manager.py` | Boss spawn and phase transitions |
 | MilestoneManager | `game/managers/milestone_manager.py` | Score thresholds → reward triggers |
-| MotherShip | `game/mother_ship/` | Dock-to-save flow: state machine, JSON persistence, EventBus |
 | GiveUp | `game/give_up/` | Hold-K-3s surrender flow |
-| PersistenceManager | `game/mother_ship/persistence_manager.py` | JSON save/load for full game state |
 | UserDB | `utils/database.py` | User stats (high score, kills, games played) |
 
 ### Rendering Pipeline

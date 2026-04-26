@@ -6,13 +6,13 @@
 
 ```bash
 # 进入项目目录
-cd airwar
+cd airwar-game
 
 # 安装依赖
 pip install -r requirements.txt
 
 # 运行游戏
-python main.py
+python3 main.py
 ```
 
 ## 游戏操作
@@ -45,7 +45,6 @@ python main.py
 ### 技术栈
 - Python 3.x + Pygame + Pillow
 - Rust (PyO3 0.22 / maturin 1.0) — `airwar_core` 原生扩展模块
-- 架构：Scene Pattern, Manager Pattern, Observer Pattern
 
 ### 主要模块
 
@@ -56,17 +55,19 @@ python main.py
 | 管理器 | `airwar/game/managers/` | GameController, SpawnController, CollisionController 等 |
 | 渲染 | `airwar/game/rendering/` | GameRenderer, HUDRenderer |
 | 系统 | `airwar/game/systems/` | HealthSystem, RewardSystem, DifficultyManager 等 |
-| 存档 | `airwar/game/mother_ship/` | 母舰停靠保存系统 |
+| Buff | `airwar/game/buffs/` | 13 种 Buff（健康/进攻/防御/辅助 4 类） |
+| UI | `airwar/ui/` | GameHUD（集成 HUD）、奖励选择、面板、图标等 |
+| 存档 | `airwar/game/mother_ship/` | 母舰停靠保存（状态机、接口层、事件总线、GameIntegrator） |
 | 投降 | `airwar/game/give_up/` | 长按 K 投降机制 |
 | Rust 扩展 | `airwar_core/` | 性能热点原生加速（向量、碰撞、移动、粒子、精灵 glow） |
 
 ## 项目结构
 
 ```
-airwar/
-├── main.py                  # 入口：python main.py
+airwar-game/                  # 项目根目录
+├── main.py                  # 入口：python3 main.py
 ├── airwar/                  # Python 源码包
-│   ├── config/              配置/设计令牌/难度参数
+│   ├── config/              配置 / 设计令牌 / 难度参数
 │   ├── entities/            游戏实体（Player, Enemy, Boss, Bullet）
 │   ├── game/
 │   │   ├── game.py          游戏主循环入口
@@ -77,13 +78,13 @@ airwar/
 │   │   ├── spawners/        敌人子弹生成器
 │   │   ├── systems/         游戏系统（难度、奖励、通知等）
 │   │   ├── rendering/       渲染器
-│   │   ├── buffs/           Buff 系统（13种）
-│   │   ├── mother_ship/     母舰存档（状态机、持久化、事件总线）
+│   │   ├── buffs/           Buff 系统（13 种）
+│   │   ├── mother_ship/     母舰存档（状态机、接口层、事件总线、GameIntegrator）
 │   │   ├── give_up/         投降检测
 │   │   ├── explosion_animation/ 爆炸特效
 │   │   └── death_animation/     死亡动画
-│   ├── scenes/              场景管理（7个场景）
-│   ├── ui/                  UI 组件（奖励选择、HUD、面板等）
+│   ├── scenes/              场景管理（7 个场景，GameScene 实现 IGameScene 接口）
+│   ├── ui/                  UI 组件（GameHUD 集成 HUD、奖励选择、面板等）
 │   ├── input/               输入处理
 │   ├── utils/               工具类（数据库、鼠标交互）
 │   ├── window/              窗口管理
@@ -95,11 +96,11 @@ airwar/
 │       ├── lib.rs            模块入口，导出所有函数
 │       ├── vector2.rs        向量数学运算
 │       ├── collision.rs       空间哈希碰撞检测
-│       ├── movement.rs       移动更新（8种模式）
+│       ├── movement.rs       移动更新（8 种模式）
 │       ├── particles.rs      粒子系统
 │       ├── bullets.rs        子弹批量更新
 │       └── sprites.rs        精灵 glow 表面创建
-├── docs/                     文档（Rust 优化方案、审查报告）
+├── docs/                     文档（优化方案、审查报告、重构指南、维护指南）
 └── plans/                    实现计划
 ```
 
@@ -118,16 +119,24 @@ Rust 模块不可用时自动降级到纯 Python 实现，无需额外处理。
 
 ## 测试
 
+测试必须从项目根目录运行，而非 `airwar/` 子目录。
+
 ```bash
 # 运行所有测试
-cd airwar && python -m pytest
+python3 -m pytest
 
 # 仅运行核心功能测试
-cd airwar && python -m pytest -m smoke
+python3 -m pytest -m smoke
 
 # 排除慢速测试
-cd airwar && python -m pytest -m "not slow"
+python3 -m pytest -m "not slow"
+
+# 运行特定测试文件
+python3 -m pytest airwar/tests/test_entities.py
+
+# 运行特定测试类/方法
+python3 -m pytest airwar/tests/test_entities.py::TestPlayer -v
 
 # 运行 Rust 绑定测试
-cd airwar && python -m pytest tests/test_vector2_bindings.py tests/test_collision_bindings.py tests/test_movement_bindings.py tests/test_particle_bindings.py tests/test_sprite_bindings.py
+python3 -m pytest airwar/tests/test_vector2_bindings.py airwar/tests/test_collision_bindings.py airwar/tests/test_movement_bindings.py airwar/tests/test_particle_bindings.py
 ```

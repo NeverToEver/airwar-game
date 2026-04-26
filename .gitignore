@@ -1,453 +1,156 @@
 # =============================================================================
-# Air War - Python Pygame Project
-# .gitignore Configuration
-# =============================================================================
-# Project: Air War (飞机大战游戏)
-# Type: Python + Pygame
-# Last Updated: 2026-04-17
+# Air War - .gitignore
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# Section 1: Python Standard
+# Python
 # -----------------------------------------------------------------------------
-
-# Byte-compiled / Optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
-
-# Distribution / packaging
+*.egg-info/
+*.egg
+.eggs/
+eggs/
+dist/
 build/
 develop-eggs/
-dist/
 downloads/
-eggs/
-.eggs/
-*.egg-info/
-.installed.cfg
-*.egg
 MANIFEST
 
-# Installer files
-*.manifest
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# PyInstaller
-*.manifest
-*.spec
-
 # -----------------------------------------------------------------------------
-# Section 2: Virtual Environments
+# Virtual Environments
 # -----------------------------------------------------------------------------
-
-# Python virtual environments
 venv/
-ENV/
-env/
 .venv/
-PIPfile
+env/
+ENV/
+Pipfile
 Pipfile.lock
-
-# Conda
 conda-meta/
 *.conda
 
-# Virtual environments for different tools
-.rg/
-
 # -----------------------------------------------------------------------------
-# Section 3: IDE and Editor
+# IDE / Editor
 # -----------------------------------------------------------------------------
-
-# Visual Studio Code
-.vscode/
 .vscode/*
 !.vscode/extensions.json
-*.code-workspace
-
-# Trae AI IDE
-.trae/
-.trae/*
-
-# IDE settings containing local paths (should not be committed)
 .vscode/settings.json
+*.code-workspace
+.idea/
+*.iml
+.trae/*
 .trae/settings.json
 
-# JetBrains IDEs (IntelliJ, PyCharm, etc.)
-.idea/
-*.idea
-*.ipr
-*.iml
-
-# Emacs
+# Vim / Emacs / Nano
+*.swp
+*.swo
+*.save
 *~
 \#*\#
 .\#*
-
-# Vim
-*.swp
-*.swo
-*.tmp
 .Session
 
-# Nano
-*.save
-
-# Eclipse
-.settings/
-.project
-.pydevproject
-
 # -----------------------------------------------------------------------------
-# Section 4: Testing and Coverage
+# Testing / Coverage
 # -----------------------------------------------------------------------------
-
-# pytest
-.pytest_cache/
 .pytest_cache/
 .coverage
 .coverage.*
-htmlcov/
-htmlcov/*
-.tox/
-.hypothesis/
-
-# Coverage reports
 coverage.xml
 coverage.json
-coverage/
+htmlcov/
+.tox/
+.hypothesis/
 *.cover
 *.prof
 
-# nose
-.noserc
-nosetests.xml
-
-# unittest
-*.test
-
 # -----------------------------------------------------------------------------
-# Section 5: Type Checking and Linting
+# Type Checking / Linting
 # -----------------------------------------------------------------------------
-
-# mypy
 .mypy_cache/
 .dmypy.json
 dmypy.json
-mypy.ini
-
-# ruff
-.ruff_cache/
 .ruff_cache/
 
-# pylint
-.pylint.cache
-.pylintrc
-.pylintrc*
-
-# flake8
-.flake8
-.flake8
-
 # -----------------------------------------------------------------------------
-# Section 6: Documentation Tools
+# OS Files
 # -----------------------------------------------------------------------------
-
-# Sphinx
-docs/_build/
-docs/.doctrees/
-
-# MkDocs
-site/
-
-# -----------------------------------------------------------------------------
-# Section 7: Database
-# -----------------------------------------------------------------------------
-
-# SQLite
-*.db
-*.sqlite
-*.sqlite3
-*.db-journal
-*.db-wal
-*.db-shm
-
-# -----------------------------------------------------------------------------
-# Section 8: Logs
-# -----------------------------------------------------------------------------
-
-*.log
-logs/
-*.log.*
-
-# -----------------------------------------------------------------------------
-# Section 9: Operating System Files
-# -----------------------------------------------------------------------------
-
 # macOS
 .DS_Store
 .AppleDouble
 .LSSharedFileList
-.AppleDB
-.AppleDesktop
-com.apple.timemachine.donotpresent
-Network Trash Folder
-Temporary Items
-.DocumentRevisions-V100
 
 # Windows
 Thumbs.db
-Thumbs.db:encryptable
-ehthumbs.db
-ehthumbs.ini
 [Dd]esktop.ini
 $RECYCLE.BIN/
 
 # Linux
-*~
-.fuse_hidden*
 .directory
 .Trash-*
-.Trash-*/
-
-# KDE
-.directory
 
 # -----------------------------------------------------------------------------
-# Section 10: Environment Variables and Secrets
+# Environment / Secrets
 # -----------------------------------------------------------------------------
-
-# Environment variables (CRITICAL - contains API keys, secrets)
 .env
 .env.*
-.env.local
-.env.[environment]
 *.env
-secrets.json
-secrets.yaml
-secrets.yml
-credentials.json
-credentials.yaml
-credentials.yml
-config/secrets.py
-private.py
-
-# SSL/TLS Certificates
+secrets.*
+credentials.*
 *.pem
 *.key
 *.crt
 *.cert
-ssl/
 
 # -----------------------------------------------------------------------------
-# Section 11: Game-specific Data (User Generated)
+# Rust (airwar_core)
 # -----------------------------------------------------------------------------
+airwar_core/target/
+Cargo.lock
 
-# User data directory (contains personal info and game saves)
+# -----------------------------------------------------------------------------
+# Game Runtime Data
+# -----------------------------------------------------------------------------
 airwar/data/
 
 # Legacy nested directory (from incorrect runs)
 airwar/airwar/
 
-# Game save files
+# Game saves
 *.sav
 *.save
-save/
-saves/
-autosave/
-autosaves/
 
-# Configuration overrides (local)
+# Local config overrides
 config/local.py
 config/local_settings.py
 config/override.py
 
 # -----------------------------------------------------------------------------
-# Section 12: Build Artifacts (C/C++ and others)
+# Logs / Temp / Cache
 # -----------------------------------------------------------------------------
-
-# Compiled programs
-*.class
-*.exe
-*.dll
-*.so
-*.dylib
-*.o
-*.obj
-*.a
-*.lib
-*.lnk
-
-# Fortran
-*.mod
-*.smod
-*.supp
-
-# Rust
-target/
-Cargo.lock
-
-# Go
-*.exe
-*.test
-*.out
-vendor/
-
-# Java
-*.class
-*.jar
-*.war
-*.ear
-
-# Gradle
-.gradle/
-build/
-
-# Maven
-target/
-pom.xml.tag
-pom.xml.releaseBackup
-pom.xml.versionsBackup
-pom.xml.next
-
-# -----------------------------------------------------------------------------
-# Section 13: Package Managers
-# -----------------------------------------------------------------------------
-
-# Node.js (if used in future)
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
-
-# PHP
-/vendor/
-composer.phar
-composer.lock
-
-# Ruby
-/vendor/bundle/
-.bundle/
-
-# -----------------------------------------------------------------------------
-# Section 14: Temporary Files
-# -----------------------------------------------------------------------------
-
+*.log
 *.tmp
 *.temp
 *.bak
 *.backup
-*.swp
-*.swo
-*~
 *.cache
-*.pid
-*.seed
-*.pid.lock
-*.sass-cache
-
-# Backup files
-*.backup
-backups/
-_backup/
-
-# Crash reports
 crash-reports/
-crash_logs/
-
-# Temporary directories
 tmp/
 temp/
-temporary/
-.TemporaryItems/
 
-# -----------------------------------------------------------------------------
-# Section 15: Project-specific Exclusions
-# -----------------------------------------------------------------------------
-
-# Documentation build
-docs/_build/
-docs/_static/
-docs/_templates/
-
-# Examples and demos
-examples/
-demos/
-demo/
-samples/
-
-# Translations
-*.mo
-*.pot
-
-# Git-related
-.git/
-.gitignore~
-.git/
-.gitattributes
-
-# Subversion
-.svn/
-
-# Mercurial
-.hg/
-
-# -----------------------------------------------------------------------------
-# Section 16: Performance and Cache
-# -----------------------------------------------------------------------------
-
-# Image/Pygame sprite cache
+# Sprite / Render cache
 sprite_cache/
-sprite_cache/*
 texture_cache/
-texture_cache/*
-*.sprite_cache
-
-# Render cache
 render_cache/
-render_cache/*
-frames/
 
-# Performance profiles
+# Performance
 *.profile
-profile/
-profiles/
-
-# Performance reports
 PERFORMANCE_REPORT.md
 
-# Memory dumps
-*.dump
-*.hprof
-core
-core.*
-
 # -----------------------------------------------------------------------------
-# Notes:
-# -----------------------------------------------------------------------------
-# 1. This .gitignore is optimized for Python + Pygame projects
-# 2. It follows GitHub's official gitignore templates:
-#    - Python.gitignore
-#    - Global/macOS.gitignore
-#    - Global/Windows.gitignore
-#    - Global/Linux.gitignore
-# 3. Environment variables (.env) are excluded to prevent
-#    accidental commit of API keys and secrets
-# 4. Game data files are excluded to protect user privacy
-# 5. All rules are tested to avoid excluding necessary files
-# -----------------------------------------------------------------------------
-
 # Claude Code
+# -----------------------------------------------------------------------------
 .claude/
-.claude/*.json
-.claude/scheduled_tasks.json
 plans/

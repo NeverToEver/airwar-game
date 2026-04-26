@@ -1,2 +1,4 @@
 pygame>=2.6.1
 pillow>=12.2.0
+pytest>=8.0
+maturin>=1.0
