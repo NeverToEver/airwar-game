@@ -49,6 +49,7 @@ class Player(Entity):
     def __init__(self, x: float, y: float, input_handler: InputHandler):
         constants = get_game_constants()
         super().__init__(x, y, 50, 60)
+        self._constants = constants  # Cache for hot path access
         self._input_handler = input_handler
         self.health = constants.PLAYER.MAX_HEALTH
         self.max_health = constants.PLAYER.MAX_HEALTH
@@ -118,7 +119,7 @@ class Player(Entity):
             Bullet entity if cooldown allows, None otherwise.
         """
         if self._fire_cooldown <= 0:
-            self._fire_cooldown = get_game_constants().PLAYER.FIRE_COOLDOWN
+            self._fire_cooldown = self._constants.PLAYER.FIRE_COOLDOWN
             return self._create_bullets_for_shot_mode(return_first=True)
         return None
 
@@ -129,7 +130,7 @@ class Player(Entity):
         the created bullets.
         """
         if self._fire_cooldown <= 0:
-            self._fire_cooldown = get_game_constants().PLAYER.FIRE_COOLDOWN
+            self._fire_cooldown = self._constants.PLAYER.FIRE_COOLDOWN
             self._create_bullets_for_shot_mode()
 
     def activate_shotgun(self) -> None:

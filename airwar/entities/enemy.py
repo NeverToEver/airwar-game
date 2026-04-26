@@ -190,66 +190,24 @@ class Enemy(Entity):
         # Exclude zigzag: Rust uses active_x as base instead of current x,
         # which produces different (non-accumulating) movement behavior
         if rust_update_movement is not None and self.move_type in MOVEMENT_TYPE_MAP and self.move_type != "zigzag":
-            move_type_code = MOVEMENT_TYPE_MAP[self.move_type]
-
-            # Get movement timer
-            timer = getattr(self, 'move_timer', 0.0)
-            if self.move_type == "zigzag":
-                timer = getattr(self, 'zigzag_timer', 0.0)
-            elif self.move_type == "dive":
-                timer = getattr(self, 'dive_timer', 0.0)
-            elif self.move_type == "hover":
-                timer = getattr(self, 'hover_timer', 0.0) / 0.08  # Convert back to frame count
-            elif self.move_type == "spiral":
-                timer = getattr(self, 'spiral_timer', 0.0)
-            elif self.move_type == "noise":
-                timer = getattr(self, 'noise_timer', 0.0)
-            elif self.move_type == "aggressive":
-                timer = getattr(self, 'agg_timer', 0.0)
-
-            # Get movement parameters
-            offset = getattr(self, 'move_offset', 0.0)
-            amplitude = getattr(self, 'move_amplitude', 2.0)
-            # Spiral uses its own random frequency (set in __init__), other types use move_frequency
-            if self.move_type == "spiral":
-                frequency = getattr(self, 'spiral_frequency', 0.05)
+            # Get movement timer (still needs per-type lookup, but reduced to 1 getattr)
+            if self.move_type == "hover":
+                timer = self.hover_timer / 0.08  # Convert back to frame count
             else:
-                frequency = getattr(self, 'move_frequency', 0.05)
-            if self.move_type == "zigzag":
-                speed = getattr(self, 'zigzag_speed', 2.0)
-            elif self.move_type == "noise":
-                speed = getattr(self, 'noise_speed', 0.03)
-            elif self.move_type == "aggressive":
-                speed = getattr(self, 'agg_speed', 0.035)
-            else:
-                speed = getattr(self, 'spiral_speed', 2.0)
-            direction = getattr(self, 'direction', 1.0)
-            zigzag_interval = getattr(self, 'zigzag_interval', 45.0)
-            spiral_radius = getattr(self, 'spiral_radius', 40.0)
+                timer = getattr(self, f'{self.move_type}_timer', 0.0) if self.move_type in ('zigzag', 'dive', 'spiral', 'noise', 'aggressive') else getattr(self, 'move_timer', 0.0)
 
-            # Noise/aggressive parameters
-            noise_scale_x = getattr(self, 'noise_scale_x', 0.04)
-            noise_scale_y = getattr(self, 'noise_scale_y', 0.02)
-            noise_amplitude_x = getattr(self, 'noise_amplitude_x', 0.7)
-            noise_amplitude_y = getattr(self, 'noise_amplitude_y', 0.4)
-            noise_seed = getattr(self, 'noise_seed', 0)
-            if self.move_type == "aggressive":
-                noise_scale_x = getattr(self, 'agg_scale_x', 0.04)
-                noise_scale_y = getattr(self, 'agg_scale_y', 0.02)
-                noise_amplitude_x = getattr(self, 'agg_amplitude_x', 0.6)
-                noise_amplitude_y = getattr(self, 'agg_amplitude_y', 0.5)
-                noise_seed = getattr(self, 'agg_seed', 0)
-
+            # Use pre-computed params from _init_movement to avoid 15+ getattr() calls
+            params = self._rust_params
             new_x, new_y, new_timer = rust_update_movement(
-                move_type_code, timer,
+                self._rust_move_type_code, timer,
                 self._active_position_x, self._active_position_y,
                 move_range_x, move_range_y,
-                offset, amplitude, frequency, speed, direction,
-                zigzag_interval, spiral_radius,
+                params['offset'], params['amplitude'], params['frequency'], params['speed'], params['direction'],
+                params['zigzag_interval'], params['spiral_radius'],
                 self.rect.x, self.rect.y,
-                noise_scale_x, noise_scale_y,
-                noise_amplitude_x, noise_amplitude_y,
-                noise_seed,
+                params['noise_scale_x'], params['noise_scale_y'],
+                params['noise_amplitude_x'], params['noise_amplitude_y'],
+                params['noise_seed'],
             )
 
             self.rect.x = new_x
@@ -405,6 +363,26 @@ class Enemy(Entity):
             self.move_type = "straight"
 
         self._movement_strategy = get_movement_strategy(self.move_type)
+
+        # Pre-compute movement params for Rust call to avoid 15+ getattr() per frame
+        self._rust_move_type_code = MOVEMENT_TYPE_MAP.get(self.move_type, 0)
+        self._rust_params = {
+            'offset': getattr(self, 'move_offset', 0.0),
+            'amplitude': getattr(self, 'move_amplitude', 2.0),
+            'frequency': getattr(self, 'spiral_frequency', 0.05) if self.move_type == "spiral" else getattr(self, 'move_frequency', 0.05),
+            'speed': getattr(self, 'zigzag_speed', 2.0) if self.move_type == "zigzag" else
+                     getattr(self, 'noise_speed', 0.03) if self.move_type == "noise" else
+                     getattr(self, 'agg_speed', 0.035) if self.move_type == "aggressive" else
+                     getattr(self, 'spiral_speed', 2.0),
+            'direction': getattr(self, 'direction', 1.0),
+            'zigzag_interval': getattr(self, 'zigzag_interval', 45.0),
+            'spiral_radius': getattr(self, 'spiral_radius', 40.0),
+            'noise_scale_x': getattr(self, 'agg_scale_x', 0.04) if self.move_type == "aggressive" else getattr(self, 'noise_scale_x', 0.04),
+            'noise_scale_y': getattr(self, 'agg_scale_y', 0.02) if self.move_type == "aggressive" else getattr(self, 'noise_scale_y', 0.02),
+            'noise_amplitude_x': getattr(self, 'agg_amplitude_x', 0.6) if self.move_type == "aggressive" else getattr(self, 'noise_amplitude_x', 0.7),
+            'noise_amplitude_y': getattr(self, 'agg_amplitude_y', 0.5) if self.move_type == "aggressive" else getattr(self, 'noise_amplitude_y', 0.4),
+            'noise_seed': getattr(self, 'agg_seed', 0) if self.move_type == "aggressive" else getattr(self, 'noise_seed', 0),
+        }
 
     # 6. Private behavior methods
 
