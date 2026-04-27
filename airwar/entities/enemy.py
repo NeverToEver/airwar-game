@@ -138,7 +138,7 @@ class Enemy(Entity):
                 self.active = False
                 return
 
-            self._entry_progress += 0.02
+            self._entry_progress += 0.04
             if self._entry_progress >= 1.0:
                 self._entry_progress = 1.0
                 self._state = 'active'
@@ -160,7 +160,7 @@ class Enemy(Entity):
 
         # Handle exit animation
         if self._state == 'exiting':
-            self._exit_progress += 0.015
+            self._exit_progress += 0.03
             if self._exit_progress >= 1.0:
                 self.active = False
                 return
@@ -195,34 +195,42 @@ class Enemy(Entity):
         # Exclude zigzag: Rust uses active_x as base instead of current x,
         # which produces different (non-accumulating) movement behavior
         if rust_update_movement is not None and self.move_type in MOVEMENT_TYPE_MAP and self.move_type != "zigzag":
-            # Read timer via pre-computed attribute name
-            timer = getattr(self, self._timer_attr, 0.0)
-            if self.move_type == "hover":
-                timer /= 0.08
+            # Use batch result if already computed this frame (see GameLoopManager)
+            br = getattr(self, '_batch_result', None)
+            if br is not None:
+                self.rect.x, self.rect.y, new_timer = br
+                del self._batch_result
+                if self.move_type == "hover":
+                    new_timer *= 0.08
+                setattr(self, self._timer_attr, new_timer)
+                self._sync_rects()
+                # Fall through to skip rest of movement block
+            else:
+                timer = getattr(self, self._timer_attr, 0.0)
+                if self.move_type == "hover":
+                    timer /= 0.08
 
-            # Use pre-computed params from _init_movement to avoid 15+ getattr() calls
-            params = self._rust_params
-            new_x, new_y, new_timer = rust_update_movement(
-                self._rust_move_type_code, timer,
-                self._active_position_x, self._active_position_y,
-                move_range_x, move_range_y,
-                params['offset'], params['amplitude'], params['frequency'], params['speed'], params['direction'],
-                params['zigzag_interval'], params['spiral_radius'],
-                self.rect.x, self.rect.y,
-                params['noise_scale_x'], params['noise_scale_y'],
-                params['noise_amplitude_x'], params['noise_amplitude_y'],
-                params['noise_seed'],
-            )
+                params = self._rust_params
+                new_x, new_y, new_timer = rust_update_movement(
+                    self._rust_move_type_code, timer,
+                    self._active_position_x, self._active_position_y,
+                    move_range_x, move_range_y,
+                    params['offset'], params['amplitude'], params['frequency'], params['speed'], params['direction'],
+                    params['zigzag_interval'], params['spiral_radius'],
+                    self.rect.x, self.rect.y,
+                    params['noise_scale_x'], params['noise_scale_y'],
+                    params['noise_amplitude_x'], params['noise_amplitude_y'],
+                    params['noise_seed'],
+                )
 
-            self.rect.x = new_x
-            self.rect.y = new_y
+                self.rect.x = new_x
+                self.rect.y = new_y
 
-            # Write timer back via pre-computed attribute name
-            if self.move_type == "hover":
-                new_timer *= 0.08
-            setattr(self, self._timer_attr, new_timer)
+                if self.move_type == "hover":
+                    new_timer *= 0.08
+                setattr(self, self._timer_attr, new_timer)
 
-            self._sync_rects()
+                self._sync_rects()
         else:
             # Fallback to Python movement via strategy pattern
             self._movement_strategy.update(self)
@@ -298,6 +306,29 @@ class Enemy(Entity):
 
     def set_sprite(self, sprite: pygame.Surface) -> None:
         self._sprite = sprite
+
+    def get_rust_batch_params(self):
+        """Return (base_tuple, extra_tuple) for batch Rust movement, or (None, None)."""
+        if not hasattr(self, '_rust_move_type_code') or self.move_type == "zigzag":
+            return None, None
+        p = self._rust_params
+        timer = getattr(self, self._timer_attr, 0.0)
+        if self.move_type == "hover":
+            timer /= 0.08
+        base = (
+            self._rust_move_type_code, timer,
+            self._active_position_x, self._active_position_y,
+            80.0, 50.0,
+            p['offset'], p['amplitude'], p['frequency'], p['speed'], p['direction'],
+            p['zigzag_interval'],
+        )
+        extra = (
+            p['spiral_radius'], self.rect.x, self.rect.y,
+            p['noise_scale_x'], p['noise_scale_y'],
+            p['noise_amplitude_x'], p['noise_amplitude_y'],
+            p['noise_seed'],
+        )
+        return base, extra
 
     # 5. Private lifecycle methods
 
@@ -463,7 +494,7 @@ class EnemySpawner:
         _wave_enemies_spawned: Count of enemies spawned in current wave.
     """
 
-    ENEMIES_PER_FRAME = 3
+    ENEMIES_PER_FRAME = 2
 
     def __init__(self):
         self.spawn_timer = 0
@@ -534,78 +565,59 @@ class EnemySpawner:
             self._spawn_one(enemies, spawn_data)
             self._wave_enemies_spawned += 1
 
-    def _prepare_wave_data(self, player_pos: tuple = None) -> List[dict]:
+    def _prepare_wave_data(self, player_pos: tuple = None) -> list:
         """Precompute spawn descriptors for a V-formation wave.
 
-        Returns a list of dicts with keys: x, y, bullet_type, enemy_type.
-        Avoids creating all enemies in a single frame to prevent frame spikes.
+        Returns a list of (x, y, bullet_type, enemy_type) tuples.
         """
         screen_width = get_screen_width()
         screen_height = get_screen_height()
-
         center_x = player_pos[0] if player_pos else screen_width // 2
 
         base_size = ENEMY_HITBOX_SIZE + ENEMY_HITBOX_PADDING * 2
         collision_size = int(base_size * ENEMY_COLLISION_SCALE)
 
-        # Two rows: back row at wings (wider), front row at tip (narrower)
         enemies_back = self._wave_size // 2
         enemies_front = self._wave_size - enemies_back
 
-        # Y positions: back (wings) higher up, front (tip) lower down
         back_y = int(screen_height * 0.25) + random.randint(-10, 10)
         front_y = int(screen_height * 0.40) + random.randint(-10, 10)
-
-        # Horizontal spread: back row wider, front row narrower
         back_width = int(screen_width * 0.80)
         front_width = int(screen_width * 0.35)
 
         positions = []
-
-        # Back row (wings): evenly spaced across wide area
         for i in range(enemies_back):
             t = i / max(1, enemies_back - 1)
-            px = center_x - back_width // 2 + int(t * back_width)
-            py = back_y
-            positions.append((px, py))
-
-        # Front row (tip): evenly spaced across narrow area
+            positions.append((center_x - back_width // 2 + int(t * back_width), back_y))
         for i in range(enemies_front):
             t = i / max(1, enemies_front - 1)
-            px = center_x - front_width // 2 + int(t * front_width)
-            py = front_y
-            positions.append((px, py))
+            positions.append((center_x - front_width // 2 + int(t * front_width), front_y))
 
-        bullet_types = ["single", "spread", "laser"]
+        bullet_types = ("single", "spread", "laser")
         spawn_data = []
-
         for px, py in positions:
             px = max(collision_size // 2, min(px, screen_width - collision_size // 2))
             py = max(-30, min(py, int(screen_height * 0.70)))
-
-            spawn_data.append({
-                'x': px,
-                'y': py,
-                'bullet_type': random.choice(bullet_types),
-                'enemy_type': self._select_enemy_type(),
-            })
-
+            spawn_data.append((
+                px, py,
+                random.choice(bullet_types),
+                self._select_enemy_type(),
+            ))
         return spawn_data
 
-    def _spawn_one(self, enemies: List[Enemy], data: dict) -> None:
-        """Create a single enemy from precomputed spawn data and add to list."""
-        bullet_type = data['bullet_type']
-
+    def _spawn_one(self, enemies: List[Enemy], data: tuple) -> None:
+        """Create a single enemy from precomputed spawn tuple and add to list."""
+        px, py, bullet_type, enemy_type = data
         enemy_data = EnemyData(
             health=self.health,
             speed=self.speed,
             bullet_type=bullet_type,
             fire_rate=60 if bullet_type == "laser" else 80,
-            enemy_type=data['enemy_type']
+            enemy_type=enemy_type
         )
-        enemy = Enemy(data['x'], data['y'], enemy_data)
+        enemy = Enemy(px, py, enemy_data)
         enemy._entry_start_y = -50
-        enemy._entry_start_x = data['x']
+        enemy._entry_start_x = px
         if self._bullet_spawner:
             enemy.set_bullet_spawner(self._bullet_spawner)
         enemies.append(enemy)

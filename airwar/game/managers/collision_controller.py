@@ -17,12 +17,14 @@ try:
     from airwar.core_bindings import (
         spatial_hash_collide,
         spatial_hash_collide_single,
+        batch_collide_bullets_vs_entities,
         PersistentSpatialHash,
         RUST_AVAILABLE,
     )
 except ImportError:
     spatial_hash_collide = None
     spatial_hash_collide_single = None
+    batch_collide_bullets_vs_entities = None
     PersistentSpatialHash = None
     RUST_AVAILABLE = False
 
@@ -234,81 +236,46 @@ class CollisionController:
         score_gained = 0
         enemies_killed = 0
 
-        # Use Rust collision with PersistentSpatialHash for incremental updates
-        if self._use_rust and self._persistent_hash is not None:
-            # Track current frame enemy IDs for incremental updates
-            current_enemy_ids = set()
-
-            # Update enemies in persistent hash (incremental update)
-            enemy_indices = {}
-            for i, enemy in enumerate(enemies):
-                if enemy.active:
-                    enemy_id = -i - 1
-                    current_enemy_ids.add(enemy_id)
-                    hitbox = enemy.get_hitbox()
-                    cx = float(hitbox.centerx)
-                    cy = float(hitbox.centery)
-                    half_size = float(max(hitbox.width, hitbox.height)) / 2.0
-                    self._persistent_hash.update_entity(enemy_id, cx, cy, half_size)
-                    enemy_indices[enemy_id] = enemy
-
-            # Remove enemies that are no longer active
-            gone_enemies = self._previous_enemy_ids - current_enemy_ids
-            for enemy_id in gone_enemies:
-                self._persistent_hash.remove_entity(enemy_id)
-
-            self._previous_enemy_ids = current_enemy_ids
-
-            # Update bullets in persistent hash (incremental update)
-            bullet_indices = {}
+        # Use Rust batch collision — single FFI call for all bullet-enemy pairs
+        if self._use_rust and batch_collide_bullets_vs_entities is not None:
+            bullet_data = []
+            bullet_map = {}
             for i, bullet in enumerate(player_bullets):
                 if bullet.active:
-                    rect = bullet.rect
-                    cx = float(rect.centerx)
-                    cy = float(rect.centery)
-                    half_size = float(max(rect.width, rect.height)) / 2.0
-                    self._persistent_hash.update_entity(i, cx, cy, half_size)
-                    bullet_indices[i] = bullet
-                else:
-                    # Bullet became inactive - remove from hash
-                    self._persistent_hash.remove_entity(i)
+                    r = bullet.rect
+                    bullet_data.append((i, float(r.centerx), float(r.centery),
+                                       float(max(r.width, r.height)) / 2.0))
+                    bullet_map[i] = bullet
 
-            # Get collision pairs from persistent hash
-            collision_pairs = self._persistent_hash.get_collisions()
+            enemy_data = []
+            enemy_map = {}
+            for i, enemy in enumerate(enemies):
+                if enemy.active:
+                    eid = -i - 1
+                    hb = enemy.get_hitbox()
+                    enemy_data.append((eid, float(hb.centerx), float(hb.centery),
+                                      float(max(hb.width, hb.height)) / 2.0))
+                    enemy_map[eid] = enemy
 
-            # Process collision pairs
-            for id1, id2 in collision_pairs:
-                # Determine which is bullet (positive) and which is enemy (negative)
-                if id1 >= 0 and id2 < 0:
-                    bullet_id, enemy_id = id1, id2
-                elif id1 < 0 and id2 >= 0:
-                    bullet_id, enemy_id = id2, id1
-                else:
-                    continue
+            if bullet_data and enemy_data:
+                hits = batch_collide_bullets_vs_entities(
+                    bullet_data, enemy_data, self._grid_cell_size)
 
-                if bullet_id not in bullet_indices or enemy_id not in enemy_indices:
-                    continue
-
-                bullet = bullet_indices[bullet_id]
-                enemy = enemy_indices[enemy_id]
-
-                if not bullet.active or not enemy.active:
-                    continue
-
-                damage = bullet.data.damage
-                enemy.take_damage(damage)
-
-                if explosive_level > 0:
-                    self._handle_explosive_damage(bullet, enemies, explosive_level)
-
-                if not enemy.active:
-                    enemies_killed += 1
-                    score_gained += enemy.data.score * score_multiplier
-
-                if bullet.data.owner == "player":
-                    if piercing_level <= 0:
+                for bid, eid in hits:
+                    if bid not in bullet_map or eid not in enemy_map:
+                        continue
+                    bullet = bullet_map[bid]
+                    enemy = enemy_map[eid]
+                    if not bullet.active or not enemy.active:
+                        continue
+                    enemy.take_damage(bullet.data.damage)
+                    if explosive_level > 0:
+                        self._handle_explosive_damage(bullet, enemies, explosive_level)
+                    if not enemy.active:
+                        enemies_killed += 1
+                        score_gained += enemy.data.score * score_multiplier
+                    if bullet.data.owner == "player" and piercing_level <= 0:
                         bullet.active = False
-                        self._persistent_hash.remove_entity(bullet_id)
             return score_gained, enemies_killed
 
         # Fallback to Python implementation

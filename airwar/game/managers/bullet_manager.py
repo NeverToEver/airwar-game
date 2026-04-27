@@ -213,9 +213,10 @@ class BulletManager:
 
     def _cleanup_enemy_bullets(self) -> None:
         """清理敌人子弹列表中的非活跃子弹"""
-        if not self._spawn_controller.enemy_bullets:
+        bullets = self._spawn_controller.enemy_bullets
+        if not bullets:
             return
-        # Use in-place filter to preserve list reference for EnemyBulletSpawner
-        self._spawn_controller.enemy_bullets[:] = [
-            b for b in self._spawn_controller.enemy_bullets if b.active
-        ]
+        # Fast path: skip allocation if all bullets are active (most frames)
+        if not any(not b.active for b in bullets):
+            return
+        self._spawn_controller.enemy_bullets[:] = [b for b in bullets if b.active]

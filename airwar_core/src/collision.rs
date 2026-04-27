@@ -342,6 +342,40 @@ impl PersistentSpatialHash {
     }
 }
 
+/// Batch collision check: player bullets vs enemies.
+/// Returns (bullet_id, enemy_id) pairs for every bullet-enemy collision.
+///
+/// bullets: Vec<(i64 bullet_id, f32 cx, f32 cy, f32 half_size)>
+/// enemies: Vec<(i32 enemy_id, f32 cx, f32 cy, f32 half_size)>
+#[pyfunction]
+pub fn batch_collide_bullets_vs_entities(
+    bullets: Vec<(i64, f32, f32, f32)>,
+    enemies: Vec<(i32, f32, f32, f32)>,
+    cell_size: i32,
+) -> Vec<(i64, i32)> {
+    if bullets.is_empty() || enemies.is_empty() {
+        return Vec::new();
+    }
+
+    let mut grid = SpatialHashGrid::new(cell_size);
+    for (id, x, y, half_size) in &enemies {
+        grid.insert(*id, *x, *y, *half_size);
+    }
+
+    let mut results = Vec::new();
+    for (bid, bx, by, bhalf) in &bullets {
+        let potential = grid.get_potential_collisions(*bx, *by, *bhalf);
+        for &eid in &potential {
+            if let Some((ex, ey, ehalf)) = grid.get_position(eid) {
+                if check_entity_collision(*bx, *by, *bhalf, ex, ey, ehalf) {
+                    results.push((*bid, eid));
+                }
+            }
+        }
+    }
+    results
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -400,6 +434,14 @@ mod tests {
 
         let collisions = spatial_hash_collide(entities, 100);
         assert!(collisions.iter().any(|(a, b)| (*a == 1 && *b == 2) || (*a == 2 && *b == 1)));
+    }
+
+    #[test]
+    fn test_batch_collide_bullets_vs_entities() {
+        let bullets = vec![(1i64, 0.0, 0.0, 5.0), (2i64, 100.0, 100.0, 5.0)];
+        let enemies = vec![(1i32, 0.0, 0.0, 10.0), (2i32, 100.0, 100.0, 10.0)];
+        let hits = batch_collide_bullets_vs_entities(bullets, enemies, 50);
+        assert_eq!(hits.len(), 2);
     }
 
     #[test]

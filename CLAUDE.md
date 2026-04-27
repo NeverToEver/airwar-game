@@ -14,6 +14,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Rust (PyO3 0.22 / maturin 1.0) — `airwar_core` extension module
 - Architecture: Scene Pattern, Manager Pattern, Observer Pattern
 
+### Key Numbers
+
+- Default resolution: 1920×1080, FPS=60
+- Player speed: 7 (base), ~12 with boost
+- Player bullet speed: 14
+- Test suite: 695 tests, 1 skip, <3s runtime
+
 ---
 
 ## Commands
@@ -95,11 +102,11 @@ PyO3 extension module providing performance-critical computation with graceful P
 
 | Module | Functions | Python binding |
 |--------|-----------|----------------|
-| `vector2.rs` | vec2_length, normalize, add, sub, dot, cross, scale, distance, angle, lerp, clamp_length | `core_bindings.py` |
-| `collision.rs` | spatial_hash_collide, spatial_hash_collide_single | `core_bindings.py` |
-| `movement.rs` | update_movement (8 types: straight, sine, zigzag, dive, hover, spiral, noise, aggressive) | `core_bindings.py` |
+| `vector2.rs` | vec2_length, normalize, add, sub, dot, cross, scale, distance, angle, lerp, clamp_length (14 functions) | `core_bindings.py` |
+| `collision.rs` | spatial_hash_collide, spatial_hash_collide_single, batch_collide_bullets_vs_entities, PersistentSpatialHash | `core_bindings.py` |
+| `movement.rs` | update_movement, batch_update_movements, compute_boss_attack (8 types: straight, sine, zigzag, dive, hover, spiral, noise, aggressive) | `core_bindings.py` |
 | `particles.rs` | update_particle, batch_update_particles, generate_explosion_particles | `core_bindings.py` |
-| `sprites.rs` | create_single_bullet_glow, create_spread_bullet_glow, create_laser_bullet_glow, create_explosive_missile_glow | `core_bindings.py` |
+| `sprites.rs` | create_single_bullet_glow, create_spread_bullet_glow, create_laser_bullet_glow, create_explosive_missile_glow, create_glow_circle | `core_bindings.py` |
 | `bullets.rs` | batch_update_bullets | `core_bindings.py` |
 
 **Note:** `draw_glow_circle` uses pygame fallback only (Rust version has visual differences). Rust sprites acceleration covers bullet glow surfaces; enemy core glow uses pygame.
@@ -223,11 +230,13 @@ PLAYING → DYING → GAME_OVER
 
 | Key | Action |
 |-----|--------|
-| Arrow keys / WASD | Move ship |
-| Space | Fire |
+| Arrow keys / WASD | Move ship (speed 7) |
+| Shift (hold) | Boost — consumes energy, +70% speed, recovers after 1.5s delay with 2s ramp |
+| Space | Fire (bullet speed 14) |
 | ESC | Pause |
 | H (hold) | Dock with mothership to save progress |
 | K (hold 3s) | Surrender |
+| L | Toggle HUD expanded/collapsed |
 
 ### Coding Standards
 
@@ -280,6 +289,67 @@ The mothership docking/save system uses an interface-driven design with 6 ABCs i
 
 **Invincibility:** Uses `silent_invincible` flag during docking to suppress the standard damage-blink visual effect. Player `controls_locked` prevents movement and auto-fire while docked.
 
+**Save data fields:** Player position (x, y), score, kills, boss_kills, health, max_health, buff levels, difficulty, username, is_in_mothership flag. All buff effects are re-applied after load via `_reapply_buff_effects()`. Legacy saves without player position default to bottom-center screen.
+
+### Boost System
+
+**Location:** `entities/player.py` (state), `ui/boost_gauge.py` (UI), `config/settings.py` (BOOST_CONFIG).
+
+Boost energy mechanic:
+- **Activation:** Hold Shift key
+- **Consumption:** 1 unit/frame while active (no movement required)
+- **Speed multiplier:** 1.7× base speed via `player.boost_speed_mult`
+- **Recovery:** 1.5s delay after release → 2s ramp from 15% to 100% rate
+- **Capacity (per difficulty):** Easy=300, Medium=200, Hard=120
+- **Recovery rate:** Easy=1.2, Medium=1.0, Hard=0.8 units/frame
+
+**Boost Gauge UI:** 270° arc gauge (speedometer-style), 31 tick marks, pointer needle. Bottom-left position at `(155, screen_h - 135)`, radius 115px, panel 290×260. Military cockpit aesthetic: steel-blue arc, ACCENT_TEAL lit ticks, WARNING-red needle when active.
+
+**Boost Recovery Buff:** `BoostRecoveryBuff` in `game/buffs/buffs.py` — multiplies `player.boost_recovery_rate` by 1.5. Registered in `buff_registry.py`, reward pool entry in `reward_system.py`.
+
+### Performance Optimizations
+
+**Surface/font caching:**
+- `game_rendering_background.py`: StarLayer and DustLayer glow surfaces cached by `(radius, alpha)` key — eliminates ~400 SRCALPHA allocations/frame
+- `integrated_hud.py`: Font objects cached via `_get_font(size)`, arrow/hint text pre-rendered — eliminates ~12 `font.Font()` calls/frame
+- `_sprites_ships.py`: `_code_hash` uses `@functools.lru_cache` — MD5 computed once per function, not per frame per entity
+
+**Batch Rust acceleration:**
+- `game_loop_manager.py`: `batch_update_movements` called once/frame for all 'active' state enemies, results distributed via `_batch_result` attribute — replaces 5-8 individual FFI calls
+- `collision_controller.py`: `batch_collide_bullets_vs_entities` replaces PersistentSpatialHash with single FFI call — eliminates 40 per-frame hash updates + O(N²) pair enumeration
+
+**Hot path micro-optimizations:**
+- `bullet.py`: Trail stores `(x,y,w,h)` tuples instead of `pygame.Rect`, deque iterated directly (no `list()` copy), `maxlen` handles eviction
+- `bullet_manager.py`: `_cleanup_enemy_bullets` fast-paths with `any()` — most frames skip list allocation
+- `enemy.py`: Timer read/write uses pre-computed `_timer_attr` string with `setattr`, batch movement params pre-computed in `_init_movement`
+
+**Spawn tuning:**
+- `ENEMIES_PER_FRAME = 2` (was 3) — wave spawns spread across 6 frames
+- Entry animation: `0.04`/frame (25 frames, was 50)
+- Exit animation: `0.03`/frame (33 frames, was 67)
+- Spawn data uses tuples not dicts
+
+### Boss System
+
+**Movement:** 4-phase lerp-based system in `Boss._select_next_target()`:
+- PATROL: horizontal to opposite side with vertical drift
+- SWEEP: diagonal to random zone
+- HOVER: local ±130px X, ±80px Y repositioning
+- CHASE: drift toward player area with random offset
+- Lerp factor: `0.025 × speed`, smooth exponential deceleration
+- Y range: 50 to `screen_h // 2 + 60`
+
+**Boss spawn:** `SpawnController.spawn_boss()` forces all active enemies into 'exiting' state before creating boss.
+
+**Boss timer:** `_render_boss_timer()` in `hud_renderer.py` — styled panel below health bar, 32px font, color transitions steel-blue→amber→red as time runs low, pulsing "ESCAPING!" warning when >70% elapsed.
+
+### Hit Response
+
+**`_on_player_damaged()`** in `game_scene.py`:
+1. Applies damage via `GameController.on_player_hit()`
+2. **Clears all enemy bullets** via `BulletManager.clear_enemy_bullets()`
+3. Invincibility activates (90 frames standard, or until death animation completes)
+
 ### Other Key Subsystems
 
 | Subsystem | Location | Responsibility |
@@ -296,7 +366,7 @@ The mothership docking/save system uses an interface-driven design with 6 ABCs i
 ### Rendering Pipeline
 
 Pure pygame rendering (no GPU/ModernGL). The rendering pipeline draws in order:
-Parallax starfield background → Entities → Bullets → HUD → Notifications → Pause button → MotherShip → Explosions → GiveUp UI → **Reward Selector (topmost)**
+Parallax starfield background → Entities → Bullets → HUD → Notifications → Buff stats → Pause button → **BoostGauge (bottom-left)** → MotherShip → Explosions → GiveUp UI → **Reward Selector (topmost)**
 
 ### Enemy Movement
 

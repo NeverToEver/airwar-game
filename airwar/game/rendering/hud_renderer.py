@@ -51,6 +51,8 @@ class HUDRenderer:
         self._boss_small_font = pygame.font.Font(None, tokens.typography.SMALL_SIZE)
         self._boss_label_font = pygame.font.Font(None, SystemUI.MILITARY_LABEL_SIZE)
         self._boss_warning_font = pygame.font.Font(None, SystemUI.MILITARY_SMALL_SIZE)
+        self._boss_timer_font = pygame.font.Font(None, 32)
+        self._boss_hurry_font = pygame.font.Font(None, 30)
         self._buff_stats_panel = BuffStatsPanel()
         self._attack_mode_panel = AttackModePanel()
 
@@ -147,16 +149,48 @@ class HUDRenderer:
         text_rect = boss_text.get_rect(center=(x + bar_width // 2, y + bar_height // 2))
         surface.blit(boss_text, text_rect)
 
+        # Timer panel below the health bar
         time_remaining = boss.get_time_remaining()
-        time_text = font.render(f"{time_remaining:.1f}s", True, (255, 220, 100))
-        time_rect = time_text.get_rect(right=x + bar_width - 8, centery=y + bar_height // 2)
-        surface.blit(time_text, time_rect)
-
         progress = boss.get_survival_progress()
+        self._render_boss_timer(surface, x, y + bar_height + 4, bar_width,
+                                time_remaining, progress)
+
+    def _render_boss_timer(self, surface, x, y, bar_width, time_remaining, progress):
+        """Render boss escape timer in a styled panel below the health bar."""
+        timer_panel_h = 36
+        timer_panel = pygame.Rect(x, y, bar_width, timer_panel_h)
+
+        # Panel background
+        pygame.draw.rect(surface, (12, 16, 24, 190), timer_panel, border_radius=6)
+        pygame.draw.rect(surface, (55, 90, 130, 70), timer_panel, width=1, border_radius=6)
+
+        # Timer color transitions from steel-blue (safe) to amber to red (urgent)
+        if progress < 0.5:
+            t = 0.0
+        elif progress < 0.75:
+            t = (progress - 0.5) / 0.25
+        else:
+            t = 1.0
+        r = int(120 + 135 * t)
+        g = int(185 - 100 * t)
+        b = int(210 - 130 * t)
+        timer_color = (r, g, b)
+
+        secs = int(time_remaining)
+        timer_text = self._boss_timer_font.render(f"{secs}s", True, timer_color)
+        timer_rect = timer_text.get_rect(center=timer_panel.center)
+        surface.blit(timer_text, timer_rect)
+
+        # HURRY warning — pulsing red above the timer panel when urgent
         if progress > 0.7:
-            warning_text = font.render("HURRY!", True, colors.WARNING)
-            warning_rect = warning_text.get_rect(left=x + 8, centery=y + bar_height // 2)
-            surface.blit(warning_text, warning_rect)
+            import math
+            pulse = abs(math.sin(pygame.time.get_ticks() * 0.008)) * 0.4 + 0.6
+            alpha = int(200 * pulse)
+            hurry_text = self._boss_hurry_font.render("ESCAPING!", True,
+                                                       (220, 70, 55))
+            hurry_text.set_alpha(alpha)
+            hurry_rect = hurry_text.get_rect(midtop=(x + bar_width // 2, y + timer_panel_h + 6))
+            surface.blit(hurry_text, hurry_rect)
 
     def render_boss_health_bar_themed(self, surface: pygame.Surface, boss) -> None:
         """Themed-style boss health bar rendering"""
@@ -197,20 +231,11 @@ class HUDRenderer:
             font=font
         )
 
-        # Time remaining
+        # Time remaining — styled panel below the bar
         time_remaining = getattr(boss, 'get_time_remaining', lambda: 0)()
-        if time_remaining > 0:
-            time_text = font.render(f"{time_remaining:.1f}s", True, SystemColors.WARNING_AMBER)
-            time_rect = time_text.get_rect(right=x + bar_width - 8, centery=y + bar_height // 2)
-            surface.blit(time_text, time_rect)
-
-        # Hurry warning
         progress = getattr(boss, 'get_survival_progress', lambda: 0)()
-        if progress > 0.7:
-            warning_font = self._boss_warning_font
-            warning_text = warning_font.render("HURRY!", True, SystemColors.DANGER_RED)
-            warning_rect = warning_text.get_rect(left=x + 8, centery=y + bar_height // 2)
-            surface.blit(warning_text, warning_rect)
+        self._render_boss_timer(surface, x, y + bar_height + 4, bar_width,
+                                time_remaining, progress)
 
     def render_ripples(self, surface: pygame.Surface, ripples: List[dict]) -> None:
         for ripple in ripples:

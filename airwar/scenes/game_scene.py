@@ -304,9 +304,14 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._game_loop_manager.check_collisions(
             self.player,
             self.spawn_controller.enemy_bullets,
-            lambda damage, player: self.game_controller.on_player_hit(damage, player),
+            self._on_player_damaged,
         )
         self._milestone_manager.check_and_trigger(self.player)
+
+    def _on_player_damaged(self, damage: int, player) -> None:
+        """Handle player hit: apply damage, clear all enemy bullets, trigger invincibility."""
+        self.game_controller.on_player_hit(damage, player)
+        self._bullet_manager.clear_enemy_bullets()
 
     def _on_give_up_complete(self) -> None:
         self.game_controller.on_player_hit(GAME_CONSTANTS.DAMAGE.INSTANT_KILL, self.player)

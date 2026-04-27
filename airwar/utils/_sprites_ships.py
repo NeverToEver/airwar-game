@@ -1,7 +1,8 @@
 """Ship sprite rendering — player, enemy, and boss ships with caching."""
-import pygame
+import functools
 import hashlib
 import inspect
+import pygame
 from ._sprites_common import draw_glow_circle
 
 # Sprite surface caches
@@ -10,8 +11,11 @@ _enemy_sprite_cache = {}
 _boss_sprite_cache = {}
 
 
+@functools.lru_cache(maxsize=4)
 def _code_hash(func) -> str:
-    """Return a short hash of a function's source code for cache busting."""
+    """Return a short hash of a function's source code for cache busting.
+    Results are cached so expensive MD5 is only computed once per function.
+    """
     try:
         source = inspect.getsource(func)
         return hashlib.md5(source.encode()).hexdigest()[:8]

@@ -52,7 +52,7 @@ class Bullet(Entity):
 
     def update(self, *args, **kwargs) -> None:
         if self.data.bullet_type == "laser" or self.data.is_laser:
-            self._trail.append(pygame.Rect(self.rect.x, self.rect.y, self.rect.width, self.rect.height))
+            self._trail.append((self.rect.x, self.rect.y, self.rect.width, self.rect.height))
 
         self.rect.x += self.velocity.x
         self.rect.y += self.velocity.y
@@ -81,22 +81,22 @@ class Bullet(Entity):
                 trail_color = (30, 255, 100)
             else:
                 trail_color = (255, 30, 30)
-            trail_list = list(self._trail)
-            for i, trail_rect in enumerate(trail_list):
-                alpha = int(120 * (i / len(trail_list)))
-                cache_key = (trail_rect.width, trail_rect.height, alpha, self.data.owner)
+            trail_len = len(self._trail)
+            for i, (tx, ty, tw, th) in enumerate(self._trail):
+                alpha = int(120 * (i / trail_len))
+                cache_key = (tw, th, alpha, self.data.owner)
                 if cache_key not in Bullet._trail_surface_cache:
                     if len(Bullet._trail_surface_cache) >= Bullet._TRAIL_CACHE_MAX_SIZE:
                         oldest = Bullet._trail_cache_order.popleft()
                         Bullet._trail_surface_cache.pop(oldest, None)
-                    trail_surface = pygame.Surface((trail_rect.width, trail_rect.height), pygame.SRCALPHA)
+                    trail_surface = pygame.Surface((tw, th), pygame.SRCALPHA)
                     trail_color_with_alpha = trail_color + (alpha,)
                     trail_surface.fill(trail_color_with_alpha)
                     Bullet._trail_surface_cache[cache_key] = trail_surface
                     Bullet._trail_cache_order.append(cache_key)
                 else:
                     trail_surface = Bullet._trail_surface_cache[cache_key]
-                surface.blit(trail_surface, trail_rect)
+                surface.blit(trail_surface, (tx, ty))
 
     def set_sprite(self, sprite: pygame.Surface) -> None:
         self._sprite = sprite
