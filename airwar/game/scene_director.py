@@ -336,14 +336,15 @@ class SceneDirector:
 
     def _handle_game_over(self, game_scene: GameScene) -> bool:
         final_score = game_scene.score
-        kills = game_scene.cycle_count
+        kills = game_scene.get_kill_count()
+        boss_kills = game_scene.get_boss_kill_count()
         high_score = self._update_user_stats(final_score, kills)
 
         death_scene = self._scene_manager._scenes.get("death")
         if not death_scene:
             return False
 
-        death_scene.enter(score=final_score, kills=kills, username=self._current_user)
+        death_scene.enter(score=final_score, kills=kills, boss_kills=boss_kills, username=self._current_user)
 
         while death_scene.is_running():
             events = pygame.event.get()

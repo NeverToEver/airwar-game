@@ -143,7 +143,7 @@ class GameIntegrator:
         elif self._state_machine.is_in_cooldown():
             self._progress_bar_ui.update_progress(
                 self._state_machine.cooldown.cooldown_progress,
-                (1.0 - self._state_machine.cooldown.cooldown_progress) * 120.0
+                (1.0 - self._state_machine.cooldown.cooldown_progress) * self._state_machine.cooldown.cooldown_duration
             )
         else:
             progress = self._input_detector.get_progress()
@@ -308,7 +308,7 @@ class GameIntegrator:
             self._clear_mothership_bullets()
         elif state == MotherShipState.COOLDOWN:
             self._mother_ship.hide()
-            self._progress_bar_ui.show(self.BAR_TYPE_COOLDOWN, 120.0)
+            self._progress_bar_ui.show(self.BAR_TYPE_COOLDOWN, self._state_machine.cooldown.cooldown_duration)
             self._clear_ripple_effects()
             self._clear_mothership_bullets()
         elif state == MotherShipState.UNDOCKING:
@@ -330,7 +330,7 @@ class GameIntegrator:
                 self._game_scene.player.controls_locked = True
 
     def _on_cooldown_started(self, **kwargs) -> None:
-        self._progress_bar_ui.show(self.BAR_TYPE_COOLDOWN, 120.0)
+        self._progress_bar_ui.show(self.BAR_TYPE_COOLDOWN, self._state_machine.cooldown.cooldown_duration)
         self._deactivate_invincibility()
 
     def _on_stay_started(self, **kwargs) -> None:
@@ -434,7 +434,7 @@ class GameIntegrator:
 
     def _on_undock_cancelled(self, **kwargs) -> None:
         if self._state_machine.is_in_cooldown():
-            self._progress_bar_ui.show(self.BAR_TYPE_COOLDOWN, 120.0)
+            self._progress_bar_ui.show(self.BAR_TYPE_COOLDOWN, self._state_machine.cooldown.cooldown_duration)
         elif self._state_machine.is_docked():
             self._progress_bar_ui.show(self.BAR_TYPE_STAY, 20.0)
         else:

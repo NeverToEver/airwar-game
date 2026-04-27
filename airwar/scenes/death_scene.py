@@ -26,6 +26,7 @@ class DeathScene(Scene, MouseSelectableMixin):
         self.result = None
         self.score = kwargs.get('score', 0)
         self.kills = kwargs.get('kills', 0)
+        self.boss_kills = kwargs.get('boss_kills', 0)
         self.username = kwargs.get('username', 'Player')
         self.animation_time = 0
         self.glow_offset = 0
@@ -144,10 +145,13 @@ class DeathScene(Scene, MouseSelectableMixin):
         )
 
         score_text = self.score_font.render(f"SCORE: {self.score}", True, self.colors['score'])
-        surface.blit(score_text, score_text.get_rect(center=(width // 2, height // 2 - ResponsiveHelper.scale(30, scale))))
+        surface.blit(score_text, score_text.get_rect(center=(width // 2, height // 2 - ResponsiveHelper.scale(45, scale))))
 
         kills_text = self.score_font.render(f"KILLS: {self.kills}", True, self.colors['kills'])
-        surface.blit(kills_text, kills_text.get_rect(center=(width // 2, height // 2 + ResponsiveHelper.scale(20, scale))))
+        surface.blit(kills_text, kills_text.get_rect(center=(width // 2, height // 2 + ResponsiveHelper.scale(5, scale))))
+
+        boss_text = self.desc_font.render(f"BOSS KILLS: {self.boss_kills}", True, self.colors['hint'])
+        surface.blit(boss_text, boss_text.get_rect(center=(width // 2, height // 2 + ResponsiveHelper.scale(40, scale))))
 
         option_spacing = ResponsiveHelper.scale(self.base_option_spacing, scale)
         start_y = height // 2 + ResponsiveHelper.scale(100, scale)

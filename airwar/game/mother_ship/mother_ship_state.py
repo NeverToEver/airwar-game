@@ -45,11 +45,11 @@ class DockingProgress:
 
 @dataclass
 class MotherShipCooldown:
-    """Tracks the 2-minute cooldown between MotherShip activations."""
+    """Tracks the 1-minute cooldown between MotherShip activations."""
     is_in_cooldown: bool = False
     cooldown_start_time: float = 0.0
     cooldown_progress: float = 0.0
-    cooldown_duration: float = 120.0  # 2 minutes
+    cooldown_duration: float = 60.0  # 1 minute
 
     def start_cooldown(self, current_time: float) -> None:
         self.is_in_cooldown = True

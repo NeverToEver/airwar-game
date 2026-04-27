@@ -64,6 +64,9 @@ class MotherShipStateMachine(IMotherShipStateMachine):
             return
 
         if self._current_state == MotherShipState.COOLDOWN:
+            if self._cooldown.can_activate() and self._can_transition_to(MotherShipState.PRESSING):
+                self._change_state(MotherShipState.PRESSING)
+                self._event_bus.publish('STATE_CHANGED', state=self._current_state)
             return
 
         if self._current_state == MotherShipState.IDLE:
@@ -72,8 +75,6 @@ class MotherShipStateMachine(IMotherShipStateMachine):
                 self._event_bus.publish('STATE_CHANGED', state=self._current_state)
 
     def _on_h_released(self, **kwargs) -> None:
-        if self._current_state == MotherShipState.COOLDOWN:
-            return
         if self._can_transition_to(MotherShipState.IDLE):
             self._change_state(MotherShipState.IDLE)
             self._event_bus.publish('STATE_CHANGED', state=self._current_state)
@@ -138,6 +139,10 @@ class MotherShipStateMachine(IMotherShipStateMachine):
     def update(self, current_time: float) -> None:
         if self._current_state == MotherShipState.COOLDOWN:
             self._cooldown.update_cooldown(current_time)
+            if not self._cooldown.is_in_cooldown:
+                self._change_state(MotherShipState.IDLE)
+                self._event_bus.publish('STATE_CHANGED', state=self._current_state)
+                self._event_bus.publish('COOLDOWN_COMPLETE')
         elif self._current_state == MotherShipState.DOCKED:
             self._stay_progress.update_stay(current_time)
             if self._stay_progress.is_expired():
