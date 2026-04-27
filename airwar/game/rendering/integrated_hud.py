@@ -79,7 +79,8 @@ class IntegratedHUD:
         unlocked_buffs: List[str] = None,
         get_buff_color=None,
         current_coefficient: float = None,
-        initial_coefficient: float = None
+        initial_coefficient: float = None,
+        mothership_status: dict = None,
     ):
         colors = self._tokens.colors
         width = surface.get_width()
@@ -110,6 +111,11 @@ class IntegratedHUD:
                 surface, player_health, player_max_health, colors, panel_x, current_y
             )
 
+            if mothership_status and mothership_status.get('is_present'):
+                current_y = self._render_mothership_module(
+                    surface, mothership_status, colors, panel_x, current_y
+                )
+
             current_y = self._render_kills_module(surface, kills, colors, panel_x, current_y)
 
             if boss_kills > 0:
@@ -123,6 +129,10 @@ class IntegratedHUD:
             self._render_collapsed_health(
                 surface, player_health, player_max_health, colors, panel_x, panel_y, panel_height
             )
+            if mothership_status and mothership_status.get('is_present'):
+                self._render_collapsed_mothership_ring(
+                    surface, mothership_status, colors, panel_x, panel_y, panel_height
+                )
             self._render_expand_indicator(surface, panel_x, panel_y, panel_height, colors)
 
     def _render_panel_background(self, surface, rect, colors):
@@ -237,6 +247,110 @@ class IntegratedHUD:
             center=(panel_x + self._current_width // 2, battery_bottom + 9)
         )
         surface.blit(label, label_rect)
+
+    def _render_collapsed_mothership_ring(self, surface, status, colors, panel_x, panel_y, panel_height):
+        """Draw a circular cooldown ring in collapsed mode, styled like the health indicator."""
+        cx = panel_x + self._current_width // 2
+        # Position the ring below the health battery
+        ring_radius = min(28, (self._current_width - 8) // 2)
+        ring_y = panel_y + panel_height - self.padding - 12
+        ring_thickness = 5
+
+        progress = status.get('cooldown_progress', 0.0)
+        is_cooldown = status.get('is_in_cooldown', False)
+        cooldown_remaining = status.get('cooldown_remaining', 0.0)
+
+        # Background ring
+        pygame.draw.circle(surface, (*colors.BACKGROUND_SECONDARY, 160),
+                           (cx, ring_y), ring_radius, ring_thickness)
+
+        if is_cooldown and progress < 1.0:
+            # Draw cooldown progress arc (amber)
+            import math
+            cooldown_color = (160, 120, 50)
+            steps = max(4, int(progress * 32))
+            for i in range(steps):
+                angle = -math.pi / 2 + (i / 32.0) * 2 * math.pi
+                px = cx + int(math.cos(angle) * (ring_radius - ring_thickness // 2))
+                py = ring_y + int(math.sin(angle) * (ring_radius - ring_thickness // 2))
+                alpha = 120 + int(80 * (i / max(steps, 1)))
+                glow_surf = pygame.Surface((6, 6), pygame.SRCALPHA)
+                pygame.draw.circle(glow_surf, (*cooldown_color, alpha), (3, 3), 3)
+                surface.blit(glow_surf, (px - 3, py - 3))
+            # Remaining seconds in center
+            secs = int(cooldown_remaining)
+            label = self._cached_label(max(12, self.label_font_size - 8),
+                                       str(secs), colors.TEXT_MUTED)
+            surface.blit(label, label.get_rect(center=(cx, ring_y)))
+        else:
+            # Ready — green circle
+            ready_color = (80, 200, 100) if not is_cooldown else (160, 185, 80)
+            pygame.draw.circle(surface, (*ready_color, 180),
+                               (cx, ring_y), ring_radius - ring_thickness + 1, ring_thickness)
+            label = self._cached_label(max(12, self.label_font_size - 8),
+                                       "OK", ready_color)
+            surface.blit(label, label.get_rect(center=(cx, ring_y)))
+
+    def _render_mothership_module(self, surface, status, colors, panel_x, y):
+        """Draw mothership status bar in expanded mode."""
+        inner_width = self._current_width - self.padding * 2
+        bar_width = inner_width - 20
+        bar_height = self.progress_bar_height
+
+        state = status.get('state')
+        import enum
+        state_name = state.value if hasattr(state, 'value') else str(state)
+
+        label = self._cached_label(self.label_font_size - 2, "MTHRSHP", colors.TEXT_MUTED)
+        surface.blit(label, (panel_x + self.padding, y))
+
+        y += 22
+        bar_rect = pygame.Rect(panel_x + self.padding, y, bar_width, bar_height)
+        pygame.draw.rect(surface, (*colors.BACKGROUND_SECONDARY, 180), bar_rect, border_radius=4)
+
+        from airwar.game.mother_ship.mother_ship_state import MotherShipState
+        if state == MotherShipState.PRESSING:
+            fill_color = (60, 160, 220)
+            progress = status.get('hold_progress', 0.0)
+            fill_text = "HOLD"
+        elif state == MotherShipState.ENTERING:
+            fill_color = (60, 160, 220)
+            progress = 0.5
+            fill_text = "ENTRY"
+        elif state == MotherShipState.DOCKING:
+            fill_color = (80, 180, 110)
+            progress = 0.7
+            fill_text = "DOCK"
+        elif state == MotherShipState.DOCKED:
+            fill_color = (80, 180, 110)
+            progress = status.get('stay_progress', 0.0)
+            secs = int(status.get('stay_remaining', 0))
+            fill_text = f"{secs}s"
+        elif state == MotherShipState.UNDOCKING:
+            fill_color = (160, 120, 50)
+            progress = 0.5
+            fill_text = "OUT"
+        elif status.get('is_in_cooldown'):
+            fill_color = (160, 120, 50)
+            progress = status.get('cooldown_progress', 0.0)
+            secs = int(status.get('cooldown_remaining', 0))
+            fill_text = f"{secs}s"
+        else:
+            fill_color = (80, 120, 160)
+            progress = 0.0
+            fill_text = "RDY"
+
+        if progress > 0:
+            fill_width = int(bar_width * min(progress, 1.0))
+            if fill_width > 0:
+                fill_rect = pygame.Rect(panel_x + self.padding, y, fill_width, bar_height)
+                pygame.draw.rect(surface, (*fill_color, 200), fill_rect, border_radius=4)
+
+        status_label = self._cached_label(max(11, self.label_font_size - 10),
+                                          fill_text, colors.TEXT_MUTED)
+        surface.blit(status_label, (panel_x + self.padding + bar_width + 6, y - 1))
+
+        return y + bar_height + self.gap
 
     def _render_expand_indicator(self, surface, panel_x, panel_y, panel_height, colors):
         components = self._tokens.components

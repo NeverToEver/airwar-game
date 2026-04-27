@@ -343,7 +343,9 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             self.player,
             self.spawn_controller.enemy_bullets
         )
-        self._ui_manager.render_hud(surface, self.player)
+        mothership_status = (self._mother_ship_integrator.get_status_data()
+                              if self._mother_ship_integrator else None)
+        self._ui_manager.render_hud(surface, self.player, mothership_status)
         self._ui_manager.render_notification(surface)
         self._ui_manager.render_buff_stats_panel(surface, self.player)
 
