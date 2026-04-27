@@ -28,12 +28,15 @@ fn airwar_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Collision functions
     m.add_function(wrap_pyfunction!(collision::spatial_hash_collide, m)?)?;
     m.add_function(wrap_pyfunction!(collision::spatial_hash_collide_single, m)?)?;
+    m.add_function(wrap_pyfunction!(collision::batch_collide_bullets_vs_entities, m)?)?;
 
     // Persistent spatial hash
     m.add_class::<collision::PersistentSpatialHash>()?;
 
     // Movement functions
     m.add_function(wrap_pyfunction!(movement::update_movement, m)?)?;
+    m.add_function(wrap_pyfunction!(movement::batch_update_movements, m)?)?;
+    m.add_function(wrap_pyfunction!(movement::compute_boss_attack, m)?)?;
 
     // Particle functions
     m.add_function(wrap_pyfunction!(particles::update_particle, m)?)?;

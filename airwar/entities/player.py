@@ -235,9 +235,9 @@ class Player(Entity):
         direction = self._input_handler.get_movement_direction()
         is_moving = direction.x != 0 or direction.y != 0
 
-        # Boost: activate when Shift held + moving + has energy
+        # Boost: activate when Shift held + has energy
         boost_pressed = self._input_handler.is_boost_pressed()
-        self.boost_active = boost_pressed and is_moving and self.boost_current > 0
+        self.boost_active = boost_pressed and self.boost_current > 0
 
         if self.boost_active:
             self._boost_idle_frames = 0

@@ -1,4 +1,5 @@
 """Enemy and boss spawning controller with wave management."""
+import random
 from typing import List, Optional, TYPE_CHECKING
 from ...entities import Enemy, Boss, EnemySpawner, BossData, Bullet
 from ...entities.interfaces import IBulletSpawner
@@ -77,6 +78,19 @@ class SpawnController:
         return False
 
     def spawn_boss(self, boss_kill_count: int, bullet_damage: int) -> Boss:
+        # Force all existing enemies to exit when boss appears
+        for enemy in self.enemies:
+            if enemy.active and getattr(enemy, '_state', None) == 'active':
+                enemy._state = 'exiting'
+                enemy._exit_start_x = enemy.rect.x
+                enemy._exit_start_y = enemy.rect.y
+                enemy._exit_end_x = random.choice([
+                    enemy.rect.x - 300, enemy.rect.x + 300,
+                    enemy.rect.x, enemy.rect.x - 150, enemy.rect.x + 150,
+                ])
+                enemy._exit_end_y = -100
+                enemy._exit_progress = 0.0
+
         screen_width = get_screen_width()
         base_health = 2000 * (1 + boss_kill_count * 0.5)
         escape_time = round(base_health / bullet_damage * 45)

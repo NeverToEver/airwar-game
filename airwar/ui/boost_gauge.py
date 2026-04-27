@@ -18,14 +18,17 @@ class BoostGauge:
 
     def __init__(self):
         tokens = get_design_tokens()
-        self._bg_color = (10, 14, 24)
-        self._arc_color = (55, 65, 85)
-        self._tick_dim = (80, 95, 115)
-        self._tick_lit = (130, 200, 235)
-        self._needle_color = (200, 190, 170)
-        self._needle_active = (235, 85, 65)
-        self._text_color = tokens.colors.TEXT_MUTED
-        self._text_bright = tokens.colors.TEXT_PRIMARY
+        c = tokens.colors
+        self._bg_color = (12, 16, 22)
+        self._arc_color = (55, 90, 130)
+        self._arc_glow = (70, 120, 170)
+        self._tick_dim = (45, 55, 70)
+        self._tick_lit = SystemColors.ACCENT_TEAL
+        self._tick_major = (120, 185, 220)
+        self._needle_color = c.TEXT_PRIMARY
+        self._needle_active = c.WARNING
+        self._text_color = c.TEXT_MUTED
+        self._text_bright = c.TEXT_PRIMARY
         self._fonts: dict = {}
         self._bg_cache = None
         self._ticks = self._build_ticks()
@@ -53,13 +56,13 @@ class BoostGauge:
         screen_h = surface.get_height()
 
         cx = 155
-        cy = screen_h - 55
+        cy = screen_h - 135
         r = self.ARC_RADIUS
         ratio = boost_current / boost_max if boost_max > 0 else 0
 
         # Panel
-        pw, ph = 290, 220
-        px, py = 12, screen_h - ph - 14
+        pw, ph = 290, 260
+        px, py = 12, screen_h - ph - 20
         self._render_panel(surface, px, py, pw, ph)
 
         # Arc track
@@ -72,10 +75,10 @@ class BoostGauge:
         angle_deg = self.ARC_START_DEG - ratio * (self.ARC_START_DEG - self.ARC_END_DEG)
         self._draw_needle(surface, cx, cy, r, angle_deg, boost_active)
 
-        # Center hub
-        pygame.draw.circle(surface, (25, 30, 42), (cx, cy), 13)
-        pygame.draw.circle(surface, (*self._arc_color, 160), (cx, cy), 11, 1)
-        pygame.draw.circle(surface, (*self._tick_lit, 60), (cx, cy), 5)
+        # Center hub — metallic cap
+        pygame.draw.circle(surface, (*self._bg_color, 255), (cx, cy), 13)
+        pygame.draw.circle(surface, (*self._arc_color, 140), (cx, cy), 11, 1)
+        pygame.draw.circle(surface, (*self._tick_lit, 80), (cx, cy), 4)
 
         # Labels
         self._draw_labels(surface, cx, cy, r, boost_current, boost_max, boost_active)
@@ -86,15 +89,20 @@ class BoostGauge:
         cache_key = (w, h)
         if self._bg_cache is None or self._bg_cache[0] != cache_key:
             panel = pygame.Surface((w, h), pygame.SRCALPHA)
-            pygame.draw.rect(panel, (*self._bg_color, 200),
+            pygame.draw.rect(panel, (*self._bg_color, 215),
                              panel.get_rect(), border_radius=14)
-            pygame.draw.rect(panel, (*self._arc_color, 80),
+            # Inner border accent
+            pygame.draw.rect(panel, (*self._arc_color, 50),
+                             panel.get_rect().inflate(-3, -3),
+                             width=1, border_radius=12)
+            # Outer border
+            pygame.draw.rect(panel, (*self._arc_color, 90),
                              panel.get_rect(), width=1, border_radius=14)
             self._bg_cache = (cache_key, panel)
         surface.blit(self._bg_cache[1], (x, y))
 
     def _draw_arc(self, surface, cx, cy, r):
-        """Draw 270° arc track."""
+        """Draw 270° arc track with subtle glow."""
         steps = 90
         for i in range(steps):
             t1 = i / steps
@@ -104,20 +112,24 @@ class BoostGauge:
             a1, a2 = math.radians(d1), math.radians(d2)
             x1, y1 = cx + math.cos(a1) * r, cy - math.sin(a1) * r
             x2, y2 = cx + math.cos(a2) * r, cy - math.sin(a2) * r
-            alpha = 70 + int(60 * (i / steps))
-            pygame.draw.line(surface, (*self._arc_color, alpha), (x1, y1), (x2, y2), 3)
+            # Glow layer
+            glow_a = 25 + int(20 * (i / steps))
+            pygame.draw.line(surface, (*self._arc_glow, glow_a), (x1, y1), (x2, y2), 5)
+            # Core arc
+            alpha = 90 + int(60 * (i / steps))
+            pygame.draw.line(surface, (*self._arc_color, alpha), (x1, y1), (x2, y2), 2)
 
     def _draw_ticks(self, surface, cx, cy, ratio):
-        """Tick marks — lit up to current ratio, dim beyond."""
+        """Tick marks — lit up to current ratio with military teal, dim beyond."""
         for rad, inner, outer, is_major, t in self._ticks:
             filled = t <= ratio
             if filled:
-                color = self._tick_lit
-                alpha = 230 if is_major else 150
-                r2 = outer + (6 if is_major else 3)
+                color = self._tick_major if is_major else self._tick_lit
+                alpha = 240 if is_major else 160
+                r2 = outer + (7 if is_major else 3)
             else:
                 color = self._tick_dim
-                alpha = 110 if is_major else 60
+                alpha = 100 if is_major else 55
                 r2 = outer
             x1 = cx + math.cos(rad) * inner
             y1 = cy - math.sin(rad) * inner

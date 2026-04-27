@@ -25,9 +25,12 @@ try:
         # Collision functions
         spatial_hash_collide,
         spatial_hash_collide_single,
+        batch_collide_bullets_vs_entities,
         PersistentSpatialHash,
         # Movement functions
         update_movement,
+        batch_update_movements,
+        compute_boss_attack,
         # Particle functions
         update_particle,
         batch_update_particles,
@@ -67,9 +70,12 @@ __all__ = [
     # Collision functions
     'spatial_hash_collide',
     'spatial_hash_collide_single',
+    'batch_collide_bullets_vs_entities',
     'PersistentSpatialHash',
     # Movement functions
     'update_movement',
+    'batch_update_movements',
+    'compute_boss_attack',
     # Particle functions
     'update_particle',
     'batch_update_particles',

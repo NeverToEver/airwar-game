@@ -5,6 +5,13 @@ from ...config import get_screen_width, get_screen_height
 from ..explosion_animation import ExplosionManager
 from .game_controller import GameplayState
 
+try:
+    from airwar.core_bindings import batch_update_movements as rust_batch_move, RUST_AVAILABLE as _RUST_OK
+    _HAS_BATCH_MOVE = _RUST_OK
+except ImportError:
+    _HAS_BATCH_MOVE = False
+    rust_batch_move = None
+
 
 class GameControllerProtocol(Protocol):
     """Protocol for game controller dependency injection."""
@@ -185,7 +192,32 @@ class GameLoopManager:
             )
 
     def _update_entities(self) -> None:
-        for enemy in self._spawn_controller.enemies:
+        enemies = self._spawn_controller.enemies
+        if not enemies:
+            return
+
+        # Batch Rust movement — only for enemies in 'active' state (not entering/exiting)
+        if _HAS_BATCH_MOVE:
+            base_list = []
+            extra_list = []
+            batch_indices = []
+            for i, enemy in enumerate(enemies):
+                if enemy.active and getattr(enemy, '_state', None) == 'active':
+                    try:
+                        base, extra = enemy.get_rust_batch_params()
+                    except (ValueError, TypeError):
+                        continue
+                    if base is not None:
+                        base_list.append(base)
+                        extra_list.append(extra)
+                        batch_indices.append(i)
+            if base_list:
+                results = rust_batch_move(base_list, extra_list)
+                for j, (new_x, new_y, new_timer) in enumerate(results):
+                    idx = batch_indices[j]
+                    enemies[idx]._batch_result = (new_x, new_y, new_timer)
+
+        for enemy in enemies:
             enemy.update(self._spawn_controller.enemies, self._reward_system.slow_factor)
 
     def check_collisions(
