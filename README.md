@@ -28,7 +28,7 @@ python3 main.py
 ## 游戏特色
 
 - 三种难度模式（简单/普通/困难），动态难度调整
-- 13 种 Buff 系统（健康/进攻/防御/辅助 4 类），含一次性天赋限制
+- 12 种 Buff 系统（生命/攻击/防御/辅助 4 类），含一次性天赋限制
 - **母舰存档机制**：大型主力舰级母舰，爆炸导弹 AoE 攻击（5 目标），出入港双阶段动画（战机缓入弹出 + 母舰飞离），WASD 操控移动
 - 8 种敌人移动模式（直线、正弦、锯齿、俯冲、悬停、螺旋、噪声、攻击型），入场 ease-out 减速 + 移动模式平滑过渡
 - Boss 战，多阶段攻击，Rust 原生加速移动计算
@@ -56,7 +56,7 @@ python3 main.py
 | 管理器 | `airwar/game/managers/` | GameController, SpawnController, CollisionController 等 |
 | 渲染 | `airwar/game/rendering/` | GameRenderer, HUDRenderer |
 | 系统 | `airwar/game/systems/` | HealthSystem, RewardSystem, DifficultyManager 等 |
-| Buff | `airwar/game/buffs/` | 13 种 Buff（健康/进攻/防御/辅助 4 类） |
+| Buff | `airwar/game/buffs/` | 12 种 Buff（生命/攻击/防御/辅助 4 类） |
 | UI | `airwar/ui/` | GameHUD（集成 HUD）、奖励选择、面板、图标等 |
 | 存档 | `airwar/game/mother_ship/` | 母舰停靠保存（状态机、接口层、事件总线、GameIntegrator） |
 | 投降 | `airwar/game/give_up/` | 长按 K 投降机制 |
@@ -79,7 +79,7 @@ airwar-game/                  # 项目根目录
 │   │   ├── spawners/        敌人子弹生成器
 │   │   ├── systems/         游戏系统（难度、奖励、通知等）
 │   │   ├── rendering/       渲染器
-│   │   ├── buffs/           Buff 系统（13 种）
+│   │   ├── buffs/           Buff 系统（12 种）
 │   │   ├── mother_ship/     母舰存档（状态机、接口层、事件总线、GameIntegrator）
 │   │   ├── give_up/         投降检测
 │   │   ├── explosion_animation/ 爆炸特效
@@ -105,18 +105,35 @@ airwar-game/                  # 项目根目录
 └── plans/                    实现计划
 ```
 
-## Rust 原生扩展
+## Rust 原生扩展（可选）
 
-`airwar_core/` 使用 PyO3 + maturin 构建，为性能热点提供 Rust 加速：
+`airwar_core/` 使用 PyO3 + maturin 构建，为碰撞检测、移动计算等性能热点提供 Rust 加速。**此为可选模块**——未安装时自动降级到纯 Python 实现，游戏正常运行。
+
+### 前置条件
+
+- [Rust 工具链](https://rustup.rs/)（`rustup` 安装）
+- Python 虚拟环境（推荐 `.venv`）
+
+### 安装
 
 ```bash
-# 构建 Rust 扩展
+# 方式一：虚拟环境中直接安装（推荐）
+python3 -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
 cd airwar_core && maturin develop --release
+
+# 方式二：无虚拟环境时构建 wheel 后安装
+cd airwar_core
+maturin build --release
+pip install --force-reinstall target/wheels/airwar_core-*.whl
 ```
 
-Rust 模块不可用时自动降级到纯 Python 实现，无需额外处理。
+### 验证
 
-渲染采用纯 pygame 方案（Phase 6 移除了 ModernGL GPU 依赖），Rust sprites 模块仅用于 glow 表面创建。
+```bash
+python3 -c "from airwar.core_bindings import RUST_AVAILABLE; print('Rust 加速:', '启用' if RUST_AVAILABLE else '未安装（纯 Python 运行）')"
+```
 
 ## 测试
 
