@@ -278,12 +278,6 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         docked = False
         if self._mother_ship_integrator:
             self._mother_ship_integrator.update()
-
-            # Animation phases still need exclusive player control
-            if self._mother_ship_integrator.is_player_control_disabled():
-                self._bullet_manager.update_with_cleanup()
-                return
-
             docked = self._mother_ship_integrator.is_docked()
 
         if self.game_controller.state.paused or self.reward_selector.visible:

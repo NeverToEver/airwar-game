@@ -162,51 +162,89 @@ class MotherShip:
         self._render_engines(surface, cx, cy)
 
     def _render_phantom(self, surface: pygame.Surface) -> None:
-        """Draw a semi-transparent holographic preview at the target position."""
+        """Draw a holographic preview matching the actual mothership silhouette."""
         cx, cy = self._initial_x, self._initial_y
-        phantom_alpha = 60  # semi-transparent
+        pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() / 1000.0 * 2.5)
+        base_alpha = int(35 + 20 * pulse)
+        glow_alpha = int(15 + 10 * pulse)
 
         phantom_surf = pygame.Surface((surface.get_width(), surface.get_height()), pygame.SRCALPHA)
-        # Draw simplified outline using the body and wings shapes
-        self._render_phantom_body(phantom_surf, cx, cy)
-        self._render_phantom_wings(phantom_surf, cx, cy)
-        phantom_surf.set_alpha(phantom_alpha)
+        teal = (55, 188, 225)
+
+        # Outer glow layer
+        glow_color = (*teal, glow_alpha)
+        self._draw_phantom_hull(phantom_surf, cx, cy, glow_color, 6)
+        self._draw_phantom_wings(phantom_surf, cx, cy, glow_color, 6)
+
+        # Main wireframe
+        wire_color = (*teal, base_alpha)
+        self._draw_phantom_hull(phantom_surf, cx, cy, wire_color, 2)
+        self._draw_phantom_wings(phantom_surf, cx, cy, wire_color, 2)
+        self._draw_phantom_docking_bay(phantom_surf, cx, cy, wire_color)
+        self._draw_phantom_engines(phantom_surf, cx, cy, pulse)
+
         surface.blit(phantom_surf, (0, 0))
 
-    def _render_phantom_body(self, surface: pygame.Surface, cx: int, cy: int) -> None:
-        """Simplified body outline for the phantom preview."""
-        teal = (55, 188, 225)
-        hull_points = [
-            (cx, cy - 108), (cx + 26, cy - 102),
-            (cx + 44, cy - 82), (cx + 48, cy - 52),
-            (cx + 50, cy + 10), (cx + 44, cy + 58),
-            (cx + 32, cy + 88), (cx, cy + 92),
-            (cx - 32, cy + 88), (cx - 44, cy + 58),
-            (cx - 50, cy + 10), (cx - 48, cy - 52),
-            (cx - 44, cy - 82), (cx - 26, cy - 102),
+    def _draw_phantom_hull(self, surface: pygame.Surface, cx: int, cy: int,
+                           color: tuple, width: int) -> None:
+        """Hull outline matching the actual hull_outer polygon."""
+        hull = [
+            (cx, cy - 108),
+            (cx + 104, cy - 22),
+            (cx + 100, cy + 18),
+            (cx + 72, cy + 68),
+            (cx + 55, cy + 92),
+            (cx - 55, cy + 92),
+            (cx - 72, cy + 68),
+            (cx - 100, cy + 18),
+            (cx - 104, cy - 22),
         ]
-        if len(hull_points) >= 2:
-            pygame.draw.polygon(surface, teal, hull_points, 2)
+        pygame.draw.polygon(surface, color, hull, width)
 
-    def _render_phantom_wings(self, surface: pygame.Surface, cx: int, cy: int) -> None:
-        """Simplified wing outline for the phantom preview."""
-        teal = (55, 188, 225)
-        # Left wing
+    def _draw_phantom_wings(self, surface: pygame.Surface, cx: int, cy: int,
+                            color: tuple, width: int) -> None:
+        """Wing outlines matching the actual wing_outer polygons."""
         left_wing = [
-            (cx - 50, cy - 20), (cx - 130, cy - 60),
-            (cx - 200, cy - 35), (cx - 215, cy),
-            (cx - 180, cy + 20), (cx - 50, cy + 10),
+            (cx - 60, cy - 15),
+            (cx - 215, cy + 30),
+            (cx - 198, cy + 62),
+            (cx - 163, cy + 75),
+            (cx - 86, cy + 38),
         ]
-        # Right wing
         right_wing = [
-            (cx + 50, cy - 20), (cx + 130, cy - 60),
-            (cx + 200, cy - 35), (cx + 215, cy),
-            (cx + 180, cy + 20), (cx + 50, cy + 10),
+            (cx + 60, cy - 15),
+            (cx + 215, cy + 30),
+            (cx + 198, cy + 62),
+            (cx + 163, cy + 75),
+            (cx + 86, cy + 38),
         ]
-        if len(left_wing) >= 2:
-            pygame.draw.polygon(surface, teal, left_wing, 2)
-        if len(right_wing) >= 2:
-            pygame.draw.polygon(surface, teal, right_wing, 2)
+        pygame.draw.polygon(surface, color, left_wing, width)
+        pygame.draw.polygon(surface, color, right_wing, width)
+
+    def _draw_phantom_docking_bay(self, surface: pygame.Surface, cx: int, cy: int,
+                                  color: tuple) -> None:
+        """Docking bay indicator on the phantom."""
+        bay = [
+            (cx - 38, cy + 35),
+            (cx - 32, cy + 84),
+            (cx + 32, cy + 84),
+            (cx + 38, cy + 35),
+        ]
+        pygame.draw.polygon(surface, color, bay, 1)
+        # Guide lines
+        pygame.draw.line(surface, color, (cx - 24, cy + 40), (cx - 20, cy + 76), 1)
+        pygame.draw.line(surface, color, (cx + 24, cy + 40), (cx + 20, cy + 76), 1)
+
+    def _draw_phantom_engines(self, surface: pygame.Surface, cx: int, cy: int,
+                              pulse: float) -> None:
+        """Engine glow indicators on the phantom."""
+        engine_alpha = int(40 + 30 * pulse)
+        engine_color = (55, 188, 225, engine_alpha)
+        for nx in [cx - 172, cx + 172]:
+            pygame.draw.ellipse(surface, engine_color,
+                                (nx - 10, cy + 22, 20, 10))
+            pygame.draw.ellipse(surface, engine_color,
+                                (nx - 6, cy + 48, 12, 6))
 
     # ── Engine glow (back layer) ───────────────────────────────────────────
 
