@@ -84,22 +84,35 @@ class TestMotherShipStateMachine:
         from airwar.game.mother_ship.state_machine import MotherShipStateMachine
         from airwar.game.mother_ship.event_bus import EventBus
         from airwar.game.mother_ship.mother_ship_state import MotherShipState
-        
+
         bus = EventBus()
         sm = MotherShipStateMachine(bus)
         bus.publish('H_PRESSED')
         bus.publish('PROGRESS_COMPLETE')
+        assert sm.current_state == MotherShipState.ENTERING
+
+    def test_state_machine_entering_complete(self):
+        from airwar.game.mother_ship.state_machine import MotherShipStateMachine
+        from airwar.game.mother_ship.event_bus import EventBus
+        from airwar.game.mother_ship.mother_ship_state import MotherShipState
+
+        bus = EventBus()
+        sm = MotherShipStateMachine(bus)
+        bus.publish('H_PRESSED')
+        bus.publish('PROGRESS_COMPLETE')
+        bus.publish('ENTERING_COMPLETE')
         assert sm.current_state == MotherShipState.DOCKING
 
     def test_state_machine_docking_animation_complete(self):
         from airwar.game.mother_ship.state_machine import MotherShipStateMachine
         from airwar.game.mother_ship.event_bus import EventBus
         from airwar.game.mother_ship.mother_ship_state import MotherShipState
-        
+
         bus = EventBus()
         sm = MotherShipStateMachine(bus)
         bus.publish('H_PRESSED')
         bus.publish('PROGRESS_COMPLETE')
+        bus.publish('ENTERING_COMPLETE')
         bus.publish('DOCKING_ANIMATION_COMPLETE')
         assert sm.current_state == MotherShipState.DOCKED
 
