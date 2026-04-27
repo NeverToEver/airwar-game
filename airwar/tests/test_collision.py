@@ -583,9 +583,9 @@ class TestBoundaryConditions:
         scene.enter(difficulty='medium')
 
         scene.milestone_index = 0
-        # threshold[0] = 800 for medium difficulty
+        # threshold[0] = 2000 for medium difficulty
         threshold = scene._get_current_threshold(0)
-        assert threshold == 800
+        assert threshold == 2000
 
         scene.milestone_index = scene.game_controller.max_cycles - 1
         threshold = scene._get_current_threshold(scene.milestone_index)
@@ -600,9 +600,9 @@ class TestBoundaryConditions:
         assert scene.cycle_count == 0
 
         scene.cycle_count = 5
-        # threshold[0] = 800 for medium difficulty (not affected by cycle_count)
+        # threshold[0] = 2000 for medium difficulty (not affected by cycle_count)
         threshold = scene._get_current_threshold(0)
-        assert threshold == 800
+        assert threshold == 2000
 
 
 class TestExceptionHandling:

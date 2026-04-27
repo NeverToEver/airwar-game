@@ -78,10 +78,9 @@ class GameController:
         self.cycle_count = 0
         self.milestone_index = 0
         self.max_cycles = GAME_CONSTANTS.BALANCE.MAX_CYCLES
-        self.initial_delta = 800
-        self.delta_growth = 800
+        self.initial_delta = 2000
         self.max_delta = settings['max_delta']
-        self.max_threshold = 50000
+        self.max_threshold = 100000
         self.difficulty_multiplier = settings['difficulty_multiplier']
 
     # 3. Public lifecycle methods
