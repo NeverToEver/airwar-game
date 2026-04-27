@@ -365,6 +365,7 @@ class GameIntegrator:
 
         is_docked = self._state_machine.current_state == MotherShipState.DOCKED
 
+        player = self._game_scene.player
         return GameSaveData(
             score=self._game_scene.get_score(),
             cycle_count=self._game_scene.get_cycle_count(),
@@ -375,6 +376,8 @@ class GameIntegrator:
             player_health=self._game_scene.get_player_health(),
             player_max_health=self._game_scene.get_player_max_health(),
             difficulty=self._game_scene.get_difficulty(),
+            player_x=player.rect.x if player else 0,
+            player_y=player.rect.y if player else 0,
             is_in_mothership=is_docked,
             username=self._game_scene.get_username(),
         )

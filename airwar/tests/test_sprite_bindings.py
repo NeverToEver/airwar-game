@@ -71,22 +71,21 @@ class TestSpriteRendering:
 
         screen = pygame.Surface((200, 200))
         draw_single_bullet(screen, 100, 100, 8, 16)
-        # Check that glow was cached
-        assert (8, 16) in _single_bullet_glow_cache
+        assert (11, 20, 'player') in _single_bullet_glow_cache
 
     def test_draw_spread_bullet(self):
         from airwar.utils.sprites import draw_spread_bullet, _spread_bullet_glow_cache
 
         screen = pygame.Surface((200, 200))
         draw_spread_bullet(screen, 100, 100, 12, 12)
-        assert 6 in _spread_bullet_glow_cache
+        assert (6, 'player') in _spread_bullet_glow_cache
 
     def test_draw_laser_bullet(self):
         from airwar.utils.sprites import draw_laser_bullet, _laser_bullet_glow_cache
 
         screen = pygame.Surface((200, 200))
         draw_laser_bullet(screen, 100, 100, 4, 20)
-        assert 20 in _laser_bullet_glow_cache
+        assert (20, 'player') in _laser_bullet_glow_cache
 
     def test_draw_explosive_missile(self):
         from airwar.utils.sprites import draw_explosive_missile, _explosive_missile_cache

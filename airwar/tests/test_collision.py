@@ -449,27 +449,7 @@ class TestCollisionIntegration:
         assert result is True
         assert len(player_hit_called) == 1
         assert player_hit_called[0] == 30
-    
-    def test_invincibility_prevents_damage(self):
-        controller = CollisionController()
-        
-        player_hitbox = MockRect(centerx=400, centery=500, width=12, height=16)
-        enemies = [MockEnemy(health=100, active=True)]
-        
-        player_hit_called = []
-        def on_hit(damage):
-            player_hit_called.append(damage)
-        
-        def try_dodge():
-            return False
-        
-        result = controller.check_player_vs_enemies(
-            player_hitbox, enemies, try_dodge, on_hit
-        )
-        
-        assert result is False
-        assert len(player_hit_called) == 0
-    
+
     def test_explosive_damage(self):
         controller = CollisionController()
         

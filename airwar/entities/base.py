@@ -141,7 +141,7 @@ class BulletData:
         is_explosive: Whether the bullet explodes on impact.
     """
     damage: int = 10
-    speed: float = 10.0
+    speed: float = 14.0
     owner: str = "player"
     bullet_type: str = "single"
     angle_offset: float = 0.0

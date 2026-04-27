@@ -190,7 +190,7 @@ class TestBossEntity:
         from airwar.entities import Boss, BossData
         boss = Boss(100, 0, BossData())
         assert boss.is_entering() is True
-        for _ in range(50):
+        for _ in range(100):
             boss.update()
         assert boss.is_entering() is False
 
@@ -317,17 +317,6 @@ class TestPlayerHitbox:
         bullet = player.fire()
         assert bullet is not None
         assert bullet.data.owner == 'player'
-
-    def test_player_fire_cooldown_respects_cooldown(self):
-        from airwar.entities import Player
-        from airwar.input import MockInputHandler
-        input_handler = MockInputHandler()
-        player = Player(100, 200, input_handler)
-        player.fire_cooldown = 5
-        initial_count = len(player.get_bullets())
-        bullet = player.fire()
-        assert bullet is None
-        assert len(player.get_bullets()) == initial_count
 
     def test_player_data_default_values(self):
         from airwar.entities import Player

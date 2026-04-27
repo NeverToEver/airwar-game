@@ -115,6 +115,8 @@ class GameSaveData:
     player_max_health: int = 100
     difficulty: str = "medium"
     timestamp: float = field(default_factory=time.time)
+    player_x: float = 0.0
+    player_y: float = 0.0
     is_in_mothership: bool = False
     username: str = ""
 
@@ -131,6 +133,8 @@ class GameSaveData:
             'player_max_health': self.player_max_health,
             'difficulty': self.difficulty,
             'timestamp': self.timestamp,
+            'player_x': self.player_x,
+            'player_y': self.player_y,
             'is_in_mothership': self.is_in_mothership,
             'username': self.username,
         }
@@ -151,7 +155,11 @@ class GameSaveData:
             if field_name not in data:
                 raise SaveDataCorruptedError(f"Missing required field: {field_name}")
 
-        return cls(**data)
+        data.setdefault('player_x', 0.0)
+        data.setdefault('player_y', 0.0)
+
+        return cls(**{k: v for k, v in data.items()
+                      if k in cls.__dataclass_fields__})
 
     @classmethod
     def _migrate_legacy_save(cls, data: Dict) -> Dict:

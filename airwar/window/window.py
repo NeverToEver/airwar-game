@@ -6,7 +6,7 @@ from airwar.config import set_screen_size
 
 class Window:
     """Resizable pygame window with event handling and mode management."""
-    def __init__(self, width: int = 1400, height: int = 800, title: str = 'Air War', resizable: bool = True):
+    def __init__(self, width: int = 1920, height: int = 1080, title: str = 'Air War', resizable: bool = True):
         self._running = False
         self._screen: Optional[pygame.Surface] = None
         self._clock: Optional[pygame.time.Clock] = None
@@ -16,8 +16,8 @@ class Window:
         self._height = height
         self._title = title
         self._resizable = resizable
-        self._min_size = (800, 600)
-        self._max_size = (1920, 1080)
+        self._min_size = (1024, 768)
+        self._max_size = (2560, 1440)
         self._is_fullscreen = False
         self._windowed_size = (width, height)
 

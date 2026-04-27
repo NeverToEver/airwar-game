@@ -48,6 +48,9 @@ class HUDRenderer:
         self.hud_font = pygame.font.Font(None, tokens.typography.HUD_SIZE)
         self.buff_font = pygame.font.Font(None, tokens.typography.TINY_SIZE)
         self.notif_font = pygame.font.Font(None, tokens.typography.CAPTION_SIZE)
+        self._boss_small_font = pygame.font.Font(None, tokens.typography.SMALL_SIZE)
+        self._boss_label_font = pygame.font.Font(None, SystemUI.MILITARY_LABEL_SIZE)
+        self._boss_warning_font = pygame.font.Font(None, SystemUI.MILITARY_SMALL_SIZE)
         self._buff_stats_panel = BuffStatsPanel()
         self._attack_mode_panel = AttackModePanel()
 
@@ -139,7 +142,7 @@ class HUDRenderer:
         bar_color = colors.BOSS_HEALTH_HIGH if health_ratio > 0.5 else colors.BOSS_HEALTH_MED if health_ratio > 0.25 else colors.BOSS_HEALTH_LOW
         pygame.draw.rect(surface, bar_color, (x, y, int(bar_width * health_ratio), bar_height), border_radius=6)
 
-        font = pygame.font.Font(None, self._tokens.typography.SMALL_SIZE)
+        font = self._boss_small_font
         boss_text = font.render("BOSS", True, colors.TEXT_PRIMARY)
         text_rect = boss_text.get_rect(center=(x + bar_width // 2, y + bar_height // 2))
         surface.blit(boss_text, text_rect)
@@ -176,7 +179,7 @@ class HUDRenderer:
 
         # Draw segmented progress bar
         boss_bar = BossHealthBar(bar_width, bar_height)
-        font = pygame.font.Font(None, SystemUI.MILITARY_LABEL_SIZE)
+        font = self._boss_label_font
 
         # Determine boss name
         boss_name = getattr(boss, 'name', 'BOSS') if boss else 'BOSS'
@@ -204,7 +207,7 @@ class HUDRenderer:
         # Hurry warning
         progress = getattr(boss, 'get_survival_progress', lambda: 0)()
         if progress > 0.7:
-            warning_font = pygame.font.Font(None, SystemUI.MILITARY_SMALL_SIZE)
+            warning_font = self._boss_warning_font
             warning_text = warning_font.render("HURRY!", True, SystemColors.DANGER_RED)
             warning_rect = warning_text.get_rect(left=x + 8, centery=y + bar_height // 2)
             surface.blit(warning_text, warning_rect)

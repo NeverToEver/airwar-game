@@ -133,6 +133,7 @@ class StarLayer:
         self._twinkle_speed_range = twinkle_speed_range
         self._scroll_offset = 0.0
         self._stars: List[dict] = []
+        self._glow_cache: dict = {}
         self._init_stars(screen_width, screen_height, count)
 
     def _init_stars(self, screen_width: int, screen_height: int, count: int) -> None:
@@ -156,34 +157,32 @@ class StarLayer:
 
     def render(self, surface: pygame.Surface, time: float) -> None:
         for star in self._stars:
-            # Scrolling vertical movement
             y = (star['y'] + self._scroll_offset) % 1.0
 
             x = int(star['x'] * self._screen_width)
             y_pos = int(y * self._screen_height)
 
-            # Twinkle effect
             twinkle = math.sin(time * star['twinkle_speed'] + star['twinkle_offset'])
             brightness = int(star['brightness'] * (0.5 + 0.5 * twinkle) * 255)
 
             size = max(1, int(star['size']))
 
-            # Draw star with soft glow
             if brightness > 30:
-                # Glow
                 glow_radius = size * 2
-                glow_surf = pygame.Surface((glow_radius * 2, glow_radius * 2), pygame.SRCALPHA)
                 glow_alpha = min(40, brightness // 4)
-                pygame.draw.circle(
-                    glow_surf,
-                    (*self._color, glow_alpha),
-                    (glow_radius, glow_radius),
-                    glow_radius
-                )
-                surface.blit(glow_surf, (x - glow_radius, y_pos - glow_radius),
+                cache_key = (glow_radius, glow_alpha)
+                if cache_key not in self._glow_cache:
+                    glow_surf = pygame.Surface((glow_radius * 2, glow_radius * 2), pygame.SRCALPHA)
+                    pygame.draw.circle(
+                        glow_surf,
+                        (*self._color, glow_alpha),
+                        (glow_radius, glow_radius),
+                        glow_radius
+                    )
+                    self._glow_cache[cache_key] = glow_surf
+                surface.blit(self._glow_cache[cache_key], (x - glow_radius, y_pos - glow_radius),
                            special_flags=pygame.BLEND_RGBA_ADD)
 
-            # Core
             core_brightness = max(0, min(255, brightness))
             pygame.draw.circle(
                 surface,
@@ -208,6 +207,7 @@ class DustLayer:
         self._dust: List[dict] = []
         self._speed_range = speed_range
         self._scroll_offset = 0.0
+        self._glow_cache: dict = {}
         self._init_dust(screen_width, screen_height, count)
 
     def _init_dust(self, screen_width: int, screen_height: int, count: int) -> None:
@@ -256,16 +256,19 @@ class DustLayer:
             alpha = int(d['alpha'] * (0.6 + 0.4 * pulse))
             size = max(1, int(d['size'] * (0.7 + 0.3 * pulse)))
 
-            dust_surf = pygame.Surface((size * 4, size * 4), pygame.SRCALPHA)
-            for layer in range(size * 2, 0, -2):
-                layer_alpha = int(alpha * (size * 2 - layer) / (size * 2) * 0.3)
-                pygame.draw.circle(
-                    dust_surf,
-                    (*particle_color, layer_alpha),
-                    (size * 2, size * 2),
-                    layer
-                )
-            surface.blit(dust_surf, (x - size * 2, y - size * 2),
+            cache_key = (size, alpha)
+            if cache_key not in self._glow_cache:
+                dust_surf = pygame.Surface((size * 4, size * 4), pygame.SRCALPHA)
+                for layer in range(size * 2, 0, -2):
+                    layer_alpha = int(alpha * (size * 2 - layer) / (size * 2) * 0.3)
+                    pygame.draw.circle(
+                        dust_surf,
+                        (*particle_color, layer_alpha),
+                        (size * 2, size * 2),
+                        layer
+                    )
+                self._glow_cache[cache_key] = dust_surf
+            surface.blit(self._glow_cache[cache_key], (x - size * 2, y - size * 2),
                         special_flags=pygame.BLEND_RGBA_ADD)
 
 

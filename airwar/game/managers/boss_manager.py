@@ -93,7 +93,8 @@ class BossManager:
         """
         player_pos = (player.rect.centerx, player.rect.centery)
         enemies = self._spawn_controller.enemies
-        boss.update(enemies, player_pos=player_pos)
+        slow_factor = self._reward_system.slow_factor
+        boss.update(enemies, slow_factor=slow_factor, player_pos=player_pos)
 
     def _handle_boss_escape(self, boss) -> None:
         """处理 Boss 逃跑

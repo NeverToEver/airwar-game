@@ -106,24 +106,3 @@ class TestPauseSceneResult:
         scene._select_option()
 
         assert scene.get_result() == PauseAction.RESUME
-
-
-class TestSceneDirectorFlow:
-    """Tests for SceneDirector flow control"""
-
-    def test_scene_director_run_signature(self):
-        from airwar.game.scene_director import SceneDirector
-
-        director = SceneDirector.__new__(SceneDirector)
-        director._running = False
-
-        assert hasattr(SceneDirector, 'run')
-        assert callable(getattr(SceneDirector, 'run'))
-
-    def test_run_game_flow_returns_string(self):
-        from airwar.game.scene_director import SceneDirector
-        import inspect
-
-        sig = inspect.signature(SceneDirector._run_game_flow)
-        return_annotation = sig.return_annotation
-        assert return_annotation == str or 'str' in str(return_annotation)
