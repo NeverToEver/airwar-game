@@ -486,21 +486,37 @@ class TestCollisionIntegration:
         for enemy in enemies:
             assert enemy.health < 100
     
-    def test_piercing_bullet_passes_through(self):
+    def test_bullet_deactivates_without_piercing(self):
+        """Without piercing, bullet is consumed after hitting an enemy."""
         controller = CollisionController()
-        
+
         player_bullets = [MockBullet(active=True, damage=50)]
         enemies = [
             MockEnemy(health=50, active=True),
             MockEnemy(health=50, active=True),
         ]
-        
+
         score_gained, enemies_killed = controller.check_player_bullets_vs_enemies(
-            player_bullets, enemies, score_multiplier=1, explosive_level=0
+            player_bullets, enemies, score_multiplier=1, explosive_level=0,
         )
-        
+
         assert enemies_killed == 1
         assert player_bullets[0].active is False
+
+    def test_bullet_pierces_with_piercing_level(self):
+        """With piercing_level > 0, bullet stays active after hitting an enemy."""
+        controller = CollisionController()
+
+        player_bullets = [MockBullet(active=True, damage=50)]
+        enemies = [MockEnemy(health=50, active=True)]
+
+        score_gained, enemies_killed = controller.check_player_bullets_vs_enemies(
+            player_bullets, enemies, score_multiplier=1, explosive_level=0,
+            piercing_level=1,
+        )
+
+        assert enemies_killed >= 1
+        assert player_bullets[0].active is True
     
     def test_full_collision_sequence(self):
         from airwar.game.systems.reward_system import RewardSystem

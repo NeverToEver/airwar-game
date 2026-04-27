@@ -201,6 +201,8 @@ class GameLoopManager:
                 boss=self._spawn_controller.boss,
                 enemy_bullets=enemy_bullets,
                 reward_system=self._reward_system,
+                explosive_level=self._reward_system.explosive_level,
+                piercing_level=self._reward_system.piercing_level,
                 player_invincible=self._game_controller.state.player_invincible,
                 score_multiplier=self._game_controller.state.score_multiplier,
                 on_enemy_killed=lambda score: self._game_controller.on_enemy_killed(score),
