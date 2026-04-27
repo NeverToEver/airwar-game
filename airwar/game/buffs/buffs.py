@@ -1,4 +1,4 @@
-"""Buff implementations — 18 buff types for player power-ups."""
+"""Buff implementations — 12 buff types for player power-ups."""
 from .base_buff import Buff, BuffResult
 
 
@@ -47,21 +47,6 @@ class LifestealBuff(Buff):
         return BuffResult(name=self.NAME, notification=self.get_notification(1), color=self.COLOR)
 
 
-class ShieldBuff(Buff):
-    """Shield buff — blocks the next hit of damage."""
-    NAME = 'Shield'
-    COLOR = (200, 100, 255)
-
-    def calculate_value(self, base_value: int, current_level: int) -> int:
-        return current_level
-
-    def calculate_increment(self, base_value: int) -> int:
-        return 1
-
-    def apply(self, player) -> BuffResult:
-        return BuffResult(name=self.NAME, notification=self.get_notification(1), color=self.COLOR)
-
-
 class ArmorBuff(Buff):
     """Armor buff — reduces incoming damage by a percentage."""
     NAME = 'Armor'
@@ -97,21 +82,6 @@ class EvasionBuff(Buff):
         if level == 1:
             return 'REWARD: Evasion'
         return f'UPGRADED: Evasion (Lv.{level})'
-
-    def apply(self, player) -> BuffResult:
-        return BuffResult(name=self.NAME, notification=self.get_notification(1), color=self.COLOR)
-
-
-class BarrierBuff(Buff):
-    """Barrier buff — grants temporary HP that absorbs damage first."""
-    NAME = 'Barrier'
-    COLOR = (100, 150, 200)
-
-    def calculate_value(self, base_value: int, current_level: int) -> int:
-        return current_level
-
-    def calculate_increment(self, base_value: int) -> int:
-        return 50
 
     def apply(self, player) -> BuffResult:
         return BuffResult(name=self.NAME, notification=self.get_notification(1), color=self.COLOR)
@@ -217,26 +187,6 @@ class ExplosiveBuff(Buff):
         return BuffResult(name=self.NAME, notification=self.get_notification(1), color=self.COLOR)
 
 
-class ShotgunBuff(Buff):
-    """Shotgun buff — fires a shotgun-style burst of bullets."""
-    NAME = 'Shotgun'
-    COLOR = (255, 120, 200)
-
-    def calculate_value(self, base_value: int, current_level: int) -> int:
-        return current_level
-
-    def calculate_increment(self, base_value: int) -> int:
-        return 1
-
-    def get_notification(self, level: int) -> str:
-        if level == 1:
-            return 'REWARD: Shotgun Mode'
-        return f'UPGRADED: Shotgun (Lv.{level})'
-
-    def apply(self, player) -> BuffResult:
-        return BuffResult(name=self.NAME, notification=self.get_notification(1), color=self.COLOR)
-
-
 class LaserBuff(Buff):
     """Laser buff — continuous laser beam attack."""
     NAME = 'Laser'
@@ -252,36 +202,6 @@ class LaserBuff(Buff):
         if level == 1:
             return 'REWARD: Laser Mode'
         return f'UPGRADED: Laser (Lv.{level})'
-
-    def apply(self, player) -> BuffResult:
-        return BuffResult(name=self.NAME, notification=self.get_notification(1), color=self.COLOR)
-
-
-class SpeedBoostBuff(Buff):
-    """Speed boost buff — increases player movement speed."""
-    NAME = 'Speed Boost'
-    COLOR = (100, 255, 200)
-
-    def calculate_value(self, base_value: int, current_level: int) -> int:
-        return current_level
-
-    def calculate_increment(self, base_value: int) -> int:
-        return 1
-
-    def apply(self, player) -> BuffResult:
-        return BuffResult(name=self.NAME, notification=self.get_notification(1), color=self.COLOR)
-
-
-class MagnetBuff(Buff):
-    """Magnet buff — increases pickup range for score items."""
-    NAME = 'Magnet'
-    COLOR = (255, 255, 100)
-
-    def calculate_value(self, base_value: int, current_level: int) -> int:
-        return current_level
-
-    def calculate_increment(self, base_value: int) -> int:
-        return 1
 
     def apply(self, player) -> BuffResult:
         return BuffResult(name=self.NAME, notification=self.get_notification(1), color=self.COLOR)

@@ -127,15 +127,6 @@ class TestRewardSystem:
         scene._on_reward_selected(reward)
         assert scene.player.bullet_damage == int(initial_damage * 1.25)
 
-    def test_reward_apply_barrier(self):
-        from airwar.scenes.game_scene import GameScene
-        scene = GameScene()
-        scene.enter(difficulty='medium')
-        reward = {'name': 'Barrier', 'desc': 'Gain 50 temporary HP', 'icon': 'BAR'}
-        scene._on_reward_selected(reward)
-        assert scene.player.max_health == 150
-        assert scene.player.health == 150
-
     def test_reward_cycle_increments_at_threshold(self):
         from airwar.scenes.game_scene import GameScene
         scene = GameScene()

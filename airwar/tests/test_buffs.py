@@ -14,7 +14,7 @@ class TestBuffRegistry:
         expected_buffs = [
             'Extra Life', 'Regeneration', 'Lifesteal',
             'Power Shot', 'Rapid Fire', 'Piercing', 'Spread Shot', 'Explosive', 'Laser',
-            'Armor', 'Evasion', 'Barrier', 'Slow Field',
+            'Armor', 'Evasion', 'Slow Field',
         ]
         for buff_name in expected_buffs:
             assert buff_name in BUFF_REGISTRY, f"Missing buff: {buff_name}"
@@ -28,7 +28,7 @@ class TestBuffRegistry:
     @pytest.mark.parametrize('buff_name', [
         'Extra Life', 'Regeneration', 'Lifesteal',
         'Power Shot', 'Rapid Fire', 'Piercing', 'Spread Shot', 'Explosive', 'Laser',
-        'Armor', 'Evasion', 'Barrier', 'Slow Field',
+        'Armor', 'Evasion', 'Slow Field',
     ])
     def test_all_buffs_can_be_created(self, buff_name):
         from airwar.game.buffs.buff_registry import create_buff
@@ -39,7 +39,7 @@ class TestBuffRegistry:
     @pytest.mark.parametrize('buff_name', [
         'Extra Life', 'Regeneration', 'Lifesteal',
         'Power Shot', 'Rapid Fire', 'Piercing', 'Spread Shot', 'Explosive', 'Laser',
-        'Armor', 'Evasion', 'Barrier', 'Slow Field',
+        'Armor', 'Evasion', 'Slow Field',
     ])
     def test_all_buffs_have_required_methods(self, buff_name):
         from airwar.game.buffs.buff_registry import create_buff
@@ -82,12 +82,6 @@ class TestBuffCalculations:
         assert buff.calculate_value(0, 1) == 1
         assert buff.calculate_increment(0) == 1
 
-    def test_barrier_calculate_value(self):
-        from airwar.game.buffs.buff_registry import create_buff
-        buff = create_buff('Barrier')
-        assert buff.calculate_value(0, 1) == 1
-        assert buff.calculate_increment(100) == 50
-
     def test_buff_get_notification(self):
         from airwar.game.buffs.buff_registry import create_buff
         buff = create_buff('Power Shot')
@@ -118,17 +112,6 @@ class TestBuffApplication:
         buff = create_buff('Power Shot')
         result = buff.apply(player)
         assert result.name == 'Power Shot'
-
-    @pytest.mark.smoke
-    def test_shield_buff_apply(self):
-        from airwar.game.buffs.buff_registry import create_buff
-        from airwar.entities import Player
-        from airwar.input import MockInputHandler
-        player = Player(100, 200, MockInputHandler())
-        buff = create_buff('Barrier')
-        result = buff.apply(player)
-        assert result is not None
-
 
 class TestRewardSystemUpgrades:
     @pytest.mark.parametrize('reward_name,level_attr', [
