@@ -27,7 +27,7 @@ pip install -r requirements.txt
 ### Run the Game
 
 ```bash
-cd /Users/xiepeilin/ccProject/airwar-game && python3 main.py
+cd /home/ubt/airwar && python3 main.py
 ```
 
 ### Test
@@ -62,7 +62,7 @@ cd airwar_core && maturin develop --release
 
 Config at `airwar/tests/pytest.ini` — defaults: `-v --tb=short -ra`. Markers: `smoke` (core), `slow` (integration/performance). Fixtures: `temp_db`, `clean_imports`. Some tests require `pygame.init()`.
 
-**Note:** Tests must be run from the project root directory (`/Users/xiepeilin/ccProject/airwar-game`), not from within the `airwar/` subdirectory.
+**Note:** Tests must be run from the project root directory (`/home/ubt/airwar`), not from within the `airwar/` subdirectory.
 
 ### Validation Commands
 
@@ -261,10 +261,19 @@ The mothership docking/save system uses an interface-driven design with 6 ABCs i
 | `IMotherShipUI` | Mothership visual state display |
 | `IEventBus` | Publish/subscribe for cross-system events |
 | `IPersistenceManager` | Save/load game state (JSON) |
-| `IMotherShipStateMachine` | Docking state machine (`APPROACHING` → `DOCKING` → `DOCKED` → `UNDOCKING` → `COOLDOWN`) |
+| `IMotherShipStateMachine` | Docking state machine (`IDLE → PRESSING → DOCKING → DOCKED → UNDOCKING → COOLDOWN`) |
 | `IGameScene` | Contract for `GameIntegrator` to access `GameScene` without layer violations (30+ methods: score, health, buffs, enemies, etc.) |
 
-`GameIntegrator` (`game/mother_ship/game_integrator.py`) bridges mothership state with game systems — coordinates entity states, player position, and UI during the docking process. MotherShip also auto-attacks up to 3 closest enemies during docking.
+**Mothership visual:** Large capital-class vessel (cold-steel-blue, ~430px wingspan), swept-back wings, bridge tower with cyan glass canopy, underside docking bay with pulsing guide lights. Rendered via `draw_glow_circle` and multi-layer polygon hull.
+
+**Docking flow:**
+1. Hold H 3s → `DOCKING` animation (90f ease-in-out-cubic) — player smoothly pulled to docking bay, silent invincibility + controls locked
+2. `DOCKED` (20s) — player rides inside mothership, mothership fires **explosive missiles** (250 damage, 80px AoE radius, 5 targets, ~3.3 shots/sec), full game loop continues (enemies spawn, boss timer advances)
+3. Stay expired → `UNDOCKING` two-phase: Phase 1 ejects player backward (30f), Phase 2 mothership accelerates upward off-screen (60+f)
+
+**Mothership movement:** WASD/arrows, only during DOCKED state. No inertial friction — direct response. Starts fixed at screen center.
+
+**Invincibility:** Uses `silent_invincible` flag during docking to suppress the standard damage-blink visual effect. Player `controls_locked` prevents movement and auto-fire while docked.
 
 ### Other Key Subsystems
 
@@ -282,7 +291,19 @@ The mothership docking/save system uses an interface-driven design with 6 ABCs i
 ### Rendering Pipeline
 
 Pure pygame rendering (no GPU/ModernGL). The rendering pipeline draws in order:
-Parallax starfield background → Entities → Effects (explosions, ripples) → MotherShip → HUD → UI overlays (pause, reward selector, notifications)
+Parallax starfield background → Entities → Bullets → HUD → Notifications → Pause button → MotherShip → Explosions → GiveUp UI → **Reward Selector (topmost)**
+
+### Enemy Movement
+
+8 movement patterns in `entities/movement_strategies.py` and `airwar_core/src/movement.rs`:
+- **Entry:** Ease-out quad deceleration into position
+- **Active transition:** First 15 frames blend from static target to full pattern amplitude (ease-in quad)
+- **Zigzag fix:** Y-axis oscillation uses `_lifetime` (non-resetting timer) instead of `zigzag_timer` to prevent 6-25px frame jumps
+- Python `_smooth_noise` corrected to match Rust interpolation (`int_x + 1` ceiling, not `int_x + frac_x`)
+
+### Window / Fullscreen
+
+`window/window.py` — `pygame.FULLSCREEN` (without `SCALED`) for fullscreen mode. `SCALED` causes cropped viewport on pygame 2.6+ X11/Wayland backends. `SCALED` retained for windowed resize mode.
 
 ---
 

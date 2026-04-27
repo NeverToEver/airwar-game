@@ -105,6 +105,10 @@ class Enemy(Entity):
         self._active_position_x = x
         self._active_position_y = y
 
+        # Entry-to-active transition smoothing
+        self._transition_timer = 0
+        self._transition_duration = 15  # frames to blend from entry to full pattern
+
     # 2. Properties
 
     @property
@@ -146,10 +150,11 @@ class Enemy(Entity):
                 self._active_position_y = self.rect.y
                 self._lifetime = 0
             else:
-                # Linear entry animation from above screen to target position
+                # Eased entry: decelerate into target position
                 t = self._entry_progress
-                self.rect.x = self._entry_start_x + (self._entry_target_x - self._entry_start_x) * t
-                self.rect.y = self._entry_start_y + (self._entry_target_y - self._entry_start_y) * t
+                t_eased = 1.0 - (1.0 - t) * (1.0 - t)  # ease-out quad
+                self.rect.x = self._entry_start_x + (self._entry_target_x - self._entry_start_x) * t_eased
+                self.rect.y = self._entry_start_y + (self._entry_target_y - self._entry_start_y) * t_eased
                 self._sync_rects()
             return
 
@@ -233,6 +238,15 @@ class Enemy(Entity):
         else:
             # Fallback to Python movement via strategy pattern
             self._movement_strategy.update(self)
+
+        # Blend from entry target to full pattern amplitude during transition
+        if self._transition_timer < self._transition_duration:
+            self._transition_timer += 1
+            t = self._transition_timer / self._transition_duration
+            blend = t * t  # ease-in quad
+            self.rect.x = self._active_position_x + (self.rect.x - self._active_position_x) * blend
+            self.rect.y = self._active_position_y + (self.rect.y - self._active_position_y) * blend
+            self._sync_rects()
 
         if self.rect.y > get_screen_height():
             self.active = False

@@ -29,6 +29,7 @@ class GameState:
     running: bool = True
     player_invincible: bool = False
     invincibility_timer: int = 0
+    silent_invincible: bool = False
     ripple_effects: List[dict] = field(default_factory=list)
     notification: Optional[str] = None
     notification_timer: int = 0

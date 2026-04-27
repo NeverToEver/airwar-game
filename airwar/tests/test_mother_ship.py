@@ -126,9 +126,9 @@ class TestMotherShip:
         from airwar.game.mother_ship.mother_ship import MotherShip
         ship = MotherShip(800, 600)
         pos = ship.get_docking_position()
-        # Docking position: _initial_y = screen_height * 0.35 = 210, + DOCKING_BAY_Y_OFFSET = 50
+        # Docking position: _initial_y = screen_height * 0.35 = 210, + DOCKING_BAY_Y_OFFSET = 85
         assert pos[0] == 400
-        assert pos[1] == 260
+        assert pos[1] == 295
 
 
 class TestGameIntegrator:

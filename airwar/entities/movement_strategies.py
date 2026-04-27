@@ -61,7 +61,7 @@ class ZigzagMovement(MovementStrategy):
             enemy._active_position_x - 80,
             min(new_x, enemy._active_position_x + 80)
         )
-        enemy.rect.y = enemy._active_position_y + math.sin(enemy.zigzag_timer * 0.1) * 25
+        enemy.rect.y = enemy._active_position_y + math.sin(enemy._lifetime * 0.1) * 25
         enemy._sync_rects()
 
 
@@ -160,9 +160,9 @@ def _smooth_noise(x: float, seed: int) -> float:
     v1 = math.sin(int_x * 1.0 + seed * 0.1) * 0.5
     v2 = math.sin(int_x * 2.3 + seed * 0.2) * 0.3
     v3 = math.sin(int_x * 4.7 + seed * 0.3) * 0.2
-    v4 = math.sin((int_x + frac_x) * 1.0 + seed * 0.1) * 0.5
-    v5 = math.sin((int_x + frac_x) * 2.3 + seed * 0.2) * 0.3
-    v6 = math.sin((int_x + frac_x) * 4.7 + seed * 0.3) * 0.2
+    v4 = math.sin((int_x + 1) * 1.0 + seed * 0.1) * 0.5
+    v5 = math.sin((int_x + 1) * 2.3 + seed * 0.2) * 0.3
+    v6 = math.sin((int_x + 1) * 4.7 + seed * 0.3) * 0.2
 
     t = 0.5 - 0.5 * math.cos(frac_x * math.pi)
     val0 = v1 + v2 + v3
