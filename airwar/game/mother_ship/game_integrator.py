@@ -145,24 +145,8 @@ class GameIntegrator:
             self._update_mothership_bullets()
             dock_pos = self._mother_ship.get_docking_position()
             self._game_scene.set_player_position(dock_pos[0], dock_pos[1])
-            self._progress_bar_ui.update_progress(
-                self._state_machine.stay_progress.stay_progress,
-                (1.0 - self._state_machine.stay_progress.stay_progress) * 20.0
-            )
         elif self._state_machine.is_entering():
             self._update_mothership_bullets()
-        elif self._state_machine.is_in_cooldown():
-            self._progress_bar_ui.update_progress(
-                self._state_machine.cooldown.cooldown_progress,
-                (1.0 - self._state_machine.cooldown.cooldown_progress) * self._state_machine.cooldown.cooldown_duration
-            )
-        elif self._docking_animation_active or self._undocking_animation_active:
-            # During docking/undocking animation, progress bar is managed
-            # by the animation itself; game loop continues running normally
-            pass
-        else:
-            progress = self._input_detector.get_progress()
-            self._progress_bar_ui.update_progress(progress.current_progress)
 
     def _update_mothership_firing(self) -> None:
         if not self._game_scene or not self._game_scene.spawn_controller:
@@ -314,31 +298,25 @@ class GameIntegrator:
     def _on_state_changed(self, state, **kwargs) -> None:
         if state == MotherShipState.PRESSING:
             self._mother_ship.show_phantom()
-            self._progress_bar_ui.show(self.BAR_TYPE_HOLD, 3.0)
             self._clear_ripple_effects()
         elif state == MotherShipState.IDLE:
             self._mother_ship.hide_phantom()
             self._mother_ship.hide()
-            self._progress_bar_ui.hide()
             self._clear_ripple_effects()
             self._clear_mothership_bullets()
         elif state == MotherShipState.ENTERING:
             self._mother_ship.hide_phantom()
-            self._progress_bar_ui.hide()
             self._clear_ripple_effects()
         elif state == MotherShipState.COOLDOWN:
             self._mother_ship.hide()
-            self._progress_bar_ui.show(self.BAR_TYPE_COOLDOWN, self._state_machine.cooldown.cooldown_duration)
             self._clear_ripple_effects()
             self._clear_mothership_bullets()
         elif state == MotherShipState.UNDOCKING:
             self._mother_ship.show()
-            self._progress_bar_ui.show(self.BAR_TYPE_HOLD, 2.0)
             self._clear_ripple_effects()
             self._clear_mothership_bullets()
         elif state == MotherShipState.DOCKED:
             self._mother_ship.show()
-            self._progress_bar_ui.show(self.BAR_TYPE_STAY, 20.0)
             self._player_control_disabled = False
             self._activate_invincibility()
             self._clear_ripple_effects()
@@ -350,27 +328,22 @@ class GameIntegrator:
                 self._game_scene.player.controls_locked = True
 
     def _on_cooldown_started(self, **kwargs) -> None:
-        self._progress_bar_ui.show(self.BAR_TYPE_COOLDOWN, self._state_machine.cooldown.cooldown_duration)
         self._deactivate_invincibility()
 
     def _on_stay_started(self, **kwargs) -> None:
-        self._progress_bar_ui.show(self.BAR_TYPE_STAY, 20.0)
+        pass
 
     def _on_undock_requested(self, **kwargs) -> None:
-        self._progress_bar_ui.show(self.BAR_TYPE_HOLD, 2.0)
+        pass
 
     def _on_h_released_early(self, **kwargs) -> None:
-        if self._state_machine.is_docked():
-            self._progress_bar_ui.show(self.BAR_TYPE_STAY, 20.0)
+        pass
 
     def _on_exit_started(self, **kwargs) -> None:
-        self._progress_bar_ui.show(self.BAR_TYPE_HOLD, 2.0)
+        pass
 
     def _on_exit_progress_update(self, progress=None, **kwargs) -> None:
-        if self._input_detector:
-            exit_progress = self._input_detector.get_exit_progress()
-            remaining = (1.0 - exit_progress) * 2.0
-            self._progress_bar_ui.update_progress(exit_progress, remaining)
+        pass
 
     def _deactivate_invincibility(self) -> None:
         if self._game_scene:
@@ -472,12 +445,7 @@ class GameIntegrator:
         self._player_control_disabled = True
 
     def _on_undock_cancelled(self, **kwargs) -> None:
-        if self._state_machine.is_in_cooldown():
-            self._progress_bar_ui.show(self.BAR_TYPE_COOLDOWN, self._state_machine.cooldown.cooldown_duration)
-        elif self._state_machine.is_docked():
-            self._progress_bar_ui.show(self.BAR_TYPE_STAY, 20.0)
-        else:
-            self._progress_bar_ui.hide()
+        pass
 
     def _update_entering_animation(self) -> None:
         self._entering_animation_frame += 1
@@ -602,10 +570,30 @@ class GameIntegrator:
             return {}
         return self._game_scene.get_buff_levels()
 
+    def get_status_data(self) -> dict:
+        """Return mothership state data for the integrated HUD."""
+        state = self._state_machine.current_state
+        cd = self._state_machine.cooldown
+        stay = self._state_machine.stay_progress
+        hold = self._input_detector.get_progress()
+        return {
+            'state': state,
+            'is_present': state in (MotherShipState.PRESSING, MotherShipState.ENTERING,
+                                     MotherShipState.DOCKING, MotherShipState.DOCKED,
+                                     MotherShipState.UNDOCKING),
+            'is_in_cooldown': self._state_machine.is_in_cooldown(),
+            'cooldown_progress': cd.cooldown_progress,
+            'cooldown_remaining': cd.get_remaining_time(),
+            'cooldown_duration': cd.cooldown_duration,
+            'hold_progress': hold.current_progress if state == MotherShipState.PRESSING else 0.0,
+            'stay_progress': stay.stay_progress,
+            'stay_remaining': max(0.0, stay.stay_duration - (pygame.time.get_ticks() / 1000.0 - stay.stay_start_time)) if stay.is_staying else 0.0,
+            'stay_duration': stay.stay_duration,
+        }
+
     def render(self, surface) -> None:
         self._mother_ship.render(surface)
         self._render_mothership_bullets(surface)
-        self._progress_bar_ui.render(surface)
 
     def _render_mothership_bullets(self, surface) -> None:
         for bullet in self._mothership_bullets:
@@ -635,14 +623,12 @@ class GameIntegrator:
     def force_docked_state(self) -> None:
         self._state_machine._current_state = MotherShipState.DOCKED
         self._mother_ship.show()
-        self._progress_bar_ui.show(self.BAR_TYPE_STAY, 20.0)
         self._player_control_disabled = False
         self._activate_invincibility()
 
     def reset_to_idle_with_mothership_visible(self) -> None:
         self._state_machine._current_state = MotherShipState.IDLE
         self._mother_ship.show()
-        self._progress_bar_ui.show(self.BAR_TYPE_HOLD, 3.0)
         self._player_control_disabled = False
         self._input_detector._progress.reset()
         self._event_bus.publish('STATE_CHANGED', state=MotherShipState.IDLE)
