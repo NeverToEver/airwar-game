@@ -123,23 +123,21 @@ class GameIntegrator:
     def update(self) -> None:
         self._update_mothership_input()
 
+        # Run animations without blocking the game loop
         if self._entering_animation_active:
             self._update_entering_animation()
-            return
 
         if self._docking_animation_active:
             self._update_docking_animation()
-            return
 
         if self._undocking_animation_active:
             self._update_undocking_animation()
-            return
 
+        # Always update input detector and state machine so the
+        # game loop continues running during animations
         self._input_detector.update()
-
         current_time = pygame.time.get_ticks() / 1000.0
         self._state_machine.update(current_time)
-
         self._mother_ship.update()
 
         if self._state_machine.is_docked():
@@ -158,6 +156,10 @@ class GameIntegrator:
                 self._state_machine.cooldown.cooldown_progress,
                 (1.0 - self._state_machine.cooldown.cooldown_progress) * self._state_machine.cooldown.cooldown_duration
             )
+        elif self._docking_animation_active or self._undocking_animation_active:
+            # During docking/undocking animation, progress bar is managed
+            # by the animation itself; game loop continues running normally
+            pass
         else:
             progress = self._input_detector.get_progress()
             self._progress_bar_ui.update_progress(progress.current_progress)
