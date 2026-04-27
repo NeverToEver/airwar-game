@@ -42,6 +42,18 @@ class TestRewardPool:
             for reward in rewards:
                 assert len(reward['desc']) > 5
 
+    def test_generate_options_with_reduced_defense_pool(self):
+        """防御类仅 2 选项时，generate_options 仍能正常生成 3 个奖励。"""
+        from airwar.game.systems.reward_system import RewardSystem
+        rs = RewardSystem(difficulty='medium')
+        # 多次生成验证不会因防御类选项不足而异常
+        for _ in range(20):
+            options = rs.generate_options(boss_kill_count=0, unlocked_buffs=[])
+            assert len(options) == 3
+            for opt in options:
+                assert 'name' in opt
+                assert 'desc' in opt
+
 
 class TestRewardSelector:
     def test_reward_selector_initial_state(self):

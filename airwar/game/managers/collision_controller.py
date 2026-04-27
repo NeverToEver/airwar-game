@@ -145,13 +145,15 @@ class CollisionController:
         boss: Optional['Boss'],
         enemy_bullets: List['EnemyBullet'],
         reward_system: any,
-        player_invincible: bool,
-        score_multiplier: int,
-        on_enemy_killed: Callable[[int], None],
-        on_boss_killed: Callable[[int], None],
-        on_boss_hit: Callable[[int], None],
-        on_player_hit: Callable[[int, 'Player'], None],
-        on_lifesteal: Callable,
+        explosive_level: int = 0,
+        piercing_level: int = 0,
+        player_invincible: bool = False,
+        score_multiplier: int = 1,
+        on_enemy_killed: Callable[[int], None] = None,
+        on_boss_killed: Callable[[int], None] = None,
+        on_boss_hit: Callable[[int], None] = None,
+        on_player_hit: Callable[[int, 'Player'], None] = None,
+        on_lifesteal: Callable = None,
         on_clear_bullets: Callable = None,
     ) -> None:
         self._events.clear()
@@ -166,8 +168,8 @@ class CollisionController:
             player.get_bullets(),
             enemies,
             score_multiplier,
-            reward_system.explosive_level,
-            reward_system.piercing_level,
+            explosive_level,
+            piercing_level,
         )
         
         if enemies_killed > 0 and on_enemy_killed:
