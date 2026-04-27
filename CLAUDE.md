@@ -55,7 +55,12 @@ python3 -m pytest airwar/tests/test_vector2_bindings.py airwar/tests/test_collis
 ### Build Rust Extension
 
 ```bash
+# Requires Rust toolchain (rustup) + virtualenv for maturin develop
 cd airwar_core && maturin develop --release
+
+# Fallback: build wheel then pip install (no virtualenv needed)
+cd airwar_core && maturin build --release
+pip install --force-reinstall target/wheels/airwar_core-*.whl
 ```
 
 ### Test Configuration
