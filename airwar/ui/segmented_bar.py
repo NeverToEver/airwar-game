@@ -205,6 +205,7 @@ class BossHealthBar:
         self.width = width
         self.height = height
         self.segment_count = 8  # 8 段 (每段 12.5%)
+        self._default_font = pygame.font.Font(pygame.font.get_default_font(), 20)
         self.progress_bar = SegmentedProgressBar(
             width - 24,  # 减去标签宽度
             height - 8,
@@ -238,7 +239,7 @@ class BossHealthBar:
             font: 字体
         """
         if font is None:
-            font = pygame.font.Font(pygame.font.get_default_font(), 20)
+            font = self._default_font
 
         # 标签区域 (左侧)
         label_width = 24

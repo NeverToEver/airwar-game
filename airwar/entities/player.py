@@ -53,8 +53,18 @@ class Player(Entity):
         self._input_handler = input_handler
         self.health = constants.PLAYER.MAX_HEALTH
         self.max_health = constants.PLAYER.MAX_HEALTH
-        self.speed = constants.PLAYER.SPEED
+        self.base_speed = constants.PLAYER.SPEED
+        self.speed = self.base_speed
         self.bullet_damage = constants.PLAYER.BULLET_DAMAGE
+        # Boost system
+        self.boost_max: float = 200
+        self.boost_current: float = self.boost_max
+        self.boost_active: bool = False
+        self.boost_recovery_rate: float = 1.0
+        self.boost_speed_mult: float = 1.7
+        self.boost_recovery_delay: int = 45
+        self.boost_recovery_ramp: int = 60
+        self._boost_idle_frames: int = 0
         self._fire_cooldown = 0
         self._has_spread = False
         self._has_laser = False
@@ -191,6 +201,13 @@ class Player(Entity):
         hb_y = self.rect.y + (self.rect.height - self.hitbox_height) // 2
         return pygame.Rect(hb_x, hb_y, self.hitbox_width, self.hitbox_height)
 
+    def get_boost_status(self) -> dict:
+        return {
+            'current': self.boost_current,
+            'max': self.boost_max,
+            'active': self.boost_active,
+        }
+
     def get_bullets(self) -> List[Bullet]:
         return self._bullets
 
@@ -216,6 +233,25 @@ class Player(Entity):
         if self.controls_locked:
             return
         direction = self._input_handler.get_movement_direction()
+        is_moving = direction.x != 0 or direction.y != 0
+
+        # Boost: activate when Shift held + moving + has energy
+        boost_pressed = self._input_handler.is_boost_pressed()
+        self.boost_active = boost_pressed and is_moving and self.boost_current > 0
+
+        if self.boost_active:
+            self._boost_idle_frames = 0
+            self.boost_current = max(0, self.boost_current - 1)
+            self.speed = self.base_speed * self.boost_speed_mult
+        else:
+            self._boost_idle_frames += 1
+            if self._boost_idle_frames > self.boost_recovery_delay:
+                ramp_frames = self._boost_idle_frames - self.boost_recovery_delay
+                t = min(1.0, ramp_frames / self.boost_recovery_ramp)
+                rate = self.boost_recovery_rate * (0.15 + 0.85 * t)
+                self.boost_current = min(self.boost_max, self.boost_current + rate)
+            self.speed = self.base_speed
+
         self.rect.x += direction.x * self.speed
         self.rect.y += direction.y * self.speed
         self.rect.x = max(0, min(self.rect.x, get_screen_width() - self.rect.width))
@@ -246,6 +282,7 @@ class Player(Entity):
                     bullet_y,
                     BulletData(
                         damage=self.bullet_damage,
+                        speed=self._constants.PLAYER.BULLET_SPEED,
                         angle_offset=angle,
                         bullet_type='spread_laser' if self._has_laser else 'spread'
                     )
@@ -262,7 +299,8 @@ class Player(Entity):
             bullet = Bullet(
                 center_x - 3,
                 bullet_y,
-                BulletData(damage=self.bullet_damage, bullet_type='laser', is_laser=True)
+                BulletData(damage=self.bullet_damage, speed=self._constants.PLAYER.BULLET_SPEED,
+                          bullet_type='laser', is_laser=True)
             )
             if self._has_explosive:
                 bullet.data.is_explosive = True
@@ -272,7 +310,7 @@ class Player(Entity):
             bullet = Bullet(
                 center_x - 5,
                 bullet_y,
-                BulletData(damage=self.bullet_damage)
+                BulletData(damage=self.bullet_damage, speed=self._constants.PLAYER.BULLET_SPEED)
             )
             if self._has_explosive:
                 bullet.data.is_explosive = True

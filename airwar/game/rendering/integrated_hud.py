@@ -17,6 +17,9 @@ class IntegratedHUD:
         self._panel_bg_cache = {}
         self._bar_bg_cache = {}
         self._label_cache = {}
+        self._fonts: dict = {}
+        self._arrow_cache = None
+        self._hint_cache = None
 
     def _setup_layout(self):
         colors = self._tokens.colors
@@ -38,12 +41,17 @@ class IntegratedHUD:
         self.bg_color = (*colors.BACKGROUND_PANEL, 230)
         self.border_color = (*colors.PANEL_BORDER, 180)
 
+    def _get_font(self, size):
+        """Return a cached font object for the given size."""
+        if size not in self._fonts:
+            self._fonts[size] = pygame.font.Font(None, size)
+        return self._fonts[size]
+
     def _cached_label(self, font_size, text, color):
         """Return a pre-rendered label surface, caching on first call."""
         key = (font_size, text, color)
         if key not in self._label_cache:
-            font = pygame.font.Font(None, font_size)
-            self._label_cache[key] = font.render(text, True, color)
+            self._label_cache[key] = self._get_font(font_size).render(text, True, color)
         return self._label_cache[key]
 
     def update_scroll(self, buff_count: int = 0):
@@ -240,7 +248,7 @@ class IntegratedHUD:
                 )
 
         # Percentage label below the segments
-        label_font = pygame.font.Font(None, max(12, self.label_font_size - 10))
+        label_font = self._get_font(max(12, self.label_font_size - 10))
         label_text = f"{int(health_ratio * 100)}%"
         label = label_font.render(label_text, True, (r, g, b))
         label_rect = label.get_rect(
@@ -356,14 +364,18 @@ class IntegratedHUD:
         components = self._tokens.components
         indicator_x = panel_x + self._current_width - 20
         indicator_y = panel_y + panel_height // 2
-        
-        arrow_font = pygame.font.Font(None, components.HUD_EXPAND_ARROW_SIZE)
-        arrow_text = arrow_font.render(">", True, colors.TEXT_MUTED)
+
+        if self._arrow_cache is None:
+            arrow_font = self._get_font(components.HUD_EXPAND_ARROW_SIZE)
+            self._arrow_cache = arrow_font.render(">", True, colors.TEXT_MUTED)
+        arrow_text = self._arrow_cache
         arrow_rect = arrow_text.get_rect(center=(indicator_x + 10, indicator_y))
         surface.blit(arrow_text, arrow_rect)
 
-        hint_font = pygame.font.Font(None, components.HUD_EXPAND_HINT_SIZE)
-        hint_text = hint_font.render("[L]", True, colors.TEXT_HINT)
+        if self._hint_cache is None:
+            hint_font = self._get_font(components.HUD_EXPAND_HINT_SIZE)
+            self._hint_cache = hint_font.render("[L]", True, colors.TEXT_HINT)
+        hint_text = self._hint_cache
         hint_rect = hint_text.get_rect(center=(indicator_x + 10, indicator_y + 20))
         surface.blit(hint_text, hint_rect)
 
@@ -405,7 +417,7 @@ class IntegratedHUD:
         label = self._cached_label(self.label_font_size, "SCORE", colors.TEXT_MUTED)
         surface.blit(label, (content_x, y))
 
-        value_font = pygame.font.Font(None, self.value_font_size)
+        value_font = self._get_font(self.value_font_size)
         value = value_font.render(f"{score:,}", True, colors.TEXT_PRIMARY)
         surface.blit(value, (content_x, y + 22))
 
@@ -426,7 +438,7 @@ class IntegratedHUD:
         else:
             coeff_color = colors.TEXT_PRIMARY
 
-        value_font = pygame.font.Font(None, self.value_font_size)
+        value_font = self._get_font(self.value_font_size)
         value_text = f"{current:.1f}"
         value = value_font.render(value_text, True, coeff_color)
         surface.blit(value, (content_x, y + 22))
@@ -469,7 +481,7 @@ class IntegratedHUD:
         }
         diff_color = diff_colors.get(difficulty.lower(), colors.TEXT_PRIMARY)
 
-        value_font = pygame.font.Font(None, self.value_font_size)
+        value_font = self._get_font(self.value_font_size)
         value = value_font.render(difficulty.upper(), True, diff_color)
         surface.blit(value, (content_x, y + 22))
 
@@ -481,7 +493,7 @@ class IntegratedHUD:
         label = self._cached_label(self.label_font_size, "PROGRESS", colors.TEXT_MUTED)
         surface.blit(label, (content_x, y))
 
-        value_font = pygame.font.Font(None, self.value_font_size)
+        value_font = self._get_font(self.value_font_size)
         value = value_font.render(f"{progress}%", True, colors.PROGRESS_COLOR)
         surface.blit(value, (content_x, y + 22))
 
@@ -517,7 +529,7 @@ class IntegratedHUD:
         health_ratio = health / max_health if max_health > 0 else 0
         health_color = colors.HEALTH_NORMAL if health_ratio > 0.3 else colors.HEALTH_DANGER
 
-        value_font = pygame.font.Font(None, self.value_font_size)
+        value_font = self._get_font(self.value_font_size)
         value = value_font.render(f"{health}/{max_health}", True, health_color)
         surface.blit(value, (content_x, y + 22))
 
@@ -560,7 +572,7 @@ class IntegratedHUD:
         label = self._cached_label(self.label_font_size, "KILLS", colors.TEXT_MUTED)
         surface.blit(label, (content_x, y))
 
-        value_font = pygame.font.Font(None, self.value_font_size)
+        value_font = self._get_font(self.value_font_size)
         value = value_font.render(f"{kills}", True, colors.TEXT_PRIMARY)
         surface.blit(value, (content_x, y + 22))
 
@@ -572,7 +584,7 @@ class IntegratedHUD:
         label = self._cached_label(self.label_font_size, "BOSS", colors.TEXT_MUTED)
         surface.blit(label, (content_x, y))
 
-        value_font = pygame.font.Font(None, self.value_font_size)
+        value_font = self._get_font(self.value_font_size)
         value = value_font.render(f"{boss_kills}", True, colors.WARNING)
         surface.blit(value, (content_x, y + 22))
 
@@ -604,7 +616,7 @@ class IntegratedHUD:
             else:
                 text_color = components.BUFF_TEXT_LIGHT
 
-            buff_font = pygame.font.Font(None, self.buff_font_size)
+            buff_font = self._get_font(self.buff_font_size)
             buff_text = buff_font.render(buff[:8].upper(), True, text_color)
 
             buff_width = self.panel_width - self.padding * 2 - 20
@@ -639,7 +651,7 @@ class IntegratedHUD:
             current_y += buff_height + 8
 
         if should_scroll:
-            more_font = pygame.font.Font(None, self.more_font_size)
+            more_font = self._get_font(self.more_font_size)
             total_buffs = len(buffs)
             more_text = more_font.render(f"{total_buffs} total", True, colors.TEXT_MUTED)
             surface.blit(more_text, (content_x, current_y + 4))

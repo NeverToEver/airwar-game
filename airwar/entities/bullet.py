@@ -5,6 +5,7 @@ player bullets, enemy bullets, lasers, and explosive missiles.
 """
 
 import pygame
+from collections import deque
 from typing import Optional, List
 from .base import Entity, BulletData, Vector2
 from ..utils.sprites import draw_bullet, draw_explosive_missile
@@ -20,25 +21,25 @@ class Bullet(Entity):
 
     Class Attributes:
         _trail_surface_cache: Cache for trail surface rendering.
-        _trail_cache_order: LRU cache order for trail surfaces.
+        _trail_cache_order: LRU cache order for trail surfaces (deque).
         _TRAIL_CACHE_MAX_SIZE: Maximum number of cached trail surfaces.
 
     Attributes:
         data: BulletData containing bullet configuration.
         velocity: Current velocity vector.
-        _trail: Trail positions for laser bullets.
+        _trail: Trail positions for laser bullets (deque, maxlen=8).
         _hit_enemies: List of enemy IDs already hit by this bullet.
     """
 
     _trail_surface_cache: dict = {}
-    _trail_cache_order: list = []
+    _trail_cache_order: deque = deque()
     _TRAIL_CACHE_MAX_SIZE: int = 256
 
     def __init__(self, x: float, y: float, data: BulletData):
         super().__init__(x, y, 10, 10)
         self.data = data
         self.velocity = Vector2(0, -data.speed)
-        self._trail: List[pygame.Rect] = []
+        self._trail: deque = deque(maxlen=8)
         self._hit_enemies: List[int] = []
 
         if data.angle_offset != 0:
@@ -52,8 +53,6 @@ class Bullet(Entity):
     def update(self, *args, **kwargs) -> None:
         if self.data.bullet_type == "laser" or self.data.is_laser:
             self._trail.append(pygame.Rect(self.rect.x, self.rect.y, self.rect.width, self.rect.height))
-            if len(self._trail) > 8:
-                self._trail.pop(0)
 
         self.rect.x += self.velocity.x
         self.rect.y += self.velocity.y
@@ -82,12 +81,13 @@ class Bullet(Entity):
                 trail_color = (30, 255, 100)
             else:
                 trail_color = (255, 30, 30)
-            for i, trail_rect in enumerate(self._trail):
-                alpha = int(120 * (i / len(self._trail)))
+            trail_list = list(self._trail)
+            for i, trail_rect in enumerate(trail_list):
+                alpha = int(120 * (i / len(trail_list)))
                 cache_key = (trail_rect.width, trail_rect.height, alpha, self.data.owner)
                 if cache_key not in Bullet._trail_surface_cache:
                     if len(Bullet._trail_surface_cache) >= Bullet._TRAIL_CACHE_MAX_SIZE:
-                        oldest = Bullet._trail_cache_order.pop(0)
+                        oldest = Bullet._trail_cache_order.popleft()
                         Bullet._trail_surface_cache.pop(oldest, None)
                     trail_surface = pygame.Surface((trail_rect.width, trail_rect.height), pygame.SRCALPHA)
                     trail_color_with_alpha = trail_color + (alpha,)

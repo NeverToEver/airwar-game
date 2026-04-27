@@ -17,14 +17,19 @@ class InputHandler(ABC):
         'down': pygame.K_DOWN,
         'down_alt': pygame.K_s,
         'pause': pygame.K_ESCAPE,
+        'boost': pygame.K_LSHIFT,
     }
 
     @abstractmethod
     def get_movement_direction(self) -> Vector2:
         pass
-    
+
     @abstractmethod
     def is_pause_pressed(self) -> bool:
+        pass
+
+    @abstractmethod
+    def is_boost_pressed(self) -> bool:
         pass
 
 
@@ -57,6 +62,10 @@ class PygameInputHandler(InputHandler):
         keys = pygame.key.get_pressed()
         return keys[self._bindings['pause']]
 
+    def is_boost_pressed(self) -> bool:
+        keys = pygame.key.get_pressed()
+        return keys[self._bindings['boost']]
+
 
 class MockInputHandler(InputHandler):
     """Mock input handler — programmable input for testing.
@@ -67,6 +76,7 @@ class MockInputHandler(InputHandler):
     def __init__(self):
         self._direction = Vector2(0, 0)
         self._pause_pressed = False
+        self._boost_pressed = False
 
     def set_direction(self, dx: float, dy: float) -> None:
         self._direction = Vector2(dx, dy)
@@ -74,8 +84,14 @@ class MockInputHandler(InputHandler):
     def set_pause_pressed(self, pressed: bool) -> None:
         self._pause_pressed = pressed
 
+    def set_boost_pressed(self, pressed: bool) -> None:
+        self._boost_pressed = pressed
+
     def get_movement_direction(self) -> Vector2:
         return self._direction
 
     def is_pause_pressed(self) -> bool:
         return self._pause_pressed
+
+    def is_boost_pressed(self) -> bool:
+        return self._boost_pressed

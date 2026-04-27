@@ -27,6 +27,7 @@ REWARD_POOL = {
     ],
     'utility': [
         {'name': 'Slow Field', 'desc': 'Slow enemies by 20%', 'icon': 'SLO'},
+        {'name': 'Boost Recovery', 'desc': '+50% boost regen rate', 'icon': 'BST'},
     ],
 }
 
@@ -65,6 +66,7 @@ class RewardSystem:
             'Regeneration': 0,
             'Extra Life': 0,
             'Slow Field': 0,
+            'Boost Recovery': 0,
         }
 
         self.slow_factor: float = 1.0
@@ -185,6 +187,7 @@ class RewardSystem:
             'Armor': self._apply_armor,
             'Evasion': self._apply_evasion,
             'Slow Field': self._apply_slow_field,
+            'Boost Recovery': self._apply_boost_recovery,
             'Extra Life': self._apply_extra_life,
         }
 
@@ -221,6 +224,10 @@ class RewardSystem:
 
     def _apply_slow_field(self, player) -> None:
         self.slow_factor = 0.8
+
+    def _apply_boost_recovery(self, player) -> None:
+        buff = create_buff('Boost Recovery')
+        buff.apply(player)
 
     def _apply_extra_life(self, player) -> None:
         player.max_health += 50

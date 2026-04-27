@@ -220,3 +220,23 @@ class SlowFieldBuff(Buff):
 
     def apply(self, player) -> BuffResult:
         return BuffResult(name=self.NAME, notification=self.get_notification(1), color=self.COLOR)
+
+
+class BoostRecoveryBuff(Buff):
+    """Boost recovery buff — increases boost energy regeneration rate by 50%."""
+    NAME = 'Boost Recovery'
+    COLOR = (100, 200, 230)
+
+    def calculate_value(self, base_value: int, current_level: int) -> int:
+        return current_level
+
+    def calculate_increment(self, base_value: int) -> int:
+        return 1
+
+    def apply(self, player) -> BuffResult:
+        player.boost_recovery_rate *= 1.5
+        return BuffResult(
+            name=self.NAME,
+            notification=self.get_notification(1),
+            color=self.COLOR
+        )

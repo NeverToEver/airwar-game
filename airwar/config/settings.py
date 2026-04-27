@@ -1,8 +1,8 @@
 """Settings — global constants for dimensions, speeds, and rendering."""
 from airwar.config.game_config import GameConfig, get_screen_width, get_screen_height, set_screen_size
 
-SCREEN_WIDTH = 1400
-SCREEN_HEIGHT = 800
+SCREEN_WIDTH = 1920
+SCREEN_HEIGHT = 1080
 FPS = 60
 
 HEALTH_REGEN = {
@@ -11,8 +11,17 @@ HEALTH_REGEN = {
     'hard': {'delay': 300, 'rate': 1, 'interval': 90},
 }
 
-PLAYER_SPEED = 5
-BULLET_SPEED = 10
+BOOST_CONFIG = {
+    'easy': {'max_boost': 300, 'recovery_rate': 1.2, 'speed_mult': 1.7,
+             'recovery_delay': 90, 'recovery_ramp': 120},
+    'medium': {'max_boost': 200, 'recovery_rate': 1.0, 'speed_mult': 1.7,
+               'recovery_delay': 90, 'recovery_ramp': 120},
+    'hard': {'max_boost': 120, 'recovery_rate': 0.8, 'speed_mult': 1.7,
+             'recovery_delay': 90, 'recovery_ramp': 120},
+}
+
+PLAYER_SPEED = 7
+BULLET_SPEED = 14
 ENEMY_SPEED = 3
 
 PLAYER_FIRE_RATE = 8

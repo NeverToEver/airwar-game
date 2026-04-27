@@ -12,6 +12,7 @@ from airwar.game.managers.spawn_controller import SpawnController
 from airwar.game.managers.collision_controller import CollisionController
 from airwar.game.rendering.game_renderer import GameRenderer
 from airwar.ui.reward_selector import RewardSelector
+from airwar.ui.boost_gauge import BoostGauge
 from airwar.game.mother_ship import (
     EventBus,
     InputDetector,
@@ -33,7 +34,7 @@ from airwar.game.managers import (
     UIManager,
     GameLoopManager,
 )
-from airwar.config import DIFFICULTY_SETTINGS, get_screen_width, get_screen_height
+from airwar.config import DIFFICULTY_SETTINGS, BOOST_CONFIG, get_screen_width, get_screen_height
 from airwar.input import PygameInputHandler
 from airwar.utils.mouse_interaction import MouseInteractiveMixin
 from airwar.config.design_tokens import get_design_tokens
@@ -141,6 +142,14 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         )
         self.player.rect.y = PlayerConstants.INITIAL_Y
         self.player.bullet_damage = settings['bullet_damage']
+        boost_cfg = BOOST_CONFIG[difficulty]
+        self.player.boost_max = boost_cfg['max_boost']
+        self.player.boost_current = boost_cfg['max_boost']
+        self.player.boost_recovery_rate = boost_cfg['recovery_rate']
+        self.player.boost_speed_mult = boost_cfg['speed_mult']
+        self.player.boost_recovery_delay = boost_cfg['recovery_delay']
+        self.player.boost_recovery_ramp = boost_cfg['recovery_ramp']
+        self._boost_gauge = BoostGauge()
 
         self._setup_reward_selector()
         self._init_mother_ship_system(screen_width, screen_height)
@@ -350,6 +359,12 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._ui_manager.render_buff_stats_panel(surface, self.player)
 
         self._render_pause_button(surface)
+
+        # Boost gauge — bottom-left dashboard indicator
+        if hasattr(self, '_boost_gauge'):
+            status = self.player.get_boost_status()
+            self._boost_gauge.render(surface, status['current'],
+                                     status['max'], status['active'])
 
         if self._mother_ship_integrator:
             self._mother_ship_integrator.render(surface)
@@ -654,6 +669,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
         self.reward_system.unlocked_buffs = save_data.unlocked_buffs
         self._restore_buff_levels(save_data.buff_levels)
+        self._reapply_buff_effects()
 
         self.game_controller.state.difficulty = save_data.difficulty
         self.game_controller.state.username = save_data.username
@@ -661,35 +677,54 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
         if save_data.is_in_mothership:
             self._restore_to_mothership_state()
-            self.game_controller.state.entrance_animation = False
+        elif save_data.player_x != 0 or save_data.player_y != 0:
+            self.player.rect.x = save_data.player_x
+            self.player.rect.y = save_data.player_y
         else:
-            self.game_controller.state.entrance_animation = False
+            self.player.rect.y = get_screen_height() - PlayerConstants.SCREEN_BOTTOM_OFFSET
+
+        self.game_controller.state.entrance_animation = False
+        self.game_controller.state.entrance_timer = 0
 
     def _restore_buff_levels(self, buff_levels: dict) -> None:
-        """Restore buff levels.
+        """Restore buff levels from save data.
 
-        Args:
-            buff_levels: Dictionary of buff levels.
+        Handles both legacy short-name keys (piercing_level, etc.)
+        and current proper buff names (Piercing, etc.).
         """
         if not buff_levels:
             return
-        self.reward_system.piercing_level = buff_levels.get('piercing_level', 0)
-        self.reward_system.spread_level = buff_levels.get('spread_level', 0)
-        self.reward_system.explosive_level = buff_levels.get('explosive_level', 0)
-        self.reward_system.armor_level = buff_levels.get('armor_level', 0)
-        self.reward_system.evasion_level = buff_levels.get('evasion_level', 0)
-        self.reward_system.rapid_fire_level = buff_levels.get('rapid_fire_level', 0)
+        legacy_map = {
+            'piercing_level': 'Piercing', 'spread_level': 'Spread Shot',
+            'explosive_level': 'Explosive', 'armor_level': 'Armor',
+            'evasion_level': 'Evasion', 'rapid_fire_level': 'Rapid Fire',
+        }
+        for key, value in buff_levels.items():
+            name = legacy_map.get(key, key)
+            if name in self.reward_system.buff_levels:
+                self.reward_system.buff_levels[name] = value
+
+    def _reapply_buff_effects(self) -> None:
+        """Re-apply all buff effects after restoring levels from save."""
+        if not self.reward_system or not self.player:
+            return
+        handlers = self.reward_system._buff_apply_handlers
+        for buff_name, level in self.reward_system.buff_levels.items():
+            if level > 0 and buff_name in handlers:
+                handlers[buff_name](self.player)
 
     def _restore_to_mothership_state(self) -> None:
-        """Restore mothership state."""
+        """Restore mothership state with player docked inside."""
         if self._mother_ship_integrator:
-            self._mother_ship_integrator.reset_to_idle_with_mothership_visible()
+            self._mother_ship_integrator.force_docked_state()
             docking_pos = self._mother_ship_integrator._mother_ship.get_docking_position()
-            self.player.rect.x = docking_pos[0]
-            self.player.rect.y = docking_pos[1]
+            self.player.rect.x = docking_pos[0] - self.player.rect.width // 2
+            self.player.rect.y = docking_pos[1] - self.player.rect.height // 2
         else:
-            self.player.rect.y = PlayerConstants.MOTHERSHIP_Y_POSITION
-            self.player.rect.x = PlayerConstants.DEFAULT_SCREEN_WIDTH // 2
+            screen_w = get_screen_width()
+            screen_h = get_screen_height()
+            self.player.rect.x = screen_w // 2 - self.player.rect.width // 2
+            self.player.rect.y = screen_h // 2
 
     # IGameScene implementation for GameIntegrator layer compliance
 
@@ -779,14 +814,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         """Get buff levels dictionary."""
         if not self.reward_system:
             return {}
-        return {
-            'piercing_level': self.reward_system.piercing_level,
-            'spread_level': self.reward_system.spread_level,
-            'explosive_level': self.reward_system.explosive_level,
-            'armor_level': self.reward_system.armor_level,
-            'evasion_level': self.reward_system.evasion_level,
-            'rapid_fire_level': self.reward_system.rapid_fire_level,
-        }
+        return dict(self.reward_system.buff_levels)
 
     def get_player_health(self) -> int:
         """Get player current health."""

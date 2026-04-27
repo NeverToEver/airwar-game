@@ -195,11 +195,10 @@ class Enemy(Entity):
         # Exclude zigzag: Rust uses active_x as base instead of current x,
         # which produces different (non-accumulating) movement behavior
         if rust_update_movement is not None and self.move_type in MOVEMENT_TYPE_MAP and self.move_type != "zigzag":
-            # Get movement timer (still needs per-type lookup, but reduced to 1 getattr)
+            # Read timer via pre-computed attribute name
+            timer = getattr(self, self._timer_attr, 0.0)
             if self.move_type == "hover":
-                timer = self.hover_timer / 0.08  # Convert back to frame count
-            else:
-                timer = getattr(self, f'{self.move_type}_timer', 0.0) if self.move_type in ('zigzag', 'dive', 'spiral', 'noise', 'aggressive') else getattr(self, 'move_timer', 0.0)
+                timer /= 0.08
 
             # Use pre-computed params from _init_movement to avoid 15+ getattr() calls
             params = self._rust_params
@@ -218,21 +217,10 @@ class Enemy(Entity):
             self.rect.x = new_x
             self.rect.y = new_y
 
-            # Update timer back
-            if self.move_type == "zigzag":
-                self.zigzag_timer = new_timer
-            elif self.move_type == "dive":
-                self.dive_timer = new_timer
-            elif self.move_type == "hover":
-                self.hover_timer = new_timer * 0.08
-            elif self.move_type == "spiral":
-                self.spiral_timer = new_timer
-            elif self.move_type == "noise":
-                self.noise_timer = new_timer
-            elif self.move_type == "aggressive":
-                self.agg_timer = new_timer
-            else:
-                self.move_timer = new_timer
+            # Write timer back via pre-computed attribute name
+            if self.move_type == "hover":
+                new_timer *= 0.08
+            setattr(self, self._timer_attr, new_timer)
 
             self._sync_rects()
         else:
@@ -396,6 +384,14 @@ class Enemy(Entity):
             'noise_seed': getattr(self, 'agg_seed', 0) if self.move_type == "aggressive" else getattr(self, 'noise_seed', 0),
         }
 
+        # Pre-compute timer attribute for fast read/write in hot path
+        if self.move_type == "hover":
+            self._timer_attr = "hover_timer"
+        elif self.move_type in ("zigzag", "dive", "spiral", "noise", "aggressive"):
+            self._timer_attr = f"{self.move_type}_timer"
+        else:
+            self._timer_attr = "move_timer"
+
     # 6. Private behavior methods
 
     def _sync_rects(self) -> None:
@@ -467,6 +463,8 @@ class EnemySpawner:
         _wave_enemies_spawned: Count of enemies spawned in current wave.
     """
 
+    ENEMIES_PER_FRAME = 3
+
     def __init__(self):
         self.spawn_timer = 0
         self.health = 100
@@ -488,6 +486,7 @@ class EnemySpawner:
         self._wave_active = False
         self._wave_enemies_spawned = 0
         self._wave_size = self._get_wave_size()
+        self._pending_spawns: list = []
 
     def _get_wave_size(self) -> int:
         return get_game_constants().BALANCE.WAVE_SIZE
@@ -519,19 +518,27 @@ class EnemySpawner:
         if self._wave_active and len(active_enemies) == 0 and self._wave_enemies_spawned >= self._wave_size:
             self._wave_active = False
             self._wave_enemies_spawned = 0
+            self._pending_spawns = []
 
-        # Start new wave if no wave active — spawn V-formation immediately
+        # Start new wave if no wave active — prepare spawn data
         if not self._wave_active:
             self._wave_active = True
             self._wave_enemies_spawned = 0
-            self._spawn_v_formation(enemies, slow_factor, player_pos)
+            self._pending_spawns = self._prepare_wave_data(player_pos)
 
-    def _spawn_v_formation(self, enemies: List[Enemy], slow_factor: float,
-                           player_pos: tuple = None) -> None:
-        """Spawn a wave of enemies in V-shape, tip pointing toward the player.
+        # Gradual spawn: pop up to ENEMIES_PER_FRAME per frame
+        for _ in range(self.ENEMIES_PER_FRAME):
+            if not self._pending_spawns:
+                break
+            spawn_data = self._pending_spawns.pop(0)
+            self._spawn_one(enemies, spawn_data)
+            self._wave_enemies_spawned += 1
 
-        V-shape: back row (further from player) spreads wide at the wings,
-                 front row (closer to player) converges at the V tip.
+    def _prepare_wave_data(self, player_pos: tuple = None) -> List[dict]:
+        """Precompute spawn descriptors for a V-formation wave.
+
+        Returns a list of dicts with keys: x, y, bullet_type, enemy_type.
+        Avoids creating all enemies in a single frame to prevent frame spikes.
         """
         screen_width = get_screen_width()
         screen_height = get_screen_height()
@@ -550,14 +557,14 @@ class EnemySpawner:
         front_y = int(screen_height * 0.40) + random.randint(-10, 10)
 
         # Horizontal spread: back row wider, front row narrower
-        back_width = int(screen_width * 0.80)  # 80% of screen
-        front_width = int(screen_width * 0.35)  # 35% of screen (converged)
+        back_width = int(screen_width * 0.80)
+        front_width = int(screen_width * 0.35)
 
         positions = []
 
         # Back row (wings): evenly spaced across wide area
         for i in range(enemies_back):
-            t = i / max(1, enemies_back - 1)  # 0 to 1
+            t = i / max(1, enemies_back - 1)
             px = center_x - back_width // 2 + int(t * back_width)
             py = back_y
             positions.append((px, py))
@@ -570,30 +577,38 @@ class EnemySpawner:
             positions.append((px, py))
 
         bullet_types = ["single", "spread", "laser"]
+        spawn_data = []
 
         for px, py in positions:
-            # Clamp to screen bounds (upper half only)
             px = max(collision_size // 2, min(px, screen_width - collision_size // 2))
             py = max(-30, min(py, int(screen_height * 0.70)))
 
-            bullet_type = random.choice(bullet_types)
-            enemy_type = self._select_enemy_type()
+            spawn_data.append({
+                'x': px,
+                'y': py,
+                'bullet_type': random.choice(bullet_types),
+                'enemy_type': self._select_enemy_type(),
+            })
 
-            data = EnemyData(
-                health=self.health,
-                speed=self.speed * slow_factor,
-                bullet_type=bullet_type,
-                fire_rate=60 if bullet_type == "laser" else 80,
-                enemy_type=enemy_type
-            )
-            enemy = Enemy(px, py, data)
-            # Override entry start Y so all enemies fly in from above screen
-            enemy._entry_start_y = -50
-            enemy._entry_start_x = px
-            if self._bullet_spawner:
-                enemy.set_bullet_spawner(self._bullet_spawner)
-            enemies.append(enemy)
-            self._wave_enemies_spawned += 1
+        return spawn_data
+
+    def _spawn_one(self, enemies: List[Enemy], data: dict) -> None:
+        """Create a single enemy from precomputed spawn data and add to list."""
+        bullet_type = data['bullet_type']
+
+        enemy_data = EnemyData(
+            health=self.health,
+            speed=self.speed,
+            bullet_type=bullet_type,
+            fire_rate=60 if bullet_type == "laser" else 80,
+            enemy_type=data['enemy_type']
+        )
+        enemy = Enemy(data['x'], data['y'], enemy_data)
+        enemy._entry_start_y = -50
+        enemy._entry_start_x = data['x']
+        if self._bullet_spawner:
+            enemy.set_bullet_spawner(self._bullet_spawner)
+        enemies.append(enemy)
 
 
 @dataclass
@@ -664,13 +679,17 @@ class Boss(Entity):
         self.max_health = data.health
         self.fire_timer = 0
         self.phase_timer = 0
-        self.move_direction = 1
-        self.move_timer = 0
         self.attack_pattern = 0
         self.attack_direction = 'down'
         self.entering = True
         self.entry_y = y
-        self.target_y = 80
+        self.target_y = 180
+        # Movement phase system
+        self._move_phase = 0
+        self._move_phase_timer = 0
+        self._move_phase_duration = 120
+        self._target_x: float = float(x)
+        self._target_y: float = 180.0
         self.survival_timer = 0
         self.escaped = False
         self._show_escape_warning = False
@@ -733,19 +752,22 @@ class Boss(Entity):
             self._show_escape_warning = True
             self.rect.y -= 0.5
 
-        self.move_timer += 1
-        if self.move_timer >= get_game_constants().ENEMY.MOVE_TIMER:
-            self.move_timer = 0
-            self.move_direction *= -1
+        self._move_phase_timer += 1
+        if self._move_phase_timer >= self._move_phase_duration:
+            self._move_phase_timer = 0
+            self._move_phase_duration = random.randint(90, 200)
+            self._select_next_target(player_pos)
 
-        self.rect.x += self.move_direction * self.data.speed
+        lerp_speed = 0.025 * self.data.speed
+        self.rect.x = int(self.rect.x + (self._target_x - self.rect.x) * lerp_speed)
+        self.rect.y = int(self.rect.y + (self._target_y - self.rect.y) * lerp_speed)
 
-        if self.rect.x <= 0:
-            self.rect.x = 0
-            self.move_direction = 1
-        elif self.rect.x >= get_screen_width() - self.rect.width:
-            self.rect.x = get_screen_width() - self.rect.width
-            self.move_direction = -1
+        screen_w = get_screen_width()
+        screen_h = get_screen_height()
+        self.rect.x = max(0, min(self.rect.x, screen_w - self.rect.width))
+        self.rect.y = max(50, min(self.rect.y, screen_h // 2 + 60))
+
+        self.rect.y += int(math.sin(self.survival_timer * 0.025) * 0.4)
 
         self.phase_timer += 1
         if self.phase_timer >= get_game_constants().BOSS.PHASE_INTERVAL and self.phase < 3:
@@ -757,8 +779,60 @@ class Boss(Entity):
             self.fire_timer = 0
             self._fire()
 
+    def _select_next_target(self, player_pos=None) -> None:
+        """Pick next movement target based on cycling phase.
+
+        Cycles through 4 phases: PATROL → SWEEP → HOVER → CHASE.
+        All phases include both horizontal and vertical movement.
+        """
+        screen_w = get_screen_width()
+        screen_h = get_screen_height()
+        margin = 50
+        x_min = margin + 60
+        x_max = screen_w - self.rect.width - margin - 60
+        # Vertical band: from near top to middle of screen
+        y_min = 60
+        y_max = screen_h // 2
+
+        phase = self._move_phase % 4
+        self._move_phase += 1
+
+        if phase == 0:
+            # PATROL: move to opposite horizontal side with vertical drift
+            if self.rect.centerx < screen_w // 2:
+                self._target_x = x_max
+            else:
+                self._target_x = x_min
+            self._target_y = random.randint(y_min, y_max)
+
+        elif phase == 1:
+            # SWEEP: diagonal across screen to a new zone
+            self._target_x = random.randint(x_min, x_max)
+            self._target_y = random.randint(y_min, y_max)
+
+        elif phase == 2:
+            # HOVER: local repositioning with gentle drift
+            self._target_x = random.randint(
+                max(margin, self.rect.x - 130),
+                min(screen_w - self.rect.width - margin, self.rect.x + 130)
+            )
+            self._target_y = random.randint(
+                max(y_min, self.rect.y - 80),
+                min(y_max, self.rect.y + 80)
+            )
+
+        else:
+            # CHASE: drift toward player area with random offset
+            if player_pos:
+                self._target_x = max(x_min,
+                    min(player_pos[0] + random.randint(-60, 60), x_max))
+                self._target_y = max(y_min,
+                    min(player_pos[1] - random.randint(80, 160), y_max))
+            else:
+                self._target_x = random.randint(x_min, x_max)
+                self._target_y = random.randint(y_min, y_max)
+
     def _fire(self) -> None:
-        import random
         bullets = []
 
         self.attack_direction = random.choice(self.ATTACK_DIRECTIONS)

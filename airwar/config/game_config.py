@@ -14,8 +14,8 @@ class GameConfig:
     def __init__(self):
         if GameConfig._instance is not None:
             raise RuntimeError("Use get_instance() to get GameConfig")
-        self._screen_width = 1400
-        self._screen_height = 800
+        self._screen_width = 1920
+        self._screen_height = 1080
         self._fps = 60
 
     @classmethod

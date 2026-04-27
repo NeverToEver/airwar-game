@@ -36,8 +36,8 @@ class TestConfigSettings:
     @pytest.mark.smoke
     def test_screen_dimensions(self):
         from airwar.config import SCREEN_WIDTH, SCREEN_HEIGHT
-        assert SCREEN_WIDTH == 1400
-        assert SCREEN_HEIGHT == 800
+        assert SCREEN_WIDTH == 1920
+        assert SCREEN_HEIGHT == 1080
 
     @pytest.mark.smoke
     def test_speeds_positive(self):
