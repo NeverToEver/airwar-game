@@ -27,7 +27,7 @@ pip install -r requirements.txt
 ### Run the Game
 
 ```bash
-cd /home/ubt/airwar && python3 main.py
+python3 main.py
 ```
 
 ### Test
@@ -62,7 +62,7 @@ cd airwar_core && maturin develop --release
 
 Config at `airwar/tests/pytest.ini` — defaults: `-v --tb=short -ra`. Markers: `smoke` (core), `slow` (integration/performance). Fixtures: `temp_db`, `clean_imports`. Some tests require `pygame.init()`.
 
-**Note:** Tests must be run from the project root directory (`/home/ubt/airwar`), not from within the `airwar/` subdirectory.
+**Note:** Tests must be run from the project root directory, not from within the `airwar/` subdirectory.
 
 ### Validation Commands
 
@@ -136,7 +136,7 @@ airwar-game/                  # Project root
 │   │   ├── systems/         # HealthSystem, RewardSystem, NotificationManager, DifficultyManager,
 │   │   │                    # MovementPatternGenerator
 │   │   ├── rendering/       # GameRenderer, HUDRenderer
-│   │   ├── buffs/           # 13 buff types (health, offense, defense, utility)
+│   │   ├── buffs/           # 12 buff types (health, offense, defense, utility)
 │   │   ├── mother_ship/     # Dock/save: state machine, persistence (JSON), event bus, interfaces, GameIntegrator
 │   │   ├── give_up/         # Surrender system (hold-K detector)
 │   │   ├── explosion_animation/
