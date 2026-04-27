@@ -22,10 +22,12 @@ class GameIntegrator:
         Coordinates between game state and mothership docking flow,
         updating entity states and UI during the docking process.
         """
-    MOTHSHIP_BULLET_DAMAGE = 100
-    MOTHSHIP_FIRE_RATE = 10       # 6 shots/sec at 60fps
-    MOTHSHIP_BULLET_SPEED = 8
-    MOTHSHIP_TARGET_COUNT = 3     # fire at up to 3 closest enemies per volley
+    MOTHSHIP_BULLET_DAMAGE = 250
+    MOTHSHIP_FIRE_RATE = 18       # ~3.3 shots/sec at 60fps — heavy missile cadence
+    MOTHSHIP_BULLET_SPEED = 10
+    MOTHSHIP_TARGET_COUNT = 5     # fire at up to 5 closest enemies per volley
+    MOTHSHIP_EXPLOSION_RADIUS = 80
+    MOTHSHIP_EXPLOSION_DAMAGE = 60
 
     BAR_TYPE_HOLD = "hold"
     BAR_TYPE_COOLDOWN = "cooldown"
@@ -57,9 +59,12 @@ class GameIntegrator:
         self._undocking_animation_active = False
         self._undocking_animation_start = None
         self._undocking_animation_target = None
-        self._undocking_animation_duration = 60
         self._undocking_animation_frame = 0
         self._undocking_start_position = None
+        self._undocking_eject_target = None
+        self._undocking_phase = 1
+        self._undocking_eject_duration = 30
+        self._undocking_flyaway_duration = 90
 
         self._game_scene = None
         self._player_control_disabled = False
@@ -87,7 +92,8 @@ class GameIntegrator:
         self._event_bus.subscribe('EXIT_PROGRESS_UPDATE', self._on_exit_progress_update)
 
     def _update_mothership_input(self) -> None:
-        if not self._mother_ship.is_visible():
+        # Mothership movement is only allowed while docked
+        if not self._mother_ship.is_visible() or not self._state_machine.is_docked():
             self._mother_ship.set_player_input(0, 0)
             return
 
@@ -181,7 +187,13 @@ class GameIntegrator:
                 bullet = Bullet(
                     mother_ship_pos[0],
                     mother_ship_pos[1],
-                    BulletData(damage=self.MOTHSHIP_BULLET_DAMAGE, owner="mothership")
+                    BulletData(
+                        damage=self.MOTHSHIP_BULLET_DAMAGE,
+                        speed=self.MOTHSHIP_BULLET_SPEED,
+                        owner="mothership",
+                        bullet_type="explosive_missile",
+                        is_explosive=True,
+                    )
                 )
                 bullet.velocity.x = vx
                 bullet.velocity.y = vy
@@ -202,28 +214,64 @@ class GameIntegrator:
                 continue
 
             bullet_damage = bullet.data.damage
+            hit = False
+            hit_x, hit_y = bullet.rect.centerx, bullet.rect.centery
 
             for enemy in enemies:
                 if not enemy.active:
                     continue
                 if bullet.rect.colliderect(enemy.rect):
                     enemy.take_damage(bullet_damage)
-                    bullet.active = False
                     if not enemy.active:
                         self._on_mothership_kill_enemy(enemy)
+                    hit = True
                     break
 
-            if boss and boss.active:
+            if not hit and boss and boss.active:
                 if bullet.rect.colliderect(boss.rect):
                     boss.take_damage(bullet_damage)
-                    bullet.active = False
                     if not boss.active:
                         self._on_mothership_kill_boss(boss)
+                    hit = True
+
+            if hit:
+                bullet.active = False
+                # Trigger explosion at hit point
+                self._trigger_explosion(hit_x, hit_y)
+                # AoE damage to all nearby enemies
+                self._apply_missile_splash(hit_x, hit_y, enemies, boss)
 
             if bullet.rect.y < -50 or bullet.rect.y > screen_height + 50:
                 bullet.active = False
 
         self._mothership_bullets = [b for b in self._mothership_bullets if b.active]
+
+    def _trigger_explosion(self, x: float, y: float) -> None:
+        """Trigger explosion visual effect at position."""
+        if self._game_scene and hasattr(self._game_scene, 'trigger_explosion'):
+            self._game_scene.trigger_explosion(x, y, self.MOTHSHIP_EXPLOSION_RADIUS)
+
+    def _apply_missile_splash(self, x: float, y: float, enemies, boss) -> None:
+        """Apply AoE damage to enemies within explosion radius."""
+        radius_sq = self.MOTHSHIP_EXPLOSION_RADIUS ** 2
+        explosion_damage = self.MOTHSHIP_EXPLOSION_DAMAGE
+
+        for enemy in enemies:
+            if not enemy.active:
+                continue
+            dx = x - enemy.rect.centerx
+            dy = y - enemy.rect.centery
+            if dx * dx + dy * dy <= radius_sq:
+                enemy.take_damage(explosion_damage)
+                if not enemy.active and self._game_scene:
+                    self._game_scene.add_score(getattr(enemy, 'score', 100) // 3)
+                    self._game_scene.add_kill()
+
+        if boss and boss.active:
+            dx = x - boss.rect.centerx
+            dy = y - boss.rect.centery
+            if dx * dx + dy * dy <= radius_sq:
+                boss.take_damage(explosion_damage)
 
     def _on_mothership_kill_enemy(self, enemy) -> None:
         if not self._game_scene:
@@ -277,7 +325,9 @@ class GameIntegrator:
 
     def _activate_invincibility(self) -> None:
         if self._game_scene:
-            self._game_scene.set_player_invincible(True, 1200)
+            self._game_scene.set_player_invincible(True, 1200, silent=True)
+            if self._game_scene.player:
+                self._game_scene.player.controls_locked = True
 
     def _on_cooldown_started(self, **kwargs) -> None:
         self._progress_bar_ui.show(self.BAR_TYPE_COOLDOWN, 120.0)
@@ -304,7 +354,9 @@ class GameIntegrator:
 
     def _deactivate_invincibility(self) -> None:
         if self._game_scene:
-            self._game_scene.set_player_invincible(False, 0)
+            self._game_scene.set_player_invincible(False, 0, silent=False)
+            if self._game_scene.player:
+                self._game_scene.player.controls_locked = False
 
     def _on_save_game_request(self, **kwargs) -> None:
         if not self._game_scene:
@@ -344,9 +396,20 @@ class GameIntegrator:
 
         self._docking_animation_active = True
         self._docking_animation_frame = 0
-        self._docking_start_position = (self._game_scene.player.rect.x, self._game_scene.player.rect.y)
-        self._docking_animation_target = self._mother_ship.get_docking_position()
+        self._docking_start_position = (
+            self._game_scene.player.rect.x,
+            self._game_scene.player.rect.y,
+        )
+        # Convert docking bay center to topleft for set_player_position_topleft
+        dock_center = self._mother_ship.get_docking_position()
+        pw = self._game_scene.player.rect.width
+        ph = self._game_scene.player.rect.height
+        self._docking_animation_target = (
+            dock_center[0] - pw // 2,
+            dock_center[1] - ph // 2,
+        )
         self._player_control_disabled = True
+        self._activate_invincibility()
 
     def _on_start_undocking_animation(self, **kwargs) -> None:
         if not self._game_scene:
@@ -354,10 +417,19 @@ class GameIntegrator:
 
         self._undocking_animation_active = True
         self._undocking_animation_frame = 0
-        # Release player at the mothership's current position, not a fixed point
-        release_pos = self._mother_ship.get_docking_position()
-        self._undocking_start_position = release_pos
-        self._undocking_animation_target = release_pos
+        self._undocking_phase = 1
+
+        dock_pos = self._mother_ship.get_docking_position()
+        # Convert docking position (center) to topleft for player rect
+        pw = self._game_scene.player.rect.width
+        ph = self._game_scene.player.rect.height
+        start_x = dock_pos[0] - pw // 2
+        start_y = dock_pos[1] - ph // 2
+
+        self._undocking_start_position = (start_x, start_y)
+        # Eject target: backward and downward from the mothership
+        self._undocking_eject_target = (start_x, start_y + 140)
+
         self._player_control_disabled = True
 
     def _on_undock_cancelled(self, **kwargs) -> None:
@@ -398,24 +470,39 @@ class GameIntegrator:
             return
 
         self._undocking_animation_frame += 1
-        progress = min(self._undocking_animation_frame / self._undocking_animation_duration, 1.0)
 
-        eased_progress = self._ease_out_quad(progress)
+        if self._undocking_phase == 1:
+            # Phase 1: eject player backward from docking bay
+            progress = min(
+                self._undocking_animation_frame / self._undocking_eject_duration, 1.0)
+            eased = self._ease_out_quad(progress)
 
-        start_x, start_y = self._undocking_start_position
-        target_x, target_y = self._undocking_animation_target
+            sx, sy = self._undocking_start_position
+            tx, ty = self._undocking_eject_target
+            cx = sx + (tx - sx) * eased
+            cy = sy + (ty - sy) * eased
+            self._game_scene.set_player_position_topleft(cx, cy)
 
-        current_x = start_x + (target_x - start_x) * eased_progress
-        current_y = start_y + (target_y - start_y) * eased_progress
+            if progress >= 1.0:
+                # Phase 1 complete — start mothership flyaway
+                self._undocking_animation_frame = 0
+                self._undocking_phase = 2
+                self._player_control_disabled = False
+                self._deactivate_invincibility()
+                self._mother_ship.activate_flyaway()
 
-        self._game_scene.set_player_position_topleft(current_x, current_y)
+        elif self._undocking_phase == 2:
+            # Phase 2: mothership flies away upward; player is free
+            # Keep updating mothership so flyaway motion continues
+            self._mother_ship.update()
 
-        if progress >= 1.0:
-            self._undocking_animation_active = False
-            self._undocking_animation_frame = 0
-            self._player_control_disabled = False
-            self._deactivate_invincibility()
-            self._event_bus.publish('UNDOCKING_ANIMATION_COMPLETE')
+            if not self._mother_ship.is_visible():
+                # Mothership has flown off screen — animation complete
+                self._undocking_animation_active = False
+                self._undocking_animation_frame = 0
+                self._undocking_phase = 1
+                self._mother_ship.deactivate_flyaway()
+                self._event_bus.publish('UNDOCKING_ANIMATION_COMPLETE')
 
     def _ease_in_out_cubic(self, t: float) -> float:
         if t < 0.5:
@@ -480,6 +567,9 @@ class GameIntegrator:
 
     def is_player_control_disabled(self) -> bool:
         return self._player_control_disabled
+
+    def get_docking_position(self) -> tuple:
+        return self._mother_ship.get_docking_position()
 
     def force_docked_state(self) -> None:
         self._state_machine._current_state = MotherShipState.DOCKED

@@ -166,19 +166,18 @@ class Window:
             self._windowed_size = (self._width, self._height)
             self._width = info.current_w
             self._height = info.current_h
-            flags = pygame.FULLSCREEN | pygame.SCALED
-            if self._resizable:
-                flags |= pygame.RESIZABLE
+            # FULLSCREEN without SCALED — SCALED causes cropped/zoomed viewport
+            # on pygame 2.6+ with certain SDL backends (X11/Wayland)
             try:
-                self._screen = pygame.display.set_mode((self._width, self._height), flags)
+                self._screen = pygame.display.set_mode(
+                    (self._width, self._height), pygame.FULLSCREEN)
             except pygame.error:
-                # Fallback: try without FULLSCREEN (borderless maximized)
+                # Fallback: borderless maximized window
                 try:
                     self._screen = pygame.display.set_mode(
-                        (self._width, self._height),
-                        pygame.NOFRAME | pygame.SCALED)
+                        (self._width, self._height), pygame.NOFRAME)
                 except pygame.error:
-                    # Last resort: revert to original windowed size
+                    # Last resort: revert to windowed
                     self._width, self._height = self._windowed_size
                     self._screen = pygame.display.set_mode(
                         (self._width, self._height),

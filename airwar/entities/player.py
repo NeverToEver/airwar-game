@@ -63,6 +63,7 @@ class Player(Entity):
         self._bullets: List = []
         self.is_shielded = False
         self._shield_duration = 0
+        self.controls_locked = False
         self.hitbox_width = 10
         self.hitbox_height = 14
         self._hitbox_timer = 0
@@ -129,6 +130,8 @@ class Player(Entity):
         Used by the game loop for continuous firing without returning
         the created bullets.
         """
+        if self.controls_locked:
+            return
         if self._fire_cooldown <= 0:
             self._fire_cooldown = self._constants.PLAYER.FIRE_COOLDOWN
             self._create_bullets_for_shot_mode()
@@ -210,6 +213,8 @@ class Player(Entity):
     # 5. Private lifecycle methods
 
     def _update_movement(self) -> None:
+        if self.controls_locked:
+            return
         direction = self._input_handler.get_movement_direction()
         self.rect.x += direction.x * self.speed
         self.rect.y += direction.y * self.speed

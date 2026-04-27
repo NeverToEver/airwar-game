@@ -237,7 +237,7 @@ class TestMotherShipRippleClearIntegration:
         scene.game_controller.on_player_hit(20, scene.player)
         assert len(scene.game_controller.state.ripple_effects) == 1
 
-        for _ in range(80):
+        for _ in range(200):
             scene._mother_ship_integrator.update()
             if not scene._mother_ship_integrator.is_undocking_animation_active():
                 break

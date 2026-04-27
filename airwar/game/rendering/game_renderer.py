@@ -66,7 +66,7 @@ class GameRenderer:
         progress = state.entrance_timer / state.entrance_duration
         zoom_scale = 1.0 + (1.5 - 1.0) * (1 - progress)
 
-        if not state.player_invincible or (state.invincibility_timer // 5) % 2 == 0:
+        if not state.player_invincible or state.silent_invincible or (state.invincibility_timer // 5) % 2 == 0:
             if entities.player:
                 entities.player.render(surface)
 
@@ -111,7 +111,7 @@ class GameRenderer:
 
             self._render_death_animation(surface, state, entities)
         else:
-            if not state.player_invincible or (state.invincibility_timer // 5) % 2 == 0:
+            if not state.player_invincible or state.silent_invincible or (state.invincibility_timer // 5) % 2 == 0:
                 if entities.player:
                     entities.player.render(surface)
 

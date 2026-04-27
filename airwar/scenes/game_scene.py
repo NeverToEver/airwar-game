@@ -180,7 +180,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         )
 
     def _setup_reward_selector(self) -> None:
-        self.reward_selector.hide = lambda: setattr(self, 'reward_visible', False)
+        self.reward_selector.hide = lambda: setattr(self.reward_selector, 'visible', False)
         self.reward_selector.visible = False
 
     def _init_mother_ship_system(self, screen_width: int, screen_height: int) -> None:
@@ -275,22 +275,29 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
                 self._mother_ship_integrator.update()
             return
 
+        docked = False
         if self._mother_ship_integrator:
             self._mother_ship_integrator.update()
 
-            if self._mother_ship_integrator.is_docked():
-                self._bullet_manager.update_with_cleanup()
-                return
-
+            # Animation phases still need exclusive player control
             if self._mother_ship_integrator.is_player_control_disabled():
                 self._bullet_manager.update_with_cleanup()
                 return
+
+            docked = self._mother_ship_integrator.is_docked()
 
         if self.game_controller.state.paused or self.reward_selector.visible:
             return
 
         self._input_coordinator.update_give_up()
         self._game_loop_manager.update_game(self.player)
+
+        # During docked state, lock player at docking position
+        if docked:
+            dock_pos = self._mother_ship_integrator.get_docking_position()
+            self.player.rect.x = dock_pos[0] - self.player.rect.width // 2
+            self.player.rect.y = dock_pos[1] - self.player.rect.height // 2
+
         self._game_loop_manager.check_collisions(
             self.player,
             self.spawn_controller.enemy_bullets,
@@ -348,14 +355,15 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
         self._render_pause_button(surface)
 
-        if self.reward_selector.visible:
-            self.reward_selector.render(surface)
-
         if self._mother_ship_integrator:
             self._mother_ship_integrator.render(surface)
 
         self._game_loop_manager.render_explosions(surface)
         self._input_coordinator.render_give_up(surface)
+
+        # Reward selector must render last to cover all game elements
+        if self.reward_selector.visible:
+            self.reward_selector.render(surface)
 
     def _init_pause_button_layout(self) -> None:
         """Pre-calculate pause button geometry and register button regions.
@@ -692,14 +700,19 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     def set_player_position(self, x: float, y: float) -> None:
         """Set player rect center position."""
         if self.player:
-            self.player.rect.centerx = x
-            self.player.rect.centery = y
+            self.player.rect.x = x - self.player.rect.width // 2
+            self.player.rect.y = y - self.player.rect.height // 2
 
     def set_player_position_topleft(self, x: float, y: float) -> None:
         """Set player rect top-left position."""
         if self.player:
             self.player.rect.x = x
             self.player.rect.y = y
+
+    def trigger_explosion(self, x: float, y: float, radius: int) -> None:
+        """Trigger explosion visual effect at given position."""
+        if self._game_loop_manager:
+            self._game_loop_manager._on_explosion(x, y, radius)
 
     def add_score(self, amount: int) -> None:
         """Add to score."""
@@ -736,11 +749,15 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if self.spawn_controller:
             self.spawn_controller.boss = None
 
-    def set_player_invincible(self, invincible: bool, timer: int) -> None:
-        """Set player invincibility state."""
+    def set_player_invincible(self, invincible: bool, timer: int, silent: bool = False) -> None:
+        """Set player invincibility state.
+
+        When silent=True, the player is invincible without the blink flash effect.
+        """
         if self.game_controller:
             self.game_controller.state.player_invincible = invincible
             self.game_controller.state.invincibility_timer = timer
+            self.game_controller.state.silent_invincible = silent
 
     def get_score(self) -> int:
         """Get current score."""
