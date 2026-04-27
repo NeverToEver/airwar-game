@@ -166,7 +166,8 @@ class CollisionController:
             player.get_bullets(),
             enemies,
             score_multiplier,
-            reward_system.explosive_level
+            reward_system.explosive_level,
+            reward_system.piercing_level,
         )
         
         if enemies_killed > 0 and on_enemy_killed:
@@ -225,7 +226,8 @@ class CollisionController:
         player_bullets: List['Bullet'],
         enemies: List['Enemy'],
         score_multiplier: int,
-        explosive_level: int
+        explosive_level: int,
+        piercing_level: int = 0,
     ) -> Tuple[int, int]:
         score_gained = 0
         enemies_killed = 0
@@ -302,8 +304,9 @@ class CollisionController:
                     score_gained += enemy.data.score * score_multiplier
 
                 if bullet.data.owner == "player":
-                    bullet.active = False
-                    self._persistent_hash.remove_entity(bullet_id)
+                    if piercing_level <= 0:
+                        bullet.active = False
+                        self._persistent_hash.remove_entity(bullet_id)
             return score_gained, enemies_killed
 
         # Fallback to Python implementation
@@ -336,7 +339,8 @@ class CollisionController:
                         score_gained += enemy.data.score * score_multiplier
 
                     if bullet.data.owner == "player":
-                        bullet.active = False
+                        if piercing_level <= 0:
+                            bullet.active = False
                     break
 
         return score_gained, enemies_killed

@@ -3,7 +3,7 @@ from typing import Type, Dict
 from .base_buff import Buff
 from .buffs import (
     ExtraLifeBuff, RegenerationBuff, LifestealBuff,
-    ArmorBuff, EvasionBuff, BarrierBuff,
+    ArmorBuff, EvasionBuff,
     PowerShotBuff, RapidFireBuff, PiercingBuff, SpreadShotBuff, ExplosiveBuff, LaserBuff,
     SlowFieldBuff,
 )
@@ -21,7 +21,6 @@ BUFF_REGISTRY: Dict[str, Type[Buff]] = {
     'Laser': LaserBuff,
     'Armor': ArmorBuff,
     'Evasion': EvasionBuff,
-    'Barrier': BarrierBuff,
     'Slow Field': SlowFieldBuff,
 }
 

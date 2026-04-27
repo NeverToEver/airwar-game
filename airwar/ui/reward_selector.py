@@ -5,7 +5,6 @@ from typing import List, Callable, Optional
 from airwar.utils.mouse_interaction import MouseSelectableMixin
 from airwar.config.design_tokens import SceneColors, SystemUI, get_design_tokens
 from airwar.ui.chamfered_panel import draw_chamfered_panel
-from airwar.game.systems.reward_system import REWARD_POOL
 
 
 class RewardSelector(MouseSelectableMixin):
@@ -136,28 +135,6 @@ class RewardSelector(MouseSelectableMixin):
             'new_buff': SceneColors.FOREST_GREEN,
             'upgraded_bg': SceneColors.BG_PANEL,
         }
-
-    def generate_options(self, boss_kill_count: int, unlocked_buffs: list) -> list:
-        import random
-        options = []
-        categories = list(REWARD_POOL.keys())
-
-        for _ in range(3):
-            cat = random.choice(categories)
-            rewards = REWARD_POOL[cat]
-
-            if cat == 'offense' and boss_kill_count < 2:
-                rewards = [r for r in rewards if r['name'] not in ['Explosive']]
-
-            reward = random.choice(rewards)
-            attempts = 0
-            while reward in options and attempts < 10:
-                reward = random.choice(rewards)
-                attempts += 1
-
-            options.append(reward)
-
-        return options
 
     def show(self, options: list, callback: Callable, buff_levels: dict = None, unlocked_buffs: list = None) -> None:
         self.visible = True

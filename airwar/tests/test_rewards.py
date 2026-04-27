@@ -26,7 +26,7 @@ class TestRewardPool:
         from airwar.game.systems.reward_system import REWARD_POOL
         assert len(REWARD_POOL['health']) >= 3
         assert len(REWARD_POOL['offense']) >= 5
-        assert len(REWARD_POOL['defense']) >= 3
+        assert len(REWARD_POOL['defense']) >= 2
         assert len(REWARD_POOL['utility']) >= 1
 
     def test_all_rewards_unique(self):
@@ -109,12 +109,6 @@ class TestRewardSelector:
 
         selector.handle_input(pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_DOWN}))
         assert selector.selected_index == 0
-
-    def test_reward_selector_generate_options_returns_3(self):
-        from airwar.scenes.game_scene import RewardSelector
-        selector = RewardSelector()
-        options = selector.generate_options(0, [])
-        assert len(options) == 3
 
     def test_reward_selector_confirm_calls_callback(self):
         from airwar.scenes.game_scene import RewardSelector

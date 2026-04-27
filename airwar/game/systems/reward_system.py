@@ -24,7 +24,6 @@ REWARD_POOL = {
     'defense': [
         {'name': 'Armor', 'desc': '-15% damage taken', 'icon': 'ARM'},
         {'name': 'Evasion', 'desc': '+20% dodge chance', 'icon': 'EVD'},
-        {'name': 'Barrier', 'desc': 'Gain 50 temporary HP', 'icon': 'BAR'},
     ],
     'utility': [
         {'name': 'Slow Field', 'desc': 'Slow enemies by 20%', 'icon': 'SLO'},
@@ -65,11 +64,9 @@ class RewardSystem:
             'Lifesteal': 0,
             'Regeneration': 0,
             'Extra Life': 0,
-            'Barrier': 0,
             'Slow Field': 0,
         }
 
-        self.magnet_range: int = 0
         self.slow_factor: float = 1.0
 
         settings = DIFFICULTY_SETTINGS.get(difficulty, DIFFICULTY_SETTINGS['medium'])
@@ -189,7 +186,6 @@ class RewardSystem:
             'Evasion': self._apply_evasion,
             'Slow Field': self._apply_slow_field,
             'Extra Life': self._apply_extra_life,
-            'Barrier': self._apply_barrier,
         }
 
     def _apply_power_shot(self, player) -> None:
@@ -229,10 +225,6 @@ class RewardSystem:
     def _apply_extra_life(self, player) -> None:
         player.max_health += 50
         player.health = min(player.health + 30, player.max_health)
-
-    def _apply_barrier(self, player) -> None:
-        player.max_health += 50
-        player.health = player.max_health
 
     def apply_reward(self, reward: Dict, player) -> str:
         name = reward['name']
@@ -302,7 +294,6 @@ class RewardSystem:
         for key in self.buff_levels:
             self.buff_levels[key] = 0
 
-        self.magnet_range = 0
         self.slow_factor = 1.0
         self._base_bullet_damage = 50
         self._base_fire_cooldown = 8
