@@ -167,22 +167,20 @@ class TestMilestoneSystem:
     """Tests for milestone system - thresholds and progress calculations.
 
     For medium difficulty:
-    - initial_delta = 800, max_delta = 3600, difficulty_multiplier = 1.0
-    - threshold[0] = 800
-    - threshold[1] = 2400
-    - threshold[2] = 4800
+    - initial_delta = 2000, max_delta = 8000, difficulty_multiplier = 1.0
+    - threshold[0] = 2000
+    - threshold[1] = 6000
+    - threshold[2] = 12000
     """
 
     def test_threshold_calculation_with_cycle(self):
         from airwar.scenes.game_scene import GameScene
         scene = GameScene()
         scene.enter(difficulty='medium')
-        # threshold[0] = 800 (not 500 as old test expected)
         threshold = scene._get_current_threshold(0)
-        assert threshold == 800
-        # threshold[1] = 2400 (not 1500 as old test expected)
+        assert threshold == 2000
         threshold_milestone1 = scene._get_current_threshold(1)
-        assert threshold_milestone1 == 2400
+        assert threshold_milestone1 == 6000
 
     def test_next_threshold_uses_milestone_index(self):
         from airwar.scenes.game_scene import GameScene
@@ -190,7 +188,7 @@ class TestMilestoneSystem:
         scene.enter(difficulty='medium')
         scene.game_controller.milestone_index = 1
         threshold = scene._get_next_threshold()
-        assert threshold == 2400
+        assert threshold == 6000
 
     def test_get_next_progress_initial_state(self):
         from airwar.scenes.game_scene import GameScene
@@ -202,27 +200,27 @@ class TestMilestoneSystem:
         from airwar.scenes.game_scene import GameScene
         scene = GameScene()
         scene.enter(difficulty='medium')
-        # milestone_index=0, previous=0, next=800, score=250
-        # progress = 250/800*100 = 31
-        scene.game_controller.state.score = 250
-        assert scene.game_controller.get_next_progress() == 31
+        # milestone_index=0, previous=0, next=2000, score=600
+        # progress = 600/2000*100 = 30
+        scene.game_controller.state.score = 600
+        assert scene.game_controller.get_next_progress() == 30
 
     def test_get_next_progress_at_threshold(self):
         from airwar.scenes.game_scene import GameScene
         scene = GameScene()
         scene.enter(difficulty='medium')
-        # milestone_index=0, previous=0, next=800, score=500
-        # progress = 500/800*100 = 62
-        scene.game_controller.state.score = 500
-        assert scene.game_controller.get_next_progress() == 62
+        # milestone_index=0, previous=0, next=2000, score=1000
+        # progress = 1000/2000*100 = 50
+        scene.game_controller.state.score = 1000
+        assert scene.game_controller.get_next_progress() == 50
 
     def test_get_next_progress_over_threshold(self):
         from airwar.scenes.game_scene import GameScene
         scene = GameScene()
         scene.enter(difficulty='medium')
-        # milestone_index=0, previous=0, next=800, score=600
-        # progress = 600/800*100 = 75
-        scene.game_controller.state.score = 600
+        # milestone_index=0, previous=0, next=2000, score=1500
+        # progress = 1500/2000*100 = 75
+        scene.game_controller.state.score = 1500
         assert scene.game_controller.get_next_progress() == 75
 
     def test_get_next_progress_after_reward_selection(self):
@@ -230,9 +228,9 @@ class TestMilestoneSystem:
         scene = GameScene()
         scene.enter(difficulty='medium')
         scene._on_reward_selected({'name': 'Test', 'desc': 'Test', 'icon': 'T'})
-        # After reward: milestone_index=1, previous=800, next=2400, score=1000
-        # progress = (1000-800)/(2400-800)*100 = 12
-        scene.game_controller.state.score = 1000
+        # After reward: milestone_index=1, previous=2000, next=6000, score=2500
+        # progress = (2500-2000)/(6000-2000)*100 = 12
+        scene.game_controller.state.score = 2500
         assert scene.game_controller.get_next_progress() == 12
 
 
