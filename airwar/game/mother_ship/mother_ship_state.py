@@ -19,6 +19,7 @@ class MotherShipState(Enum):
     IDLE = "idle"
     COOLDOWN = "cooldown"
     PRESSING = "pressing"
+    ENTERING = "entering"
     DOCKING = "docking"
     DOCKED = "docked"
     UNDOCKING = "undocking"

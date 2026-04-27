@@ -208,6 +208,13 @@ class TestMotherShipRippleClearIntegration:
         for _ in range(3):
             scene._mother_ship_integrator.update()
 
+        # Wait for entering animation to complete
+        for _ in range(100):
+            scene._mother_ship_integrator.update()
+            if not scene._mother_ship_integrator.is_entering_animation_active():
+                break
+
+        # Wait for docking animation to complete
         for _ in range(100):
             scene._mother_ship_integrator.update()
             if not scene._mother_ship_integrator.is_docking_animation_active():
@@ -225,6 +232,14 @@ class TestMotherShipRippleClearIntegration:
         for _ in range(3):
             scene._mother_ship_integrator.update()
         event_bus.publish('PROGRESS_COMPLETE')
+
+        # Wait for entering animation to complete
+        for _ in range(100):
+            scene._mother_ship_integrator.update()
+            if not scene._mother_ship_integrator.is_entering_animation_active():
+                break
+
+        # Wait for docking animation to complete
         for _ in range(100):
             scene._mother_ship_integrator.update()
             if not scene._mother_ship_integrator.is_docking_animation_active():

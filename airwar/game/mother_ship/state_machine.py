@@ -15,7 +15,8 @@ class MotherShipStateMachine(IMotherShipStateMachine):
     VALID_TRANSITIONS = {
         MotherShipState.IDLE: [MotherShipState.COOLDOWN, MotherShipState.PRESSING],
         MotherShipState.COOLDOWN: [MotherShipState.PRESSING],
-        MotherShipState.PRESSING: [MotherShipState.IDLE, MotherShipState.DOCKING],
+        MotherShipState.PRESSING: [MotherShipState.IDLE, MotherShipState.ENTERING],
+        MotherShipState.ENTERING: [MotherShipState.DOCKING],
         MotherShipState.DOCKING: [MotherShipState.DOCKED],
         MotherShipState.DOCKED: [MotherShipState.UNDOCKING],
         MotherShipState.UNDOCKING: [MotherShipState.COOLDOWN],
@@ -38,6 +39,7 @@ class MotherShipStateMachine(IMotherShipStateMachine):
         self._event_bus.subscribe('DOCKING_ANIMATION_COMPLETE', self._on_docking_animation_complete)
         self._event_bus.subscribe('UNDOCKING_ANIMATION_COMPLETE', self._on_undocking_animation_complete)
         self._event_bus.subscribe('STAY_EXPIRED', self._on_stay_expired)
+        self._event_bus.subscribe('ENTERING_COMPLETE', self._on_entering_complete)
         self._event_bus.subscribe('UNDOCK_REQUESTED', self._on_undock_requested)
         self._event_bus.subscribe('EXIT_COMPLETE', self._on_exit_complete)
         self._event_bus.subscribe('EXIT_PROGRESS_UPDATE', self._on_exit_progress_update)
@@ -84,6 +86,12 @@ class MotherShipStateMachine(IMotherShipStateMachine):
         self._exit_in_progress = False
 
     def _on_progress_complete(self, **kwargs) -> None:
+        if self._can_transition_to(MotherShipState.ENTERING):
+            self._change_state(MotherShipState.ENTERING)
+            self._event_bus.publish('STATE_CHANGED', state=self._current_state)
+            self._event_bus.publish('START_ENTERING_ANIMATION')
+
+    def _on_entering_complete(self, **kwargs) -> None:
         if self._can_transition_to(MotherShipState.DOCKING):
             self._change_state(MotherShipState.DOCKING)
             self._event_bus.publish('STATE_CHANGED', state=self._current_state)
@@ -150,6 +158,9 @@ class MotherShipStateMachine(IMotherShipStateMachine):
 
     def is_in_cooldown(self) -> bool:
         return self._current_state == MotherShipState.COOLDOWN
+
+    def is_entering(self) -> bool:
+        return self._current_state == MotherShipState.ENTERING
 
     def is_docked(self) -> bool:
         return self._current_state == MotherShipState.DOCKED

@@ -6,7 +6,7 @@ from .mother_ship_state import MotherShipState, GameSaveData
 from .progress_bar_ui import ProgressBarUI
 from airwar.entities.bullet import Bullet
 from airwar.entities.base import BulletData
-from airwar.config import get_screen_width
+from airwar.config import get_screen_width, get_screen_height
 
 if TYPE_CHECKING:
     from .event_bus import EventBus
@@ -49,6 +49,13 @@ class GameIntegrator:
         self._progress_bar_ui = progress_bar_ui
         self._mother_ship = mother_ship
 
+        self._entering_animation_active = False
+        self._entering_animation_frame = 0
+        self._entering_duration = 75  # ~1.25s fly-in
+        self._entering_start_y: float = 0.0
+        self._entering_target_y: float = 0.0
+        self._entering_target_x: float = 0.0
+
         self._docking_animation_active = False
         self._docking_animation_start = None
         self._docking_animation_target = None
@@ -81,6 +88,7 @@ class GameIntegrator:
         self._event_bus.subscribe('STATE_CHANGED', self._on_state_changed)
         self._event_bus.subscribe('SAVE_GAME_REQUEST', self._on_save_game_request)
         self._event_bus.subscribe('GAME_RESUME', self._on_game_resume)
+        self._event_bus.subscribe('START_ENTERING_ANIMATION', self._on_start_entering_animation)
         self._event_bus.subscribe('START_DOCKING_ANIMATION', self._on_start_docking_animation)
         self._event_bus.subscribe('UNDOCK_CANCELLED', self._on_undock_cancelled)
         self._event_bus.subscribe('START_UNDOCKING_ANIMATION', self._on_start_undocking_animation)
@@ -115,6 +123,10 @@ class GameIntegrator:
     def update(self) -> None:
         self._update_mothership_input()
 
+        if self._entering_animation_active:
+            self._update_entering_animation()
+            return
+
         if self._docking_animation_active:
             self._update_docking_animation()
             return
@@ -133,13 +145,14 @@ class GameIntegrator:
         if self._state_machine.is_docked():
             self._update_mothership_firing()
             self._update_mothership_bullets()
-            # Player rides along with the mothership while docked
             dock_pos = self._mother_ship.get_docking_position()
             self._game_scene.set_player_position(dock_pos[0], dock_pos[1])
             self._progress_bar_ui.update_progress(
                 self._state_machine.stay_progress.stay_progress,
                 (1.0 - self._state_machine.stay_progress.stay_progress) * 20.0
             )
+        elif self._state_machine.is_entering():
+            self._update_mothership_bullets()
         elif self._state_machine.is_in_cooldown():
             self._progress_bar_ui.update_progress(
                 self._state_machine.cooldown.cooldown_progress,
@@ -298,14 +311,19 @@ class GameIntegrator:
 
     def _on_state_changed(self, state, **kwargs) -> None:
         if state == MotherShipState.PRESSING:
-            self._mother_ship.show()
+            self._mother_ship.show_phantom()
             self._progress_bar_ui.show(self.BAR_TYPE_HOLD, 3.0)
             self._clear_ripple_effects()
         elif state == MotherShipState.IDLE:
+            self._mother_ship.hide_phantom()
             self._mother_ship.hide()
             self._progress_bar_ui.hide()
             self._clear_ripple_effects()
             self._clear_mothership_bullets()
+        elif state == MotherShipState.ENTERING:
+            self._mother_ship.hide_phantom()
+            self._progress_bar_ui.hide()
+            self._clear_ripple_effects()
         elif state == MotherShipState.COOLDOWN:
             self._mother_ship.hide()
             self._progress_bar_ui.show(self.BAR_TYPE_COOLDOWN, self._state_machine.cooldown.cooldown_duration)
@@ -390,6 +408,25 @@ class GameIntegrator:
         if self._game_scene:
             self._game_scene.paused = False
 
+    def _on_start_entering_animation(self, **kwargs) -> None:
+        if not self._game_scene:
+            return
+
+        screen_width = get_screen_width()
+        screen_height = get_screen_height()
+        target_x = screen_width // 2
+        target_y = int(screen_height * 0.35)
+        start_y = screen_height + 200
+
+        self._entering_animation_active = True
+        self._entering_animation_frame = 0
+        self._entering_target_x = target_x
+        self._entering_target_y = target_y
+        self._entering_start_y = start_y
+
+        self._mother_ship.set_position(target_x, start_y)
+        self._mother_ship.show()
+
     def _on_start_docking_animation(self, **kwargs) -> None:
         if not self._game_scene:
             return
@@ -439,6 +476,22 @@ class GameIntegrator:
             self._progress_bar_ui.show(self.BAR_TYPE_STAY, 20.0)
         else:
             self._progress_bar_ui.hide()
+
+    def _update_entering_animation(self) -> None:
+        self._entering_animation_frame += 1
+        progress = min(self._entering_animation_frame / self._entering_duration, 1.0)
+        eased = self._ease_out_cubic(progress)
+
+        current_y = self._entering_start_y + (self._entering_target_y - self._entering_start_y) * eased
+        self._mother_ship.set_position(int(self._entering_target_x), int(current_y))
+
+        # Fire missiles during fly-in for cover
+        self._update_mothership_firing()
+        self._update_mothership_bullets()
+
+        if progress >= 1.0:
+            self._entering_animation_active = False
+            self._event_bus.publish('ENTERING_COMPLETE')
 
     def _update_docking_animation(self) -> None:
         if not self._game_scene or not self._docking_start_position:
@@ -513,6 +566,9 @@ class GameIntegrator:
     def _ease_out_quad(self, t: float) -> float:
         return 1 - (1 - t) * (1 - t)
 
+    def _ease_out_cubic(self, t: float) -> float:
+        return 1 - (1 - t) ** 3
+
     def _clear_mothership_bullets(self) -> None:
         self._mothership_bullets.clear()
         self._mothership_fire_timer = 0
@@ -552,6 +608,9 @@ class GameIntegrator:
     def _render_mothership_bullets(self, surface) -> None:
         for bullet in self._mothership_bullets:
             bullet.render(surface)
+
+    def is_entering_animation_active(self) -> bool:
+        return self._entering_animation_active
 
     def is_docking_animation_active(self) -> bool:
         return self._docking_animation_active

@@ -25,6 +25,7 @@ class MotherShip:
         self._screen_width = screen_width
         self._screen_height = screen_height
         self._visible = False
+        self._phantom_visible = False
         self._initial_x = screen_width // 2
         self._initial_y = int(screen_height * 0.35)
         self._position = (self._initial_x, self._initial_y)
@@ -73,6 +74,15 @@ class MotherShip:
 
     def is_visible(self) -> bool:
         return self._visible
+
+    def set_position(self, x: int, y: int) -> None:
+        self._position = (x, y)
+
+    def show_phantom(self) -> None:
+        self._phantom_visible = True
+
+    def hide_phantom(self) -> None:
+        self._phantom_visible = False
 
     def set_player_input(self, x: int, y: int) -> None:
         self._player_input = [x, y]
@@ -135,6 +145,9 @@ class MotherShip:
     # ── Render pipeline ────────────────────────────────────────────────────
 
     def render(self, surface: pygame.Surface) -> None:
+        if self._phantom_visible:
+            self._render_phantom(surface)
+
         if not self._visible:
             return
         self.update_animation()
@@ -147,6 +160,53 @@ class MotherShip:
         self._render_bridge(surface, cx, cy)
         self._render_details(surface, cx, cy)
         self._render_engines(surface, cx, cy)
+
+    def _render_phantom(self, surface: pygame.Surface) -> None:
+        """Draw a semi-transparent holographic preview at the target position."""
+        cx, cy = self._initial_x, self._initial_y
+        phantom_alpha = 60  # semi-transparent
+
+        phantom_surf = pygame.Surface((surface.get_width(), surface.get_height()), pygame.SRCALPHA)
+        # Draw simplified outline using the body and wings shapes
+        self._render_phantom_body(phantom_surf, cx, cy)
+        self._render_phantom_wings(phantom_surf, cx, cy)
+        phantom_surf.set_alpha(phantom_alpha)
+        surface.blit(phantom_surf, (0, 0))
+
+    def _render_phantom_body(self, surface: pygame.Surface, cx: int, cy: int) -> None:
+        """Simplified body outline for the phantom preview."""
+        teal = (55, 188, 225)
+        hull_points = [
+            (cx, cy - 108), (cx + 26, cy - 102),
+            (cx + 44, cy - 82), (cx + 48, cy - 52),
+            (cx + 50, cy + 10), (cx + 44, cy + 58),
+            (cx + 32, cy + 88), (cx, cy + 92),
+            (cx - 32, cy + 88), (cx - 44, cy + 58),
+            (cx - 50, cy + 10), (cx - 48, cy - 52),
+            (cx - 44, cy - 82), (cx - 26, cy - 102),
+        ]
+        if len(hull_points) >= 2:
+            pygame.draw.polygon(surface, teal, hull_points, 2)
+
+    def _render_phantom_wings(self, surface: pygame.Surface, cx: int, cy: int) -> None:
+        """Simplified wing outline for the phantom preview."""
+        teal = (55, 188, 225)
+        # Left wing
+        left_wing = [
+            (cx - 50, cy - 20), (cx - 130, cy - 60),
+            (cx - 200, cy - 35), (cx - 215, cy),
+            (cx - 180, cy + 20), (cx - 50, cy + 10),
+        ]
+        # Right wing
+        right_wing = [
+            (cx + 50, cy - 20), (cx + 130, cy - 60),
+            (cx + 200, cy - 35), (cx + 215, cy),
+            (cx + 180, cy + 20), (cx + 50, cy + 10),
+        ]
+        if len(left_wing) >= 2:
+            pygame.draw.polygon(surface, teal, left_wing, 2)
+        if len(right_wing) >= 2:
+            pygame.draw.polygon(surface, teal, right_wing, 2)
 
     # ── Engine glow (back layer) ───────────────────────────────────────────
 
