@@ -32,7 +32,10 @@ _explosive_missile_cache = {}
 def _bytes_to_surface(data: bytes, width: int, height: int) -> pygame.Surface:
     """Convert RGBA bytes to pygame Surface."""
     surf = pygame.image.frombuffer(bytes(data), (width, height), 'RGBA')
-    return surf.convert_alpha()
+    try:
+        return surf.convert_alpha()
+    except pygame.error:
+        return surf
 
 
 def prewarm_glow_caches() -> None:

@@ -70,6 +70,21 @@ cd airwar_core && maturin build --release
 pip install --force-reinstall target/wheels/airwar_core-*.whl
 ```
 
+### Build Standalone Executable
+
+```bash
+# Linux
+bash build_linux.sh
+
+# macOS
+bash build_macos.sh
+
+# Windows (in command prompt)
+build_windows.bat
+```
+
+构建产物在 `dist/AirWar` (~40MB 独立可执行文件，内含 Python 运行时 + Rust 扩展)。需要 Python 3.12+、Rust 工具链、PyInstaller（脚本自动安装）。
+
 ### Test Configuration
 
 Config at `airwar/tests/pytest.ini` — defaults: `-v --tb=short -ra`. Markers: `smoke` (core), `slow` (integration/performance). Fixtures: `temp_db`, `clean_imports`. Some tests require `pygame.init()`.
@@ -218,6 +233,20 @@ PLAYING → DYING → GAME_OVER
    |________|  (on death animation complete)
 ```
 
+### Game Loop Update Order
+
+`GameScene.update()` 的精确执行顺序（每帧）：
+
+1. Mothership integrator update
+2. GiveUp detector update
+3. **GameLogic update** (`_update_core`): GameController → death anim → explosion → player → bullets → enemy spawn → entities → boss → **cleanup (enemies + boss + bullets)**
+4. Docking position lock (if docked)
+5. **Collision detection** (`check_collisions`): player bullets vs enemies/boss, enemy bullets vs player, boss vs player
+6. **Post-collision cleanup**: 碰撞检测后再次清理，确保碰撞中死亡的实体在里程碑检查前被移除
+7. **Milestone check** (`check_and_trigger`): 分数达到阈值 → 触发天赋选择界面 + 暂停
+
+**关键设计：** 碰撞检测后的二次清理（步骤6）解决了实体在暂停期间残留的问题——若碰撞中击杀boss后立即触发天赋暂停，dead boss会在下一帧清理前滞留，取消暂停后"凭空消失"。
+
 ### Important Design Decisions
 
 - **`game/constants.py`** — All tuning values in a single `GameConstants` dataclass (player stats, damage values, timing, animation, balance). Edit here for game balance.
@@ -281,7 +310,7 @@ The mothership docking/save system uses an interface-driven design with 6 ABCs i
 **Mothership visual:** Large capital-class vessel (cold-steel-blue, ~430px wingspan), swept-back wings, bridge tower with cyan glass canopy, underside docking bay with pulsing guide lights. Rendered via `draw_glow_circle` and multi-layer polygon hull.
 
 **Docking flow:**
-1. Hold H 3s → `DOCKING` animation (90f ease-in-out-cubic) — player smoothly pulled to docking bay, silent invincibility + controls locked
+1. Hold H 3s → `DOCKING` animation (90f ease-in-out-cubic) — player smoothly pulled to docking bay, silent invincibility + controls locked. **Mothership provides cover fire during docking animation.**
 2. `DOCKED` (20s) — player rides inside mothership, mothership fires **explosive missiles** (250 damage, 80px AoE radius, 5 targets, ~3.3 shots/sec), full game loop continues (enemies spawn, boss timer advances)
 3. Stay expired → `UNDOCKING` two-phase: Phase 1 ejects player backward (30f), Phase 2 mothership accelerates upward off-screen (60+f)
 
@@ -322,6 +351,12 @@ Boost energy mechanic:
 - `bullet.py`: Trail stores `(x,y,w,h)` tuples instead of `pygame.Rect`, deque iterated directly (no `list()` copy), `maxlen` handles eviction
 - `bullet_manager.py`: `_cleanup_enemy_bullets` fast-paths with `any()` — most frames skip list allocation
 - `enemy.py`: Timer read/write uses pre-computed `_timer_attr` string with `setattr`, batch movement params pre-computed in `_init_movement`
+
+**Surface caching (new):**
+- `boost_gauge.py`: Arc track and dim ticks cached as pre-rendered `_arc_cache` layer — eliminates ~60 `pygame.draw.line`/`pygame.draw.arc` calls per frame, recalculated only on resize
+- `mother_ship.py`: Phantom preview surface (`_phantom_surf`) cached by screen size — eliminates full-screen SRCALPHA allocation per frame during phantom rendering
+- `game_rendering_background.py`: Gradient surface converted once with `.convert()` and cached globally — avoids redundant surface conversion
+- `_sprites_common.py`: `convert_alpha()` wrapped in try/except for pygame error resilience
 
 **Spawn tuning:**
 - `ENEMIES_PER_FRAME = 2` (was 3) — wave spawns spread across 6 frames
@@ -366,7 +401,9 @@ Boost energy mechanic:
 ### Rendering Pipeline
 
 Pure pygame rendering (no GPU/ModernGL). The rendering pipeline draws in order:
-Parallax starfield background → Entities → Bullets → HUD → Notifications → Buff stats → Pause button → **BoostGauge (bottom-left)** → MotherShip → Explosions → GiveUp UI → **Reward Selector (topmost)**
+Parallax starfield background → Entities → Bullets → HUD → Buff stats → Pause button → **BoostGauge (bottom-left)** → MotherShip → Explosions → GiveUp UI → **Reward Selector** → **Notifications (topmost)**
+
+通知在天赋选择界面之上渲染，确保重要消息（如BOSS逃跑、击杀得分）不被遮挡。
 
 ### Enemy Movement
 
@@ -378,7 +415,7 @@ Parallax starfield background → Entities → Bullets → HUD → Notifications
 
 ### Window / Fullscreen
 
-`window/window.py` — `pygame.FULLSCREEN` (without `SCALED`) for fullscreen mode. `SCALED` causes cropped viewport on pygame 2.6+ X11/Wayland backends. `SCALED` retained for windowed resize mode.
+`window/window.py` — `pygame.DOUBLEBUF` for both windowed and fullscreen modes. `SCALED` removed entirely (causes cropped viewport on pygame 2.6+ X11/Wayland backends). Uses `tick_busy_loop` for accurate frame timing. Fullscreen uses `pygame.FULLSCREEN` flag.
 
 ---
 

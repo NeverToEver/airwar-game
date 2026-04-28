@@ -31,6 +31,8 @@ class BoostGauge:
         self._text_bright = c.TEXT_PRIMARY
         self._fonts: dict = {}
         self._bg_cache = None
+        self._arc_cache = None
+        self._arc_cache_key = (0, 0)
         self._ticks = self._build_ticks()
 
     def _build_ticks(self):
@@ -65,11 +67,23 @@ class BoostGauge:
         px, py = 12, screen_h - ph - 20
         self._render_panel(surface, px, py, pw, ph)
 
-        # Arc track
-        self._draw_arc(surface, cx, cy, r)
+        # Arc track + dim ticks — cached as pre-rendered layer
+        cache_key = (cx, cy, int(screen_h))
+        if self._arc_cache is None or self._arc_cache_key != cache_key:
+            arc_layer = pygame.Surface((pw, ph), pygame.SRCALPHA)
+            try:
+                arc_layer = arc_layer.convert_alpha()
+            except pygame.error:
+                pass
+            self._draw_arc(arc_layer, cx - px, cy - py, r)
+            self._draw_ticks(arc_layer, cx - px, cy - py, 0.0)
+            self._arc_cache = arc_layer
+            self._arc_cache_key = cache_key
+        surface.blit(self._arc_cache, (px, py))
 
-        # Ticks
-        self._draw_ticks(surface, cx, cy, ratio)
+        # Lit ticks — drawn on top each frame
+        if ratio > 0:
+            self._draw_ticks_lit(surface, cx, cy, ratio)
 
         # Needle
         angle_deg = self.ARC_START_DEG - ratio * (self.ARC_START_DEG - self.ARC_END_DEG)
@@ -119,18 +133,26 @@ class BoostGauge:
             alpha = 90 + int(60 * (i / steps))
             pygame.draw.line(surface, (*self._arc_color, alpha), (x1, y1), (x2, y2), 2)
 
-    def _draw_ticks(self, surface, cx, cy, ratio):
-        """Tick marks — lit up to current ratio with military teal, dim beyond."""
+    def _draw_ticks(self, surface, cx, cy, _ratio):
+        """Draw all tick marks in dim state (for cached layer)."""
         for rad, inner, outer, is_major, t in self._ticks:
-            filled = t <= ratio
-            if filled:
-                color = self._tick_major if is_major else self._tick_lit
-                alpha = 240 if is_major else 160
-                r2 = outer + (7 if is_major else 3)
-            else:
-                color = self._tick_dim
-                alpha = 100 if is_major else 55
-                r2 = outer
+            color = self._tick_dim
+            alpha = 100 if is_major else 55
+            x1 = cx + math.cos(rad) * inner
+            y1 = cy - math.sin(rad) * inner
+            x2 = cx + math.cos(rad) * outer
+            y2 = cy - math.sin(rad) * outer
+            w = 3 if is_major else 1
+            pygame.draw.line(surface, (*color, alpha), (x1, y1), (x2, y2), w)
+
+    def _draw_ticks_lit(self, surface, cx, cy, ratio):
+        """Draw only lit ticks on top of cached dim layer."""
+        for rad, inner, outer, is_major, t in self._ticks:
+            if t > ratio:
+                continue
+            color = self._tick_major if is_major else self._tick_lit
+            alpha = 240 if is_major else 160
+            r2 = outer + (7 if is_major else 3)
             x1 = cx + math.cos(rad) * inner
             y1 = cy - math.sin(rad) * inner
             x2 = cx + math.cos(rad) * r2

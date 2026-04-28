@@ -484,6 +484,10 @@ class GameIntegrator:
 
         self._game_scene.set_player_position_topleft(current_x, current_y)
 
+        # Continue firing during docking animation for cover fire
+        self._update_mothership_firing()
+        self._update_mothership_bullets()
+
         if progress >= 1.0:
             self._docking_animation_active = False
             self._docking_animation_frame = 0

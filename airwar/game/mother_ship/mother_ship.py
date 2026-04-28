@@ -26,6 +26,8 @@ class MotherShip:
         self._screen_height = screen_height
         self._visible = False
         self._phantom_visible = False
+        self._phantom_surf = None
+        self._phantom_surf_size = (0, 0)
         self._initial_x = screen_width // 2
         self._initial_y = int(screen_height * 0.35)
         self._position = (self._initial_x, self._initial_y)
@@ -164,26 +166,35 @@ class MotherShip:
     def _render_phantom(self, surface: pygame.Surface) -> None:
         """Draw a holographic preview matching the actual mothership silhouette."""
         cx, cy = self._initial_x, self._initial_y
+        sw, sh = surface.get_width(), surface.get_height()
         pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() / 1000.0 * 2.5)
+
+        # Reuse cached surface — only reallocate on size change or first use
+        if self._phantom_surf is None or self._phantom_surf_size != (sw, sh):
+            phantom = pygame.Surface((sw, sh), pygame.SRCALPHA)
+            try:
+                self._phantom_surf = phantom.convert_alpha()
+            except pygame.error:
+                self._phantom_surf = phantom
+            self._phantom_surf_size = (sw, sh)
+        phantom = self._phantom_surf
+        phantom.fill((0, 0, 0, 0))
+
         base_alpha = int(35 + 20 * pulse)
         glow_alpha = int(15 + 10 * pulse)
-
-        phantom_surf = pygame.Surface((surface.get_width(), surface.get_height()), pygame.SRCALPHA)
         teal = (55, 188, 225)
 
-        # Outer glow layer
         glow_color = (*teal, glow_alpha)
-        self._draw_phantom_hull(phantom_surf, cx, cy, glow_color, 6)
-        self._draw_phantom_wings(phantom_surf, cx, cy, glow_color, 6)
+        self._draw_phantom_hull(phantom, cx, cy, glow_color, 6)
+        self._draw_phantom_wings(phantom, cx, cy, glow_color, 6)
 
-        # Main wireframe
         wire_color = (*teal, base_alpha)
-        self._draw_phantom_hull(phantom_surf, cx, cy, wire_color, 2)
-        self._draw_phantom_wings(phantom_surf, cx, cy, wire_color, 2)
-        self._draw_phantom_docking_bay(phantom_surf, cx, cy, wire_color)
-        self._draw_phantom_engines(phantom_surf, cx, cy, pulse)
+        self._draw_phantom_hull(phantom, cx, cy, wire_color, 2)
+        self._draw_phantom_wings(phantom, cx, cy, wire_color, 2)
+        self._draw_phantom_docking_bay(phantom, cx, cy, wire_color)
+        self._draw_phantom_engines(phantom, cx, cy, pulse)
 
-        surface.blit(phantom_surf, (0, 0))
+        surface.blit(phantom, (0, 0))
 
     def _draw_phantom_hull(self, surface: pygame.Surface, cx: int, cy: int,
                            color: tuple, width: int) -> None:
