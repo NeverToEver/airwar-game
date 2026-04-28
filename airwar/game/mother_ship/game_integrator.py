@@ -577,18 +577,39 @@ class GameIntegrator:
             return {}
         return self._game_scene.get_buff_levels()
 
+    AMMO_CELL_COUNT = 10.0
+
     def get_status_data(self) -> dict:
-        """Return mothership state data for the integrated HUD."""
+        """Return mothership state data for the ammo magazine and warning UI."""
         state = self._state_machine.current_state
         cd = self._state_machine.cooldown
         stay = self._state_machine.stay_progress
         hold = self._input_detector.get_progress()
+
+        # Compute ammo count based on state
+        is_present = state in (MotherShipState.PRESSING, MotherShipState.ENTERING,
+                               MotherShipState.DOCKING, MotherShipState.DOCKED,
+                               MotherShipState.UNDOCKING)
+        is_cooldown = self._state_machine.is_in_cooldown()
+        is_docked = state == MotherShipState.DOCKED
+
+        if is_cooldown:
+            ammo_count = cd.cooldown_progress * self.AMMO_CELL_COUNT
+        elif is_docked:
+            ammo_count = (1.0 - stay.stay_progress) * self.AMMO_CELL_COUNT
+        elif state in (MotherShipState.IDLE, MotherShipState.PRESSING,
+                       MotherShipState.ENTERING, MotherShipState.DOCKING):
+            ammo_count = self.AMMO_CELL_COUNT
+        else:
+            ammo_count = 0.0
+
+        ammo_warning = is_docked and ammo_count <= 4.0
+
         return {
             'state': state,
-            'is_present': state in (MotherShipState.PRESSING, MotherShipState.ENTERING,
-                                     MotherShipState.DOCKING, MotherShipState.DOCKED,
-                                     MotherShipState.UNDOCKING),
-            'is_in_cooldown': self._state_machine.is_in_cooldown(),
+            'is_present': is_present,
+            'is_in_cooldown': is_cooldown,
+            'is_docked': is_docked,
             'cooldown_progress': cd.cooldown_progress,
             'cooldown_remaining': cd.get_remaining_time(),
             'cooldown_duration': cd.cooldown_duration,
@@ -596,6 +617,9 @@ class GameIntegrator:
             'stay_progress': stay.stay_progress,
             'stay_remaining': max(0.0, stay.stay_duration - (pygame.time.get_ticks() / 1000.0 - stay.stay_start_time)) if stay.is_staying else 0.0,
             'stay_duration': stay.stay_duration,
+            'ammo_count': ammo_count,
+            'ammo_max': self.AMMO_CELL_COUNT,
+            'ammo_warning': ammo_warning,
         }
 
     def render(self, surface) -> None:

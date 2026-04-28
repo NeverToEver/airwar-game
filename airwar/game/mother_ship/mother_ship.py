@@ -538,11 +538,13 @@ class MotherShip:
         for mx in [cx + 8, cx + 30, cx + 52]:
             pygame.draw.circle(surface, self._colors['panel_line'], (mx, cy - 54), 1)
 
-        # Docking bay approach light stripe
+        # Docking bay approach light stripe — cached surface
+        if not hasattr(self, '_stripe_cache') or self._stripe_cache is None:
+            self._stripe_cache = pygame.Surface((40, 2), pygame.SRCALPHA)
         stripe_alpha = int(40 + 20 * self._engine_pulse)
-        stripe_surf = pygame.Surface((40, 2), pygame.SRCALPHA)
-        stripe_surf.fill((*self._colors['dock_guide'][:3], stripe_alpha))
-        surface.blit(stripe_surf, (cx - 20, cy + 32))
+        self._stripe_cache.fill((0, 0, 0, 0))
+        self._stripe_cache.fill((*self._colors['dock_guide'][:3], stripe_alpha))
+        surface.blit(self._stripe_cache, (cx - 20, cy + 32))
 
     # ── Engine nozzles ─────────────────────────────────────────────────────
 
@@ -568,7 +570,5 @@ class MotherShip:
 
             flame_h = int(10 * pulse)
             if flame_h > 1:
-                flame_rect = pygame.Rect(ex - 2, ey + core_h, 4, flame_h)
-                flame_surf = pygame.Surface((4, flame_h), pygame.SRCALPHA)
-                flame_surf.fill((*self._colors['engine_glow'][:3], 180))
-                surface.blit(flame_surf, (ex - 2, ey + core_h))
+                pygame.draw.rect(surface, (*self._colors['engine_glow'][:3], 180),
+                                 (ex - 2, ey + core_h, 4, flame_h))

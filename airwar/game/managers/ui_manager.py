@@ -92,7 +92,7 @@ class UIManager:
         for bullet in enemy_bullets:
             bullet.render(surface)
 
-    def render_hud(self, surface: pygame.Surface, player, mothership_status: dict = None) -> None:
+    def render_hud(self, surface: pygame.Surface, player) -> None:
         state = self._game_controller.state
 
         unlocked_buffs = getattr(self._reward_system, 'unlocked_buffs', [])
@@ -114,7 +114,6 @@ class UIManager:
             get_buff_color=get_buff_color,
             current_coefficient=current_coefficient,
             initial_coefficient=initial_coefficient,
-            mothership_status=mothership_status,
         )
 
     def render_notification(self, surface: pygame.Surface) -> None:

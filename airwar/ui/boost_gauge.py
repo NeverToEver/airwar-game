@@ -11,7 +11,7 @@ class BoostGauge:
     bottom-left (empty) clockwise through top to bottom-right (full).
     """
 
-    ARC_RADIUS = 115
+    ARC_RADIUS = 80
     ARC_START_DEG = 225          # empty: bottom-left
     ARC_END_DEG = -45            # full: bottom-right (= 315°)
     TICK_MAJOR_INTERVAL = 45    # degrees between major ticks
@@ -43,7 +43,7 @@ class BoostGauge:
             deg = self.ARC_START_DEG - t * (self.ARC_START_DEG - self.ARC_END_DEG)
             rad = math.radians(deg)
             is_major = (i % 5 == 0)
-            inner = self.ARC_RADIUS - (13 if is_major else 8)
+            inner = self.ARC_RADIUS - (9 if is_major else 5)
             outer = self.ARC_RADIUS
             ticks.append((rad, inner, outer, is_major, t))
         return ticks
@@ -57,14 +57,14 @@ class BoostGauge:
                boost_max: float, boost_active: bool) -> None:
         screen_h = surface.get_height()
 
-        cx = 155
-        cy = screen_h - 135
+        cx = 108
+        cy = screen_h - 98
         r = self.ARC_RADIUS
         ratio = boost_current / boost_max if boost_max > 0 else 0
 
         # Panel
-        pw, ph = 290, 260
-        px, py = 12, screen_h - ph - 20
+        pw, ph = 200, 180
+        px, py = 8, screen_h - ph - 12
         self._render_panel(surface, px, py, pw, ph)
 
         # Arc track + dim ticks — cached as pre-rendered layer
@@ -90,9 +90,9 @@ class BoostGauge:
         self._draw_needle(surface, cx, cy, r, angle_deg, boost_active)
 
         # Center hub — metallic cap
-        pygame.draw.circle(surface, (*self._bg_color, 255), (cx, cy), 13)
-        pygame.draw.circle(surface, (*self._arc_color, 140), (cx, cy), 11, 1)
-        pygame.draw.circle(surface, (*self._tick_lit, 80), (cx, cy), 4)
+        pygame.draw.circle(surface, (*self._bg_color, 255), (cx, cy), 9)
+        pygame.draw.circle(surface, (*self._arc_color, 140), (cx, cy), 7, 1)
+        pygame.draw.circle(surface, (*self._tick_lit, 80), (cx, cy), 3)
 
         # Labels
         self._draw_labels(surface, cx, cy, r, boost_current, boost_max, boost_active)
@@ -152,45 +152,45 @@ class BoostGauge:
                 continue
             color = self._tick_major if is_major else self._tick_lit
             alpha = 240 if is_major else 160
-            r2 = outer + (7 if is_major else 3)
+            r2 = outer + (5 if is_major else 2)
             x1 = cx + math.cos(rad) * inner
             y1 = cy - math.sin(rad) * inner
             x2 = cx + math.cos(rad) * r2
             y2 = cy - math.sin(rad) * r2
-            w = 3 if is_major else 1
+            w = 2 if is_major else 1
             pygame.draw.line(surface, (*color, alpha), (x1, y1), (x2, y2), w)
 
     def _draw_needle(self, surface, cx, cy, r, angle_deg, active):
         """Pointer needle."""
         rad = math.radians(angle_deg)
-        tip_r = r - 14
+        tip_r = r - 10
         tip_x = cx + math.cos(rad) * tip_r
         tip_y = cy - math.sin(rad) * tip_r
 
         back_rad = math.radians(angle_deg + 180)
-        tail_x = cx + math.cos(back_rad) * 20
-        tail_y = cy - math.sin(back_rad) * 20
+        tail_x = cx + math.cos(back_rad) * 14
+        tail_y = cy - math.sin(back_rad) * 14
 
         color = self._needle_active if active else self._needle_color
         pygame.draw.line(surface, (*color, 210), (cx, cy), (tip_x, tip_y), 2)
         pygame.draw.line(surface, (*color, 90), (cx, cy), (tail_x, tail_y), 1)
-        pygame.draw.circle(surface, (*color, 240), (int(tip_x), int(tip_y)), 3)
+        pygame.draw.circle(surface, (*color, 240), (int(tip_x), int(tip_y)), 2)
 
     def _draw_labels(self, surface, cx, cy, r, current, max_val, active):
         """Title, value, min/max, and BOOSTING indicator."""
-        title_font = self._get_font(18)
+        title_font = self._get_font(14)
         title = title_font.render("BOOST FUEL", True, self._text_color)
-        surface.blit(title, title.get_rect(center=(cx, cy + 12)))
+        surface.blit(title, title.get_rect(center=(cx, cy + 10)))
 
-        val_font = self._get_font(34)
+        val_font = self._get_font(24)
         val_color = self._text_bright if active else self._text_color
         val = val_font.render(str(int(current)), True, val_color)
-        surface.blit(val, val.get_rect(center=(cx, cy + 40)))
+        surface.blit(val, val.get_rect(center=(cx, cy + 30)))
 
-        tiny = self._get_font(14)
+        tiny = self._get_font(11)
         rad_start = math.radians(self.ARC_START_DEG)
         rad_end = math.radians(self.ARC_END_DEG)
-        lr = r + 16
+        lr = r + 12
 
         zero = tiny.render("0", True, self._text_color)
         lx, ly = cx + math.cos(rad_start) * lr, cy - math.sin(rad_start) * lr
@@ -201,6 +201,6 @@ class BoostGauge:
         surface.blit(full, full.get_rect(center=(rx, ry)))
 
         if active:
-            af = self._get_font(15)
+            af = self._get_font(12)
             at = af.render("BOOSTING", True, (*self._needle_active, 200))
-            surface.blit(at, at.get_rect(center=(cx, cy + 58)))
+            surface.blit(at, at.get_rect(center=(cx, cy + 44)))
