@@ -30,7 +30,9 @@ class Window:
         else:
             self._width, self._height = self._get_adaptive_size()
 
-        flags = pygame.RESIZABLE | pygame.SCALED if self._resizable else pygame.SCALED
+        flags = pygame.DOUBLEBUF
+        if self._resizable:
+            flags |= pygame.RESIZABLE
         self._screen = pygame.display.set_mode((self._width, self._height), flags)
         pygame.display.set_caption(self._title)
         self._clock = pygame.time.Clock()
@@ -102,7 +104,7 @@ class Window:
         self._width = width
         self._height = height
         if self._screen:
-            self._screen = pygame.display.set_mode((width, height), pygame.RESIZABLE | pygame.SCALED)
+            self._screen = pygame.display.set_mode((width, height), pygame.DOUBLEBUF | pygame.RESIZABLE)
         set_screen_size(width, height)
 
     def flip(self) -> None:
@@ -115,7 +117,7 @@ class Window:
 
     def tick(self, fps: int = 60) -> None:
         if self._clock:
-            self._clock.tick(fps)
+            self._clock.tick_busy_loop(fps)
 
     def get_events(self) -> List[pygame.event.Event]:
         return pygame.event.get()
@@ -155,7 +157,9 @@ class Window:
 
         if self._is_fullscreen:
             self._width, self._height = self._windowed_size
-            flags = (pygame.RESIZABLE | pygame.SCALED) if self._resizable else pygame.SCALED
+            flags = pygame.DOUBLEBUF
+            if self._resizable:
+                flags |= pygame.RESIZABLE
             try:
                 self._screen = pygame.display.set_mode((self._width, self._height), flags)
             except pygame.error:
@@ -181,7 +185,7 @@ class Window:
                     self._width, self._height = self._windowed_size
                     self._screen = pygame.display.set_mode(
                         (self._width, self._height),
-                        pygame.RESIZABLE | pygame.SCALED)
+                        pygame.DOUBLEBUF | pygame.RESIZABLE)
                     self._is_fullscreen = False
                     return
             self._is_fullscreen = True

@@ -150,6 +150,28 @@ pip install --force-reinstall target/wheels/airwar_core-*.whl
 python3 -c "from airwar.core_bindings import RUST_AVAILABLE; print('Rust 加速:', '启用' if RUST_AVAILABLE else '未安装（纯 Python 运行）')"
 ```
 
+## 打包为独立可执行文件
+
+无需安装 Python 或 Rust，一键构建跨平台独立游戏。
+
+```bash
+# Linux
+bash build_linux.sh
+
+# macOS
+bash build_macos.sh
+
+# Windows (在命令提示符中)
+build_windows.bat
+```
+
+构建产物在 `dist/AirWar` (~40MB 独立可执行文件，内含 Python 运行时 + Rust 扩展 + 所有依赖)，可直接双击运行，无需额外安装任何环境。
+
+**前置条件（仅构建时需要）：**
+- Python 3.12+ 和 PyInstaller（脚本会自动安装）
+- Rust 工具链（用于编译加速扩展，失败时自动降级为纯 Python）
+- 各平台的 C 编译器（Linux: gcc, macOS: Xcode CLT, Windows: VS Build Tools）
+
 ## 测试
 
 测试必须从项目根目录运行，而非 `airwar/` 子目录。

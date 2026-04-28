@@ -86,6 +86,10 @@ class SpaceBackground:
                 g = int(bg_primary[1] * (1 - ratio) + bg_secondary[1] * ratio)
                 b = int(bg_primary[2] * (1 - ratio) + bg_secondary[2] * ratio)
                 pygame.draw.line(gradient, (r, g, b), (0, y), (self.screen_width, y))
+            try:
+                gradient = gradient.convert()
+            except pygame.error:
+                pass
             SpaceBackground._gradient_cache[cache_key] = gradient
         self._cached_gradient = SpaceBackground._gradient_cache[cache_key]
 

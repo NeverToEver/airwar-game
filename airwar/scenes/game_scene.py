@@ -284,13 +284,13 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
                 self._mother_ship_integrator.update()
             return
 
+        if self.game_controller.state.paused or self.reward_selector.visible:
+            return
+
         docked = False
         if self._mother_ship_integrator:
             self._mother_ship_integrator.update()
             docked = self._mother_ship_integrator.is_docked()
-
-        if self.game_controller.state.paused or self.reward_selector.visible:
-            return
 
         self._input_coordinator.update_give_up()
         self._game_loop_manager.update_game(self.player)
@@ -306,6 +306,13 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             self.spawn_controller.enemy_bullets,
             self._on_player_damaged,
         )
+
+        # 碰撞检测后清理：确保碰撞中死亡的实体在里程碑检查前被移除，
+        # 避免实体在暂停期间残留、取消暂停后"凭空消失"
+        self.spawn_controller.cleanup()
+        self._bullet_manager.cleanup()
+        self.player.cleanup_inactive_bullets()
+
         self._milestone_manager.check_and_trigger(self.player)
 
     def _on_player_damaged(self, damage: int, player) -> None:
@@ -360,7 +367,6 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         mothership_status = (self._mother_ship_integrator.get_status_data()
                               if self._mother_ship_integrator else None)
         self._ui_manager.render_hud(surface, self.player, mothership_status)
-        self._ui_manager.render_notification(surface)
         self._ui_manager.render_buff_stats_panel(surface, self.player)
 
         self._render_pause_button(surface)
@@ -380,6 +386,9 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         # Reward selector must render last to cover all game elements
         if self.reward_selector.visible:
             self.reward_selector.render(surface)
+
+        # 通知渲染在天赋选择界面之上，确保重要消息（如BOSS逃跑）不被遮挡
+        self._ui_manager.render_notification(surface)
 
     def _init_pause_button_layout(self) -> None:
         """Pre-calculate pause button geometry and register button regions.
