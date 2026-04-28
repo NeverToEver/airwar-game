@@ -1,7 +1,9 @@
 """Integrated HUD — unified heads-up display combining all UI elements."""
+import math
 import pygame
 from typing import List, Dict, Any
 from airwar.config.design_tokens import get_design_tokens
+from airwar.ui.discrete_battery import DiscreteBatteryIndicator
 
 
 class IntegratedHUD:
@@ -20,6 +22,8 @@ class IntegratedHUD:
         self._fonts: dict = {}
         self._arrow_cache = None
         self._hint_cache = None
+        self._battery_collapsed: DiscreteBatteryIndicator = None
+        self._battery_expanded: DiscreteBatteryIndicator = None
 
     def _setup_layout(self):
         colors = self._tokens.colors
@@ -58,10 +62,16 @@ class IntegratedHUD:
         if not self._is_expanded or buff_count <= self._buff_visible_count:
             self._buff_scroll_offset = 0.0
             return
-        
+
         self._buff_scroll_offset += self._buff_scroll_speed
         if self._buff_scroll_offset >= buff_count:
             self._buff_scroll_offset = 0.0
+
+    def update_health_tank(self, health: int, max_health: int) -> None:
+        if self._battery_collapsed:
+            self._battery_collapsed.set_health(health, max_health)
+        if self._battery_expanded:
+            self._battery_expanded.set_health(health, max_health)
 
     def toggle(self):
         self._is_expanded = not self._is_expanded
@@ -88,7 +98,6 @@ class IntegratedHUD:
         get_buff_color=None,
         current_coefficient: float = None,
         initial_coefficient: float = None,
-        mothership_status: dict = None,
     ):
         colors = self._tokens.colors
         width = surface.get_width()
@@ -119,11 +128,6 @@ class IntegratedHUD:
                 surface, player_health, player_max_health, colors, panel_x, current_y
             )
 
-            if mothership_status and mothership_status.get('is_present'):
-                current_y = self._render_mothership_module(
-                    surface, mothership_status, colors, panel_x, current_y
-                )
-
             current_y = self._render_kills_module(surface, kills, colors, panel_x, current_y)
 
             if boss_kills > 0:
@@ -137,10 +141,6 @@ class IntegratedHUD:
             self._render_collapsed_health(
                 surface, player_health, player_max_health, colors, panel_x, panel_y, panel_height
             )
-            if mothership_status and mothership_status.get('is_present'):
-                self._render_collapsed_mothership_ring(
-                    surface, mothership_status, colors, panel_x, panel_y, panel_height
-                )
             self._render_expand_indicator(surface, panel_x, panel_y, panel_height, colors)
 
     def _render_panel_background(self, surface, rect, colors):
@@ -168,93 +168,23 @@ class IntegratedHUD:
 
     def _render_collapsed_health(self, surface, health, max_health, colors,
                                   panel_x, panel_y, panel_height):
-        """Render a compact battery-style segmented health indicator.
+        cw = self._current_width
+        inner_h = panel_height - self.padding * 2
+        if self._battery_collapsed is None:
+            bw = min(36, cw - 10)
+            bh = inner_h // 3
+            self._battery_collapsed = DiscreteBatteryIndicator(
+                width=bw, height=bh, num_segments=30, orientation='vertical')
 
-        Vertical multi-segment display with flat bars. All filled segments
-        share one solid color — green at full HP, shifting to yellow then red
-        as health drops. Positioned in the lower half of the collapsed panel.
-        """
-        health_ratio = health / max_health if max_health > 0 else 0
-        segment_count = 8
-        filled_segments = max(0, int(segment_count * health_ratio + 0.5))
+        battery = self._battery_collapsed
+        bw = battery._w
+        tx = panel_x + (cw - bw) // 2
+        ty = panel_y + panel_height - self.padding - battery._h - 30
+        battery.render(surface, tx, ty)
 
-        # Overall muted color based on health ratio: green(high) → amber(mid) → red(low)
-        if health_ratio > 0.5:
-            t = (1.0 - health_ratio) / 0.5
-            r = int(120 + 60 * t)
-            g = int(180 - 30 * t)
-            b = 60
-        else:
-            t = (0.5 - health_ratio) / 0.5
-            r = int(180 + 40 * t)
-            g = int(150 * (1.0 - t))
-            b = 60
-        fill_color = (r, g, b, 220)
-
-        # Position in the lower half of the panel
-        bar_width = self._current_width - self.padding * 2
-        segment_width = bar_width - 4
-        seg_x = panel_x + (self._current_width - segment_width) // 2
-
-        gap = 8
-        seg_height = 20
-        total_height = segment_count * seg_height + (segment_count - 1) * gap
-
-        # Anchor to the lower area — above the expand indicator
-        battery_bottom = panel_y + panel_height - self.padding - 45
-        battery_top = battery_bottom - total_height
-
-        # Outer frame — padded around all segments
-        frame_pad = 6
-        frame_rect = pygame.Rect(
-            seg_x - frame_pad,
-            battery_top - frame_pad,
-            segment_width + frame_pad * 2,
-            total_height + frame_pad * 2,
-        )
-
-        # Frame background
-        pygame.draw.rect(
-            surface,
-            (*colors.BACKGROUND_SECONDARY, 180),
-            frame_rect,
-            border_radius=5
-        )
-        # Frame border
-        pygame.draw.rect(
-            surface,
-            (*colors.PANEL_BORDER, 200),
-            frame_rect,
-            width=2,
-            border_radius=5
-        )
-
-        for i in range(segment_count):
-            seg_y = battery_bottom - (i + 1) * seg_height - i * gap
-
-            if i < filled_segments:
-                pygame.draw.rect(
-                    surface,
-                    fill_color,
-                    (seg_x, seg_y, segment_width, seg_height),
-                    border_radius=2
-                )
-            else:
-                pygame.draw.rect(
-                    surface,
-                    (*colors.BACKGROUND_PANEL, 100),
-                    (seg_x, seg_y, segment_width, seg_height),
-                    border_radius=2
-                )
-
-        # Percentage label below the segments
-        label_font = self._get_font(max(12, self.label_font_size - 10))
-        label_text = f"{int(health_ratio * 100)}%"
-        label = label_font.render(label_text, True, (r, g, b))
-        label_rect = label.get_rect(
-            center=(panel_x + self._current_width // 2, battery_bottom + 9)
-        )
-        surface.blit(label, label_rect)
+        border_rect = pygame.Rect(tx, ty, bw, battery._h)
+        pygame.draw.rect(surface, (*colors.PANEL_BORDER, 140),
+                         border_rect, width=1, border_radius=4)
 
     def _render_collapsed_mothership_ring(self, surface, status, colors, panel_x, panel_y, panel_height):
         """Draw a circular cooldown ring in collapsed mode, styled like the health indicator."""
@@ -522,7 +452,7 @@ class IntegratedHUD:
 
     def _render_health_module(self, surface, health, max_health, colors, x, y):
         content_x = x + self.padding
-        
+
         label = self._cached_label(self.label_font_size, "HP", colors.TEXT_MUTED)
         surface.blit(label, (content_x, y))
 
@@ -533,42 +463,37 @@ class IntegratedHUD:
         value = value_font.render(f"{health}/{max_health}", True, health_color)
         surface.blit(value, (content_x, y + 22))
 
-        bar_width = self.panel_width - self.padding * 2 - 20
-        bar_height = self.health_bar_height
+        bar_width = self.panel_width - self.padding * 2 - 4
+        bar_height = 24
         bar_x = content_x
         bar_y = y + 46
 
+        # 深色圆角背景条 — 与 progress bar 风格一致
         pygame.draw.rect(
             surface,
             (*colors.BACKGROUND_SECONDARY, 180),
             (bar_x, bar_y, bar_width, bar_height),
-            border_radius=8
+            border_radius=7
+        )
+        # 细边框 — 暗示总血量范围
+        pygame.draw.rect(
+            surface,
+            (*colors.PANEL_BORDER, 150),
+            (bar_x, bar_y, bar_width, bar_height),
+            width=1, border_radius=7
         )
 
-        fill_width = int(bar_width * health_ratio)
-        if fill_width > 0:
-            pygame.draw.rect(
-                surface,
-                health_color,
-                (bar_x, bar_y, fill_width, bar_height),
-                border_radius=8
-            )
-
-            if fill_width > 4:
-                highlight_surf = pygame.Surface((fill_width - 4, 3), pygame.SRCALPHA)
-                pygame.draw.rect(
-                    highlight_surf,
-                    (*colors.TEXT_PRIMARY, 60),
-                    highlight_surf.get_rect(),
-                    border_radius=2
-                )
-                surface.blit(highlight_surf, (bar_x + 2, bar_y + 3))
+        if self._battery_expanded is None:
+            self._battery_expanded = DiscreteBatteryIndicator(
+                width=bar_width - 2, height=bar_height, num_segments=30,
+                orientation='horizontal')
+        self._battery_expanded.render(surface, bar_x + 1, bar_y)
 
         return y + self.module_height + self.gap + 10
 
     def _render_kills_module(self, surface, kills, colors, x, y):
         content_x = x + self.padding
-        
+
         label = self._cached_label(self.label_font_size, "KILLS", colors.TEXT_MUTED)
         surface.blit(label, (content_x, y))
 
