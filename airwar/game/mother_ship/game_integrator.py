@@ -584,7 +584,6 @@ class GameIntegrator:
         state = self._state_machine.current_state
         cd = self._state_machine.cooldown
         stay = self._state_machine.stay_progress
-        hold = self._input_detector.get_progress()
 
         # Compute ammo count based on state
         is_present = state in (MotherShipState.PRESSING, MotherShipState.ENTERING,
@@ -613,7 +612,7 @@ class GameIntegrator:
             'cooldown_progress': cd.cooldown_progress,
             'cooldown_remaining': cd.get_remaining_time(),
             'cooldown_duration': cd.cooldown_duration,
-            'hold_progress': hold.current_progress if state == MotherShipState.PRESSING else 0.0,
+            'hold_progress': self._input_detector.get_progress().current_progress if state == MotherShipState.PRESSING else 0.0,
             'stay_progress': stay.stay_progress,
             'stay_remaining': max(0.0, stay.stay_duration - (pygame.time.get_ticks() / 1000.0 - stay.stay_start_time)) if stay.is_staying else 0.0,
             'stay_duration': stay.stay_duration,

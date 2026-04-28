@@ -11,6 +11,8 @@ class DiscreteBatteryIndicator:
 
     def __init__(self, width: int, height: int, num_segments: int = 20,
                  orientation: str = 'vertical'):
+        if orientation not in ('vertical', 'horizontal'):
+            raise ValueError(f"orientation must be 'vertical' or 'horizontal', got '{orientation}'")
         self._w = width
         self._h = height
         self._num_segments = num_segments

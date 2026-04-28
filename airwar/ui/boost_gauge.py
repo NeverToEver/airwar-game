@@ -101,7 +101,7 @@ class BoostGauge:
 
     def _render_panel(self, surface, x, y, w, h):
         cache_key = (w, h)
-        if self._bg_cache is None or self._bg_cache[0] != cache_key:
+        if self._bg_cache is None or self._bg_cache.get('key') != cache_key:
             panel = pygame.Surface((w, h), pygame.SRCALPHA)
             pygame.draw.rect(panel, (*self._bg_color, 215),
                              panel.get_rect(), border_radius=14)
@@ -112,8 +112,8 @@ class BoostGauge:
             # Outer border
             pygame.draw.rect(panel, (*self._arc_color, 90),
                              panel.get_rect(), width=1, border_radius=14)
-            self._bg_cache = (cache_key, panel)
-        surface.blit(self._bg_cache[1], (x, y))
+            self._bg_cache = {'key': cache_key, 'surf': panel}
+        surface.blit(self._bg_cache['surf'], (x, y))
 
     def _draw_arc(self, surface, cx, cy, r):
         """Draw 270° arc track with subtle glow."""
