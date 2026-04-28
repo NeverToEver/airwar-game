@@ -13,6 +13,8 @@ from airwar.game.managers.collision_controller import CollisionController
 from airwar.game.rendering.game_renderer import GameRenderer
 from airwar.ui.reward_selector import RewardSelector
 from airwar.ui.boost_gauge import BoostGauge
+from airwar.ui.ammo_magazine import AmmoMagazine
+from airwar.ui.warning_banner import WarningBanner
 from airwar.game.mother_ship import (
     EventBus,
     InputDetector,
@@ -77,6 +79,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self.player: Player = None
         self.reward_selector: RewardSelector = RewardSelector()
         self._mother_ship_integrator = None
+        self._ammo_magazine: AmmoMagazine = None
+        self._warning_banner: WarningBanner = None
         self._give_up_detector = None
         self._give_up_ui = None
         self._bullet_manager: BulletManager = None
@@ -150,6 +154,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self.player.boost_recovery_delay = boost_cfg['recovery_delay']
         self.player.boost_recovery_ramp = boost_cfg['recovery_ramp']
         self._boost_gauge = BoostGauge()
+        self._ammo_magazine = AmmoMagazine()
+        self._warning_banner = WarningBanner()
 
         self._setup_reward_selector()
         self._init_mother_ship_system(screen_width, screen_height)
@@ -269,7 +275,9 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if self.game_renderer and self.game_renderer.integrated_hud:
             unlocked_buffs = getattr(self.reward_system, 'unlocked_buffs', [])
             self.game_renderer.integrated_hud.update_scroll(len(unlocked_buffs))
-
+            if self.player:
+                self.game_renderer.integrated_hud.update_health_tank(
+                    self.player.health, self.player.max_health)
         if self._game_loop_manager.is_entrance_playing():
             self._game_loop_manager.update_entrance(self.player)
             if self._mother_ship_integrator:
@@ -284,6 +292,10 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
                 self._mother_ship_integrator.update()
             return
 
+        # Always update warning banner scroll animation (even during pause)
+        if self._warning_banner:
+            self._warning_banner.update()
+
         if self.game_controller.state.paused or self.reward_selector.visible:
             return
 
@@ -291,6 +303,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if self._mother_ship_integrator:
             self._mother_ship_integrator.update()
             docked = self._mother_ship_integrator.is_docked()
+
+        self._update_mothership_ammo_warning()
 
         self._input_coordinator.update_give_up()
         self._game_loop_manager.update_game(self.player)
@@ -314,6 +328,31 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self.player.cleanup_inactive_bullets()
 
         self._milestone_manager.check_and_trigger(self.player)
+
+    def _update_mothership_ammo_warning(self) -> None:
+        """Check ammo level and activate warning banner when critically low.
+
+        When the mothership's ammo drops below the warning threshold during
+        DOCKED state, activates the scrolling warning banner. The banner's
+        on_complete callback triggers the undocking sequence.
+        """
+        if not self._mother_ship_integrator or not self._warning_banner:
+            return
+
+        status = self._mother_ship_integrator.get_status_data()
+        if not status.get('ammo_warning', False):
+            return
+
+        if self._warning_banner.is_active:
+            return
+
+        # Activate warning — on complete, trigger undocking
+        event_bus = self._mother_ship_integrator._event_bus
+
+        def trigger_undock():
+            event_bus.publish('UNDOCK_REQUESTED')
+
+        self._warning_banner.activate(on_complete=trigger_undock)
 
     def _on_player_damaged(self, damage: int, player) -> None:
         """Handle player hit: apply damage, clear all enemy bullets, trigger invincibility."""
@@ -364,9 +403,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             self.player,
             self.spawn_controller.enemy_bullets
         )
-        mothership_status = (self._mother_ship_integrator.get_status_data()
-                              if self._mother_ship_integrator else None)
-        self._ui_manager.render_hud(surface, self.player, mothership_status)
+        self._ui_manager.render_hud(surface, self.player)
         self._ui_manager.render_buff_stats_panel(surface, self.player)
 
         self._render_pause_button(surface)
@@ -377,11 +414,28 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             self._boost_gauge.render(surface, status['current'],
                                      status['max'], status['active'])
 
+        # Ammo magazine — left-side vertical ammo rack
+        if self._ammo_magazine and self._mother_ship_integrator:
+            ms_data = self._mother_ship_integrator.get_status_data()
+            self._ammo_magazine.render(
+                surface,
+                ammo_count=ms_data.get('ammo_count', 0.0),
+                ammo_max=ms_data.get('ammo_max', 10.0),
+                is_cooldown=ms_data.get('is_in_cooldown', False),
+                is_docked=ms_data.get('is_docked', False),
+                is_warning=ms_data.get('ammo_count', 0.0) <= 3.0,
+                is_present=ms_data.get('is_present', False),
+            )
+
         if self._mother_ship_integrator:
             self._mother_ship_integrator.render(surface)
 
         self._game_loop_manager.render_explosions(surface)
         self._input_coordinator.render_give_up(surface)
+
+        # Warning banner — top-of-screen scrolling ammo depletion alert
+        if self._warning_banner:
+            self._warning_banner.render(surface)
 
         # Reward selector must render last to cover all game elements
         if self.reward_selector.visible:
