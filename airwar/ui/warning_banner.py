@@ -71,7 +71,7 @@ class WarningBanner:
         self._on_complete = None
         self._y_offset = 0.0
 
-    def update(self, dt: float = 1.0 / 60.0) -> None:
+    def update(self) -> None:
         if self._state == self._STATE_INACTIVE:
             return
 

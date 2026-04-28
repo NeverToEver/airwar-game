@@ -91,7 +91,7 @@ class AmmoMagazine:
         return surf
 
     def render(self, surface: pygame.Surface, ammo_count: float,
-               ammo_max: float, is_cooldown: bool, is_docked: bool,
+               ammo_max: float, *, is_cooldown: bool, is_docked: bool,
                is_warning: bool, is_present: bool) -> None:
         """Render the ammo magazine.
 

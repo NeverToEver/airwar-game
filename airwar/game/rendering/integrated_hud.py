@@ -1,5 +1,4 @@
 """Integrated HUD — unified heads-up display combining all UI elements."""
-import math
 import pygame
 from typing import List, Dict, Any
 from airwar.config.design_tokens import get_design_tokens
@@ -40,7 +39,6 @@ class IntegratedHUD:
         self.buff_font_size = components.HUD_BUFF_FONT_SIZE
         self.more_font_size = components.HUD_MORE_FONT_SIZE
         self.progress_bar_height = components.HUD_PROGRESS_BAR_HEIGHT
-        self.health_bar_height = components.HUD_HEALTH_BAR_HEIGHT
 
         self.bg_color = (*colors.BACKGROUND_PANEL, 230)
         self.border_color = (*colors.PANEL_BORDER, 180)
