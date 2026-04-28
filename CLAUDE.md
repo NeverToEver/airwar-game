@@ -170,7 +170,8 @@ airwar-game/                  # Project root
 │   │   └── death_animation/
 │   ├── scenes/              # Scene base, 7 scenes: login, menu, game, pause, death, exit_confirm, tutorial
 │   ├── ui/                  # GameHUD (integrated HUD), reward_selector, buff_stats, chamfered_panel,
-│   │                        # hex_icon, segmented_bar, game_over_screen, give_up_ui, effects, menu_background
+│   │                        # hex_icon, segmented_bar, game_over_screen, give_up_ui, effects, menu_background,
+│   │                        # discrete_battery, ammo_magazine, warning_banner
 │   ├── input/               # PygameInputHandler
 │   ├── utils/               # UserDB, mouse_interaction mixins, sprites, responsive
 │   ├── window/              # Resizable window management
@@ -178,6 +179,7 @@ airwar-game/                  # Project root
 │   ├── tests/               # pytest suite
 │   └── core_bindings.py     # Rust→Python bridge with fallback
 ├── airwar_core/             # Rust PyO3 extension (maturin)
+├── tests/                   # Root-level Rust binding tests (test_bullet_bindings.py)
 ├── docs/                    # Rust perf plan, superpower specs, audit reports, REFACTORING_GUIDE
 ├── plans/                   # Implementation plans
 └── requirements.txt
@@ -320,6 +322,19 @@ The mothership docking/save system uses an interface-driven design with 6 ABCs i
 
 **Save data fields:** Player position (x, y), score, kills, boss_kills, health, max_health, buff levels, difficulty, username, is_in_mothership flag. All buff effects are re-applied after load via `_reapply_buff_effects()`. Legacy saves without player position default to bottom-center screen.
 
+**Ammo Magazine & Warning Banner:** `ui/ammo_magazine.py` renders 10-cell ammo indicator on the right of the mothership during docking. `ui/warning_banner.py` displays flashing "AMMO LOW" warning when ammo ≤ 4 cells remaining. `GameIntegrator.get_status_data()` computes `ammo_count`, `ammo_max`, and `ammo_warning` fields.
+
+### Health Indicator — Discrete Battery
+
+**Location:** `ui/discrete_battery.py`, integrated via `IntegratedHUD` in `rendering/integrated_hud.py`.
+
+Segmented discrete health indicator replacing the old liquid-style health tank:
+- **Vertical mode (collapsed panel):** ~36×350px, 30 segments, bottom-aligned in panel
+- **Horizontal mode (expanded panel):** 24px tall, 30 segments inside dark rounded bar, ~85% panel width
+- **Color:** All active segments same color — green (>50%), amber (25-50%), red (<25%)
+- **Empty segments:** Dark gray `(12, 12, 14)`, thin border frame hints at total capacity
+- **Pixel-precise fill:** remainder distribution ensures segments exactly fill the frame at 100% health
+
 ### Boost System
 
 **Location:** `entities/player.py` (state), `ui/boost_gauge.py` (UI), `config/settings.py` (BOOST_CONFIG).
@@ -332,7 +347,7 @@ Boost energy mechanic:
 - **Capacity (per difficulty):** Easy=300, Medium=200, Hard=120
 - **Recovery rate:** Easy=1.2, Medium=1.0, Hard=0.8 units/frame
 
-**Boost Gauge UI:** 270° arc gauge (speedometer-style), 31 tick marks, pointer needle. Bottom-left position at `(155, screen_h - 135)`, radius 115px, panel 290×260. Military cockpit aesthetic: steel-blue arc, ACCENT_TEAL lit ticks, WARNING-red needle when active.
+**Boost Gauge UI:** 270° arc gauge (speedometer-style), 31 tick marks, pointer needle. Bottom-left position at `(108, screen_h - 98)`, radius 80px, panel 200×180 (compact mini version). Military cockpit aesthetic: steel-blue arc, ACCENT_TEAL lit ticks, WARNING-red needle when active.
 
 **Boost Recovery Buff:** `BoostRecoveryBuff` in `game/buffs/buffs.py` — multiplies `player.boost_recovery_rate` by 1.5. Registered in `buff_registry.py`, reward pool entry in `reward_system.py`.
 
@@ -401,7 +416,7 @@ Boost energy mechanic:
 ### Rendering Pipeline
 
 Pure pygame rendering (no GPU/ModernGL). The rendering pipeline draws in order:
-Parallax starfield background → Entities → Bullets → HUD → Buff stats → Pause button → **BoostGauge (bottom-left)** → MotherShip → Explosions → GiveUp UI → **Reward Selector** → **Notifications (topmost)**
+Parallax starfield background → Entities → Bullets → HUD → Buff stats → Pause button → **BoostGauge (bottom-left)** → **AmmoMagazine + WarningBanner (mothership)** → MotherShip → Explosions → GiveUp UI → **Reward Selector** → **Notifications (topmost)**
 
 通知在天赋选择界面之上渲染，确保重要消息（如BOSS逃跑、击杀得分）不被遮挡。
 

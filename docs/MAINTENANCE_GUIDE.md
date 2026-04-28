@@ -194,15 +194,15 @@ python3 -m pytest
 python3 -m pytest -m "not slow"
 
 # 特定模块测试
-python3 -m pytest tests/test_collision.py -v
-python3 -m pytest tests/test_bullet_manager.py -v
-python3 -m pytest tests/test_entities.py -v
+python3 -m pytest airwar/tests/test_collision.py -v
+python3 -m pytest airwar/tests/test_bullet_manager.py -v
+python3 -m pytest airwar/tests/test_entities.py -v
 
 # Rust 绑定测试
-python3 -m pytest tests/test_*_bindings.py -v
+python3 -m pytest airwar/tests/test_*_bindings.py -v
 
 # 性能测试
-python3 -m pytest tests/test_performance.py -v
+python3 -m pytest airwar/tests/test_performance.py -v
 ```
 
 ---

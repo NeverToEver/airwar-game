@@ -63,7 +63,7 @@ python3 main.py
 | 渲染 | `airwar/game/rendering/` | GameRenderer, HUDRenderer |
 | 系统 | `airwar/game/systems/` | HealthSystem, RewardSystem, DifficultyManager 等 |
 | Buff | `airwar/game/buffs/` | 13 种 Buff（含 Boost Recovery） |
-| UI | `airwar/ui/` | IntegratedHUD, BoostGauge, reward_selector, segmented_bar 等 |
+| UI | `airwar/ui/` | IntegratedHUD, BoostGauge, DiscreteBattery, AmmoMagazine, WarningBanner, reward_selector, segmented_bar 等 |
 | 存档 | `airwar/game/mother_ship/` | 母舰停靠保存（状态机、接口层、事件总线、GameIntegrator） |
 | 投降 | `airwar/game/give_up/` | 长按 K 投降机制 |
 | Rust 扩展 | `airwar_core/` | 性能热点原生加速（向量、碰撞、批量移动、粒子、精灵 glow） |
@@ -89,7 +89,7 @@ airwar-game/                  # 项目根目录
 │   │   ├── explosion_animation/ 爆炸特效
 │   │   └── death_animation/     死亡动画
 │   ├── scenes/              场景管理（7 个场景）
-│   ├── ui/                  UI 组件（IntegratedHUD, BoostGauge, reward_selector, segmented_bar 等）
+│   ├── ui/                  UI 组件（IntegratedHUD, BoostGauge, DiscreteBattery, AmmoMagazine, WarningBanner, reward_selector, segmented_bar 等）
 │   ├── input/               输入处理
 │   ├── utils/               工具类（数据库、精灵渲染、鼠标交互）
 │   ├── window/              窗口管理
@@ -105,6 +105,7 @@ airwar-game/                  # 项目根目录
 │       ├── particles.rs      粒子系统
 │       ├── bullets.rs        子弹批量更新
 │       └── sprites.rs        精灵 glow 表面创建
+├── tests/                    根级 Rust 绑定测试（test_bullet_bindings.py）
 ├── docs/                     文档（审查报告、重构指南、维护指南）
 └── plans/                    实现计划
 ```

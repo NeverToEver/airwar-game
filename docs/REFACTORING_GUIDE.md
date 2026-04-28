@@ -313,16 +313,16 @@ def update(self):
 
 ```bash
 # 1. 语法检查所有 Python 文件
-find airwar/airwar -name "*.py" -exec python3 -m py_compile {} +
+find airwar -name "*.py" -exec python3 -m py_compile {} +
 
 # 2. 验证导入链
 python3 -c "from airwar.game import Game; from airwar.entities import Player, Enemy"
 
 # 3. 运行所有测试
-cd airwar && python3 -m pytest -x -v
+python3 -m pytest -x -v
 
 # 4. 检查方法内局部导入（排查是否有不需要的惰性导入）
-grep -rn "^\s\+from airwar\." airwar/airwar/ --include="*.py" \
+grep -rn "^\s\+from airwar\." airwar/ --include="*.py" \
   | grep -v "core_bindings" \
   | grep -v "from airwar.core_bindings" \
   | grep -v "__init__\.py" \

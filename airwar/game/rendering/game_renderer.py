@@ -138,7 +138,6 @@ class GameRenderer:
         get_buff_color=None,
         current_coefficient: float = None,
         initial_coefficient: float = None,
-        mothership_status: dict = None,
     ) -> None:
         if self.integrated_hud:
             self.integrated_hud.render(
@@ -154,7 +153,6 @@ class GameRenderer:
                 get_buff_color,
                 current_coefficient,
                 initial_coefficient,
-                mothership_status,
             )
         else:
             self.hud_renderer.render_hud(
