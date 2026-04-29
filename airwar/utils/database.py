@@ -3,11 +3,14 @@ import json
 import os
 import hashlib
 
+_AIRWAR_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_DEFAULT_DB_PATH = os.path.join(_AIRWAR_DIR, "data", "users.json")
+
 
 class SimpleDB:
     """Simple key-value database backed by a JSON file."""
-    def __init__(self, db_path: str = "airwar/data/users.json"):
-        self.db_path = db_path
+    def __init__(self, db_path: str = None):
+        self.db_path = db_path if db_path is not None else _DEFAULT_DB_PATH
         self._ensure_dir()
 
     def _ensure_dir(self) -> None:

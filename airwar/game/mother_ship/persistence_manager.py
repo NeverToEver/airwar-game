@@ -9,15 +9,18 @@ from .mother_ship_state import GameSaveData, SaveDataCorruptedError
 
 logger = logging.getLogger(__name__)
 
+_AIRWAR_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_DEFAULT_SAVE_DIRECTORY = os.path.join(_AIRWAR_DIR, "data")
+
 
 class PersistenceManager(IPersistenceManager):
     """Persistence manager — JSON save/load for full game state.
-    
+
         Serializes and deserializes game state including player stats, buffs,
         and difficulty progression to/from JSON files.
         """
     DEFAULT_SAVE_FILE_NAME = "user_docking_save.json"
-    DEFAULT_SAVE_DIRECTORY = "airwar/data"
+    DEFAULT_SAVE_DIRECTORY = _DEFAULT_SAVE_DIRECTORY
 
     def __init__(
         self,

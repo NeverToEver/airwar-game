@@ -129,7 +129,8 @@ class TestPersistenceManager:
 
     def test_initialization_default(self):
         manager = PersistenceManager()
-        assert manager.SAVE_DIRECTORY == "airwar/data"
+        assert os.path.isabs(manager.SAVE_DIRECTORY)
+        assert manager.SAVE_DIRECTORY.endswith(os.path.join("airwar", "data"))
         assert manager.SAVE_FILE_NAME == "user_docking_save.json"
 
     def test_initialization_custom_path(self):
