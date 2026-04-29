@@ -5,7 +5,7 @@ from .buffs import (
     ExtraLifeBuff, RegenerationBuff, LifestealBuff,
     ArmorBuff, EvasionBuff,
     PowerShotBuff, RapidFireBuff, PiercingBuff, SpreadShotBuff, ExplosiveBuff, LaserBuff,
-    SlowFieldBuff
+    SlowFieldBuff, BoostRecoveryBuff, MothershipRecallBuff,
 )
 
 __all__ = [
@@ -14,5 +14,5 @@ __all__ = [
     'ExtraLifeBuff', 'RegenerationBuff', 'LifestealBuff',
     'PowerShotBuff', 'RapidFireBuff', 'PiercingBuff', 'SpreadShotBuff', 'ExplosiveBuff', 'LaserBuff',
     'ArmorBuff', 'EvasionBuff',
-    'SlowFieldBuff'
+    'SlowFieldBuff', 'BoostRecoveryBuff', 'MothershipRecallBuff',
 ]

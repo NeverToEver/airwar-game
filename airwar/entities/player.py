@@ -65,6 +65,7 @@ class Player(Entity):
         self.boost_recovery_delay: int = 45
         self.boost_recovery_ramp: int = 60
         self._boost_idle_frames: int = 0
+        self.mothership_cooldown_mult: float = 1.0
         self._fire_cooldown = 0
         self._has_spread = False
         self._has_laser = False

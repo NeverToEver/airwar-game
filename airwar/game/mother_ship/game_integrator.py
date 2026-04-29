@@ -354,6 +354,12 @@ class GameIntegrator:
             if self._game_scene.player:
                 self._game_scene.player.controls_locked = False
 
+    def _apply_cooldown_multiplier_from_player(self) -> None:
+        """Read player's Mothership Recall buff and apply to cooldown."""
+        if self._game_scene and self._game_scene.player:
+            mult = getattr(self._game_scene.player, 'mothership_cooldown_mult', 1.0)
+            self._state_machine.cooldown.cooldown_multiplier = mult
+
     def _on_save_game_request(self, **kwargs) -> None:
         if not self._game_scene:
             return
@@ -535,6 +541,7 @@ class GameIntegrator:
                 self._undocking_animation_frame = 0
                 self._undocking_phase = 1
                 self._mother_ship.deactivate_flyaway()
+                self._apply_cooldown_multiplier_from_player()
                 self._event_bus.publish('UNDOCKING_ANIMATION_COMPLETE')
 
     def _ease_in_out_cubic(self, t: float) -> float:

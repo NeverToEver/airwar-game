@@ -240,3 +240,24 @@ class BoostRecoveryBuff(Buff):
             notification=self.get_notification(1),
             color=self.COLOR
         )
+
+
+class MothershipRecallBuff(Buff):
+    """Mothership Recall buff — reduces mothership cooldown by 50% per level."""
+    NAME = 'Mothership Recall'
+    COLOR = (80, 180, 220)
+
+    def calculate_value(self, base_value: int, current_level: int) -> int:
+        return current_level
+
+    def calculate_increment(self, base_value: int) -> int:
+        return 1
+
+    def apply(self, player) -> BuffResult:
+        # Each level: cooldown_mult *= 0.5 (60s → 30s → 15s)
+        player.mothership_cooldown_mult *= 0.5
+        return BuffResult(
+            name=self.NAME,
+            notification=self.get_notification(1),
+            color=self.COLOR
+        )
