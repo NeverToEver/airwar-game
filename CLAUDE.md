@@ -19,7 +19,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Default resolution: 1920×1080, FPS=60
 - Player speed: 7 (base), ~12 with boost
 - Player bullet speed: 14
-- Test suite: 695 tests, 1 skip, <3s runtime
+- Test suite: 741 tests, 1 skip, <8s runtime
 
 ---
 
@@ -171,7 +171,7 @@ airwar-game/                  # Project root
 │   ├── scenes/              # Scene base, 7 scenes: login, menu, game, pause, death, exit_confirm, tutorial
 │   ├── ui/                  # GameHUD (integrated HUD), reward_selector, buff_stats, chamfered_panel,
 │   │                        # hex_icon, segmented_bar, game_over_screen, give_up_ui, effects, menu_background,
-│   │                        # discrete_battery, ammo_magazine, warning_banner
+│   │                        # discrete_battery, liquid_health_tank, ammo_magazine, warning_banner, boost_gauge
 │   ├── input/               # PygameInputHandler
 │   ├── utils/               # UserDB, mouse_interaction mixins, sprites, responsive
 │   ├── window/              # Resizable window management
@@ -322,7 +322,12 @@ The mothership docking/save system uses an interface-driven design with 6 ABCs i
 
 **Save data fields:** Player position (x, y), score, kills, boss_kills, health, max_health, buff levels, difficulty, username, is_in_mothership flag. All buff effects are re-applied after load via `_reapply_buff_effects()`. Legacy saves without player position default to bottom-center screen.
 
-**Ammo Magazine & Warning Banner:** `ui/ammo_magazine.py` renders 10-cell ammo indicator on the right of the mothership during docking. `ui/warning_banner.py` displays flashing "AMMO LOW" warning when ammo ≤ 4 cells remaining. `GameIntegrator.get_status_data()` computes `ammo_count`, `ammo_max`, and `ammo_warning` fields.
+**Ammo Magazine & Warning Banner:** `ui/ammo_magazine.py` renders 10-cell ammo indicator to the left of the mothership during docking, with a `WARNING_CELL_THRESHOLD = 3` constant controlling when bottom cells turn red. `ui/warning_banner.py` displays a slide-in "AMMO DEPLETED" alert panel (550ms enter → 4s hold → 450ms exit → callback). `WarningBanner.activate()` returns `bool` — `True` on success, `False` if already active. `GameIntegrator.get_status_data()` computes `ammo_count`, `ammo_max`, and `ammo_warning` fields.
+
+**GameIntegrator public API:**
+- `request_undock()` — publish `UNDOCK_REQUESTED` to internal event bus (GameScene calls this instead of accessing private `_event_bus`)
+- `MotherShipStateMachine.force_state(state)` — force-set state for save/restore (bypasses transition validation)
+- `InputDetector.reset_progress()` — reset docking hold progress for save/restore
 
 ### Health Indicator — Discrete Battery
 
@@ -334,6 +339,8 @@ Segmented discrete health indicator replacing the old liquid-style health tank:
 - **Color:** All active segments same color — green (>50%), amber (25-50%), red (<25%)
 - **Empty segments:** Dark gray `(12, 12, 14)`, thin border frame hints at total capacity
 - **Pixel-precise fill:** remainder distribution ensures segments exactly fill the frame at 100% health
+
+**Liquid Health Tank:** `ui/liquid_health_tank.py` — glass-canister style alternative health display with spring-physics liquid animation and wave surface effects. Used alongside the discrete battery for visual variety. Key features: spring-driven level transitions (k=8.0, damping=3.5), color interpolation across 4 stops (green→amber→orange→red), bubble particle system, pre-rendered steel-housing and glass-frame caches. Caches are split into true-static (frame, steel_bg) and per-frame-rebuilt (liquid_surf).
 
 ### Boost System
 
@@ -372,6 +379,9 @@ Boost energy mechanic:
 - `mother_ship.py`: Phantom preview surface (`_phantom_surf`) cached by screen size — eliminates full-screen SRCALPHA allocation per frame during phantom rendering
 - `game_rendering_background.py`: Gradient surface converted once with `.convert()` and cached globally — avoids redundant surface conversion
 - `_sprites_common.py`: `convert_alpha()` wrapped in try/except for pygame error resilience
+- `ammo_magazine.py`: Frame background cached by `(fw, fh)` key — eliminates per-frame rounded rect + rivet draws
+- `warning_banner.py`: Banner background cached by `(screen_w,)` key — eliminates per-frame hazard stripe + tech bracket poly draws
+- `liquid_health_tank.py`: Steel housing and glass frame are truly static caches (never invalidated); liquid layer rebuilt per frame as a local Surface for correct clip-blit semantics
 
 **Spawn tuning:**
 - `ENEMIES_PER_FRAME = 2` (was 3) — wave spawns spread across 6 frames
@@ -416,7 +426,7 @@ Boost energy mechanic:
 ### Rendering Pipeline
 
 Pure pygame rendering (no GPU/ModernGL). The rendering pipeline draws in order:
-Parallax starfield background → Entities → Bullets → HUD → Buff stats → Pause button → **BoostGauge (bottom-left)** → **AmmoMagazine + WarningBanner (mothership)** → MotherShip → Explosions → GiveUp UI → **Reward Selector** → **Notifications (topmost)**
+Parallax starfield background → Entities → Bullets → HUD (with DiscreteBattery / LiquidHealthTank) → Buff stats → Pause button → **BoostGauge (bottom-left)** → **AmmoMagazine + WarningBanner (mothership)** → MotherShip → Explosions → GiveUp UI → **Reward Selector** → **Notifications (topmost)**
 
 通知在天赋选择界面之上渲染，确保重要消息（如BOSS逃跑、击杀得分）不被遮挡。
 
