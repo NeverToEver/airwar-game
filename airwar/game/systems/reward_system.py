@@ -28,6 +28,7 @@ REWARD_POOL = {
     'utility': [
         {'name': 'Slow Field', 'desc': 'Slow enemies by 20%', 'icon': 'SLO'},
         {'name': 'Boost Recovery', 'desc': '+50% boost regen rate', 'icon': 'BST'},
+        {'name': 'Mothership Recall', 'desc': 'Mothership cooldown -50%', 'icon': 'RCL'},
     ],
 }
 
@@ -67,6 +68,7 @@ class RewardSystem:
             'Extra Life': 0,
             'Slow Field': 0,
             'Boost Recovery': 0,
+            'Mothership Recall': 0,
         }
 
         self.slow_factor: float = 1.0
@@ -188,6 +190,7 @@ class RewardSystem:
             'Evasion': self._apply_evasion,
             'Slow Field': self._apply_slow_field,
             'Boost Recovery': self._apply_boost_recovery,
+            'Mothership Recall': self._apply_mothership_recall,
             'Extra Life': self._apply_extra_life,
         }
 
@@ -227,6 +230,10 @@ class RewardSystem:
 
     def _apply_boost_recovery(self, player) -> None:
         buff = create_buff('Boost Recovery')
+        buff.apply(player)
+
+    def _apply_mothership_recall(self, player) -> None:
+        buff = create_buff('Mothership Recall')
         buff.apply(player)
 
     def _apply_extra_life(self, player) -> None:

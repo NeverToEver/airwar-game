@@ -46,11 +46,20 @@ class DockingProgress:
 
 @dataclass
 class MotherShipCooldown:
-    """Tracks the 1-minute cooldown between MotherShip activations."""
+    """Tracks the cooldown between MotherShip activations.
+
+    Base duration is 60 seconds, modified by cooldown_multiplier
+    (e.g. 0.5 = 30s cooldown from Mothership Recall buff).
+    """
+    BASE_COOLDOWN: float = 60.0
     is_in_cooldown: bool = False
     cooldown_start_time: float = 0.0
     cooldown_progress: float = 0.0
-    cooldown_duration: float = 60.0  # 1 minute
+    cooldown_multiplier: float = 1.0
+
+    @property
+    def cooldown_duration(self) -> float:
+        return self.BASE_COOLDOWN * self.cooldown_multiplier
 
     def start_cooldown(self, current_time: float) -> None:
         self.is_in_cooldown = True

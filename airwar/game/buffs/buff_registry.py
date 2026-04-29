@@ -5,7 +5,7 @@ from .buffs import (
     ExtraLifeBuff, RegenerationBuff, LifestealBuff,
     ArmorBuff, EvasionBuff,
     PowerShotBuff, RapidFireBuff, PiercingBuff, SpreadShotBuff, ExplosiveBuff, LaserBuff,
-    SlowFieldBuff, BoostRecoveryBuff,
+    SlowFieldBuff, BoostRecoveryBuff, MothershipRecallBuff,
 )
 
 
@@ -23,6 +23,7 @@ BUFF_REGISTRY: Dict[str, Type[Buff]] = {
     'Evasion': EvasionBuff,
     'Slow Field': SlowFieldBuff,
     'Boost Recovery': BoostRecoveryBuff,
+    'Mothership Recall': MothershipRecallBuff,
 }
 
 _BUFF_COLOR_CACHE: Dict[str, tuple] = {}
