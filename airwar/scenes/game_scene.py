@@ -1,4 +1,4 @@
-"""Main game scene — gameplay loop, entity coordination, and rendering."""
+"""Main game scene -- gameplay loop, entity coordination, and rendering."""
 import pygame
 from typing import Dict, Tuple
 from .scene import Scene
@@ -322,8 +322,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             self._on_player_damaged,
         )
 
-        # 碰撞检测后清理：确保碰撞中死亡的实体在里程碑检查前被移除，
-        # 避免实体在暂停期间残留、取消暂停后"凭空消失"
+        # Post-collision cleanup: ensure entities killed during collision are
+        # removed before milestone check, avoiding residue during pause
         self.spawn_controller.cleanup()
         self._bullet_manager.cleanup()
         self.player.cleanup_inactive_bullets()
@@ -406,13 +406,13 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
         self._render_pause_button(surface)
 
-        # Boost gauge — bottom-left dashboard indicator
+        # Boost gauge -- bottom-left dashboard indicator
         if self._boost_gauge is not None:
             status = self.player.get_boost_status()
             self._boost_gauge.render(surface, status['current'],
                                      status['max'], status['active'])
 
-        # Ammo magazine — left-side vertical ammo rack
+        # Ammo magazine -- left-side vertical ammo rack
         if self._ammo_magazine and self._mother_ship_integrator:
             ms_data = self._mother_ship_integrator.get_status_data()
             self._ammo_magazine.render(
@@ -431,7 +431,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._game_loop_manager.render_explosions(surface)
         self._input_coordinator.render_give_up(surface)
 
-        # Warning banner — top-of-screen scrolling ammo depletion alert
+        # Warning banner -- top-of-screen scrolling ammo depletion alert
         if self._warning_banner:
             self._warning_banner.render(surface)
 
@@ -439,7 +439,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if self.reward_selector.visible:
             self.reward_selector.render(surface)
 
-        # 通知渲染在天赋选择界面之上，确保重要消息（如BOSS逃跑）不被遮挡
+        # Render notifications above reward selector so critical messages are not obscured
         self._ui_manager.render_notification(surface)
 
     def _init_pause_button_layout(self) -> None:
@@ -469,7 +469,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         }
         self.register_button("pause", self._pause_btn_layout['rect'])
 
-        # 预渲染两种状态的 Surface
+        # Pre-render both normal and hovered state surfaces
         self._pause_btn_cache.clear()
         for state_key, bg_alpha, border_alpha in [
             ("normal", 180, 120),
@@ -543,13 +543,13 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         font_large = pygame.font.Font(None, 72)
         font_small = pygame.font.Font(None, 36)
 
-        title = font_large.render("正在加载...", True, colors.TEXT_PRIMARY)
+        title = font_large.render("Loading...", True, colors.TEXT_PRIMARY)
         title_rect = title.get_rect(center=(screen_width // 2, screen_height // 2 - 40))
 
         progress_text = font_small.render(f"{self._loading_progress}%", True, colors.HUD_AMBER)
         progress_rect = progress_text.get_rect(center=(screen_width // 2, screen_height // 2 + 20))
 
-        hint = font_small.render("请稍候，正在优化游戏体验", True, colors.TEXT_MUTED)
+        hint = font_small.render("Please wait, optimizing game experience", True, colors.TEXT_MUTED)
         hint_rect = hint.get_rect(center=(screen_width // 2, screen_height // 2 + 70))
 
         surface.blit(title, title_rect)

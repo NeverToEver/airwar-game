@@ -13,7 +13,7 @@ from airwar.ui.scene_rendering_utils import SceneRenderingUtils
 
 
 class ExitConfirmScene(Scene, MouseSelectableMixin):
-    """Exit confirmation scene — dialog confirming player wants to quit."""
+    """Exit confirmation scene -- dialog confirming player wants to quit."""
     def __init__(self):
         Scene.__init__(self)
         MouseSelectableMixin.__init__(self)
@@ -121,7 +121,7 @@ class ExitConfirmScene(Scene, MouseSelectableMixin):
 
     def _draw_success_indicator(self, surface: pygame.Surface, center_x: int, y: int, scale: float = 1.0) -> None:
         if self.saved:
-            check_text = "✓ GAME SAVED"
+            check_text = "[OK] GAME SAVED"
             check_surface = self.hint_font.render(check_text, True, self.colors['success'])
             check_rect = check_surface.get_rect(center=(center_x, y))
             pulse = math.sin(self.animation_time * 0.1)

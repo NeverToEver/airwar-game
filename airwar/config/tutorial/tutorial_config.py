@@ -1,5 +1,5 @@
 """
-Tutorial system — multi-page content configuration.
+Tutorial system -- multi-page content configuration.
 
 4 pages covering all game mechanics, content verified against actual game code:
 - Movement & Combat (WASD, auto-fire, SHIFT boost)
@@ -16,11 +16,11 @@ TUTORIAL_PAGES = [
             {
                 'title': 'Movement',
                 'items': [
-                    ('W / ↑', 'Move Up'),
-                    ('S / ↓', 'Move Down'),
-                    ('A / ←', 'Move Left'),
-                    ('D / →', 'Move Right'),
-                    ('SHIFT (hold)', 'Boost — +70% speed, consumes energy'),
+                    ('W / Up', 'Move Up'),
+                    ('S / Down', 'Move Down'),
+                    ('A / Left', 'Move Left'),
+                    ('D / Right', 'Move Right'),
+                    ('SHIFT (hold)', 'Boost -- +70% speed, consumes energy'),
                 ],
             },
             {
@@ -61,7 +61,7 @@ TUTORIAL_PAGES = [
             {
                 'title': 'Actions',
                 'items': [
-                    ('K (hold 3s)', 'Surrender — end current run'),
+                    ('K (hold 3s)', 'Surrender -- end current run'),
                     ('ESC', 'Pause game'),
                     ('L', 'Toggle HUD panel expanded / collapsed'),
                 ],
