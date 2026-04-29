@@ -28,6 +28,7 @@ class GameIntegrator:
     MOTHSHIP_TARGET_COUNT = 5     # fire at up to 5 closest enemies per volley
     MOTHSHIP_EXPLOSION_RADIUS = 80
     MOTHSHIP_EXPLOSION_DAMAGE = 60
+    AMMO_CELL_COUNT = 10.0
 
     BAR_TYPE_HOLD = "hold"
     BAR_TYPE_COOLDOWN = "cooldown"
@@ -152,6 +153,8 @@ class GameIntegrator:
         if not self._game_scene or not self._game_scene.spawn_controller:
             return
 
+        # 帧计数而非 delta-time：与项目其他开火逻辑一致，假定稳定 60fps。
+        # 帧率下降时开火速度随之下降，可接受的 trade-off。
         self._mothership_fire_timer += 1
         if self._mothership_fire_timer >= self.MOTHSHIP_FIRE_RATE:
             self._mothership_fire_timer = 0
@@ -577,8 +580,6 @@ class GameIntegrator:
             return {}
         return self._game_scene.get_buff_levels()
 
-    AMMO_CELL_COUNT = 10.0
-
     def get_status_data(self) -> dict:
         """Return mothership state data for the ammo magazine and warning UI."""
         state = self._state_machine.current_state
@@ -644,6 +645,10 @@ class GameIntegrator:
     def is_in_cooldown(self) -> bool:
         return self._state_machine.is_in_cooldown()
 
+    def request_undock(self) -> None:
+        """Publish UNDOCK_REQUESTED to the internal event bus."""
+        self._event_bus.publish('UNDOCK_REQUESTED')
+
     def is_player_control_disabled(self) -> bool:
         return self._player_control_disabled
 
@@ -651,14 +656,14 @@ class GameIntegrator:
         return self._mother_ship.get_docking_position()
 
     def force_docked_state(self) -> None:
-        self._state_machine._current_state = MotherShipState.DOCKED
+        self._state_machine.force_state(MotherShipState.DOCKED)
         self._mother_ship.show()
         self._player_control_disabled = False
         self._activate_invincibility()
 
     def reset_to_idle_with_mothership_visible(self) -> None:
-        self._state_machine._current_state = MotherShipState.IDLE
+        self._state_machine.force_state(MotherShipState.IDLE)
         self._mother_ship.show()
         self._player_control_disabled = False
-        self._input_detector._progress.reset()
+        self._input_detector.reset_progress()
         self._event_bus.publish('STATE_CHANGED', state=MotherShipState.IDLE)

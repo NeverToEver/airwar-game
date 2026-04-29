@@ -34,8 +34,6 @@ class LiquidHealthTank:
         self._frame_key = (0, 0)
         self._steel_bg_cache = None
         self._steel_bg_key = (0, 0)
-        self._liquid_surf: pygame.Surface = None
-        self._liquid_key = (0, 0)
         self._last_tick = pygame.time.get_ticks()
         self._pct_font: pygame.font.Font = None
 
@@ -113,9 +111,6 @@ class LiquidHealthTank:
         if self._steel_bg_cache is None or self._steel_bg_key != fkey:
             self._steel_bg_cache = self._build_steel_bg(w, h)
             self._steel_bg_key = fkey
-        if self._liquid_surf is None or self._liquid_key != fkey:
-            self._liquid_surf = pygame.Surface((w, h), pygame.SRCALPHA)
-            self._liquid_key = fkey
 
     def _build_frame(self, w: int, h: int) -> pygame.Surface:
         """Border-only frame — interior left transparent for tank bg + liquid."""
@@ -199,7 +194,7 @@ class LiquidHealthTank:
         # ── 2. Draw colored liquid (bottom → surface_y) ──
         ix, iw_full = 3, w - 6
         surface_y = ibot - level * ih
-        self._liquid_surf.fill((0, 0, 0, 0))
+        liquid_surf = pygame.Surface((w, h), pygame.SRCALPHA)
 
         body_top = int(surface_y)
         if body_top < ibot:
@@ -213,7 +208,7 @@ class LiquidHealthTank:
                     by = body_top + bi * band_h
                     bh = band_h if bi < bands - 1 else ibot - by
                     if bh > 0:
-                        pygame.draw.rect(self._liquid_surf, (*lc, alpha),
+                        pygame.draw.rect(liquid_surf, (*lc, alpha),
                                          (ix, by, iw_full, bh))
 
         # Wave surface
@@ -232,11 +227,11 @@ class LiquidHealthTank:
             if len(wave_pts) >= 2:
                 wave_poly = wave_pts + [(ix + iw_full, itop), (ix, itop)]
                 try:
-                    pygame.draw.polygon(self._liquid_surf, (*lc, 215), wave_poly)
+                    pygame.draw.polygon(liquid_surf, (*lc, 215), wave_poly)
                 except (ValueError, pygame.error):
                     pass
                 try:
-                    pygame.draw.lines(self._liquid_surf, (255, 255, 255, 45),
+                    pygame.draw.lines(liquid_surf, (255, 255, 255, 45),
                                       False, wave_pts, 1)
                 except (ValueError, pygame.error):
                     pass
@@ -246,13 +241,13 @@ class LiquidHealthTank:
             bubble_y = ibot - by_prog * ih * level
             if itop < bubble_y < ibot:
                 alpha = 50 + int(35 * (1.0 - by_prog))
-                pygame.draw.circle(self._liquid_surf, (210, 225, 240, alpha),
+                pygame.draw.circle(liquid_surf, (210, 225, 240, alpha),
                                    (int(ix + bx), int(bubble_y)), max(1, int(bsize)))
 
         # Blit liquid with clip
         old_clip = surface.get_clip()
         surface.set_clip(pygame.Rect(x + ix, y + itop, iw_full, ih))
-        surface.blit(self._liquid_surf, (x, y))
+        surface.blit(liquid_surf, (x, y))
         surface.set_clip(old_clip)
 
         # ── 3. Glass frame on top ──
