@@ -6,17 +6,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Air War (飞机大战)** is a 2D space shooter game built with Python + Pygame. Players control a spaceship, fight enemies, collect buffs, and dock with a mothership to save progress. Rust extension module (`airwar_core`) provides performance-critical computation.
+**Air War** is a 2D space shooter game built with Python + Pygame. Players control a spaceship, fight enemies, collect buffs, and dock with a mothership to save progress. Rust extension module (`airwar_core`) provides performance-critical computation.
 
 ### Tech Stack
 
 - Python 3.x + Pygame + Pillow
-- Rust (PyO3 0.22 / maturin 1.0) — `airwar_core` extension module
+- Rust (PyO3 0.22 / maturin 1.0) -- `airwar_core` extension module
 - Architecture: Scene Pattern, Manager Pattern, Observer Pattern
 
 ### Key Numbers
 
-- Default resolution: 1920×1080, FPS=60
+- Default resolution: 1920x?1080, FPS=60
 - Player speed: 7 (base), ~12 with boost
 - Player bullet speed: 14
 - Test suite: 741 tests, 1 skip, <8s runtime
@@ -83,11 +83,11 @@ bash build_macos.sh
 build_windows.bat
 ```
 
-构建产物在 `dist/AirWar` (~40MB 独立可执行文件，内含 Python 运行时 + Rust 扩展)。需要 Python 3.12+、Rust 工具链、PyInstaller（脚本自动安装）。
+Build output at `dist/AirWar` (~40MB standalone executable with Python runtime + Rust extension). Requires Python 3.12+, Rust toolchain, PyInstaller (auto-installed by script).
 
 ### Test Configuration
 
-Config at `airwar/tests/pytest.ini` — defaults: `-v --tb=short -ra`. Markers: `smoke` (core), `slow` (integration/performance). Fixtures: `temp_db`, `clean_imports`. Some tests require `pygame.init()`.
+Config at `airwar/tests/pytest.ini` -- defaults: `-v --tb=short -ra`. Markers: `smoke` (core), `slow` (integration/performance). Fixtures: `temp_db`, `clean_imports`. Some tests require `pygame.init()`.
 
 **Note:** Tests must be run from the project root directory, not from within the `airwar/` subdirectory.
 
@@ -111,7 +111,7 @@ grep -rn "^\s\+from airwar\." airwar/ --include="*.py" \
 
 PyO3 extension module providing performance-critical computation with graceful Python fallback.
 
-**Location:** `airwar_core/` — Rust workspace with Cargo.
+**Location:** `airwar_core/` -- Rust workspace with Cargo.
 
 **Modules:**
 
@@ -148,54 +148,53 @@ Source code lives under `airwar/` (Python package). Entry point: `main.py` (proj
 
 ```
 airwar-game/                  # Project root
-├── main.py                  # Entry: python3 main.py
-├── airwar/                  # Python package (all source)
-│   ├── config/              # Settings, game_config, design_tokens, difficulty_config, tutorial/
-│   ├── entities/            # Entity base, Player, Enemy (+ Boss subclass), Bullet
-│   ├── game/
-│   │   ├── game.py          # Game class — window, SceneManager, SceneDirector, scene registration
-│   │   ├── scene_director.py # Login→Menu→Game orchestration
-│   │   ├── constants.py     # GameConstants dataclass (all tuning constants)
-│   │   ├── managers/        # GameController, SpawnController, CollisionController, BulletManager,
-│   │   │                    # BossManager, MilestoneManager, InputCoordinator, UIManager, GameLoopManager
-│   │   ├── controllers/     # Reserved for subsystem controllers (currently unused)
-│   │   ├── spawners/        # EnemyBulletSpawner
-│   │   ├── systems/         # HealthSystem, RewardSystem, NotificationManager, DifficultyManager,
-│   │   │                    # MovementPatternGenerator
-│   │   ├── rendering/       # GameRenderer, HUDRenderer
-│   │   ├── buffs/           # 12 buff types (health, offense, defense, utility)
-│   │   ├── mother_ship/     # Dock/save: state machine, persistence (JSON), event bus, interfaces, GameIntegrator
-│   │   ├── give_up/         # Surrender system (hold-K detector)
-│   │   ├── explosion_animation/
-│   │   └── death_animation/
-│   ├── scenes/              # Scene base, 7 scenes: login, menu, game, pause, death, exit_confirm, tutorial
-│   ├── ui/                  # GameHUD (integrated HUD), reward_selector, buff_stats, chamfered_panel,
-│   │                        # hex_icon, segmented_bar, game_over_screen, give_up_ui, effects, menu_background,
-│   │                        # discrete_battery, liquid_health_tank, ammo_magazine, warning_banner, boost_gauge
-│   ├── input/               # PygameInputHandler
-│   ├── utils/               # UserDB, mouse_interaction mixins, sprites, responsive
-│   ├── window/              # Resizable window management
-│   ├── data/                # Runtime save files (users.json, user_docking_save.json)
-│   ├── tests/               # pytest suite
-│   └── core_bindings.py     # Rust→Python bridge with fallback
-├── airwar_core/             # Rust PyO3 extension (maturin)
-├── tests/                   # Root-level Rust binding tests (test_bullet_bindings.py)
-├── docs/                    # Rust perf plan, superpower specs, audit reports, REFACTORING_GUIDE
-├── plans/                   # Implementation plans
-└── requirements.txt
+|-- main.py                  # Entry: python3 main.py
+|-- airwar/                  # Python package (all source)
+|??   |-- config/              # Settings, game_config, design_tokens, difficulty_config, tutorial/
+|??   |-- entities/            # Entity base, Player, Enemy (+ Boss subclass), Bullet
+|??   |-- game/
+|??   |??   |-- game.py          # Game class -- window, SceneManager, SceneDirector, scene registration
+|??   |??   |-- scene_director.py # Welcome->Game orchestration
+|??   |??   |-- constants.py     # GameConstants dataclass (all tuning constants)
+|??   |??   |-- managers/        # GameController, SpawnController, CollisionController, BulletManager,
+|??   |??   |??                    # BossManager, MilestoneManager, InputCoordinator, UIManager, GameLoopManager
+|??   |??   |-- controllers/     # Reserved for subsystem controllers (currently unused)
+|??   |??   |-- spawners/        # EnemyBulletSpawner
+|??   |??   |-- systems/         # HealthSystem, RewardSystem, NotificationManager, DifficultyManager,
+|??   |??   |??                    # MovementPatternGenerator
+|??   |??   |-- rendering/       # GameRenderer, HUDRenderer
+|??   |??   |-- buffs/           # 12 buff types (health, offense, defense, utility)
+|??   |??   |-- mother_ship/     # Dock/save: state machine, persistence (JSON), event bus, interfaces, GameIntegrator
+|??   |??   |-- give_up/         # Surrender system (hold-K detector)
+|??   |??   |-- explosion_animation/
+|??   |??   |-- death_animation/
+|??   |-- scenes/              # Scene base, 5 scenes: welcome, game, pause, death, exit_confirm
+|??   |-- ui/                  # GameHUD (integrated HUD), reward_selector, buff_stats, chamfered_panel,
+|??   |??                        # hex_icon, segmented_bar, game_over_screen, give_up_ui, effects, menu_background,
+|??   |??                        # discrete_battery, liquid_health_tank, ammo_magazine, warning_banner, boost_gauge
+|??   |-- input/               # PygameInputHandler
+|??   |-- utils/               # UserDB, mouse_interaction mixins, sprites, responsive
+|??   |-- window/              # Resizable window management
+|??   |-- data/                # Runtime save files (users.json, user_docking_save.json)
+|??   |-- tests/               # pytest suite
+|??   |-- core_bindings.py     # Rust->Python bridge with fallback
+|-- airwar_core/             # Rust PyO3 extension (maturin)
+|-- tests/                   # Root-level Rust binding tests (test_bullet_bindings.py)
+|-- docs/                    # Rust perf plan, superpower specs, audit reports, REFACTORING_GUIDE
+|-- plans/                   # Implementation plans
+|-- requirements.txt
 ```
 
 ### Scene Flow
 
 ```
-LoginScene → MenuScene → GameScene
-                           ├── PauseScene (ESC)
-                           ├── DeathScene (player death)
-                           ├── ExitConfirmScene (quit)
-                           └── TutorialScene
+WelcomeScene -> GameScene
+                 |-- PauseScene (ESC)
+                 |-- DeathScene (player death)
+                 |-- ExitConfirmScene (quit)
 ```
 
-`SceneDirector` orchestrates transitions and state preservation. `SceneManager` supports `save_scene_state(name, state)` / `get_scene_state(name)`.
+`WelcomeScene` combines login, difficulty selection, and quick controls reference in a single side-by-side page, replacing the previous separate LoginScene + MenuScene + TutorialScene flow. `SceneDirector` orchestrates transitions and state preservation. `SceneManager` supports `save_scene_state(name, state)` / `get_scene_state(name)`.
 
 ### Scene Base (`scenes/scene.py`)
 
@@ -210,63 +209,63 @@ render(surface)      # Draw to screen
 ### Entity System
 
 ```
-Entity (entities/base.py)  — rect, collision_rect, active
+Entity (entities/base.py)  -- rect, collision_rect, active
   +-- Player (player.py)
-  +-- Enemy (enemy.py) — 6 movement patterns: straight, sine, zigzag, dive, hover, spiral
-        +-- Boss (enemy.py) — phase-based attacks
+  +-- Enemy (enemy.py) -- 6 movement patterns: straight, sine, zigzag, dive, hover, spiral
+        +-- Boss (enemy.py) -- phase-based attacks
   +-- Bullet (bullet.py)
 ```
 
-### Data Flow: Input → Game Loop
+### Data Flow: Input -> Game Loop
 
 ```
-PygameInputHandler → InputCoordinator → GameScene.handle_events()
-                                             ↓
+PygameInputHandler -> InputCoordinator -> GameScene.handle_events()
+                                             v
                               GameController (gameplay state machine)
-                                             ↓
-                              Managers → Systems → Rendering
+                                             v
+                              Managers -> Systems -> Rendering
 ```
 
 ### Game State Machine
 
 ```
-PLAYING → DYING → GAME_OVER
+PLAYING -> DYING -> GAME_OVER
    ^        |
    |________|  (on death animation complete)
 ```
 
 ### Game Loop Update Order
 
-`GameScene.update()` 的精确执行顺序（每帧）：
+Exact per-frame execution order in `GameScene.update()`:
 
 1. Mothership integrator update
 2. GiveUp detector update
-3. **GameLogic update** (`_update_core`): GameController → death anim → explosion → player → bullets → enemy spawn → entities → boss → **cleanup (enemies + boss + bullets)**
+3. **GameLogic update** (`_update_core`): GameController -> death anim -> explosion -> player -> bullets -> enemy spawn -> entities -> boss -> **cleanup (enemies + boss + bullets)**
 4. Docking position lock (if docked)
 5. **Collision detection** (`check_collisions`): player bullets vs enemies/boss, enemy bullets vs player, boss vs player
-6. **Post-collision cleanup**: 碰撞检测后再次清理，确保碰撞中死亡的实体在里程碑检查前被移除
-7. **Milestone check** (`check_and_trigger`): 分数达到阈值 → 触发天赋选择界面 + 暂停
+6. **Post-collision cleanup**: second cleanup after collision detection, ensuring entities killed during collision are removed before milestone check
+7. **Milestone check** (`check_and_trigger`): |??|??|??|??|??|?? -> |??|??|??|??|??|??|??|?? + |??|??
 
-**关键设计：** 碰撞检测后的二次清理（步骤6）解决了实体在暂停期间残留的问题——若碰撞中击杀boss后立即触发天赋暂停，dead boss会在下一帧清理前滞留，取消暂停后"凭空消失"。
+**Key design:** The post-collision cleanup (step 6) prevents entities from persisting during pause -- if a boss is killed during collision and immediately triggers reward pause, the dead boss would linger until next frame's cleanup, causing it to "vanish" after unpausing.
 
 ### Important Design Decisions
 
-- **`game/constants.py`** — All tuning values in a single `GameConstants` dataclass (player stats, damage values, timing, animation, balance). Edit here for game balance.
-- **`config/design_tokens.py`** — Visual design system: color themes (`Colors`, `SystemColors`, `SceneColors`), typography, spacing.
-- **`config/game_config.py`** — `GameConfig` singleton with adaptive screen sizing.
-- **Rust native code always has a pure-Python fallback** — checked via `RUST_AVAILABLE` flag in `core_bindings.py`.
-- **Coding standards** — Full guide at `docs/REFACTORING_GUIDE.md`: naming conventions, import conventions, class method ordering, and docstring requirements.
+- **`game/constants.py`** -- All tuning values in a single `GameConstants` dataclass (player stats, damage values, timing, animation, balance). Edit here for game balance.
+- **`config/design_tokens.py`** -- Visual design system: color themes (`Colors`, `SystemColors`, `SceneColors`), typography, spacing.
+- **`config/game_config.py`** -- `GameConfig` singleton with adaptive screen sizing.
+- **Rust native code always has a pure-Python fallback** -- checked via `RUST_AVAILABLE` flag in `core_bindings.py`.
+- **Coding standards** -- Full guide at `docs/REFACTORING_GUIDE.md`: naming conventions, import conventions, class method ordering, and docstring requirements.
 
 ### Game Controls
 
 | Key | Action |
 |-----|--------|
 | Arrow keys / WASD | Move ship (speed 7) |
-| Shift (hold) | Boost — consumes energy, +70% speed, recovers after 1.5s delay with 2s ramp |
-| Space | Fire (bullet speed 14) |
+| Shift (hold) | Boost -- consumes energy, +70% speed, recovers after 1.5s delay with 2s ramp |
+| Auto-fire | Ship fires automatically (no manual fire key) |
 | ESC | Pause |
-| H (hold) | Dock with mothership to save progress |
-| K (hold 3s) | Surrender |
+| H (hold 3s) | Dock with mothership to save progress |
+| K (hold 3s) | Surrender (give up current run) |
 | L | Toggle HUD expanded/collapsed |
 
 ### Coding Standards
@@ -274,10 +273,10 @@ PLAYING → DYING → GAME_OVER
 See `docs/REFACTORING_GUIDE.md` for full conventions and `docs/MAINTENANCE_GUIDE.md` for maintenance procedures. Key rules:
 
 **Imports (priority order):**
-1. Same package, same layer → relative: `from .base import Entity`
-2. Same package, different layer → relative: `from ..config import settings`
-3. Different package (including airwar subpackages) → absolute: `from airwar.config import SCREEN_WIDTH`
-4. Stdlib/third-party → absolute: `import pygame`
+1. Same package, same layer -> relative: `from .base import Entity`
+2. Same package, different layer -> relative: `from ..config import settings`
+3. Different package (including airwar subpackages) -> absolute: `from airwar.config import SCREEN_WIDTH`
+4. Stdlib/third-party -> absolute: `import pygame`
 
 **Class method order:**
 ```
@@ -296,7 +295,7 @@ See `docs/REFACTORING_GUIDE.md` for full conventions and `docs/MAINTENANCE_GUIDE
 
 **Glow circle rendering:** `draw_glow_circle` uses pygame fallback only. Rust `create_glow_circle` exists in `sprites.rs` but is not used for rendering.
 
-### MotherShip Subsystem — Interface-Driven Architecture
+### MotherShip Subsystem -- Interface-Driven Architecture
 
 The mothership docking/save system uses an interface-driven design with 6 ABCs in `game/mother_ship/interfaces.py`:
 
@@ -306,41 +305,41 @@ The mothership docking/save system uses an interface-driven design with 6 ABCs i
 | `IMotherShipUI` | Mothership visual state display |
 | `IEventBus` | Publish/subscribe for cross-system events |
 | `IPersistenceManager` | Save/load game state (JSON) |
-| `IMotherShipStateMachine` | Docking state machine (`IDLE → PRESSING → DOCKING → DOCKED → UNDOCKING → COOLDOWN`) |
+| `IMotherShipStateMachine` | Docking state machine (`IDLE -> PRESSING -> DOCKING -> DOCKED -> UNDOCKING -> COOLDOWN`) |
 | `IGameScene` | Contract for `GameIntegrator` to access `GameScene` without layer violations (30+ methods: score, health, buffs, enemies, etc.) |
 
 **Mothership visual:** Large capital-class vessel (cold-steel-blue, ~430px wingspan), swept-back wings, bridge tower with cyan glass canopy, underside docking bay with pulsing guide lights. Rendered via `draw_glow_circle` and multi-layer polygon hull.
 
 **Docking flow:**
-1. Hold H 3s → `DOCKING` animation (90f ease-in-out-cubic) — player smoothly pulled to docking bay, silent invincibility + controls locked. **Mothership provides cover fire during docking animation.**
-2. `DOCKED` (20s) — player rides inside mothership, mothership fires **explosive missiles** (250 damage, 80px AoE radius, 5 targets, ~3.3 shots/sec), full game loop continues (enemies spawn, boss timer advances)
-3. Stay expired → `UNDOCKING` two-phase: Phase 1 ejects player backward (30f), Phase 2 mothership accelerates upward off-screen (60+f)
+1. Hold H 3s -> `DOCKING` animation (90f ease-in-out-cubic) -- player smoothly pulled to docking bay, silent invincibility + controls locked. **Mothership provides cover fire during docking animation.**
+2. `DOCKED` (20s) -- player rides inside mothership, mothership fires **explosive missiles** (250 damage, 80px AoE radius, 5 targets, ~3.3 shots/sec), full game loop continues (enemies spawn, boss timer advances)
+3. Stay expired -> `UNDOCKING` two-phase: Phase 1 ejects player backward (30f), Phase 2 mothership accelerates upward off-screen (60+f)
 
-**Mothership movement:** WASD/arrows, only during DOCKED state. No inertial friction — direct response. Starts fixed at screen center.
+**Mothership movement:** WASD/arrows, only during DOCKED state. No inertial friction -- direct response. Starts fixed at screen center.
 
 **Invincibility:** Uses `silent_invincible` flag during docking to suppress the standard damage-blink visual effect. Player `controls_locked` prevents movement and auto-fire while docked.
 
 **Save data fields:** Player position (x, y), score, kills, boss_kills, health, max_health, buff levels, difficulty, username, is_in_mothership flag. All buff effects are re-applied after load via `_reapply_buff_effects()`. Legacy saves without player position default to bottom-center screen.
 
-**Ammo Magazine & Warning Banner:** `ui/ammo_magazine.py` renders 10-cell ammo indicator to the left of the mothership during docking, with a `WARNING_CELL_THRESHOLD = 3` constant controlling when bottom cells turn red. `ui/warning_banner.py` displays a slide-in "AMMO DEPLETED" alert panel (550ms enter → 4s hold → 450ms exit → callback). `WarningBanner.activate()` returns `bool` — `True` on success, `False` if already active. `GameIntegrator.get_status_data()` computes `ammo_count`, `ammo_max`, and `ammo_warning` fields.
+**Ammo Magazine & Warning Banner:** `ui/ammo_magazine.py` renders 10-cell ammo indicator to the left of the mothership during docking, with a `WARNING_CELL_THRESHOLD = 3` constant controlling when bottom cells turn red. `ui/warning_banner.py` displays a slide-in "AMMO DEPLETED" alert panel (550ms enter -> 4s hold -> 450ms exit -> callback). `WarningBanner.activate()` returns `bool` -- `True` on success, `False` if already active. `GameIntegrator.get_status_data()` computes `ammo_count`, `ammo_max`, and `ammo_warning` fields.
 
 **GameIntegrator public API:**
-- `request_undock()` — publish `UNDOCK_REQUESTED` to internal event bus (GameScene calls this instead of accessing private `_event_bus`)
-- `MotherShipStateMachine.force_state(state)` — force-set state for save/restore (bypasses transition validation)
-- `InputDetector.reset_progress()` — reset docking hold progress for save/restore
+- `request_undock()` -- publish `UNDOCK_REQUESTED` to internal event bus (GameScene calls this instead of accessing private `_event_bus`)
+- `MotherShipStateMachine.force_state(state)` -- force-set state for save/restore (bypasses transition validation)
+- `InputDetector.reset_progress()` -- reset docking hold progress for save/restore
 
-### Health Indicator — Discrete Battery
+### Health Indicator -- Discrete Battery
 
 **Location:** `ui/discrete_battery.py`, integrated via `IntegratedHUD` in `rendering/integrated_hud.py`.
 
 Segmented discrete health indicator replacing the old liquid-style health tank:
-- **Vertical mode (collapsed panel):** ~36×350px, 30 segments, bottom-aligned in panel
+- **Vertical mode (collapsed panel):** ~36x?350px, 30 segments, bottom-aligned in panel
 - **Horizontal mode (expanded panel):** 24px tall, 30 segments inside dark rounded bar, ~85% panel width
-- **Color:** All active segments same color — green (>50%), amber (25-50%), red (<25%)
+- **Color:** All active segments same color -- green (>50%), amber (25-50%), red (<25%)
 - **Empty segments:** Dark gray `(12, 12, 14)`, thin border frame hints at total capacity
 - **Pixel-precise fill:** remainder distribution ensures segments exactly fill the frame at 100% health
 
-**Liquid Health Tank:** `ui/liquid_health_tank.py` — glass-canister style alternative health display with spring-physics liquid animation and wave surface effects. Used alongside the discrete battery for visual variety. Key features: spring-driven level transitions (k=8.0, damping=3.5), color interpolation across 4 stops (green→amber→orange→red), bubble particle system, pre-rendered steel-housing and glass-frame caches. Caches are split into true-static (frame, steel_bg) and per-frame-rebuilt (liquid_surf).
+**Liquid Health Tank:** `ui/liquid_health_tank.py` -- glass-canister style alternative health display with spring-physics liquid animation and wave surface effects. Used alongside the discrete battery for visual variety. Key features: spring-driven level transitions (k=8.0, damping=3.5), color interpolation across 4 stops (green->amber->orange->red), bubble particle system, pre-rendered steel-housing and glass-frame caches. Caches are split into true-static (frame, steel_bg) and per-frame-rebuilt (liquid_surf).
 
 ### Boost System
 
@@ -349,42 +348,42 @@ Segmented discrete health indicator replacing the old liquid-style health tank:
 Boost energy mechanic:
 - **Activation:** Hold Shift key
 - **Consumption:** 1 unit/frame while active (no movement required)
-- **Speed multiplier:** 1.7× base speed via `player.boost_speed_mult`
-- **Recovery:** 1.5s delay after release → 2s ramp from 15% to 100% rate
+- **Speed multiplier:** 1.7x? base speed via `player.boost_speed_mult`
+- **Recovery:** 1.5s delay after release -> 2s ramp from 15% to 100% rate
 - **Capacity (per difficulty):** Easy=300, Medium=200, Hard=120
 - **Recovery rate:** Easy=1.2, Medium=1.0, Hard=0.8 units/frame
 
-**Boost Gauge UI:** 270° arc gauge (speedometer-style), 31 tick marks, pointer needle. Bottom-left position at `(108, screen_h - 98)`, radius 80px, panel 200×180 (compact mini version). Military cockpit aesthetic: steel-blue arc, ACCENT_TEAL lit ticks, WARNING-red needle when active.
+**Boost Gauge UI:** 270 ? arc gauge (speedometer-style), 31 tick marks, pointer needle. Bottom-left position at `(108, screen_h - 98)`, radius 80px, panel 200x?180 (compact mini version). Military cockpit aesthetic: steel-blue arc, ACCENT_TEAL lit ticks, WARNING-red needle when active.
 
-**Boost Recovery Buff:** `BoostRecoveryBuff` in `game/buffs/buffs.py` — multiplies `player.boost_recovery_rate` by 1.5. Registered in `buff_registry.py`, reward pool entry in `reward_system.py`.
+**Boost Recovery Buff:** `BoostRecoveryBuff` in `game/buffs/buffs.py` -- multiplies `player.boost_recovery_rate` by 1.5. Registered in `buff_registry.py`, reward pool entry in `reward_system.py`.
 
 ### Performance Optimizations
 
 **Surface/font caching:**
-- `game_rendering_background.py`: StarLayer and DustLayer glow surfaces cached by `(radius, alpha)` key — eliminates ~400 SRCALPHA allocations/frame
-- `integrated_hud.py`: Font objects cached via `_get_font(size)`, arrow/hint text pre-rendered — eliminates ~12 `font.Font()` calls/frame
-- `_sprites_ships.py`: `_code_hash` uses `@functools.lru_cache` — MD5 computed once per function, not per frame per entity
+- `game_rendering_background.py`: StarLayer and DustLayer glow surfaces cached by `(radius, alpha)` key -- eliminates ~400 SRCALPHA allocations/frame
+- `integrated_hud.py`: Font objects cached via `_get_font(size)`, arrow/hint text pre-rendered -- eliminates ~12 `font.Font()` calls/frame
+- `_sprites_ships.py`: `_code_hash` uses `@functools.lru_cache` -- MD5 computed once per function, not per frame per entity
 
 **Batch Rust acceleration:**
-- `game_loop_manager.py`: `batch_update_movements` called once/frame for all 'active' state enemies, results distributed via `_batch_result` attribute — replaces 5-8 individual FFI calls
-- `collision_controller.py`: `batch_collide_bullets_vs_entities` replaces PersistentSpatialHash with single FFI call — eliminates 40 per-frame hash updates + O(N²) pair enumeration
+- `game_loop_manager.py`: `batch_update_movements` called once/frame for all 'active' state enemies, results distributed via `_batch_result` attribute -- replaces 5-8 individual FFI calls
+- `collision_controller.py`: `batch_collide_bullets_vs_entities` replaces PersistentSpatialHash with single FFI call -- eliminates 40 per-frame hash updates + O(N ?) pair enumeration
 
 **Hot path micro-optimizations:**
 - `bullet.py`: Trail stores `(x,y,w,h)` tuples instead of `pygame.Rect`, deque iterated directly (no `list()` copy), `maxlen` handles eviction
-- `bullet_manager.py`: `_cleanup_enemy_bullets` fast-paths with `any()` — most frames skip list allocation
+- `bullet_manager.py`: `_cleanup_enemy_bullets` fast-paths with `any()` -- most frames skip list allocation
 - `enemy.py`: Timer read/write uses pre-computed `_timer_attr` string with `setattr`, batch movement params pre-computed in `_init_movement`
 
 **Surface caching (new):**
-- `boost_gauge.py`: Arc track and dim ticks cached as pre-rendered `_arc_cache` layer — eliminates ~60 `pygame.draw.line`/`pygame.draw.arc` calls per frame, recalculated only on resize
-- `mother_ship.py`: Phantom preview surface (`_phantom_surf`) cached by screen size — eliminates full-screen SRCALPHA allocation per frame during phantom rendering
-- `game_rendering_background.py`: Gradient surface converted once with `.convert()` and cached globally — avoids redundant surface conversion
+- `boost_gauge.py`: Arc track and dim ticks cached as pre-rendered `_arc_cache` layer -- eliminates ~60 `pygame.draw.line`/`pygame.draw.arc` calls per frame, recalculated only on resize
+- `mother_ship.py`: Phantom preview surface (`_phantom_surf`) cached by screen size -- eliminates full-screen SRCALPHA allocation per frame during phantom rendering
+- `game_rendering_background.py`: Gradient surface converted once with `.convert()` and cached globally -- avoids redundant surface conversion
 - `_sprites_common.py`: `convert_alpha()` wrapped in try/except for pygame error resilience
-- `ammo_magazine.py`: Frame background cached by `(fw, fh)` key — eliminates per-frame rounded rect + rivet draws
-- `warning_banner.py`: Banner background cached by `(screen_w,)` key — eliminates per-frame hazard stripe + tech bracket poly draws
+- `ammo_magazine.py`: Frame background cached by `(fw, fh)` key -- eliminates per-frame rounded rect + rivet draws
+- `warning_banner.py`: Banner background cached by `(screen_w,)` key -- eliminates per-frame hazard stripe + tech bracket poly draws
 - `liquid_health_tank.py`: Steel housing and glass frame are truly static caches (never invalidated); liquid layer rebuilt per frame as a local Surface for correct clip-blit semantics
 
 **Spawn tuning:**
-- `ENEMIES_PER_FRAME = 2` (was 3) — wave spawns spread across 6 frames
+- `ENEMIES_PER_FRAME = 2` (was 3) -- wave spawns spread across 6 frames
 - Entry animation: `0.04`/frame (25 frames, was 50)
 - Exit animation: `0.03`/frame (33 frames, was 67)
 - Spawn data uses tuples not dicts
@@ -394,14 +393,14 @@ Boost energy mechanic:
 **Movement:** 4-phase lerp-based system in `Boss._select_next_target()`:
 - PATROL: horizontal to opposite side with vertical drift
 - SWEEP: diagonal to random zone
-- HOVER: local ±130px X, ±80px Y repositioning
+- HOVER: local  ?130px X,  ?80px Y repositioning
 - CHASE: drift toward player area with random offset
-- Lerp factor: `0.025 × speed`, smooth exponential deceleration
+- Lerp factor: `0.025 x? speed`, smooth exponential deceleration
 - Y range: 50 to `screen_h // 2 + 60`
 
 **Boss spawn:** `SpawnController.spawn_boss()` forces all active enemies into 'exiting' state before creating boss.
 
-**Boss timer:** `_render_boss_timer()` in `hud_renderer.py` — styled panel below health bar, 32px font, color transitions steel-blue→amber→red as time runs low, pulsing "ESCAPING!" warning when >70% elapsed.
+**Boss timer:** `_render_boss_timer()` in `hud_renderer.py` -- styled panel below health bar, 32px font, color transitions steel-blue->amber->red as time runs low, pulsing "ESCAPING!" warning when >70% elapsed.
 
 ### Hit Response
 
@@ -419,16 +418,16 @@ Boost energy mechanic:
 | CollisionController | `game/managers/collision_controller.py` | Entity collision (can use Rust spatial hash) |
 | BulletManager | `game/managers/bullet_manager.py` | Player/enemy bullet pools |
 | BossManager | `game/managers/boss_manager.py` | Boss spawn and phase transitions |
-| MilestoneManager | `game/managers/milestone_manager.py` | Score thresholds → reward triggers |
+| MilestoneManager | `game/managers/milestone_manager.py` | Score thresholds -> reward triggers |
 | GiveUp | `game/give_up/` | Hold-K-3s surrender flow |
 | UserDB | `utils/database.py` | User stats (high score, kills, games played) |
 
 ### Rendering Pipeline
 
 Pure pygame rendering (no GPU/ModernGL). The rendering pipeline draws in order:
-Parallax starfield background → Entities → Bullets → HUD (with DiscreteBattery / LiquidHealthTank) → Buff stats → Pause button → **BoostGauge (bottom-left)** → **AmmoMagazine + WarningBanner (mothership)** → MotherShip → Explosions → GiveUp UI → **Reward Selector** → **Notifications (topmost)**
+Parallax starfield background -> Entities -> Bullets -> HUD (with DiscreteBattery / LiquidHealthTank) -> Buff stats -> Pause button -> **BoostGauge (bottom-left)** -> **AmmoMagazine + WarningBanner (mothership)** -> MotherShip -> Explosions -> GiveUp UI -> **Reward Selector** -> **Notifications (topmost)**
 
-通知在天赋选择界面之上渲染，确保重要消息（如BOSS逃跑、击杀得分）不被遮挡。
+Notifications render above the reward selector so critical messages (boss escape, kill score) are never obscured.
 
 ### Enemy Movement
 
@@ -440,10 +439,10 @@ Parallax starfield background → Entities → Bullets → HUD (with DiscreteBat
 
 ### Window / Fullscreen
 
-`window/window.py` — `pygame.DOUBLEBUF` for both windowed and fullscreen modes. `SCALED` removed entirely (causes cropped viewport on pygame 2.6+ X11/Wayland backends). Uses `tick_busy_loop` for accurate frame timing. Fullscreen uses `pygame.FULLSCREEN` flag.
+`window/window.py` -- `pygame.DOUBLEBUF` for both windowed and fullscreen modes. `SCALED` removed entirely (causes cropped viewport on pygame 2.6+ X11/Wayland backends). Uses `tick_busy_loop` for accurate frame timing. Fullscreen uses `pygame.FULLSCREEN` flag.
 
 ---
 
-## 语言偏好
+## Language Preference
 
-- **所有回复使用中文** — 代码注释、文档、审查报告等所有面向人类的文字输出均使用中文
+- **All responses in English** -- code comments, documentation, review reports, and all human-facing text output should use English to avoid character encoding issues (garbled text / luan ma) across different OS locales and terminal configurations.
