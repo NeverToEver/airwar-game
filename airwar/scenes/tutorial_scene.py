@@ -1,4 +1,4 @@
-"""Tutorial scene — multi-page military-cockpit themed control reference."""
+"""Tutorial scene -- multi-page military-cockpit themed control reference."""
 import math
 import pygame
 from .scene import Scene
@@ -14,7 +14,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
     """Multi-page tutorial with chamfered military-cockpit visual style.
 
     Navigation:
-      - Keyboard: ← → / ↑ ↓ to flip pages, ESC to exit
+      - Keyboard: <- -> / ^ v to flip pages, ESC to exit
       - Mouse: click PREV / NEXT / BACK TO MENU buttons
       - Last page shows BACK TO MENU instead of NEXT
     """
@@ -44,7 +44,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         self._mouse_pos = (0, 0)
         self._fonts: dict = {}
 
-    # ── Scene lifecycle ──────────────────────────────────────────────────────
+    # -- Scene lifecycle ------------------------------------------------------
 
     def enter(self, **kwargs) -> None:
         self.clear_hover()
@@ -63,7 +63,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
     def reset(self) -> None:
         self.enter()
 
-    # ── Event handling ───────────────────────────────────────────────────────
+    # -- Event handling -------------------------------------------------------
 
     def handle_events(self, event: pygame.event.Event) -> None:
         if event.type == pygame.KEYDOWN:
@@ -109,7 +109,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
     def _request_exit(self) -> None:
         self._exit_requested = True
 
-    # ── Update ───────────────────────────────────────────────────────────────
+    # -- Update ---------------------------------------------------------------
 
     def update(self, *args, **kwargs) -> None:
         self._anim_time += 1
@@ -154,7 +154,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
                 cx + 30, btn_y, self.BTN_W, self.BTN_H)
             yield ('back', 1.08 if back_rect.collidepoint(self._mouse_pos) else 1.0)
 
-    # ── Render ───────────────────────────────────────────────────────────────
+    # -- Render ---------------------------------------------------------------
 
     def render(self, surface: pygame.Surface) -> None:
         SC = self._SceneColors
@@ -315,7 +315,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
             prev_rect = pygame.Rect(
                 cx - self.BTN_W - 30, btn_y, self.BTN_W, self.BTN_H)
             self._render_chamfered_button(
-                surface, prev_rect, '←  PREV', 'prev')
+                surface, prev_rect, '<-- PREV', 'prev')
             self.register_button('prev', prev_rect)
 
         # NEXT or BACK TO MENU button
@@ -323,7 +323,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
             next_rect = pygame.Rect(
                 cx + 30, btn_y, self.BTN_W, self.BTN_H)
             self._render_chamfered_button(
-                surface, next_rect, 'NEXT  →', 'next')
+                surface, next_rect, 'NEXT -->', 'next')
             self.register_button('next', next_rect)
         else:
             back_rect = pygame.Rect(
@@ -338,7 +338,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         blink = (self._anim_time // 25) % 2 == 0
         hint_color = SC.HINT_DIM if blink else SC.TEXT_DIM
         hint_surf = hint_font.render(
-            'Press ← → / ↑ ↓ to navigate  ·  ESC to close', True, hint_color)
+            'Press Left/Right to navigate  |  ESC to close', True, hint_color)
         surface.blit(hint_surf, hint_surf.get_rect(
             center=(cx, panel_bottom + 72)))
 
@@ -371,7 +371,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         surface.blit(text_surf, text_surf.get_rect(
             center=(rect.centerx, rect.centery)))
 
-    # ── Helpers ──────────────────────────────────────────────────────────────
+    # -- Helpers --------------------------------------------------------------
 
     def _get_font(self, size: int) -> pygame.font.Font:
         if size not in self._fonts:

@@ -1,20 +1,20 @@
-"""Scene orchestration — manages scene transitions and lifecycle."""
+"""Scene orchestration -- manages scene transitions and lifecycle."""
 from typing import Optional, List
 import pygame
 import logging
 from ..config import FPS, set_screen_size
-from ..scenes import SceneManager, GameScene, MenuScene
+from ..scenes import SceneManager, GameScene
 from ..scenes.scene import PauseAction, ExitConfirmAction
 from .mother_ship import PersistenceManager, GameSaveData
 
 
 class SceneDirector:
-    """Scene director — orchestrates scene transitions and lifecycle.
-    
-        Manages the high-level scene flow: Login → Menu → Game, with support
+    """Scene director -- orchestrates scene transitions and lifecycle.
+
+        Manages the high-level scene flow: Welcome -> Game, with support
         for pause, death, and exit confirmation overlays. Preserves scene
         state across transitions via SceneManager.
-    
+
         Attributes:
             _window: Pygame display window reference.
             _scene_manager: SceneManager for registration and switching.
@@ -36,30 +36,26 @@ class SceneDirector:
     def run(self) -> None:
         self._running = True
         while self._running:
-            login_result, save_data = self._run_login_flow()
-            if not login_result:
+            welcome_ok, save_data = self._run_welcome_flow()
+            if not welcome_ok:
                 break
             self._pending_save_data = save_data
-            if not self._run_menu_flow():
-                continue
             result = self._run_game_flow()
             if result == "quit":
                 break
-            if result == "main_menu":
-                self._pending_save_data = None
-                continue
-            if result == "restart":
+            if result in ("main_menu", "restart"):
                 self._pending_save_data = None
                 continue
 
     def stop(self) -> None:
         self._running = False
 
-    def _run_login_flow(self) -> tuple:
-        self._scene_manager.switch("login")
-        login_scene = self._scene_manager.get_current_scene()
+    def _run_welcome_flow(self) -> tuple:
+        """Single-page beginner interface: login + difficulty + controls in one screen."""
+        self._scene_manager.switch("welcome")
+        welcome = self._scene_manager.get_current_scene()
 
-        while self._running and login_scene.is_running():
+        while self._running and welcome.is_running():
             events = self._poll_events()
             if not self._check_quit(events):
                 return (False, None)
@@ -70,75 +66,14 @@ class SceneDirector:
             self._window.flip()
             self._window.tick(FPS)
 
-        if hasattr(login_scene, 'should_quit') and login_scene.should_quit():
+        if hasattr(welcome, 'should_quit') and welcome.should_quit():
             return (False, None)
-        if hasattr(login_scene, 'get_username') and login_scene.is_ready():
-            self._current_user = login_scene.get_username()
+        if welcome.is_ready():
+            self._current_user = welcome.get_username()
+            self._selected_difficulty = welcome.get_difficulty()
             save_data = self._check_and_get_saved_game(self._current_user)
             return (True, save_data)
         return (True, None)
-
-    def _run_menu_flow(self) -> bool:
-        self._scene_manager.switch("menu")
-        back_to_login = False
-
-        while self._running:
-            events = self._poll_events()
-            if not self._check_quit(events):
-                return False
-            self._handle_resize_if_needed(events)
-            self._handle_scene_events(events)
-            self._scene_manager.update()
-            self._scene_manager.render(self._window.get_surface())
-            self._window.flip()
-            self._window.tick(FPS)
-
-            if isinstance(self._scene_manager.get_current_scene(), MenuScene):
-                ms = self._scene_manager.get_current_scene()
-                if ms.should_go_back():
-                    back_to_login = True
-                    break
-                if ms.is_selection_confirmed():
-                    selected_option = ms.get_selected_option()
-                    if selected_option == 'tutorial':
-                        self._run_tutorial_flow()
-                        self._scene_manager.switch("menu")
-                    else:
-                        self._selected_difficulty = ms.get_difficulty()
-                        break
-
-        return not back_to_login
-
-    def _run_tutorial_flow(self) -> None:
-        """Run the tutorial flow."""
-        self._scene_manager.switch("tutorial")
-        tutorial_scene = self._scene_manager.get_current_scene()
-        pygame.event.set_grab(True)
-        
-        try:
-            while tutorial_scene.is_running() and self._running:
-                events = self._poll_events()
-                
-                if not self._check_quit(events):
-                    return
-                self._handle_resize_if_needed(events)
-                
-                for event in events:
-                    tutorial_scene.handle_events(event)
-                
-                tutorial_scene.update()
-                tutorial_scene.render(self._window.get_surface())
-                self._window.flip()
-                self._window.tick(FPS)
-                
-                if tutorial_scene.should_quit():
-                    break
-        finally:
-            pygame.event.set_grab(False)
-            tutorial_scene.exit()
-            self._window.get_surface().fill((0, 0, 0))
-            pygame.display.flip()
-            pygame.time.delay(100)
 
     def _run_game_flow(self) -> str:
         self._logger.info(f"Starting game flow: difficulty={self._selected_difficulty}, user={self._current_user}")
