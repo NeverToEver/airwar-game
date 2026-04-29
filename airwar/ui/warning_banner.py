@@ -46,10 +46,14 @@ class WarningBanner:
     def is_active(self) -> bool:
         return self._state != self._STATE_INACTIVE
 
-    def activate(self, on_complete=None) -> None:
-        """Activate: panel slides in, holds, slides out, then calls on_complete."""
+    def activate(self, on_complete=None) -> bool:
+        """Activate: panel slides in, holds, slides out, then calls on_complete.
+
+        Returns:
+            True if banner was activated, False if already active.
+        """
         if self._state != self._STATE_INACTIVE:
-            return
+            return False
         self._state = self._STATE_ENTERING
         self._state_time = 0.0
         self._pulse_phase = 0.0
@@ -64,6 +68,7 @@ class WarningBanner:
             self.WARNING_TEXT, True, (255, 160, 40))
         self._sub_text = self._sub_font.render(
             self.SUB_TEXT, True, (220, 130, 50))
+        return True
 
     def reset(self) -> None:
         self._state = self._STATE_INACTIVE

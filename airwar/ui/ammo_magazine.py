@@ -16,6 +16,7 @@ class AmmoMagazine:
     CELL_WIDTH = 48
     CELL_HEIGHT = 16
     CELL_GAP = 4
+    WARNING_CELL_THRESHOLD = 3  # bottom N cells turn red when ammo is low
     FRAME_PAD_X = 9
     FRAME_PAD_TOP = 28
     FRAME_PAD_BOTTOM = 14
@@ -141,7 +142,7 @@ class AmmoMagazine:
 
             if i < full_cells:
                 # Fully filled
-                cell_color = self._cell_warning if (is_warning and i < 3) else self._cell_filled
+                cell_color = self._cell_warning if (is_warning and i < self.WARNING_CELL_THRESHOLD) else self._cell_filled
                 glow_color = self._cell_warning_glow if (is_warning and i < 3) else self._cell_glow
                 if is_cooldown:
                     pulse = 0.7 + 0.3 * math.sin(self._pulse_phase * 2.0)

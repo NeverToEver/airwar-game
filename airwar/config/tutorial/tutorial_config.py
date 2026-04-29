@@ -1,88 +1,93 @@
 """
-Tutorial System Configuration Module
+Tutorial system — multi-page content configuration.
 
-This module contains tutorial-specific configuration constants.
-Visual styling is now handled by DesignTokens for consistency.
-Only tutorial-specific logic configurations remain here.
+4 pages covering all game mechanics, content verified against actual game code:
+- Movement & Combat (WASD, auto-fire, SHIFT boost)
+- Mothership Docking (H-dock, ammo, cover fire)
+- Special Actions (K-surrender, ESC-pause, L-HUD)
+- Progression (milestones, buffs, boss kills)
 """
 
-from dataclasses import dataclass
-from enum import Enum
-from typing import Tuple, List, Dict
-
-
-class StepType(Enum):
-    """Tutorial step type enum — panel, button, or content card."""
-    WELCOME = 'welcome'
-    KEY_LIST = 'key_list'
-
-
-@dataclass
-class PanelConfig:
-    """Tutorial panel config dataclass — position and size for a step panel."""
-    WIDTH: int = 800
-    HEIGHT: int = 700
-    BORDER_RADIUS: int = 15
-    PADDING: int = 20
-
-
-@dataclass
-class ButtonConfig:
-    """Tutorial button config dataclass — label and action for a step button."""
-    WIDTH: int = 200
-    HEIGHT: int = 55
-    BORDER_RADIUS: int = 10
-    SPACING: int = 15
-
-
-@dataclass
-class ContentCardConfig:
-    """Tutorial content card config dataclass — title and body for a step."""
-    PADDING: int = 20
-    SPACING: int = 12
-    BORDER_RADIUS: int = 10
-
-
-# Single-page tutorial content
-TUTORIAL_CONTENT: Dict = {
-    'title': 'TRAINING MANUAL',
-    'subtitle': 'Air War Commander Training Program',
-    'sections': [
-        {
-            'title': 'Movement',
-            'icon': '-',
-            'items': [
-                {'key': 'W / UP', 'desc': 'Move Up'},
-                {'key': 'S / DOWN', 'desc': 'Move Down'},
-                {'key': 'A / LEFT', 'desc': 'Move Left'},
-                {'key': 'D / RIGHT', 'desc': 'Move Right'},
-                {'key': 'SPACE', 'desc': 'Fire (hold for auto-fire)'},
-            ],
-        },
-        {
-            'title': 'Special',
-            'icon': '-',
-            'items': [
-                {'key': 'H (hold)', 'desc': 'Dock with Mother Ship to save'},
-                {'key': 'K (hold 3s)', 'desc': 'Surrender (when docked)'},
-            ],
-        },
-        {
-            'title': 'Interface',
-            'icon': '-',
-            'items': [
-                {'key': 'ESC', 'desc': 'Pause game'},
-                {'key': 'L', 'desc': 'Toggle HUD panel'},
-                {'key': '1-4', 'desc': 'Select power-up at milestone'},
-            ],
-        },
-        {
-            'title': 'Progression',
-            'icon': '-',
-            'items': [
-                {'key': 'Milestones', 'desc': 'Score targets unlock buffs'},
-                {'key': 'Boss Kills', 'desc': 'Increase difficulty'},
-            ],
-        },
-    ],
-}
+TUTORIAL_PAGES = [
+    {
+        'title': 'MOVEMENT & COMBAT',
+        'subtitle': 'Basic Controls',
+        'sections': [
+            {
+                'title': 'Movement',
+                'items': [
+                    ('W / ↑', 'Move Up'),
+                    ('S / ↓', 'Move Down'),
+                    ('A / ←', 'Move Left'),
+                    ('D / →', 'Move Right'),
+                    ('SHIFT (hold)', 'Boost — +70% speed, consumes energy'),
+                ],
+            },
+            {
+                'title': 'Combat',
+                'items': [
+                    ('Auto-Fire', 'Your ship fires automatically'),
+                    ('Boost Dodge', 'Use SHIFT boost to evade bullets'),
+                ],
+            },
+        ],
+    },
+    {
+        'title': 'MOTHERSHIP DOCKING',
+        'subtitle': 'Save Progress & Call Support',
+        'sections': [
+            {
+                'title': 'Docking',
+                'items': [
+                    ('H (hold 3s)', 'Call mothership to dock'),
+                    ('WASD', 'Move mothership while docked'),
+                    ('Auto-Save', 'Progress saved when docking completes'),
+                ],
+            },
+            {
+                'title': 'Mothership Firepower',
+                'items': [
+                    ('Cover Fire', 'Explosive missiles target enemies'),
+                    ('Ammo System', '10-cell magazine, depletes over 20s'),
+                    ('Ammo Warning', 'Auto-undock when ammo depleted'),
+                ],
+            },
+        ],
+    },
+    {
+        'title': 'SPECIAL ACTIONS',
+        'subtitle': 'Surrender & Interface',
+        'sections': [
+            {
+                'title': 'Actions',
+                'items': [
+                    ('K (hold 3s)', 'Surrender — end current run'),
+                    ('ESC', 'Pause game'),
+                    ('L', 'Toggle HUD panel expanded / collapsed'),
+                ],
+            },
+        ],
+    },
+    {
+        'title': 'PROGRESSION',
+        'subtitle': 'Milestones & Rewards',
+        'sections': [
+            {
+                'title': 'Milestones',
+                'items': [
+                    ('Score Targets', 'Reach thresholds to unlock buffs'),
+                    ('W / S', 'Navigate reward options'),
+                    ('ENTER / SPACE', 'Select power-up'),
+                    ('Mouse Click', 'Alternative selection'),
+                ],
+            },
+            {
+                'title': 'Difficulty',
+                'items': [
+                    ('Boss Kills', 'Each kill increases difficulty'),
+                    ('12 Buff Types', 'Health, offense, defense, utility'),
+                ],
+            },
+        ],
+    },
+]

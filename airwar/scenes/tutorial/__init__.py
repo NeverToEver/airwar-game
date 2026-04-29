@@ -1,11 +1,4 @@
-"""
-Tutorial System Components Module
+"""Tutorial scene subpackage."""
+from airwar.scenes.tutorial_scene import TutorialScene
 
-This module exports the tutorial renderer component.
-"""
-
-from .renderer import TutorialRenderer
-
-__all__ = [
-    'TutorialRenderer',
-]
+__all__ = ['TutorialScene']

@@ -1,141 +1,149 @@
-"""
-Test module for TutorialScene.
-
-This module contains unit tests for the simplified single-page TutorialScene class.
-Following the F.I.R.S.T. principles: Fast, Independent, Repeatable, Self-Validating, Timely.
-"""
-
+"""Tests for TutorialScene — multi-page pagination and navigation."""
 import pytest
 import pygame
 from airwar.scenes.tutorial_scene import TutorialScene
 
 
 class TestTutorialScene:
-    """Test suite for TutorialScene class."""
+    """Unit tests for TutorialScene — pagination, keyboard, lifecycle."""
 
     def test_initialization(self):
-        """Test that scene initializes correctly."""
         scene = TutorialScene()
         assert scene is not None
-        assert not scene.is_running()
         assert not scene.should_quit()
+        assert scene._current_page == 0
+        assert scene._total_pages == 4
 
     def test_enter_starts_scene(self):
-        """Test that enter() starts the scene."""
         scene = TutorialScene()
         scene.enter()
         assert scene.is_running()
         assert not scene.should_quit()
+        assert scene._current_page == 0
 
     def test_exit_does_not_crash(self):
-        """Test that exit() can be called safely."""
-        scene = TutorialScene()
-        scene.exit()
-
-    def test_reset(self):
-        """Test that reset() restarts the scene."""
         scene = TutorialScene()
         scene.enter()
+        scene.exit()
 
-        escape_event = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_ESCAPE})
-        scene.handle_events(escape_event)
+    def test_escape_key_quits_scene(self):
+        scene = TutorialScene()
+        scene.enter()
+        esc = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_ESCAPE})
+        scene.handle_events(esc)
+        assert scene.should_quit()
 
+    def test_right_arrow_advances_page(self):
+        scene = TutorialScene()
+        scene.enter()
+        assert scene._current_page == 0
+        right = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_RIGHT})
+        scene.handle_events(right)
+        assert scene._current_page == 1
+
+    def test_left_arrow_goes_back(self):
+        scene = TutorialScene()
+        scene.enter()
+        scene._current_page = 2
+        left = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_LEFT})
+        scene.handle_events(left)
+        assert scene._current_page == 1
+
+    def test_right_arrow_at_last_page_does_nothing(self):
+        scene = TutorialScene()
+        scene.enter()
+        scene._current_page = 3  # last page
+        right = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_RIGHT})
+        scene.handle_events(right)
+        assert scene._current_page == 3  # unchanged
+
+    def test_left_arrow_at_first_page_does_nothing(self):
+        scene = TutorialScene()
+        scene.enter()
+        left = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_LEFT})
+        scene.handle_events(left)
+        assert scene._current_page == 0  # unchanged
+
+    def test_down_arrow_advances_page(self):
+        scene = TutorialScene()
+        scene.enter()
+        down = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_DOWN})
+        scene.handle_events(down)
+        assert scene._current_page == 1
+
+    def test_up_arrow_goes_back(self):
+        scene = TutorialScene()
+        scene.enter()
+        scene._current_page = 1
+        up = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_UP})
+        scene.handle_events(up)
+        assert scene._current_page == 0
+
+    def test_enter_key_on_last_page_quits(self):
+        scene = TutorialScene()
+        scene.enter()
+        scene._current_page = 3  # last page
+        ret = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_RETURN})
+        scene.handle_events(ret)
+        assert scene.should_quit()
+
+    def test_enter_key_not_on_last_page_does_not_quit(self):
+        scene = TutorialScene()
+        scene.enter()
+        scene._current_page = 0  # not last page
+        ret = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_RETURN})
+        scene.handle_events(ret)
+        assert not scene.should_quit()
+
+    def test_modifier_keys_ignored(self):
+        """Non-navigation keys should not change state."""
+        scene = TutorialScene()
+        scene.enter()
+        for key in (pygame.K_a, pygame.K_TAB, pygame.K_F1):
+            ev = pygame.event.Event(pygame.KEYDOWN, {'key': key})
+            scene.handle_events(ev)
+        assert scene._current_page == 0
+        assert not scene.should_quit()
+
+    def test_reset_clears_state(self):
+        scene = TutorialScene()
+        scene.enter()
+        scene._current_page = 2
         scene.reset()
+        assert scene._current_page == 0
         assert scene.is_running()
         assert not scene.should_quit()
 
-    def test_escape_key_quits_scene(self):
-        """Test that ESC key requests quit."""
+    def test_update_does_not_crash(self):
         scene = TutorialScene()
         scene.enter()
-
-        escape_event = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_ESCAPE})
-        scene.handle_events(escape_event)
-
-        assert not scene.is_running()
-        assert scene.should_quit()
-
-    def test_return_key_quits_scene(self):
-        """Test that RETURN key quits the scene."""
-        scene = TutorialScene()
-        scene.enter()
-
-        return_event = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_RETURN})
-        scene.handle_events(return_event)
-
-        assert not scene.is_running()
-        assert scene.should_quit()
-
-    def test_space_key_quits_scene(self):
-        """Test that SPACE key quits the scene."""
-        scene = TutorialScene()
-        scene.enter()
-
-        space_event = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_SPACE})
-        scene.handle_events(space_event)
-
-        assert not scene.is_running()
-        assert scene.should_quit()
-
-    def test_update_increments_animation(self):
-        """Test that update() can be called without errors."""
-        scene = TutorialScene()
-        scene.enter()
-        scene.update()
+        for _ in range(10):
+            scene.update()
 
     def test_render_does_not_crash(self):
-        """Test that render() can be called without errors."""
         pygame.init()
         surface = pygame.display.set_mode((1280, 720))
         scene = TutorialScene()
         scene.enter()
-        scene.render(surface)
+        for pg in range(4):
+            scene._current_page = pg
+            scene.render(surface)
         pygame.quit()
 
-    def test_scene_lifecycle(self):
-        """Test complete scene lifecycle."""
-        scene = TutorialScene()
-
-        assert not scene.is_running()
-        scene.enter()
-        assert scene.is_running()
-
-        escape_event = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_ESCAPE})
-        scene.handle_events(escape_event)
-
-        assert not scene.is_running()
-        assert scene.should_quit()
-
-    def test_mouse_event_does_not_crash(self):
-        """Test that mouse events are handled without errors."""
-        scene = TutorialScene()
-        scene.enter()
-
-        mouse_event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, {'pos': (640, 360)})
-        scene.handle_events(mouse_event)
-
-    def test_mouse_click_on_start_button_area(self):
-        """Test mouse click in the general area of the start button."""
-        scene = TutorialScene()
-        scene.enter()
-
+    def test_mouse_events_do_not_crash(self):
         pygame.init()
-        surface = pygame.display.set_mode((1280, 720))
-        scene.render(surface)
-
-        mouse_event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, {'pos': (640, 600)})
-        scene.handle_events(mouse_event)
-
+        pygame.display.set_mode((1280, 720))
+        scene = TutorialScene()
+        scene.enter()
+        scene.render(pygame.display.get_surface())
+        mev = pygame.event.Event(pygame.MOUSEBUTTONDOWN, {'pos': (640, 600), 'button': 1})
+        scene.handle_events(mev)
         pygame.quit()
 
     def test_is_ready(self):
-        """Test is_ready() method."""
         scene = TutorialScene()
-        assert scene.is_ready()
-
         scene.enter()
         assert not scene.is_ready()
-
-        escape_event = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_ESCAPE})
-        scene.handle_events(escape_event)
+        esc = pygame.event.Event(pygame.KEYDOWN, {'key': pygame.K_ESCAPE})
+        scene.handle_events(esc)
         assert scene.is_ready()

@@ -165,5 +165,12 @@ class MotherShipStateMachine(IMotherShipStateMachine):
     def is_docked(self) -> bool:
         return self._current_state == MotherShipState.DOCKED
 
+    def force_state(self, state: MotherShipState) -> None:
+        """Force-set the state machine to a specific state.
+
+        仅在存档恢复场景使用，绕过常规转换验证。
+        """
+        self._current_state = state
+
     def is_exit_in_progress(self) -> bool:
         return self._exit_in_progress

@@ -81,6 +81,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._mother_ship_integrator = None
         self._ammo_magazine: AmmoMagazine = None
         self._warning_banner: WarningBanner = None
+        self._boost_gauge: BoostGauge = None
         self._give_up_detector = None
         self._give_up_ui = None
         self._bullet_manager: BulletManager = None
@@ -346,11 +347,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if self._warning_banner.is_active:
             return
 
-        # Activate warning — on complete, trigger undocking
-        event_bus = self._mother_ship_integrator._event_bus
-
         def trigger_undock():
-            event_bus.publish('UNDOCK_REQUESTED')
+            self._mother_ship_integrator.request_undock()
 
         self._warning_banner.activate(on_complete=trigger_undock)
 
@@ -409,7 +407,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._render_pause_button(surface)
 
         # Boost gauge — bottom-left dashboard indicator
-        if hasattr(self, '_boost_gauge'):
+        if self._boost_gauge is not None:
             status = self.player.get_boost_status()
             self._boost_gauge.render(surface, status['current'],
                                      status['max'], status['active'])
