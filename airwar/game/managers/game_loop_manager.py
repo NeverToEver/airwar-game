@@ -142,7 +142,7 @@ class GameLoopManager:
         except Exception as e:
             import logging
             logging.error(f"Game update error: {e}", exc_info=True)
-            self._game_controller.show_notification("GAME ERROR - check logs")
+            self._game_controller.show_notification("游戏错误 - 请查看日志")
             self._game_controller.state.running = False
             return False
 
@@ -188,7 +188,7 @@ class GameLoopManager:
                 self._reward_system.base_bullet_damage
             )
             self._game_controller.show_notification(
-                f"! BOSS APPROACHING ({int(boss.data.escape_time/60)}s) !"
+                f"! BOSS 来袭 ({int(boss.data.escape_time/60)}秒) !"
             )
 
     def _update_entities(self) -> None:
@@ -246,7 +246,8 @@ class GameLoopManager:
             )
         except Exception as e:
             import logging
-            logging.error(f"Collision detection error: {e}", exc_info=True)
+            logging.critical(f"Collision detection error: {e}", exc_info=True)
+            self._game_controller.state.running = False
 
     def is_entrance_playing(self) -> bool:
         return self._game_controller.state.entrance_animation

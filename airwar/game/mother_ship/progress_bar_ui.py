@@ -1,5 +1,6 @@
 """Progress bar UI — visual docking progress indicator."""
 import pygame
+from airwar.utils.fonts import get_cjk_font
 from .interfaces import IMotherShipUI
 
 
@@ -35,7 +36,7 @@ class ProgressBarUI(IMotherShipUI):
         self._current_value = 0.0
 
         pygame.font.init()
-        self._font = pygame.font.Font(None, 18)
+        self._font = get_cjk_font(18)
 
     def show(self, bar_type: str = BAR_TYPE_HOLD, max_value: float = 3.0) -> None:
         self._visible = True
@@ -114,13 +115,13 @@ class ProgressBarUI(IMotherShipUI):
     def _render_progress_text(self, surface: pygame.Surface, center_x: int, center_y: int) -> None:
         if self._bar_type == self.BAR_TYPE_HOLD:
             seconds = int(self._progress * 3)
-            text = self._font.render(f"HOLD {seconds}/3", True, (180, 200, 220))
+            text = self._font.render(f"按住 {seconds}/3", True, (180, 200, 220))
         elif self._bar_type == self.BAR_TYPE_COOLDOWN:
             remaining = int((1.0 - self._progress) * self._max_value)
-            text = self._font.render(f"COOLDOWN {remaining}s", True, (180, 160, 120))
+            text = self._font.render(f"冷却 {remaining}秒", True, (180, 160, 120))
         elif self._bar_type == self.BAR_TYPE_STAY:
             remaining = int((1.0 - self._progress) * self._max_value)
-            text = self._font.render(f"STAY {remaining}s", True, (120, 180, 140))
+            text = self._font.render(f"停靠 {remaining}秒", True, (120, 180, 140))
         else:
             text = self._font.render(f"{self._progress:.1%}", True, (180, 200, 220))
 

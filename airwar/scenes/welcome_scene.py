@@ -1,5 +1,6 @@
 """Welcome scene -- single-page beginner interface combining login, difficulty, and quick tips."""
 import pygame
+from airwar.utils.fonts import get_cjk_font
 import math
 from .scene import Scene
 from airwar.utils.database import UserDB
@@ -33,7 +34,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
     CHAMFER = 12
     INPUT_W = 340
     INPUT_H = 54
-    BTN_W = 150
+    BTN_W = 160
     BTN_H = 48
     DIFF_OPTION_H = 48
     DIFF_GAP = 8
@@ -61,7 +62,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
         # Difficulty
         self.difficulty_options = ['easy', 'medium', 'hard']
-        self.difficulty_labels = {'easy': 'EASY', 'medium': 'MEDIUM', 'hard': 'HARD'}
+        self.difficulty_labels = {'easy': '简单', 'medium': '中等', 'hard': '困难'}
         self.selected_difficulty = 'medium'
         self.difficulty_index = 1
 
@@ -75,12 +76,12 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
         pygame.font.init()
         tokens = self._tokens
-        self.title_font = pygame.font.Font(None, tokens.typography.TITLE_SIZE)
-        self.section_font = pygame.font.Font(None, tokens.typography.SUBHEADING_SIZE)
-        self.input_font = pygame.font.Font(None, tokens.typography.BODY_SIZE)
-        self.button_font = pygame.font.Font(None, tokens.typography.BODY_SIZE)
-        self.hint_font = pygame.font.Font(None, tokens.typography.HUD_SIZE)
-        self.tip_font = pygame.font.Font(None, tokens.typography.TINY_SIZE)
+        self.title_font = get_cjk_font(tokens.typography.TITLE_SIZE)
+        self.section_font = get_cjk_font(tokens.typography.SUBHEADING_SIZE)
+        self.input_font = get_cjk_font(tokens.typography.BODY_SIZE)
+        self.button_font = get_cjk_font(tokens.typography.BODY_SIZE)
+        self.hint_font = get_cjk_font(tokens.typography.HUD_SIZE)
+        self.tip_font = get_cjk_font(tokens.typography.TINY_SIZE)
 
     def exit(self) -> None:
         pass
@@ -210,36 +211,36 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
     def _do_login(self) -> None:
         if not self.username or not self.password:
-            self.message = "Enter username and password"
+            self.message = "请输入用户名和密码"
             self.message_timer = 120
             return
         if self.db.verify_user(self.username, self.password):
             self.message = ""
             self.running = False
         else:
-            self.message = "Invalid username or password"
+            self.message = "用户名或密码错误"
             self.message_timer = 120
 
     def _do_register(self) -> None:
         if not self.username or not self.password:
-            self.message = "Enter username and password"
+            self.message = "请输入用户名和密码"
             self.message_timer = 120
             return
         if len(self.username) < 3:
-            self.message = "Username min 3 characters"
+            self.message = "用户名至少3个字符"
             self.message_timer = 120
             return
         if len(self.password) < 3:
-            self.message = "Password min 3 characters"
+            self.message = "密码至少3个字符"
             self.message_timer = 120
             return
         if self.db.create_user(self.username, self.password):
-            self.message = "Registration successful! You can now start."
+            self.message = "注册成功！现在可以开始游戏了"
             self.message_timer = 120
             self.mode = 'login'
             self.password = ""
         else:
-            self.message = "Username already exists"
+            self.message = "用户名已存在"
             self.message_timer = 120
 
     # -- Update ---------------------------------------------------------
@@ -306,14 +307,14 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         ty = 45 + math.sin(self.animation_time * 0.04) * 4
 
         for blur, alpha, color in [(4, 18, SC.GOLD_DIM), (2, 30, SC.GOLD_PRIMARY)]:
-            glow = self.title_font.render("AIR WAR", True, color)
+            glow = self.title_font.render("空 战", True, color)
             glow.set_alpha(alpha)
             for ox in range(-blur, blur + 1, 2):
                 for oy in range(-blur, blur + 1, 2):
                     if ox * ox + oy * oy <= blur * blur:
                         r = glow.get_rect(center=(sw // 2 + ox, int(ty) + oy))
                         surface.blit(glow, r)
-        title = self.title_font.render("AIR WAR", True, SC.GOLD_PRIMARY)
+        title = self.title_font.render("空 战", True, SC.GOLD_PRIMARY)
         surface.blit(title, title.get_rect(center=(sw // 2, int(ty))))
 
     def _render_left_panel(self, surface, px, py):
@@ -325,7 +326,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
                              SC.BG_PANEL_LIGHT, SC.BORDER_DIM, SC.GOLD_GLOW, self.CHAMFER)
 
         # Section title
-        title = self.section_font.render("PILOT LOGIN", True, SC.GOLD_PRIMARY)
+        title = self.section_font.render("飞行员登录", True, SC.GOLD_PRIMARY)
         surface.blit(title, title.get_rect(center=(px + self.PANEL_W // 2, py + 32)))
 
         # Decorative separator
@@ -338,14 +339,14 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         uname_y = py + 90
         uname_rect = pygame.Rect(input_x, uname_y, self.INPUT_W, self.INPUT_H)
         self.register_button('username_field', uname_rect)
-        self._draw_input(surface, uname_rect, "USERNAME", self.username,
+        self._draw_input(surface, uname_rect, "用户名", self.username,
                          self.focus == 'username')
 
         # Password field
         pass_y = uname_y + self.INPUT_H + 30
         pass_rect = pygame.Rect(input_x, pass_y, self.INPUT_W, self.INPUT_H)
         self.register_button('password_field', pass_rect)
-        self._draw_input(surface, pass_rect, "PASSWORD", self.password,
+        self._draw_input(surface, pass_rect, "密码", self.password,
                          self.focus == 'password', is_password=True)
 
         # Buttons
@@ -354,9 +355,9 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
                                  self.BTN_W, self.BTN_H)
         register_rect = pygame.Rect(px + self.PANEL_W // 2 + 12, btn_y,
                                     self.BTN_W, self.BTN_H)
-        self._draw_button(surface, login_rect, "LOGIN", 'login',
+        self._draw_button(surface, login_rect, "登录", 'login',
                          SceneColors.FOREST_GREEN, is_primary=True)
-        self._draw_button(surface, register_rect, "REGISTER", 'register',
+        self._draw_button(surface, register_rect, "注册", 'register',
                          SceneColors.GOLD_DIM)
 
         # Guest mode button (ghost style — subtle border, fills on hover)
@@ -365,7 +366,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         guest_y = btn_y + self.BTN_H + 18
         guest_rect = pygame.Rect(px + self.PANEL_W // 2 - guest_btn_w // 2,
                                  guest_y, guest_btn_w, guest_btn_h)
-        self._draw_ghost_button(surface, guest_rect, "Play as Guest", 'skip_login')
+        self._draw_ghost_button(surface, guest_rect, "游客模式", 'skip_login')
 
     def _render_right_panel(self, surface, px, py):
         SC = SceneColors
@@ -375,7 +376,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
                              SC.BG_PANEL_LIGHT, SC.BORDER_DIM, SC.GOLD_GLOW, self.CHAMFER)
 
         # Section title
-        title = self.section_font.render("MISSION BRIEFING", True, SC.GOLD_PRIMARY)
+        title = self.section_font.render("任务简报", True, SC.GOLD_PRIMARY)
         surface.blit(title, title.get_rect(center=(px + self.PANEL_W // 2, py + 32)))
 
         sep_y = py + 58
@@ -384,7 +385,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
         # -- Difficulty selection --
         diff_title_y = py + 80
-        diff_label = self.hint_font.render("DIFFICULTY", True, SC.TEXT_DIM)
+        diff_label = self.hint_font.render("难度", True, SC.TEXT_DIM)
         surface.blit(diff_label, (px + 35, diff_title_y))
 
         diff_start_y = diff_title_y + 26
@@ -396,16 +397,16 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
         # -- Quick Controls reference --
         tips_title_y = diff_start_y + len(self.difficulty_options) * (self.DIFF_OPTION_H + self.DIFF_GAP) + 14
-        tips_label = self.hint_font.render("QUICK CONTROLS", True, SC.TEXT_DIM)
+        tips_label = self.hint_font.render("操作说明", True, SC.TEXT_DIM)
         surface.blit(tips_label, (px + 35, tips_title_y))
 
         controls = [
-            ("WASD / Arrows", "Move ship"),
-            ("SHIFT (hold)", "Boost speed"),
-            ("H (hold 3s)", "Dock in mothership"),
-            ("K (hold 3s)", "Surrender run"),
-            ("ESC", "Pause game"),
-            ("L", "Toggle HUD panel"),
+            ("WASD / 方向键", "移动战机"),
+            ("SHIFT (按住)", "加速"),
+            ("H (按住3秒)", "停靠母舰"),
+            ("K (按住3秒)", "投降"),
+            ("ESC", "暂停游戏"),
+            ("L", "切换HUD面板"),
         ]
         tip_y = tips_title_y + 26
         for key, desc in controls:
@@ -468,7 +469,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
         # Placeholder
         if not text:
-            ph = "Enter username..." if not is_password else "Enter password..."
+            ph = "输入用户名..." if not is_password else "输入密码..."
             ph_surf = self.input_font.render(ph, True, SC.TEXT_DIM)
             ph_rect = ph_surf.get_rect(midleft=(rect.x + 16, rect.centery))
             surface.blit(ph_surf, ph_rect)
@@ -514,7 +515,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
                              fill, border, None, 6)
 
         text_color = SC.TEXT_PRIMARY if hover else SC.TEXT_DIM
-        font = pygame.font.Font(None, self._tokens.typography.SMALL_SIZE)
+        font = get_cjk_font(self._tokens.typography.SMALL_SIZE)
         text_surf = font.render(text, True, text_color)
         surface.blit(text_surf, text_surf.get_rect(center=rect.center))
 
@@ -523,9 +524,9 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         blink = (self.animation_time // 30) % 2 == 0
         color = SC.TEXT_DIM if blink else SC.TEXT_PRIMARY
         if self.show_guest_confirm:
-            hints = "← → : select  |  ENTER: confirm  |  ESC: back"
+            hints = "← → : 选择  |  ENTER: 确认  |  ESC: 返回"
         else:
-            hints = "TAB: switch focus  |  ENTER: confirm  |  ESC: quit"
+            hints = "TAB: 切换焦点  |  ENTER: 确认  |  ESC: 退出"
         hint_surf = self.hint_font.render(hints, True, color)
         surface.blit(hint_surf, hint_surf.get_rect(center=(sw // 2, sh - 40)))
 
@@ -537,7 +538,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         surface.blit(msg_surf, msg_surf.get_rect(center=(sw // 2, sh - 75)))
 
     def _render_guest_confirm(self, surface):
-        """Overlay confirmation dialog: 'Continue as Guest?'"""
+        """覆盖确认对话框：游客模式不保存进度"""
         SC = SceneColors
         sw, sh = surface.get_width(), surface.get_height()
 
@@ -554,7 +555,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
                              SC.BG_PANEL_LIGHT, SC.GOLD_PRIMARY, SC.GOLD_GLOW, 12)
 
         # Title
-        title = self.section_font.render("GUEST MODE", True, SC.GOLD_PRIMARY)
+        title = self.section_font.render("游客模式", True, SC.GOLD_PRIMARY)
         surface.blit(title, title.get_rect(center=(sw // 2, dlg_y + 50)))
 
         # Description
@@ -574,20 +575,20 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
         # Confirm button (primary)
         confirm_rect = pygame.Rect(btn_start_x, btn_y, btn_w, btn_h)
-        self._draw_button(surface, confirm_rect, "PLAY AS GUEST",
+        self._draw_button(surface, confirm_rect, "游客进入",
                           'guest_confirm_yes', SC.FOREST_GREEN, is_primary=True,
                           is_focused=(self.guest_confirm_focus == 'yes'))
 
         # Cancel button (secondary)
         cancel_rect = pygame.Rect(btn_start_x + btn_w + gap, btn_y, btn_w, btn_h)
-        self._draw_button(surface, cancel_rect, "GO BACK",
+        self._draw_button(surface, cancel_rect, "返回",
                           'guest_confirm_no', SC.GOLD_DIM,
                           is_focused=(self.guest_confirm_focus == 'no'))
 
     def _render_fullscreen_button(self, surface, sw, sh):
         SC = SceneColors
         window = get_window()
-        fs_text = "Exit Fullscreen" if window.is_fullscreen() else "Fullscreen"
+        fs_text = "退出全屏" if window.is_fullscreen() else "全屏"
         scale = ResponsiveHelper.get_scale_factor(sw, sh)
         btn_w = ResponsiveHelper.scale(160, scale)
         btn_h = ResponsiveHelper.scale(38, scale)

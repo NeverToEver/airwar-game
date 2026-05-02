@@ -1,6 +1,7 @@
 """Boost gauge UI — 270° arc fuel gauge with pointer needle."""
 import math
 import pygame
+from airwar.utils.fonts import get_cjk_font
 from airwar.config.design_tokens import get_design_tokens, SystemColors
 
 
@@ -50,7 +51,7 @@ class BoostGauge:
 
     def _get_font(self, size):
         if size not in self._fonts:
-            self._fonts[size] = pygame.font.Font(None, size)
+            self._fonts[size] = get_cjk_font(size)
         return self._fonts[size]
 
     def render(self, surface: pygame.Surface, boost_current: float,
@@ -179,7 +180,7 @@ class BoostGauge:
     def _draw_labels(self, surface, cx, cy, r, current, max_val, active):
         """Title, value, min/max, and BOOSTING indicator."""
         title_font = self._get_font(14)
-        title = title_font.render("BOOST FUEL", True, self._text_color)
+        title = title_font.render("加速燃料", True, self._text_color)
         surface.blit(title, title.get_rect(center=(cx, cy + 10)))
 
         val_font = self._get_font(24)
@@ -202,5 +203,5 @@ class BoostGauge:
 
         if active:
             af = self._get_font(12)
-            at = af.render("BOOSTING", True, (*self._needle_active, 200))
+            at = af.render("加速中", True, (*self._needle_active, 200))
             surface.blit(at, at.get_rect(center=(cx, cy + 44)))

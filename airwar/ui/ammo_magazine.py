@@ -1,6 +1,7 @@
 """Ammo magazine UI — vertical sci-fi ammunition rack for mothership cooldown/duration."""
 import math
 import pygame
+from airwar.utils.fonts import get_cjk_font
 from airwar.config.design_tokens import SystemColors
 
 
@@ -50,9 +51,9 @@ class AmmoMagazine:
 
     def _ensure_fonts(self):
         if self._label_font is None:
-            self._label_font = pygame.font.Font(None, 16)
+            self._label_font = get_cjk_font(16)
         if self._count_font is None:
-            self._count_font = pygame.font.Font(None, 13)
+            self._count_font = get_cjk_font(13)
 
     def _build_frame_cache(self, w: int, h: int) -> pygame.Surface:
         """Pre-render the metallic frame with corner rivets."""
@@ -124,7 +125,7 @@ class AmmoMagazine:
         surface.blit(self._frame_cache, (fx, fy))
 
         # Header label
-        label = self._label_font.render("MTHRSHP", True, self._text_color)
+        label = self._label_font.render("母舰", True, self._text_color)
         label_rect = label.get_rect(center=(fx + fw // 2, fy + 14))
         surface.blit(label, label_rect)
 

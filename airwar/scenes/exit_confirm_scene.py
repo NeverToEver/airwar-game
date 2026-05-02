@@ -1,5 +1,6 @@
 """Exit confirmation dialog overlay."""
 import pygame
+from airwar.utils.fonts import get_cjk_font
 import math
 from .scene import Scene, ExitConfirmAction
 from airwar.utils.responsive import ResponsiveHelper
@@ -21,7 +22,7 @@ class ExitConfirmScene(Scene, MouseSelectableMixin):
     def enter(self, **kwargs) -> None:
         self.running = True
         self.result: ExitConfirmAction = None
-        self.options = ['RETURN TO MENU', 'START NEW GAME', 'QUIT GAME']
+        self.options = ['返回主菜单', '新游戏', '退出游戏']
         self.selected_index = 0
         self.saved = kwargs.get('saved', False)
         self.difficulty = kwargs.get('difficulty', 'medium')
@@ -37,10 +38,10 @@ class ExitConfirmScene(Scene, MouseSelectableMixin):
 
         pygame.font.init()
         tokens = self._tokens
-        self.title_font = pygame.font.Font(None, tokens.typography.SUBHEADING_SIZE)
-        self.option_font = pygame.font.Font(None, tokens.typography.OPTION_SIZE)
-        self.hint_font = pygame.font.Font(None, tokens.typography.HUD_SIZE)
-        self.desc_font = pygame.font.Font(None, tokens.typography.TINY_SIZE)
+        self.title_font = get_cjk_font(tokens.typography.SUBHEADING_SIZE)
+        self.option_font = get_cjk_font(tokens.typography.OPTION_SIZE)
+        self.hint_font = get_cjk_font(tokens.typography.HUD_SIZE)
+        self.desc_font = get_cjk_font(tokens.typography.TINY_SIZE)
 
         self._background_renderer = MenuBackground()
         self._particle_system = ParticleSystem()
@@ -121,7 +122,7 @@ class ExitConfirmScene(Scene, MouseSelectableMixin):
 
     def _draw_success_indicator(self, surface: pygame.Surface, center_x: int, y: int, scale: float = 1.0) -> None:
         if self.saved:
-            check_text = "[OK] GAME SAVED"
+            check_text = "[OK] 游戏已保存"
             check_surface = self.hint_font.render(check_text, True, self.colors['success'])
             check_rect = check_surface.get_rect(center=(center_x, y))
             pulse = math.sin(self.animation_time * 0.1)
@@ -143,9 +144,9 @@ class ExitConfirmScene(Scene, MouseSelectableMixin):
 
         title_y = height // 3 + self.glow_offset * 0.3
         if self.saved:
-            title_text = "GAME SAVED"
+            title_text = "游戏已保存"
         else:
-            title_text = "EXIT GAME"
+            title_text = "退出游戏"
 
         if self.use_themed_style:
             self._draw_themed_title(surface, title_text, self.title_font, (center_x, title_y))
@@ -194,16 +195,16 @@ class ExitConfirmScene(Scene, MouseSelectableMixin):
 
         blink_interval = self._tokens.animation.BLINK_INTERVAL
         blink = (self.animation_time // blink_interval) % 2 == 0
-        hint_text = "CLICK or ENTER to confirm" if blink else "                         "
+        hint_text = "点击或回车确认" if blink else "               "
         hint_color = SceneColors.TEXT_DIM if self.use_themed_style else self.colors['hint']
         hint = self.hint_font.render(hint_text, True, hint_color)
         surface.blit(hint, hint.get_rect(center=(center_x, height - ResponsiveHelper.scale(120, scale))))
 
         controls_color = SceneColors.TEXT_DIM if self.use_themed_style else (60, 60, 100)
-        controls = self.desc_font.render("Click or W/S to select", True, controls_color)
+        controls = self.desc_font.render("点击或 W/S 选择", True, controls_color)
         surface.blit(controls, controls.get_rect(center=(center_x, height - ResponsiveHelper.scale(80, scale))))
 
-        esc_hint = self.desc_font.render("ESC to return to menu", True, controls_color)
+        esc_hint = self.desc_font.render("ESC 返回菜单", True, controls_color)
         surface.blit(esc_hint, esc_hint.get_rect(center=(center_x, height - ResponsiveHelper.scale(50, scale))))
 
     def _draw_themed_title(self, surface: pygame.Surface, text: str, font: pygame.font.Font, pos: tuple) -> None:
@@ -242,7 +243,7 @@ class ExitConfirmScene(Scene, MouseSelectableMixin):
 
     def _draw_themed_success_indicator(self, surface: pygame.Surface, center_x: int, y: int, scale: float = 1.0) -> None:
         if self.saved:
-            check_text = ">> GAME SAVED <<"
+            check_text = ">> 游戏已保存 <<"
             check_surface = self.hint_font.render(check_text, True, SceneColors.FOREST_GREEN)
             check_rect = check_surface.get_rect(center=(center_x, y))
             pulse = math.sin(self.animation_time * 0.1)

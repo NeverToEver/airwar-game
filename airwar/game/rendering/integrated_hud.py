@@ -1,5 +1,6 @@
 """Integrated HUD — unified heads-up display combining all UI elements."""
 import pygame
+from airwar.utils.fonts import get_cjk_font
 from typing import List, Dict, Any
 from airwar.config.design_tokens import get_design_tokens
 from airwar.ui.discrete_battery import DiscreteBatteryIndicator
@@ -46,7 +47,7 @@ class IntegratedHUD:
     def _get_font(self, size):
         """Return a cached font object for the given size."""
         if size not in self._fonts:
-            self._fonts[size] = pygame.font.Font(None, size)
+            self._fonts[size] = get_cjk_font(size)
         return self._fonts[size]
 
     def _cached_label(self, font_size, text, color):
@@ -237,7 +238,7 @@ class IntegratedHUD:
         import enum
         state_name = state.value if hasattr(state, 'value') else str(state)
 
-        label = self._cached_label(self.label_font_size - 2, "MTHRSHP", colors.TEXT_MUTED)
+        label = self._cached_label(self.label_font_size - 2, "母舰", colors.TEXT_MUTED)
         surface.blit(label, (panel_x + self.padding, y))
 
         y += 22
@@ -248,33 +249,33 @@ class IntegratedHUD:
         if state == MotherShipState.PRESSING:
             fill_color = (60, 160, 220)
             progress = status.get('hold_progress', 0.0)
-            fill_text = "HOLD"
+            fill_text = "按住"
         elif state == MotherShipState.ENTERING:
             fill_color = (60, 160, 220)
             progress = 0.5
-            fill_text = "ENTRY"
+            fill_text = "进入"
         elif state == MotherShipState.DOCKING:
             fill_color = (80, 180, 110)
             progress = 0.7
-            fill_text = "DOCK"
+            fill_text = "停靠"
         elif state == MotherShipState.DOCKED:
             fill_color = (80, 180, 110)
             progress = status.get('stay_progress', 0.0)
             secs = int(status.get('stay_remaining', 0))
-            fill_text = f"{secs}s"
+            fill_text = f"{secs}秒"
         elif state == MotherShipState.UNDOCKING:
             fill_color = (160, 120, 50)
             progress = 0.5
-            fill_text = "OUT"
+            fill_text = "脱离"
         elif status.get('is_in_cooldown'):
             fill_color = (160, 120, 50)
             progress = status.get('cooldown_progress', 0.0)
             secs = int(status.get('cooldown_remaining', 0))
-            fill_text = f"{secs}s"
+            fill_text = f"{secs}秒"
         else:
             fill_color = (80, 120, 160)
             progress = 0.0
-            fill_text = "RDY"
+            fill_text = "就绪"
 
         if progress > 0:
             fill_width = int(bar_width * min(progress, 1.0))
@@ -342,7 +343,7 @@ class IntegratedHUD:
     def _render_score_module(self, surface, score, colors, x, y):
         content_x = x + self.padding
 
-        label = self._cached_label(self.label_font_size, "SCORE", colors.TEXT_MUTED)
+        label = self._cached_label(self.label_font_size, "分数", colors.TEXT_MUTED)
         surface.blit(label, (content_x, y))
 
         value_font = self._get_font(self.value_font_size)
@@ -355,7 +356,7 @@ class IntegratedHUD:
         components = self._tokens.components
         content_x = x + self.padding
         
-        label = self._cached_label(self.label_font_size, "COEFF", colors.TEXT_MUTED)
+        label = self._cached_label(self.label_font_size, "系数", colors.TEXT_MUTED)
         surface.blit(label, (content_x, y))
 
         delta = current - initial
@@ -399,7 +400,7 @@ class IntegratedHUD:
     def _render_difficulty_module(self, surface, difficulty, colors, x, y):
         content_x = x + self.padding
         
-        label = self._cached_label(self.label_font_size, "MODE", colors.TEXT_MUTED)
+        label = self._cached_label(self.label_font_size, "模式", colors.TEXT_MUTED)
         surface.blit(label, (content_x, y))
 
         diff_colors = {
@@ -418,7 +419,7 @@ class IntegratedHUD:
     def _render_progress_module(self, surface, progress, colors, x, y):
         content_x = x + self.padding
         
-        label = self._cached_label(self.label_font_size, "PROGRESS", colors.TEXT_MUTED)
+        label = self._cached_label(self.label_font_size, "进度", colors.TEXT_MUTED)
         surface.blit(label, (content_x, y))
 
         value_font = self._get_font(self.value_font_size)
@@ -492,7 +493,7 @@ class IntegratedHUD:
     def _render_kills_module(self, surface, kills, colors, x, y):
         content_x = x + self.padding
 
-        label = self._cached_label(self.label_font_size, "KILLS", colors.TEXT_MUTED)
+        label = self._cached_label(self.label_font_size, "击杀", colors.TEXT_MUTED)
         surface.blit(label, (content_x, y))
 
         value_font = self._get_font(self.value_font_size)
@@ -517,7 +518,7 @@ class IntegratedHUD:
         components = self._tokens.components
         content_x = panel_x + self.padding
         
-        label = self._cached_label(self.label_font_size, "BUFFS", colors.TEXT_MUTED)
+        label = self._cached_label(self.label_font_size, "增益", colors.TEXT_MUTED)
         surface.blit(label, (content_x, start_y))
 
         current_y = start_y + 26
@@ -576,7 +577,7 @@ class IntegratedHUD:
         if should_scroll:
             more_font = self._get_font(self.more_font_size)
             total_buffs = len(buffs)
-            more_text = more_font.render(f"{total_buffs} total", True, colors.TEXT_MUTED)
+            more_text = more_font.render(f"共{total_buffs}个", True, colors.TEXT_MUTED)
             surface.blit(more_text, (content_x, current_y + 4))
 
         return current_y + 24

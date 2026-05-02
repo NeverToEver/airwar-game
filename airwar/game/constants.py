@@ -202,10 +202,14 @@ class EnemyConstants:
 
     Attributes:
         LIFETIME: Enemy lifetime in frames (15 seconds = 900 frames @ 60fps).
+        MOVE_RANGE_X: Horizontal movement range around active position.
+        MOVE_RANGE_Y: Vertical movement range around active position.
         MOVE_TIMER: Enemy movement pattern timer threshold.
         ESCAPE_WARNING: Escape warning time before boss escapes.
     """
     LIFETIME: int = 900  # 15 seconds * 60 fps
+    MOVE_RANGE_X: int = 80
+    MOVE_RANGE_Y: int = 50
     MOVE_TIMER: int = 60
     ESCAPE_WARNING: int = 180
 

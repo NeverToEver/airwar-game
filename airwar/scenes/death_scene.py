@@ -1,5 +1,6 @@
 """Death screen — score summary and continue/quit options."""
 import pygame
+from airwar.utils.fonts import get_cjk_font
 import math
 from .scene import Scene
 from airwar.utils.responsive import ResponsiveHelper
@@ -41,13 +42,13 @@ class DeathScene(Scene, MouseSelectableMixin):
 
         pygame.font.init()
         tokens = self._tokens
-        self.title_font = pygame.font.Font(None, tokens.typography.SUBHEADING_SIZE)
-        self.score_font = pygame.font.Font(None, tokens.typography.OPTION_SIZE)
-        self.option_font = pygame.font.Font(None, tokens.typography.BODY_SIZE)
-        self.hint_font = pygame.font.Font(None, tokens.typography.HUD_SIZE)
-        self.desc_font = pygame.font.Font(None, tokens.typography.TINY_SIZE)
+        self.title_font = get_cjk_font(tokens.typography.SUBHEADING_SIZE)
+        self.score_font = get_cjk_font(tokens.typography.OPTION_SIZE)
+        self.option_font = get_cjk_font(tokens.typography.BODY_SIZE)
+        self.hint_font = get_cjk_font(tokens.typography.HUD_SIZE)
+        self.desc_font = get_cjk_font(tokens.typography.TINY_SIZE)
 
-        self.options = ['RETURN TO MAIN MENU', 'QUIT GAME']
+        self.options = ['返回主菜单', '退出游戏']
         self.selected_index = 0
 
         self._background_renderer = MenuBackground()
@@ -133,7 +134,7 @@ class DeathScene(Scene, MouseSelectableMixin):
         scale = ResponsiveHelper.get_scale_factor(width, height)
 
         title_y = height // 3 + self.glow_offset * 0.3
-        SceneRenderingUtils.draw_glow_text(surface, "GAME OVER", self.title_font,
+        SceneRenderingUtils.draw_glow_text(surface, "游戏结束", self.title_font,
             (width // 2, title_y), self.colors['title'], self.colors['title_glow'],
             glow_radius=5, glow_offset=2, alpha_divisor=80)
 
@@ -144,13 +145,13 @@ class DeathScene(Scene, MouseSelectableMixin):
             line_width=250, alpha_base=25, alpha_decrement=6,
         )
 
-        score_text = self.score_font.render(f"SCORE: {self.score}", True, self.colors['score'])
+        score_text = self.score_font.render(f"分数: {self.score}", True, self.colors['score'])
         surface.blit(score_text, score_text.get_rect(center=(width // 2, height // 2 - ResponsiveHelper.scale(45, scale))))
 
-        kills_text = self.score_font.render(f"KILLS: {self.kills}", True, self.colors['kills'])
+        kills_text = self.score_font.render(f"击杀: {self.kills}", True, self.colors['kills'])
         surface.blit(kills_text, kills_text.get_rect(center=(width // 2, height // 2 + ResponsiveHelper.scale(5, scale))))
 
-        boss_text = self.desc_font.render(f"BOSS KILLS: {self.boss_kills}", True, self.colors['hint'])
+        boss_text = self.desc_font.render(f"BOSS击杀: {self.boss_kills}", True, self.colors['hint'])
         surface.blit(boss_text, boss_text.get_rect(center=(width // 2, height // 2 + ResponsiveHelper.scale(40, scale))))
 
         option_spacing = ResponsiveHelper.scale(self.base_option_spacing, scale)
@@ -178,11 +179,11 @@ class DeathScene(Scene, MouseSelectableMixin):
 
         blink_interval = self._tokens.animation.BLINK_INTERVAL
         blink = (self.animation_time // blink_interval) % 2 == 0
-        hint_text = "CLICK or ENTER to confirm" if blink else "                       "
+        hint_text = "点击或回车确认" if blink else "               "
         hint = self.hint_font.render(hint_text, True, self.colors['hint'])
         surface.blit(hint, hint.get_rect(center=(width // 2, height - ResponsiveHelper.scale(100, scale))))
 
-        controls = self.desc_font.render("Click or W/S to select", True, SceneColors.DESC_TEXT)
+        controls = self.desc_font.render("点击或 W/S 选择", True, SceneColors.DESC_TEXT)
         surface.blit(controls, controls.get_rect(center=(width // 2, height - ResponsiveHelper.scale(70, scale))))
 
     def get_result(self):

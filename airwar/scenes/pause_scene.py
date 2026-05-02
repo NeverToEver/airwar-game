@@ -1,5 +1,6 @@
 """Pause menu overlay with resume, restart, and quit options."""
 import pygame
+from airwar.utils.fonts import get_cjk_font
 import math
 from .scene import Scene, PauseAction
 from airwar.utils.responsive import ResponsiveHelper
@@ -24,7 +25,7 @@ class PauseScene(Scene, MouseSelectableMixin):
     def enter(self, **kwargs) -> None:
         self.running = True
         self.result: PauseAction = None
-        self.options = ['RESUME', 'MAIN MENU', 'SAVE AND QUIT', 'QUIT WITHOUT SAVING']
+        self.options = ['继续游戏', '返回主菜单', '保存并退出', '不保存退出']
         self.selected_index = 0
         self.animation_time = 0
         self.glow_offset = 0
@@ -37,10 +38,10 @@ class PauseScene(Scene, MouseSelectableMixin):
         self.base_box_height = self._tokens.spacing.BOX_HEIGHT
 
         pygame.font.init()
-        self.title_font = pygame.font.Font(None, self._tokens.typography.TITLE_SIZE)
-        self.option_font = pygame.font.Font(None, self._tokens.typography.OPTION_SIZE)
-        self.hint_font = pygame.font.Font(None, self._tokens.typography.SMALL_SIZE)
-        self.desc_font = pygame.font.Font(None, self._tokens.typography.TINY_SIZE)
+        self.title_font = get_cjk_font(self._tokens.typography.TITLE_SIZE)
+        self.option_font = get_cjk_font(self._tokens.typography.OPTION_SIZE)
+        self.hint_font = get_cjk_font(self._tokens.typography.SMALL_SIZE)
+        self.desc_font = get_cjk_font(self._tokens.typography.TINY_SIZE)
 
         self._background_renderer = MenuBackground()
         self._particle_system = ParticleSystem()
@@ -130,9 +131,9 @@ class PauseScene(Scene, MouseSelectableMixin):
 
         title_y = height // 3 + self.glow_offset * 0.3
         if self.use_themed_style:
-            self._draw_themed_title(surface, "PAUSED", self.title_font, (width // 2, title_y))
+            self._draw_themed_title(surface, "已暂停", self.title_font, (width // 2, title_y))
         else:
-            SceneRenderingUtils.draw_glow_text(surface, "PAUSED", self.title_font,
+            SceneRenderingUtils.draw_glow_text(surface, "已暂停", self.title_font,
                 (width // 2, title_y), self.colors['title'], self.colors['title_glow'],
                 glow_radius=4, glow_offset=1, alpha_divisor=100)
 
@@ -170,16 +171,16 @@ class PauseScene(Scene, MouseSelectableMixin):
 
         blink_interval = self._tokens.animation.BLINK_INTERVAL
         blink = (self.animation_time // blink_interval) % 2 == 0
-        hint_text = "CLICK or ENTER to confirm" if blink else "                       "
+        hint_text = "点击或回车确认" if blink else "               "
         hint_color = SceneColors.TEXT_DIM if self.use_themed_style else self.colors['hint']
         hint = self.hint_font.render(hint_text, True, hint_color)
         surface.blit(hint, hint.get_rect(center=(width // 2, height - ResponsiveHelper.scale(120, scale))))
 
         controls_color = SceneColors.TEXT_DIM if self.use_themed_style else (60, 60, 100)
-        controls = self.desc_font.render("Click or W/S to select", True, controls_color)
+        controls = self.desc_font.render("点击或 W/S 选择", True, controls_color)
         surface.blit(controls, controls.get_rect(center=(width // 2, height - ResponsiveHelper.scale(80, scale))))
 
-        esc_hint = self.desc_font.render("ESC to resume", True, controls_color)
+        esc_hint = self.desc_font.render("ESC 继续游戏", True, controls_color)
         surface.blit(esc_hint, esc_hint.get_rect(center=(width // 2, height - ResponsiveHelper.scale(50, scale))))
 
     def _draw_themed_title(self, surface: pygame.Surface, text: str, font: pygame.font.Font, pos: tuple) -> None:

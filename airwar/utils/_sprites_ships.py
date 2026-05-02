@@ -19,7 +19,7 @@ def _code_hash(func) -> str:
     try:
         source = inspect.getsource(func)
         return hashlib.md5(source.encode()).hexdigest()[:8]
-    except Exception:
+    except (OSError, TypeError, ValueError):
         return "unknown"
 
 
