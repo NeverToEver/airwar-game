@@ -6,10 +6,9 @@ player bullets, enemy bullets, lasers, and explosive missiles.
 
 import pygame
 from collections import deque
-from typing import Optional, List
+from typing import List
 from .base import Entity, BulletData, Vector2
 from ..utils.sprites import draw_bullet, draw_explosive_missile
-from ..config import SCREEN_HEIGHT
 
 
 class Bullet(Entity):

@@ -1,7 +1,7 @@
 """Main game scene -- gameplay loop, entity coordination, and rendering."""
 import pygame
 from airwar.utils.fonts import get_cjk_font
-from typing import Dict, Tuple
+from typing import Dict
 from .scene import Scene
 from airwar.entities import Player, EnemySpawner, Boss, BossData
 from airwar.game.systems.health_system import HealthSystem
@@ -616,14 +616,6 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             return True
         return self.game_controller.is_game_over()
 
-    def is_paused(self) -> bool:
-        """Check if the game is paused.
-
-        Returns:
-            True if the game is paused.
-        """
-        return self.game_controller.state.paused if self.game_controller else False
-
     def pause(self) -> None:
         """Pause the game.
 
@@ -645,16 +637,6 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             True if the game is paused.
         """
         return self.game_controller.state.paused if self.game_controller else False
-
-    @paused.setter
-    def paused(self, value: bool) -> None:
-        """Set the game paused state.
-
-        Args:
-            value: True to pause, False to resume.
-        """
-        if self.game_controller:
-            self.game_controller.state.paused = value
 
     @property
     def unlocked_buffs(self) -> list:
@@ -901,7 +883,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
     def set_paused(self, paused: bool) -> None:
         """Set game paused state."""
-        self.paused = paused
+        if self.game_controller:
+            self.game_controller.state.paused = paused
 
     def clear_ripple_effects(self) -> None:
         """Clear all ripple effects."""

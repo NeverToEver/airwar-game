@@ -1,6 +1,6 @@
 """Game over screen — post-death options and score display."""
 from enum import Enum
-from typing import Optional, Tuple
+from typing import Optional
 import pygame
 from airwar.utils.fonts import get_cjk_font
 from airwar.config.design_tokens import get_design_tokens, SceneColors, SystemUI

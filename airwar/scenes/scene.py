@@ -1,7 +1,7 @@
 """Scene base classes and scene management framework."""
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Dict, Any, Optional
+from typing import Dict
 import pygame
 
 
@@ -85,23 +85,21 @@ class Scene(ABC):
 
 
 class SceneManager:
-    """Manages scene registration, switching, and state persistence.
+    """Manages scene registration and switching.
 
-    Handles the lifecycle of scenes including registration, switching,
-    state save/restore for scene state preservation across transitions.
+    Handles the lifecycle of scenes including registration, switching
+    between scenes with proper enter/exit lifecycle calls.
 
     Attributes:
         _scenes: Dictionary of registered scenes by name.
         _current_scene: Currently active scene.
         _current_scene_name: Name of the current scene.
-        _scene_states: Saved states for scenes.
     """
 
     def __init__(self):
         self._scenes: Dict[str, Scene] = {}
         self._current_scene: Scene = None
         self._current_scene_name: str = ""
-        self._scene_states: Dict[str, Dict[str, Any]] = {}
 
     def register(self, name: str, scene: Scene) -> None:
         self._scenes[name] = scene
@@ -151,31 +149,13 @@ class SceneManager:
         if self._current_scene:
             self._current_scene.handle_events(event)
 
-    def save_scene_state(self, scene_name: str, state: Dict[str, Any]) -> None:
-        """Save the state of a scene before switching away.
+    def get_scene(self, name: str) -> Scene:
+        """Get a registered scene by name.
 
         Args:
-            scene_name: Name of the scene.
-            state: Dictionary containing scene state data.
-        """
-        self._scene_states[scene_name] = state.copy()
-
-    def get_scene_state(self, scene_name: str) -> Optional[Dict[str, Any]]:
-        """Retrieve saved state for a scene.
-
-        Args:
-            scene_name: Name of the scene.
+            name: Name of the scene.
 
         Returns:
-            Saved state dictionary or None if not found.
+            The registered Scene instance, or None if not found.
         """
-        return self._scene_states.get(scene_name)
-
-    def clear_scene_state(self, scene_name: str) -> None:
-        """Clear saved state for a scene.
-
-        Args:
-            scene_name: Name of the scene.
-        """
-        if scene_name in self._scene_states:
-            del self._scene_states[scene_name]
+        return self._scenes.get(name)

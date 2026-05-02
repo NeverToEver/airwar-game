@@ -828,12 +828,12 @@ class Boss(Entity):
         elif phase == 2:
             # HOVER: local repositioning with gentle drift
             self._target_x = random.randint(
-                max(margin, self.rect.x - 130),
-                min(screen_w - self.rect.width - margin, self.rect.x + 130)
+                int(max(margin, self.rect.x - 130)),
+                int(min(screen_w - self.rect.width - margin, self.rect.x + 130))
             )
             self._target_y = random.randint(
-                max(y_min, self.rect.y - 80),
-                min(y_max, self.rect.y + 80)
+                int(max(y_min, self.rect.y - 80)),
+                int(min(y_max, self.rect.y + 80))
             )
 
         else:

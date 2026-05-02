@@ -1,5 +1,5 @@
 """Buff stats panel — displays active buffs and attack mode info."""
-from typing import Dict, List, Tuple, Optional, Any
+from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass
 import math
 import pygame

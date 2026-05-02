@@ -1,6 +1,6 @@
 """分段进度条组件 - 军事风格 HUD"""
 import pygame
-from typing import Optional, Tuple
+from typing import Tuple
 from airwar.config.design_tokens import SystemColors, SystemUI
 
 

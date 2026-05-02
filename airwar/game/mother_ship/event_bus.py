@@ -1,6 +1,6 @@
 """Event bus — publish/subscribe messaging for mothership events."""
 import logging
-from typing import Dict, List, Callable, Any
+from typing import Dict, List, Callable
 from .interfaces import IEventBus
 
 

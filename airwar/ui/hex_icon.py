@@ -1,7 +1,7 @@
 """六边形图标组件 - 军事风格 HUD"""
 import pygame
 import math
-from typing import Tuple, Optional
+from typing import Tuple
 from airwar.config.design_tokens import SystemColors, SystemUI
 
 
