@@ -35,7 +35,7 @@ class Buff(ABC):
         return self.COLOR
 
     def get_notification(self, level: int) -> str:
-        return f'REWARD: {self.NAME}'
+        return f'获得: {self.NAME}'
 
     @abstractmethod
     def apply(self, player) -> BuffResult:

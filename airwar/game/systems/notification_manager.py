@@ -1,5 +1,6 @@
 """On-screen notification display and lifecycle management."""
 import pygame
+from airwar.utils.fonts import get_cjk_font
 from typing import Optional
 from ..constants import GAME_CONSTANTS
 
@@ -19,7 +20,7 @@ class NotificationManager:
         self.timer: int = 0
         self.duration = duration
         pygame.font.init()
-        self.notif_font = pygame.font.Font(None, 32)
+        self.notif_font = get_cjk_font(32)
 
     def show(self, message: str, duration: int = None) -> None:
         self.current_notification = message

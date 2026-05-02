@@ -108,7 +108,7 @@ class BossManager:
             return
 
         if boss.is_escaped():
-            self._game_controller.show_notification("BOSS ESCAPED! (+0)")
+            self._game_controller.show_notification("BOSS 逃跑! (+0)")
 
     def on_boss_hit(self, score: int) -> None:
         """处理 Boss 被击中回调
@@ -120,7 +120,7 @@ class BossManager:
             score: 击中获得的分数
         """
         self._game_controller.state.score += score
-        self._game_controller.show_notification(f"+{score} BOSS SCORE!")
+        self._game_controller.show_notification(f"+{score} BOSS 分数!")
 
         if not self._spawn_controller.boss.active:
             self._on_boss_killed()

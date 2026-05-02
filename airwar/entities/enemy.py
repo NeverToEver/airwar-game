@@ -1,5 +1,6 @@
 """Enemy and Boss entities with movement patterns and attack behaviors."""
 import pygame
+from airwar.utils.fonts import get_cjk_font
 import random
 import math
 from typing import List, Optional, Tuple, TYPE_CHECKING
@@ -188,8 +189,9 @@ class Enemy(Entity):
             return
 
         # Movement range around active position
-        move_range_x = 80
-        move_range_y = 50
+        C = get_game_constants()
+        move_range_x = C.ENEMY.MOVE_RANGE_X
+        move_range_y = C.ENEMY.MOVE_RANGE_Y
 
         # Try Rust movement first if available
         # Exclude zigzag: Rust uses active_x as base instead of current x,
@@ -315,10 +317,11 @@ class Enemy(Entity):
         timer = getattr(self, self._timer_attr, 0.0)
         if self.move_type == "hover":
             timer /= 0.08
+        c = get_game_constants()
         base = (
             self._rust_move_type_code, timer,
             self._active_position_x, self._active_position_y,
-            80.0, 50.0,
+            float(c.ENEMY.MOVE_RANGE_X), float(c.ENEMY.MOVE_RANGE_Y),
             p['offset'], p['amplitude'], p['frequency'], p['speed'], p['direction'],
             p['zigzag_interval'],
         )
@@ -675,13 +678,13 @@ class Boss(Entity):
     @classmethod
     def _get_warning_font(cls):
         if cls._warning_font is None:
-            cls._warning_font = pygame.font.Font(None, 36)
+            cls._warning_font = get_cjk_font(36)
         return cls._warning_font
 
     @classmethod
     def _get_escape_font(cls):
         if cls._escape_font is None:
-            cls._escape_font = pygame.font.Font(None, 28)
+            cls._escape_font = get_cjk_font(28)
         return cls._escape_font
 
     def __init__(self, x: float, y: float, data: BossData):
@@ -771,8 +774,8 @@ class Boss(Entity):
             self._select_next_target(player_pos)
 
         lerp_speed = 0.025 * self.data.speed
-        self.rect.x = int(self.rect.x + (self._target_x - self.rect.x) * lerp_speed)
-        self.rect.y = int(self.rect.y + (self._target_y - self.rect.y) * lerp_speed)
+        self.rect.x = self.rect.x + (self._target_x - self.rect.x) * lerp_speed
+        self.rect.y = self.rect.y + (self._target_y - self.rect.y) * lerp_speed
 
         screen_w = get_screen_width()
         screen_h = get_screen_height()
@@ -972,7 +975,7 @@ class Boss(Entity):
         if self.entering:
             warning_y = 20
             pulse = abs(math.sin(pygame.time.get_ticks() * 0.01)) * 0.3 + 0.7
-            warning_surf = self._get_warning_font().render("! WARNING !", True, (255, 50, 50))
+            warning_surf = self._get_warning_font().render("! 警告 !", True, (255, 50, 50))
             warning_surf.set_alpha(int(255 * pulse))
             warning_rect = warning_surf.get_rect(center=(surface.get_width() // 2, warning_y))
             surface.blit(warning_surf, warning_rect)
@@ -980,7 +983,7 @@ class Boss(Entity):
         if self._show_escape_warning and not self.entering:
             warning_y = 50
             pulse = abs(math.sin(pygame.time.get_ticks() * 0.02)) * 0.3 + 0.7
-            warning_surf = self._get_escape_font().render("ESCAPING...", True, (255, 200, 50))
+            warning_surf = self._get_escape_font().render("逃跑中...", True, (255, 200, 50))
             warning_surf.set_alpha(int(255 * pulse))
             warning_rect = warning_surf.get_rect(center=(surface.get_width() // 2, warning_y))
             surface.blit(warning_surf, warning_rect)

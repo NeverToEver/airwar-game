@@ -1,6 +1,7 @@
 """Warning banner — slide-in tech alert panel for mothership ammo depletion."""
 import math
 import pygame
+from airwar.utils.fonts import get_cjk_font
 
 
 class WarningBanner:
@@ -14,8 +15,8 @@ class WarningBanner:
     Timing is wall-clock driven via pygame.time.get_ticks().
     """
 
-    WARNING_TEXT = "MOTHERSHIP AMMO DEPLETED"
-    SUB_TEXT = "PREPARE TO DISEMBARK"
+    WARNING_TEXT = "母舰弹药耗尽"
+    SUB_TEXT = "准备脱离"
     BANNER_HEIGHT = 60
     HAZARD_WIDTH = 70
     HAZARD_STRIPE = 10
@@ -62,8 +63,8 @@ class WarningBanner:
         self._last_tick = pygame.time.get_ticks()
 
         if self._main_font is None:
-            self._main_font = pygame.font.Font(None, 28)
-            self._sub_font = pygame.font.Font(None, 20)
+            self._main_font = get_cjk_font(28)
+            self._sub_font = get_cjk_font(20)
         self._main_text = self._main_font.render(
             self.WARNING_TEXT, True, (255, 160, 40))
         self._sub_text = self._sub_font.render(

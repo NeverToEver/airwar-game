@@ -1,6 +1,7 @@
 """HUD renderer — score, health bar, boss HP, buff stats panel."""
 from typing import Optional, List
 import pygame
+from airwar.utils.fonts import get_cjk_font
 from ...ui.buff_stats_panel import BuffStatsPanel, AttackModePanel
 from ...ui.chamfered_panel import draw_chamfered_panel
 from ...ui.segmented_bar import BossHealthBar
@@ -15,11 +16,11 @@ class HUDLayout:
     PROGRESS_POS = (15, 45)
     DIFFICULTY_OFFSET_X = -110
     DIFFICULTY_Y = 15
-    HEALTH_OFFSET_X = -160
+    HEALTH_OFFSET_X = -170
     HEALTH_Y = 45
-    KILLS_OFFSET_X = -120
+    KILLS_OFFSET_X = -130
     KILLS_Y = 75
-    BOSS_OFFSET_X = -120
+    BOSS_OFFSET_X = -130
     BOSS_Y = 100
     HEALTH_DANGER_RATIO = 0.3
     HEALTH_NORMAL = (100, 255, 150)
@@ -45,24 +46,24 @@ class HUDRenderer:
         self._tokens = get_design_tokens()
         tokens = self._tokens
 
-        self.hud_font = pygame.font.Font(None, tokens.typography.HUD_SIZE)
-        self.buff_font = pygame.font.Font(None, tokens.typography.TINY_SIZE)
-        self.notif_font = pygame.font.Font(None, tokens.typography.CAPTION_SIZE)
-        self._boss_small_font = pygame.font.Font(None, tokens.typography.SMALL_SIZE)
-        self._boss_label_font = pygame.font.Font(None, SystemUI.MILITARY_LABEL_SIZE)
-        self._boss_warning_font = pygame.font.Font(None, SystemUI.MILITARY_SMALL_SIZE)
-        self._boss_timer_font = pygame.font.Font(None, 32)
-        self._boss_hurry_font = pygame.font.Font(None, 30)
+        self.hud_font = get_cjk_font(tokens.typography.HUD_SIZE)
+        self.buff_font = get_cjk_font(tokens.typography.TINY_SIZE)
+        self.notif_font = get_cjk_font(tokens.typography.CAPTION_SIZE)
+        self._boss_small_font = get_cjk_font(tokens.typography.SMALL_SIZE)
+        self._boss_label_font = get_cjk_font(SystemUI.MILITARY_LABEL_SIZE)
+        self._boss_warning_font = get_cjk_font(SystemUI.MILITARY_SMALL_SIZE)
+        self._boss_timer_font = get_cjk_font(32)
+        self._boss_hurry_font = get_cjk_font(30)
         self._buff_stats_panel = BuffStatsPanel()
         self._attack_mode_panel = AttackModePanel()
 
     def render_hud(self, surface: pygame.Surface, score: int, difficulty: str,
                   player_health: int, player_max_health: int, kills: int,
                   next_progress: int, boss_kills: int = 0) -> None:
-        score_text = self.hud_font.render(f"SCORE: {score}", True, HUDLayout.SCORE_COLOR)
+        score_text = self.hud_font.render(f"分数: {score}", True, HUDLayout.SCORE_COLOR)
         surface.blit(score_text, HUDLayout.SCORE_POS)
 
-        progress_text = self.hud_font.render(f"NEXT: {next_progress}%", True, HUDLayout.PROGRESS_COLOR)
+        progress_text = self.hud_font.render(f"目标: {next_progress}%", True, HUDLayout.PROGRESS_COLOR)
         surface.blit(progress_text, HUDLayout.PROGRESS_POS)
 
         diff_text = self.hud_font.render(f"{difficulty.upper()}", True, HUDLayout.PROGRESS_COLOR)
@@ -71,10 +72,10 @@ class HUDRenderer:
         health_color = HUDLayout.HEALTH_NORMAL
         if player_health < player_max_health * HUDLayout.HEALTH_DANGER_RATIO:
             health_color = HUDLayout.HEALTH_DANGER
-        health_text = self.hud_font.render(f"HP: {player_health}/{player_max_health}", True, health_color)
+        health_text = self.hud_font.render(f"生命: {player_health}/{player_max_health}", True, health_color)
         surface.blit(health_text, (surface.get_width() + HUDLayout.HEALTH_OFFSET_X, HUDLayout.HEALTH_Y))
 
-        kills_text = self.hud_font.render(f"KILLS: {kills}", True, HUDLayout.KILLS_COLOR)
+        kills_text = self.hud_font.render(f"击杀: {kills}", True, HUDLayout.KILLS_COLOR)
         surface.blit(kills_text, (surface.get_width() + HUDLayout.KILLS_OFFSET_X, HUDLayout.KILLS_Y))
 
         boss_text = self.hud_font.render(f"BOSS: {boss_kills}", True, HUDLayout.BOSS_COLOR)
@@ -186,7 +187,7 @@ class HUDRenderer:
             import math
             pulse = abs(math.sin(pygame.time.get_ticks() * 0.008)) * 0.4 + 0.6
             alpha = int(200 * pulse)
-            hurry_text = self._boss_hurry_font.render("ESCAPING!", True,
+            hurry_text = self._boss_hurry_font.render("逃跑中!", True,
                                                        (220, 70, 55))
             hurry_text.set_alpha(alpha)
             hurry_rect = hurry_text.get_rect(midtop=(x + bar_width // 2, y + timer_panel_h + 6))

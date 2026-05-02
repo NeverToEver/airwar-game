@@ -2,6 +2,7 @@
 from enum import Enum
 from typing import Optional, Tuple
 import pygame
+from airwar.utils.fonts import get_cjk_font
 from airwar.config.design_tokens import get_design_tokens, SceneColors, SystemUI
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 
@@ -146,10 +147,10 @@ class GameOverScreen:
         tokens = self._tokens
 
         scale = screen_width / 800
-        font_large = pygame.font.Font(None, int(tokens.typography.HEADING_SIZE * scale))
-        font_medium = pygame.font.Font(None, int(tokens.typography.BODY_SIZE * scale))
-        font_small = pygame.font.Font(None, int(tokens.typography.CAPTION_SIZE * scale))
-        font_button = pygame.font.Font(None, int(tokens.typography.SMALL_SIZE * scale))
+        font_large = get_cjk_font(int(tokens.typography.HEADING_SIZE * scale))
+        font_medium = get_cjk_font(int(tokens.typography.BODY_SIZE * scale))
+        font_small = get_cjk_font(int(tokens.typography.CAPTION_SIZE * scale))
+        font_button = get_cjk_font(int(tokens.typography.SMALL_SIZE * scale))
 
         if self._use_themed_style:
             # Military style background
@@ -164,7 +165,7 @@ class GameOverScreen:
                 pygame.draw.line(surface, grid_color, (0, y), (screen_width, y))
 
             # Military style title with glow
-            title_text = "GAME OVER"
+            title_text = "游戏结束"
             for blur, alpha, color in [(4, 20, SceneColors.DANGER_RED_DIM), (2, 35, SceneColors.DANGER_RED)]:
                 glow_surf = font_large.render(title_text, True, color)
                 glow_surf.set_alpha(alpha)
@@ -178,38 +179,38 @@ class GameOverScreen:
             surface.blit(title, title.get_rect(center=(screen_width // 2, int(150 * scale))))
 
             # Military style stats
-            score_text = font_medium.render(f"SCORE: {score:,}", True, SceneColors.GOLD_PRIMARY)
+            score_text = font_medium.render(f"分数: {score:,}", True, SceneColors.GOLD_PRIMARY)
             surface.blit(score_text, score_text.get_rect(center=(screen_width // 2, int(280 * scale))))
 
-            kills_text = font_medium.render(f"KILLS: {kills}", True, SceneColors.TEXT_PRIMARY)
+            kills_text = font_medium.render(f"击杀: {kills}", True, SceneColors.TEXT_PRIMARY)
             surface.blit(kills_text, kills_text.get_rect(center=(screen_width // 2, int(330 * scale))))
 
             if username and high_score is not None:
-                hs_text = font_small.render(f"HIGH SCORE: {high_score}", True, SceneColors.FOREST_GREEN)
+                hs_text = font_small.render(f"最高分: {high_score}", True, SceneColors.FOREST_GREEN)
                 surface.blit(hs_text, hs_text.get_rect(center=(screen_width // 2, int(400 * scale))))
 
-            self._render_themed_button(surface, 'menu', "RETURN TO MAIN MENU", font_button, scale)
-            self._render_themed_button(surface, 'quit', "QUIT GAME", font_button, scale)
+            self._render_themed_button(surface, 'menu', "返回主菜单", font_button, scale)
+            self._render_themed_button(surface, 'quit', "退出游戏", font_button, scale)
         else:
             # Original style
             colors = tokens.colors
             surface.fill(colors.BACKGROUND_PRIMARY)
 
-            title = font_large.render("GAME OVER", True, colors.HEALTH_DANGER)
+            title = font_large.render("游戏结束", True, colors.HEALTH_DANGER)
             surface.blit(title, title.get_rect(center=(screen_width // 2, int(150 * scale))))
 
-            score_text = font_medium.render(f"SCORE: {score}", True, colors.TEXT_PRIMARY)
+            score_text = font_medium.render(f"分数: {score}", True, colors.TEXT_PRIMARY)
             surface.blit(score_text, score_text.get_rect(center=(screen_width // 2, int(280 * scale))))
 
-            kills_text = font_medium.render(f"KILLS: {kills}", True, colors.PROGRESS_COLOR)
+            kills_text = font_medium.render(f"击杀: {kills}", True, colors.PROGRESS_COLOR)
             surface.blit(kills_text, kills_text.get_rect(center=(screen_width // 2, int(330 * scale))))
 
             if username and high_score is not None:
-                hs_text = font_small.render(f"HIGH SCORE: {high_score}", True, colors.SUCCESS)
+                hs_text = font_small.render(f"最高分: {high_score}", True, colors.SUCCESS)
                 surface.blit(hs_text, hs_text.get_rect(center=(screen_width // 2, int(400 * scale))))
 
-            self._render_button(surface, 'menu', "RETURN TO MAIN MENU", font_button, scale)
-            self._render_button(surface, 'quit', "QUIT GAME", font_button, scale)
+            self._render_button(surface, 'menu', "返回主菜单", font_button, scale)
+            self._render_button(surface, 'quit', "退出游戏", font_button, scale)
 
     def _render_button(self, surface, btn_key: str, text: str, font, scale: float):
         colors = self._tokens.colors

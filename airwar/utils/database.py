@@ -2,9 +2,12 @@
 import json
 import os
 import hashlib
+import secrets
 
 _AIRWAR_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _DEFAULT_DB_PATH = os.path.join(_AIRWAR_DIR, "data", "users.json")
+
+_HASH_ITERATIONS = 100_000
 
 
 class SimpleDB:
@@ -26,11 +29,16 @@ class SimpleDB:
             return {}
 
     def _save(self, data: dict) -> None:
-        with open(self.db_path, 'w') as f:
+        tmp_path = self.db_path + ".tmp"
+        with open(tmp_path, 'w') as f:
             json.dump(data, f, indent=2)
+        os.replace(tmp_path, self.db_path)
 
-    def _hash_password(self, password: str) -> str:
-        return hashlib.sha256(password.encode()).hexdigest()
+    def _hash_password(self, password: str, salt: str) -> str:
+        return hashlib.pbkdf2_hmac(
+            "sha256", password.encode(), salt.encode(),
+            _HASH_ITERATIONS,
+        ).hex()
 
 
 class UserDB(SimpleDB):
@@ -46,8 +54,10 @@ class UserDB(SimpleDB):
         data = self._load()
         if user_id in data:
             return False
+        salt = secrets.token_hex(16)
         data[user_id] = {
-            'password': self._hash_password(password),
+            'password': self._hash_password(password, salt),
+            'salt': salt,
             'high_score': 0,
             'total_kills': 0,
             'games_played': 0
@@ -59,7 +69,9 @@ class UserDB(SimpleDB):
         data = self._load()
         if user_id not in data:
             return False
-        return data[user_id]['password'] == self._hash_password(password)
+        stored = data[user_id]['password']
+        salt = data[user_id].get('salt', user_id)
+        return stored == self._hash_password(password, salt)
 
     def user_exists(self, user_id: str) -> bool:
         data = self._load()

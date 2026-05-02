@@ -3,6 +3,7 @@ from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass
 import math
 import pygame
+from airwar.utils.fonts import get_cjk_font
 import logging
 
 from airwar.config.design_tokens import SystemColors, SystemUI, get_design_tokens
@@ -76,11 +77,11 @@ class BuffStatsAggregator:
 
     def _get_short_name(self, name: str) -> str:
         short_names = {
-            'Power Shot': 'PWR', 'Rapid Fire': 'RPD', 'Piercing': 'PIR',
-            'Spread Shot': 'SPD', 'Explosive': 'EXP', 'Laser': 'LSR',
-            'Armor': 'ARM', 'Evasion': 'EVD', 'Barrier': 'BAR',
-            'Extra Life': 'XLP', 'Regeneration': 'REG', 'Lifesteal': 'LST',
-            'Slow Field': 'SLO',
+            'Power Shot': '伤', 'Rapid Fire': '速', 'Piercing': '穿',
+            'Spread Shot': '散', 'Explosive': '爆', 'Laser': '光',
+            'Armor': '甲', 'Evasion': '闪', 'Barrier': '护',
+            'Extra Life': '生', 'Regeneration': '回', 'Lifesteal': '吸',
+            'Slow Field': '缓',
         }
         return short_names.get(name, name[:3].upper())
 
@@ -119,7 +120,7 @@ class BuffStatsAggregator:
                 logger.debug(f"Failed to format buff '{buff_name}': {e}")
                 continue
             except Exception as e:
-                logger.warning(f"Unexpected error processing buff '{buff_name}': {e}")
+                logger.warning(f"Unexpected error processing buff '{buff_name}': {e}", exc_info=True)
                 continue
 
         return entries
@@ -161,6 +162,7 @@ class BuffStatsAggregator:
         except (AttributeError, TypeError) as e:
             logger.debug(f"Failed to calculate summary stats: {e}")
         except Exception as e:
+            logger.warning(f"Unexpected error calculating summary stats: {e}", exc_info=True)
             logger.warning(f"Unexpected error calculating summary stats: {e}")
 
         return summary
@@ -191,10 +193,10 @@ class BuffStatsPanel:
         self._corner_radius = 8
         self._border_width = 1
 
-        self._title_font = pygame.font.Font(None, 18)
-        self._name_font = pygame.font.Font(None, 16)
-        self._value_font = pygame.font.Font(None, 14)
-        self._summary_font = pygame.font.Font(None, 15)
+        self._title_font = get_cjk_font(18)
+        self._name_font = get_cjk_font(16)
+        self._value_font = get_cjk_font(14)
+        self._summary_font = get_cjk_font(15)
 
         self._bg_color = (*colors.BACKGROUND_PANEL, 25)
         self._border_color = (*colors.PANEL_BORDER, 80)
@@ -275,10 +277,10 @@ class BuffStatsPanel:
         except (AttributeError, TypeError) as e:
             logger.debug(f"Failed to render buff stats panel: {e}")
         except Exception as e:
-            logger.warning(f"Unexpected error rendering buff stats panel: {e}")
+            logger.warning(f"Unexpected error rendering buff stats panel: {e}", exc_info=True)
 
     def _render_header(self, surface: pygame.Surface) -> None:
-        title = self._title_font.render("ACTIVE BUFFS", True, self._title_color)
+        title = self._title_font.render("当前增益", True, self._title_color)
         title_rect = title.get_rect(centerx=surface.get_width() // 2, top=self._panel_padding)
         surface.blit(title, title_rect)
 
@@ -364,8 +366,8 @@ class BuffStatsPanel:
         content_surf.fill((0, 0, 0, 0))
 
         # Title
-        title_font = pygame.font.Font(None, SystemUI.MILITARY_LABEL_SIZE)
-        title = title_font.render("ACTIVE", True, SystemColors.TEXT_DIM)
+        title_font = get_cjk_font(SystemUI.MILITARY_LABEL_SIZE)
+        title = title_font.render("增益", True, SystemColors.TEXT_DIM)
         title_rect = title.get_rect(centerx=panel_width // 2, top=10)
         content_surf.blit(title, title_rect)
 
@@ -388,7 +390,7 @@ class BuffStatsPanel:
                 (10, y_offset + 5), (panel_width - 10, y_offset + 5), 1
             )
             y_offset += 15
-            summary_font = pygame.font.Font(None, SystemUI.MILITARY_SMALL_SIZE)
+            summary_font = get_cjk_font(SystemUI.MILITARY_SMALL_SIZE)
             x_offset = 10
             for key, value in list(summary.items())[:4]:
                 text = summary_font.render(f"{key}:{value}", True, SystemColors.AMBER_PRIMARY)
@@ -417,7 +419,7 @@ class BuffStatsPanel:
         icon.render(surface, (20, y_offset + 10), entry.color)
 
         # Buff name
-        name_font = pygame.font.Font(None, SystemUI.MILITARY_SMALL_SIZE)
+        name_font = get_cjk_font(SystemUI.MILITARY_SMALL_SIZE)
         name_text = name_font.render(entry.short_name, True, SystemColors.TEXT_PRIMARY)
         surface.blit(name_text, (38, y_offset + 2))
 
@@ -451,8 +453,8 @@ class AttackModePanel:
     def __init__(self):
         pygame.font.init()
         self._colors = SystemColors
-        self._font = pygame.font.Font(None, SystemUI.MILITARY_LABEL_SIZE)
-        self._name_font = pygame.font.Font(None, SystemUI.MILITARY_LABEL_SIZE)
+        self._font = get_cjk_font(SystemUI.MILITARY_LABEL_SIZE)
+        self._name_font = get_cjk_font(SystemUI.MILITARY_LABEL_SIZE)
 
     def render(
         self,
@@ -483,14 +485,14 @@ class AttackModePanel:
         content_surf.fill((0, 0, 0, 0))
 
         # Title
-        title = self._font.render("ATTACK", True, SystemColors.TEXT_BRIGHT)
+        title = self._font.render("攻击", True, SystemColors.TEXT_BRIGHT)
         title_rect = title.get_rect(left=12, top=6)
         content_surf.blit(title, title_rect)
 
         entries = [
-            AttackModeEntry("SPR", "SPREAD", spread_on, (255, 160, 30)),
-            AttackModeEntry("LAS", "LASER", laser_on, (255, 80, 180)),
-            AttackModeEntry("EXP", "EXPLOSIVE", explosive_on, (255, 100, 50)),
+            AttackModeEntry("散", "散射", spread_on, (255, 160, 30)),
+            AttackModeEntry("光", "激光", laser_on, (255, 80, 180)),
+            AttackModeEntry("爆", "爆炸", explosive_on, (255, 100, 50)),
         ]
 
         spacing = self.PANEL_WIDTH // 3

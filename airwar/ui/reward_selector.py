@@ -1,5 +1,6 @@
 """Reward selector — buff selection interface at milestones."""
 import pygame
+from airwar.utils.fonts import get_cjk_font
 import math
 from typing import List, Callable, Optional
 from airwar.utils.mouse_interaction import MouseSelectableMixin
@@ -85,9 +86,9 @@ class RewardSelector(MouseSelectableMixin):
             })
 
         pygame.font.init()
-        self.title_font = pygame.font.Font(None, tokens.typography.SUBHEADING_SIZE)
-        self.option_font = pygame.font.Font(None, tokens.typography.BODY_SIZE)
-        self.hint_font = pygame.font.Font(None, tokens.typography.SMALL_SIZE)
+        self.title_font = get_cjk_font(tokens.typography.SUBHEADING_SIZE)
+        self.option_font = get_cjk_font(tokens.typography.BODY_SIZE)
+        self.hint_font = get_cjk_font(tokens.typography.SMALL_SIZE)
 
         self.colors = {
             'bg': colors.BACKGROUND_PRIMARY,
@@ -376,7 +377,7 @@ class RewardSelector(MouseSelectableMixin):
         width, height = surface.get_size()
         
         title_y = 130 + self.glow_offset * 0.5
-        self._draw_glow_text(surface, "CHOOSE YOUR REWARD", self.title_font,
+        self._draw_glow_text(surface, "选择奖励", self.title_font,
                            (width // 2, title_y), self.colors['title'], self.colors['title_glow'], 3)
 
     def _draw_bottom_hint(self, surface: pygame.Surface) -> None:
@@ -387,13 +388,13 @@ class RewardSelector(MouseSelectableMixin):
                 hint_color = SceneColors.TEXT_DIM
             else:
                 hint_color = SceneColors.TEXT_PRIMARY
-            hint = self.hint_font.render("Click or W/S to select, ENTER to confirm", True, hint_color)
+            hint = self.hint_font.render("W/S 选择, 回车确认", True, hint_color)
         else:
             if (self.animation_time // 25) % 2 == 0:
                 hint_color = (90, 100, 140)
             else:
                 hint_color = (120, 130, 170)
-            hint = self.hint_font.render("Click or W/S to select, ENTER to confirm", True, hint_color)
+            hint = self.hint_font.render("W/S 选择, 回车确认", True, hint_color)
         surface.blit(hint, hint.get_rect(center=(width // 2, height - 50)))
 
     def render(self, surface: pygame.Surface) -> None:
@@ -454,7 +455,7 @@ class RewardSelector(MouseSelectableMixin):
         """Draw title in military style."""
         width, height = surface.get_size()
         title_y = 130 + self.glow_offset * 0.5
-        title_text = "CHOOSE YOUR REWARD"
+        title_text = "选择奖励"
 
         for blur, alpha, color in [(3, 15, SceneColors.GOLD_DIM), (2, 25, SceneColors.GOLD_PRIMARY)]:
             glow_surf = self.title_font.render(title_text, True, color)

@@ -281,7 +281,7 @@ class BossHealthBar:
 
         # 绘制阶段指示器
         if total_phases > 1:
-            phase_text = f"PHASE {current_phase}/{total_phases}"
+            phase_text = f"阶段 {current_phase}/{total_phases}"
             phase_surf = font.render(phase_text, True, SystemColors.AMBER_DIM)
             phase_rect = phase_surf.get_rect(right=bar_x + self.width - label_width - 10,
                                             top=y - 22)

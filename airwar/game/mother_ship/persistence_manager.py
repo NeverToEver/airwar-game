@@ -46,8 +46,10 @@ class PersistenceManager(IPersistenceManager):
 
             self._validate_save_dict(save_dict)
 
-            with open(self._save_path, 'w', encoding='utf-8') as f:
+            tmp_path = self._save_path + ".tmp"
+            with open(tmp_path, 'w', encoding='utf-8') as f:
                 json.dump(save_dict, f, indent=2, ensure_ascii=False)
+            os.replace(tmp_path, self._save_path)
 
             logger.info(f"Game saved successfully to {self._save_path}")
             return True

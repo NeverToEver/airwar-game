@@ -1,5 +1,6 @@
 """Difficulty coefficient panel — visual indicator of current difficulty."""
 import pygame
+from airwar.utils.fonts import get_cjk_font
 from typing import TYPE_CHECKING, Tuple, List
 
 from airwar.config.design_tokens import SystemColors
@@ -78,11 +79,11 @@ class DifficultyCoefficientPanel:
         if fill_width > 0:
             pygame.draw.rect(surface, color, (bar_x, bar_y, fill_width, bar_height), border_radius=3)
 
-        font_label = pygame.font.Font(None, 16)
-        font_value = pygame.font.Font(None, 22)
+        font_label = get_cjk_font(16)
+        font_value = get_cjk_font(22)
 
         glow_color = self._get_glow_color(current)
-        label_text = font_label.render("COEFF", True, glow_color)
+        label_text = font_label.render("系数", True, glow_color)
         label_rect = label_text.get_rect(center=(panel_x + self.PANEL_WIDTH // 2, panel_y + 18))
         surface.blit(label_text, label_rect)
 

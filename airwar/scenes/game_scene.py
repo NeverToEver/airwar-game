@@ -1,5 +1,6 @@
 """Main game scene -- gameplay loop, entity coordination, and rendering."""
 import pygame
+from airwar.utils.fonts import get_cjk_font
 from typing import Dict, Tuple
 from .scene import Scene
 from airwar.entities import Player, EnemySpawner, Boss, BossData
@@ -540,16 +541,16 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         surface.blit(overlay, (0, 0))
 
         # Loading text
-        font_large = pygame.font.Font(None, 72)
-        font_small = pygame.font.Font(None, 36)
+        font_large = get_cjk_font(72)
+        font_small = get_cjk_font(36)
 
-        title = font_large.render("Loading...", True, colors.TEXT_PRIMARY)
+        title = font_large.render("加载中...", True, colors.TEXT_PRIMARY)
         title_rect = title.get_rect(center=(screen_width // 2, screen_height // 2 - 40))
 
         progress_text = font_small.render(f"{self._loading_progress}%", True, colors.HUD_AMBER)
         progress_rect = progress_text.get_rect(center=(screen_width // 2, screen_height // 2 + 20))
 
-        hint = font_small.render("Please wait, optimizing game experience", True, colors.TEXT_MUTED)
+        hint = font_small.render("请稍候，正在优化游戏体验", True, colors.TEXT_MUTED)
         hint_rect = hint.get_rect(center=(screen_width // 2, screen_height // 2 + 70))
 
         surface.blit(title, title_rect)

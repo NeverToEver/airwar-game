@@ -1,5 +1,6 @@
 """Give-up UI — surrender progress indicator overlay."""
 import pygame
+from airwar.utils.fonts import get_cjk_font
 import math
 from airwar.config.design_tokens import get_design_tokens, SceneColors, SystemColors, SystemUI
 from airwar.ui.chamfered_panel import draw_chamfered_panel
@@ -32,7 +33,7 @@ class GiveUpUI:
         self._text_color = colors.HEALTH_DANGER
 
         pygame.font.init()
-        self._font = pygame.font.Font(None, self._tokens.typography.BODY_SIZE)
+        self._font = get_cjk_font(self._tokens.typography.BODY_SIZE)
 
     def show(self) -> None:
         self._visible = True
@@ -66,7 +67,7 @@ class GiveUpUI:
 
     def _render_glow_text(self, surface: pygame.Surface, center_x: int, y: int, alpha: int) -> None:
         """Render text in military style."""
-        text = self._font.render("GIVE UP", True, SceneColors.DANGER_RED)
+        text = self._font.render("投降", True, SceneColors.DANGER_RED)
         text.set_alpha(alpha)
         text_rect = text.get_rect(center=(center_x, y))
         surface.blit(text, text_rect)
@@ -101,7 +102,7 @@ class GiveUpUI:
             )
 
     def _render_text(self, surface: pygame.Surface, center_x: int, y: int, alpha: int) -> None:
-        text = self._font.render("GIVE UP", True, self._text_color)
+        text = self._font.render("投降", True, self._text_color)
         text.set_alpha(alpha)
         text_rect = text.get_rect(center=(center_x, y))
         surface.blit(text, text_rect)

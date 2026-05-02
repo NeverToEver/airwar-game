@@ -9,26 +9,26 @@ from ...config import DIFFICULTY_SETTINGS
 
 REWARD_POOL = {
     'health': [
-        {'name': 'Extra Life', 'desc': '+50 Max HP, +30 HP', 'icon': 'HP'},
-        {'name': 'Regeneration', 'desc': 'Passively heal 2 HP/sec', 'icon': 'REG'},
-        {'name': 'Lifesteal', 'desc': '+10% lifesteal on kill', 'icon': 'LST'},
+        {'name': 'Extra Life', 'desc': '最大生命+50, 生命+30', 'icon': '生'},
+        {'name': 'Regeneration', 'desc': '每秒恢复2点生命', 'icon': '回'},
+        {'name': 'Lifesteal', 'desc': '击杀时恢复10%生命', 'icon': '吸'},
     ],
     'offense': [
-        {'name': 'Power Shot', 'desc': '+25% bullet damage', 'icon': 'DMG'},
-        {'name': 'Rapid Fire', 'desc': '+20% fire rate', 'icon': 'RPD'},
-        {'name': 'Piercing', 'desc': 'Bullets pierce 1 enemy', 'icon': 'PIR'},
-        {'name': 'Spread Shot', 'desc': 'Fire 3 bullets at once', 'icon': 'SPD'},
-        {'name': 'Explosive', 'desc': 'Bullets deal 30 AoE damage', 'icon': 'EXP'},
-        {'name': 'Laser', 'desc': 'Laser beam attacks', 'icon': 'LSR'},
+        {'name': 'Power Shot', 'desc': '子弹伤害+25%', 'icon': '伤'},
+        {'name': 'Rapid Fire', 'desc': '射速+20%', 'icon': '速'},
+        {'name': 'Piercing', 'desc': '子弹穿透1个敌人', 'icon': '穿'},
+        {'name': 'Spread Shot', 'desc': '一次发射3颗子弹', 'icon': '散'},
+        {'name': 'Explosive', 'desc': '子弹造成30范围伤害', 'icon': '爆'},
+        {'name': 'Laser', 'desc': '持续激光束攻击', 'icon': '光'},
     ],
     'defense': [
-        {'name': 'Armor', 'desc': '-15% damage taken', 'icon': 'ARM'},
-        {'name': 'Evasion', 'desc': '+20% dodge chance', 'icon': 'EVD'},
+        {'name': 'Armor', 'desc': '受到伤害-15%', 'icon': '甲'},
+        {'name': 'Evasion', 'desc': '+20%闪避几率', 'icon': '闪'},
     ],
     'utility': [
-        {'name': 'Slow Field', 'desc': 'Slow enemies by 20%', 'icon': 'SLO'},
-        {'name': 'Boost Recovery', 'desc': '+50% boost regen rate', 'icon': 'BST'},
-        {'name': 'Mothership Recall', 'desc': 'Mothership cooldown -50%', 'icon': 'RCL'},
+        {'name': 'Slow Field', 'desc': '减慢敌人20%速度', 'icon': '缓'},
+        {'name': 'Boost Recovery', 'desc': '加速能量恢复+50%', 'icon': '能'},
+        {'name': 'Mothership Recall', 'desc': '母舰冷却时间-50%', 'icon': '召'},
     ],
 }
 
@@ -244,14 +244,14 @@ class RewardSystem:
         name = reward['name']
 
         if name not in self.buff_levels:
-            return f"REWARD: {name}"
+            return f"获得: {name}"
 
         self.buff_levels[name] = self.buff_levels.get(name, 0) + 1
 
         try:
             buff = create_buff(name)
         except ValueError:
-            return f"REWARD: {name}"
+            return f"获得: {name}"
 
         if name not in self.unlocked_buffs:
             self.unlocked_buffs.append(name)
