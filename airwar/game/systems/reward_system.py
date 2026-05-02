@@ -1,7 +1,7 @@
 """Reward generation and application — buffs unlocked at score milestones."""
 import random
 from typing import List, Dict, Callable
-from ..buffs.buff_registry import BUFF_REGISTRY, create_buff
+from ..buffs.buff_registry import create_buff
 from ..buffs.base_buff import Buff
 from ..constants import GAME_CONSTANTS
 from ...config import DIFFICULTY_SETTINGS

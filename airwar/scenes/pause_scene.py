@@ -258,6 +258,3 @@ class PauseScene(Scene, MouseSelectableMixin):
 
     def get_result(self) -> PauseAction:
         return self.result
-
-    def is_paused(self) -> bool:
-        return self.running

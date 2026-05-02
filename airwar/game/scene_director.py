@@ -116,7 +116,7 @@ class SceneDirector:
                     self._save_and_quit(current_scene)
                     self._logger.info("Game flow ended: quit")
                     return self._show_exit_confirm(saved=True)
-                escape_handled = result is True
+                escape_handled = result == True
 
             self._handle_scene_events(events, escape_handled)
 
@@ -180,7 +180,7 @@ class SceneDirector:
     def _handle_pause_toggle(self, events: List[pygame.event.Event], game_scene: GameScene) -> str:
         for event in events:
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                if game_scene.is_paused():
+                if game_scene.paused:
                     game_scene.resume()
                     return "resume"
                 else:
@@ -200,7 +200,7 @@ class SceneDirector:
         return "none"
 
     def _show_pause_menu(self, game_scene: GameScene) -> PauseAction:
-        pause_scene = self._scene_manager._scenes.get("pause")
+        pause_scene = self._scene_manager.get_scene("pause")
         if not pause_scene:
             return PauseAction.QUIT
         pause_scene.enter()
@@ -222,6 +222,7 @@ class SceneDirector:
             self._window.tick(FPS)
 
         result = pause_scene.get_result()
+        pause_scene.exit()
         return result if result else PauseAction.RESUME
 
     def _show_exit_confirm(self, saved: bool) -> str:
@@ -236,7 +237,7 @@ class SceneDirector:
         Returns:
             str: 'main_menu' returns to main menu, 'restart' starts a new game, 'quit' exits.
         """
-        exit_scene = self._scene_manager._scenes.get("exit_confirm")
+        exit_scene = self._scene_manager.get_scene("exit_confirm")
         if not exit_scene:
             return "quit"
 
@@ -258,6 +259,7 @@ class SceneDirector:
             self._window.tick(FPS)
 
         result = exit_scene.get_result()
+        exit_scene.exit()
         if result == ExitConfirmAction.RETURN_TO_MENU:
             self._clear_saved_game()
             return "main_menu"
@@ -275,7 +277,7 @@ class SceneDirector:
         boss_kills = game_scene.get_boss_kill_count()
         high_score = self._update_user_stats(final_score, kills)
 
-        death_scene = self._scene_manager._scenes.get("death")
+        death_scene = self._scene_manager.get_scene("death")
         if not death_scene:
             return False
 
@@ -299,6 +301,7 @@ class SceneDirector:
             self._window.tick(FPS)
 
         result = death_scene.get_result()
+        death_scene.exit()
         return result == 'return_to_menu'
 
     def _update_user_stats(self, score: int, kills: int) -> Optional[int]:

@@ -1,5 +1,5 @@
 """Game integrator — bridges mothership state with game systems."""
-from typing import Dict, Any, List, TYPE_CHECKING
+from typing import Dict, List, TYPE_CHECKING
 import pygame
 import math
 from .mother_ship_state import MotherShipState, GameSaveData
@@ -366,7 +366,7 @@ class GameIntegrator:
 
         save_data = self.create_save_data()
         self._persistence_manager.save_game(save_data)
-        self._game_scene.paused = True
+        self._game_scene.set_paused(True)
 
     def create_save_data(self) -> 'GameSaveData':
         if not self._game_scene:
@@ -393,7 +393,7 @@ class GameIntegrator:
 
     def _on_game_resume(self, **kwargs) -> None:
         if self._game_scene:
-            self._game_scene.paused = False
+            self._game_scene.set_paused(False)
 
     def _on_start_entering_animation(self, **kwargs) -> None:
         if not self._game_scene:

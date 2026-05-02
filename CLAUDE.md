@@ -150,7 +150,7 @@ Source code lives under `airwar/` (Python package). Entry point: `main.py` (proj
 airwar-game/                  # Project root
 |-- main.py                  # Entry: python3 main.py
 |-- airwar/                  # Python package (all source)
-|??   |-- config/              # Settings, game_config, design_tokens, difficulty_config, tutorial/
+|??   |-- config/              # Settings, game_config, design_tokens, difficulty_config
 |??   |-- entities/            # Entity base, Player, Enemy (+ Boss subclass), Bullet
 |??   |-- game/
 |??   |??   |-- game.py          # Game class -- window, SceneManager, SceneDirector, scene registration

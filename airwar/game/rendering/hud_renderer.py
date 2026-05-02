@@ -1,5 +1,5 @@
 """HUD renderer — score, health bar, boss HP, buff stats panel."""
-from typing import Optional, List
+from typing import List
 import pygame
 from airwar.utils.fonts import get_cjk_font
 from ...ui.buff_stats_panel import BuffStatsPanel, AttackModePanel

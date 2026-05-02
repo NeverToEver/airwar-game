@@ -46,7 +46,7 @@ python3 main.py
 ## Architecture
 
 ### Core Patterns
-- **Scene Pattern**: scene-based architecture with state save/restore between transitions
+- **Scene Pattern**: scene-based architecture with lifecycle management (enter/exit/handle_events/update/render)
 - **Manager Pattern**: independent subsystem managers (spawn, collision, bullets, boss, etc.)
 - **Observer Pattern**: event bus for cross-system communication (mothership docking, etc.)
 

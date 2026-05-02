@@ -1,7 +1,7 @@
 """Base buff classes — Buff and BuffResult for the buff system."""
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Tuple, Optional
+from typing import Tuple
 
 
 @dataclass
