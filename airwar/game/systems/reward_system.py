@@ -28,6 +28,7 @@ REWARD_POOL = {
     'utility': [
         {'name': 'Slow Field', 'desc': '减慢敌人20%速度', 'icon': '缓'},
         {'name': 'Boost Recovery', 'desc': '加速能量恢复+50%', 'icon': '能'},
+        {'name': 'Phase Dash', 'desc': '消耗25%燃料无敌突进', 'icon': '突'},
         {'name': 'Mothership Recall', 'desc': '母舰冷却时间-50%', 'icon': '召'},
     ],
 }
@@ -77,6 +78,7 @@ class RewardSystem:
             'Extra Life': 0,
             'Slow Field': 0,
             'Boost Recovery': 0,
+            'Phase Dash': 0,
             'Mothership Recall': 0,
         }
 
@@ -161,7 +163,7 @@ class RewardSystem:
         categories = list(REWARD_POOL.keys())
 
         # One-shot buffs: binary abilities that have no effect beyond level 1
-        ONE_SHOT_BUFFS = {'Spread Shot', 'Explosive', 'Laser'}
+        ONE_SHOT_BUFFS = {'Spread Shot', 'Explosive', 'Laser', 'Phase Dash'}
 
         unlocked = set(unlocked_buffs)
         taken_one_shots = {
@@ -203,6 +205,7 @@ class RewardSystem:
             'Evasion': self._apply_evasion,
             'Slow Field': self._apply_slow_field,
             'Boost Recovery': self._apply_boost_recovery,
+            'Phase Dash': self._apply_phase_dash,
             'Mothership Recall': self._apply_mothership_recall,
             'Extra Life': self._apply_extra_life,
         }
@@ -243,6 +246,10 @@ class RewardSystem:
 
     def _apply_boost_recovery(self, player) -> None:
         buff = create_buff('Boost Recovery')
+        buff.apply(player)
+
+    def _apply_phase_dash(self, player) -> None:
+        buff = create_buff('Phase Dash')
         buff.apply(player)
 
     def _apply_mothership_recall(self, player) -> None:

@@ -32,6 +32,10 @@ class InputHandler(ABC):
     def is_boost_pressed(self) -> bool:
         pass
 
+    @abstractmethod
+    def is_boost_just_pressed(self) -> bool:
+        pass
+
 
 class PygameInputHandler(InputHandler):
     """Pygame input handler — reads keyboard input from pygame events.
@@ -41,6 +45,8 @@ class PygameInputHandler(InputHandler):
         """
     def __init__(self, key_bindings: Optional[Dict[str, int]] = None):
         self._bindings = key_bindings or self.DEFAULT_BINDINGS
+        self._prev_boost_pressed = False
+        self._boost_just_pressed = False
 
     def get_movement_direction(self) -> Vector2:
         keys = pygame.key.get_pressed()
@@ -64,7 +70,15 @@ class PygameInputHandler(InputHandler):
 
     def is_boost_pressed(self) -> bool:
         keys = pygame.key.get_pressed()
-        return keys[self._bindings['boost']]
+        boost_pressed = keys[self._bindings['boost']]
+        self._boost_just_pressed = boost_pressed and not self._prev_boost_pressed
+        self._prev_boost_pressed = boost_pressed
+        return boost_pressed
+
+    def is_boost_just_pressed(self) -> bool:
+        just_pressed = self._boost_just_pressed
+        self._boost_just_pressed = False
+        return just_pressed
 
 
 class MockInputHandler(InputHandler):
@@ -77,6 +91,7 @@ class MockInputHandler(InputHandler):
         self._direction = Vector2(0, 0)
         self._pause_pressed = False
         self._boost_pressed = False
+        self._boost_just_pressed = False
 
     def set_direction(self, dx: float, dy: float) -> None:
         self._direction = Vector2(dx, dy)
@@ -85,7 +100,12 @@ class MockInputHandler(InputHandler):
         self._pause_pressed = pressed
 
     def set_boost_pressed(self, pressed: bool) -> None:
+        self._boost_just_pressed = pressed and not self._boost_pressed
         self._boost_pressed = pressed
+
+    def tap_boost(self) -> None:
+        self._boost_pressed = True
+        self._boost_just_pressed = True
 
     def get_movement_direction(self) -> Vector2:
         return self._direction
@@ -95,3 +115,8 @@ class MockInputHandler(InputHandler):
 
     def is_boost_pressed(self) -> bool:
         return self._boost_pressed
+
+    def is_boost_just_pressed(self) -> bool:
+        just_pressed = self._boost_just_pressed
+        self._boost_just_pressed = False
+        return just_pressed

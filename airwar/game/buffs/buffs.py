@@ -243,6 +243,26 @@ class BoostRecoveryBuff(Buff):
         )
 
 
+class PhaseDashBuff(Buff):
+    """Phase Dash buff — unlocks a boost-fueled invincible dash."""
+    NAME = 'Phase Dash'
+    COLOR = (220, 95, 85)
+
+    def calculate_value(self, base_value: int, current_level: int) -> int:
+        return current_level
+
+    def calculate_increment(self, base_value: int) -> int:
+        return 1
+
+    def apply(self, player) -> BuffResult:
+        player.activate_phase_dash()
+        return BuffResult(
+            name=self.NAME,
+            notification=self.get_notification(1),
+            color=self.COLOR
+        )
+
+
 class MothershipRecallBuff(Buff):
     """Mothership Recall buff — reduces mothership cooldown by 50% per level."""
     NAME = 'Mothership Recall'

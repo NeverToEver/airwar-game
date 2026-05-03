@@ -11,6 +11,7 @@ from airwar.game.systems.notification_manager import NotificationManager
 from airwar.game.managers.game_controller import GameController, GameplayState
 from airwar.game.managers.spawn_controller import SpawnController
 from airwar.game.managers.collision_controller import CollisionController
+from airwar.game.managers.game_controller import normalize_score
 from airwar.game.rendering.game_renderer import GameRenderer
 from airwar.ui.reward_selector import RewardSelector
 from airwar.ui.boost_gauge import BoostGauge
@@ -93,6 +94,9 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._input_coordinator: InputCoordinator = None
         self._ui_manager: UIManager = None
         self._game_loop_manager: GameLoopManager = None
+        self._phase_dash_invincibility_active = False
+        self._phase_dash_previous_invincible = False
+        self._phase_dash_previous_silent = False
 
     def enter(self, **kwargs) -> None:
         """Initialize the game scene.
@@ -320,6 +324,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             self.player.rect.x = dock_pos[0] - self.player.rect.width // 2
             self.player.rect.y = dock_pos[1] - self.player.rect.height // 2
 
+        self._sync_player_phase_dash_invincibility()
+
         self._game_loop_manager.check_collisions(
             self.player,
             self.spawn_controller.enemy_bullets,
@@ -351,6 +357,32 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if save_data:
             save_data.is_in_mothership = False
             PersistenceManager().save_game(save_data)
+
+    def _sync_player_phase_dash_invincibility(self) -> None:
+        if not self.game_controller or not self.player:
+            return
+
+        state = self.game_controller.state
+        if self.player.is_phase_dash_invincible():
+            if not self._phase_dash_invincibility_active:
+                self._phase_dash_previous_invincible = state.player_invincible
+                self._phase_dash_previous_silent = state.silent_invincible
+            self._phase_dash_invincibility_active = True
+            state.player_invincible = True
+            state.invincibility_timer = max(state.invincibility_timer, 2)
+            state.silent_invincible = True
+            return
+
+        if not self._phase_dash_invincibility_active:
+            return
+
+        self._phase_dash_invincibility_active = False
+        if state.invincibility_timer <= 2 and not self._phase_dash_previous_invincible:
+            state.player_invincible = False
+            state.invincibility_timer = 0
+            state.silent_invincible = False
+        else:
+            state.silent_invincible = self._phase_dash_previous_silent
 
     def _update_mothership_ammo_warning(self) -> None:
         """Check ammo level and activate warning banner when critically low.
@@ -414,7 +446,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if self._boost_gauge is not None:
             status = self.player.get_boost_status()
             self._boost_gauge.render(surface, status['current'],
-                                     status['max'], status['active'])
+                                     status['max'], status['active'], status)
 
         # Ammo magazine -- left-side vertical ammo rack
         if self._ammo_magazine and self._mother_ship_integrator:
@@ -577,7 +609,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             value: New score value.
         """
         if self.game_controller:
-            self.game_controller.state.score = value
+            self.game_controller.state.score = normalize_score(value)
 
     @property
     def cycle_count(self) -> int:
@@ -689,7 +721,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if not save_data or not self.game_controller or not self.player:
             return
 
-        self.game_controller.state.score = max(0, save_data.score)
+        self.game_controller.state.score = normalize_score(save_data.score)
         self.game_controller.state.kill_count = max(0, save_data.kill_count)
         self.game_controller.state.boss_kill_count = max(0, save_data.boss_kill_count)
         self.game_controller.milestone_index = save_data.cycle_count
@@ -794,7 +826,9 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     def add_score(self, amount: int) -> None:
         """Add to score."""
         if self.game_controller:
-            self.game_controller.state.score += amount
+            self.game_controller.state.score = normalize_score(
+                self.game_controller.state.score + amount
+            )
 
     def add_kill(self) -> None:
         """Increment kill count."""
@@ -887,4 +921,3 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         """Clear all ripple effects."""
         if self.game_controller:
             self.game_controller.state.ripple_effects.clear()
-

@@ -141,7 +141,7 @@ class IGameScene(ABC):
         pass
 
     @abstractmethod
-    def set_player_invincible(self, invincible: bool, timer: int) -> None:
+    def set_player_invincible(self, invincible: bool, timer: int, silent: bool = False) -> None:
         """Set player invincibility state."""
         pass
 

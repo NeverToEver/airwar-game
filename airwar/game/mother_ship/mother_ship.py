@@ -28,6 +28,8 @@ class MotherShip:
         self._phantom_visible = False
         self._phantom_surf = None
         self._phantom_surf_size = (0, 0)
+        self._phantom_started_at = 0
+        self._phantom_fade_duration_ms = 520
         self._initial_x = screen_width // 2
         self._initial_y = int(screen_height * 0.35)
         self._position = (self._initial_x, self._initial_y)
@@ -81,10 +83,13 @@ class MotherShip:
         self._position = (x, y)
 
     def show_phantom(self) -> None:
+        if not self._phantom_visible:
+            self._phantom_started_at = pygame.time.get_ticks()
         self._phantom_visible = True
 
     def hide_phantom(self) -> None:
         self._phantom_visible = False
+        self._phantom_started_at = 0
 
     def set_player_input(self, x: int, y: int) -> None:
         self._player_input = [x, y]
@@ -165,7 +170,12 @@ class MotherShip:
 
     def _render_phantom(self, surface: pygame.Surface) -> None:
         """Draw a holographic preview matching the actual mothership silhouette."""
-        cx, cy = self._initial_x, self._initial_y
+        reveal = self._get_phantom_reveal()
+        if reveal <= 0:
+            return
+
+        cx = self._initial_x
+        cy = self._initial_y + int((1.0 - reveal) * 22)
         sw, sh = surface.get_width(), surface.get_height()
         pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() / 1000.0 * 2.5)
 
@@ -180,8 +190,8 @@ class MotherShip:
         phantom = self._phantom_surf
         phantom.fill((0, 0, 0, 0))
 
-        base_alpha = int(35 + 20 * pulse)
-        glow_alpha = int(15 + 10 * pulse)
+        base_alpha = int((35 + 20 * pulse) * reveal)
+        glow_alpha = int((15 + 10 * pulse) * reveal)
         teal = (55, 188, 225)
 
         glow_color = (*teal, glow_alpha)
@@ -195,6 +205,15 @@ class MotherShip:
         self._draw_phantom_engines(phantom, cx, cy, pulse)
 
         surface.blit(phantom, (0, 0))
+
+    def _get_phantom_reveal(self, now_ms: int | None = None) -> float:
+        if not self._phantom_visible:
+            return 0.0
+
+        now = pygame.time.get_ticks() if now_ms is None else now_ms
+        elapsed = max(0, now - self._phantom_started_at)
+        t = min(1.0, elapsed / self._phantom_fade_duration_ms)
+        return 1 - (1 - t) ** 3
 
     def _draw_phantom_hull(self, surface: pygame.Surface, cx: int, cy: int,
                            color: tuple, width: int) -> None:

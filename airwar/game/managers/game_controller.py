@@ -12,6 +12,17 @@ from ..systems.notification_manager import NotificationManager
 from ..systems.difficulty_manager import DifficultyManager
 
 
+def normalize_score(value) -> int:
+    """Return a non-negative integer score from numeric game state values."""
+    if isinstance(value, bool):
+        return 0
+    if isinstance(value, int):
+        return max(0, value)
+    if isinstance(value, float) and value.is_integer():
+        return max(0, int(value))
+    return max(0, int(round(value)))
+
+
 class GameplayState(Enum):
     """Gameplay state enum — PLAYING, DYING, GAME_OVER."""
     PLAYING = "playing"
@@ -186,7 +197,7 @@ class GameController:
         score_gained: Score value of the killed enemy.
         """
         self.state.kill_count += 1
-        self.state.score += score_gained
+        self.state.score = normalize_score(self.state.score + score_gained)
         self._logger.debug(f"Enemy killed: score_gained={score_gained}, total_kills={self.state.kill_count}")
 
     def on_boss_killed(self, score_gained: int) -> None:
@@ -201,7 +212,7 @@ class GameController:
         """
         self.state.kill_count += 1
         self.state.boss_kill_count += 1
-        self.state.score += score_gained
+        self.state.score = normalize_score(self.state.score + score_gained)
         self.difficulty_manager.on_boss_killed()
         self._logger.info(f"Boss killed: score_gained={score_gained}, boss_kills={self.state.boss_kill_count}")
 

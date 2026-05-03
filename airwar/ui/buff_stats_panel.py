@@ -46,6 +46,9 @@ class BuffStatsAggregator:
             'Regeneration': lambda rs, _: "+2/s",
             'Lifesteal': lambda rs, _: "+10%",
             'Slow Field': lambda rs, _: f"{int((1 - rs.slow_factor) * 100)}%",
+            'Boost Recovery': lambda rs, p: f"x{p.boost_recovery_rate:.1f}",
+            'Phase Dash': lambda rs, p: "READY" if p.can_phase_dash() else "CD",
+            'Mothership Recall': lambda rs, p: f"x{p.mothership_cooldown_mult:.2f}",
         }
 
     def _calculate_rapid_fire_value(self, reward_system) -> str:
@@ -71,7 +74,8 @@ class BuffStatsAggregator:
             'Spread Shot': 'offense', 'Explosive': 'offense', 'Laser': 'offense',
             'Armor': 'defense', 'Evasion': 'defense', 'Barrier': 'defense',
             'Extra Life': 'health', 'Regeneration': 'health', 'Lifesteal': 'health',
-            'Slow Field': 'utility',
+            'Slow Field': 'utility', 'Boost Recovery': 'utility',
+            'Phase Dash': 'utility', 'Mothership Recall': 'utility',
         }
         return category_map.get(name, 'utility')
 
@@ -81,7 +85,8 @@ class BuffStatsAggregator:
             'Spread Shot': '散', 'Explosive': '爆', 'Laser': '光',
             'Armor': '甲', 'Evasion': '闪', 'Barrier': '护',
             'Extra Life': '生', 'Regeneration': '回', 'Lifesteal': '吸',
-            'Slow Field': '缓',
+            'Slow Field': '缓', 'Boost Recovery': '能',
+            'Phase Dash': '突', 'Mothership Recall': '召',
         }
         return short_names.get(name, name[:3].upper())
 

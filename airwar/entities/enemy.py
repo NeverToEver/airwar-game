@@ -478,6 +478,11 @@ class Enemy(Entity):
         self._collision_rect.x = self.rect.x - (self._collision_rect.width - self.rect.width) // 2
         self._collision_rect.y = self.rect.y - (self._collision_rect.height - self.rect.height) // 2
 
+    def _resize_collision_rect(self, scale: float) -> None:
+        size = int(max(self.rect.width, self.rect.height) * scale)
+        self._collision_rect.size = (size, size)
+        self.sync_rects()
+
     def _fire(self) -> None:
         bullets = self._create_bullets()
 
@@ -759,6 +764,7 @@ class EliteEnemy(Enemy):
     """
 
     VISUAL_SCALE = 1.3
+    COLLISION_SCALE = 1.18
     ENTRY_SPEED = 0.03
     ELITE_FIRE_RATE = 30
     MIN_SPAWN_Y = -30
@@ -775,6 +781,7 @@ class EliteEnemy(Enemy):
             bullet_type=data.bullet_type,
         )
         super().__init__(x, y, enemy_data)
+        self._resize_collision_rect(self.COLLISION_SCALE)
         self._shield_pulse: float = 0.0
         self._is_elite = True
 
@@ -852,6 +859,12 @@ class Boss(Entity):
     AIM_DAMAGE_INCREMENT = 3
     AIM_BULLET_COUNT = 3
     WAVE_BULLET_COUNT = 8
+    HITBOX_WIDTH_SCALE = 1.78
+    HITBOX_HEIGHT_SCALE = 1.22
+    AIM_DASH_DISTANCE = 220
+    AIM_DASH_PHASE_BONUS = 35
+    AIM_DASH_MAX_DISTANCE_RATIO = 0.58
+    AIM_DASH_DURATION = 10
 
     _warning_font = None
     _escape_font = None
@@ -892,6 +905,24 @@ class Boss(Entity):
         self.phase = data.phase
         self._bullet_spawner: Optional[IBulletSpawner] = None
         self.entity_id = id(self)
+        self._hitbox = pygame.Rect(0, 0, 0, 0)
+        self._aim_dash_elapsed = 0
+        self._aim_dash_duration = 0
+        self._aim_dash_start_x = 0.0
+        self._aim_dash_start_y = 0.0
+        self._aim_dash_target_x = 0.0
+        self._aim_dash_target_y = 0.0
+        self._aim_fire_target: Optional[Tuple[float, float]] = None
+        self.sync_hitbox()
+
+    def sync_hitbox(self) -> None:
+        self._hitbox.width = int(self.rect.width * self.HITBOX_WIDTH_SCALE)
+        self._hitbox.height = int(self.rect.height * self.HITBOX_HEIGHT_SCALE)
+        self._hitbox.center = (int(self.rect.centerx), int(self.rect.centery))
+
+    def get_hitbox(self) -> pygame.Rect:
+        self.sync_hitbox()
+        return self._hitbox
 
     def _get_direction_offsets(self) -> dict:
         return {
@@ -948,6 +979,10 @@ class Boss(Entity):
             self._show_escape_warning = True
             self.rect.y -= self.ESCAPE_DRIFT
 
+        if self._is_aim_dashing():
+            self._update_aim_dash()
+            return
+
         self._move_phase_timer += 1
         if self._move_phase_timer >= self._move_phase_duration:
             self._move_phase_timer = 0
@@ -958,10 +993,7 @@ class Boss(Entity):
         self.rect.x = self.rect.x + (self._target_x - self.rect.x) * lerp_speed
         self.rect.y = self.rect.y + (self._target_y - self.rect.y) * lerp_speed
 
-        screen_w = get_screen_width()
-        screen_h = get_screen_height()
-        self.rect.x = max(0, min(self.rect.x, screen_w - self.rect.width))
-        self.rect.y = max(self.MIN_Y, min(self.rect.y, screen_h // 2 + self.CENTER_OFFSET))
+        self._clamp_to_arena()
 
         self.rect.y += math.sin(self.survival_timer * 0.025) * 0.4
 
@@ -973,7 +1005,18 @@ class Boss(Entity):
         self.fire_timer += 1
         if self.fire_timer >= self.data.fire_rate:
             self.fire_timer = 0
-            self._fire()
+            self._fire(player_pos)
+
+    def _clamp_to_arena(self) -> None:
+        self.rect.x, self.rect.y = self._clamped_arena_position(self.rect.x, self.rect.y)
+
+    def _clamped_arena_position(self, x: float, y: float) -> Tuple[float, float]:
+        screen_w = get_screen_width()
+        screen_h = get_screen_height()
+        return (
+            max(0, min(x, screen_w - self.rect.width)),
+            max(self.MIN_Y, min(y, screen_h // 2 + self.CENTER_OFFSET)),
+        )
 
     def _select_next_target(self, player_pos=None) -> None:
         """Pick next movement target based on cycling phase.
@@ -1028,7 +1071,7 @@ class Boss(Entity):
                 self._target_x = random.randint(x_min, x_max)
                 self._target_y = random.randint(y_min, y_max)
 
-    def _fire(self) -> None:
+    def _fire(self, player_pos: Tuple[float, float] = None) -> None:
         bullets = []
 
         self.attack_direction = random.choice(self.ATTACK_DIRECTIONS)
@@ -1036,15 +1079,83 @@ class Boss(Entity):
         if self.attack_pattern == 0:
             bullets = self._spread_attack()
         elif self.attack_pattern == 1:
+            if player_pos:
+                self._start_aim_dash(player_pos)
+                return
             bullets = self._aim_attack()
         else:
             bullets = self._wave_attack()
 
+        self._spawn_bullets(bullets)
+
+        self.attack_pattern = (self.attack_pattern + 1) % 3
+
+    def _spawn_bullets(self, bullets: List[Bullet]) -> None:
         if self._bullet_spawner:
             for bullet in bullets:
                 self._bullet_spawner.spawn_bullet(bullet)
 
+    def _is_aim_dashing(self) -> bool:
+        return self._aim_dash_duration > 0
+
+    def _start_aim_dash(self, player_pos: Tuple[float, float]) -> None:
+        if not player_pos:
+            return
+
+        self._aim_fire_target = (float(player_pos[0]), float(player_pos[1]))
+        dx = player_pos[0] - self.rect.centerx
+        dy = player_pos[1] - self.rect.centery
+        distance = math.hypot(dx, dy)
+        if distance <= 0:
+            self._finish_aim_dash()
+            return
+
+        dash_distance = self.AIM_DASH_DISTANCE + self.phase * self.AIM_DASH_PHASE_BONUS
+        dash_distance = min(dash_distance, distance * self.AIM_DASH_MAX_DISTANCE_RATIO)
+        target_center_x = self.rect.centerx + dx / distance * dash_distance
+        target_center_y = self.rect.centery + dy / distance * dash_distance
+        target_x = target_center_x - self.rect.width / 2
+        target_y = target_center_y - self.rect.height / 2
+        target_x, target_y = self._clamped_arena_position(target_x, target_y)
+
+        if abs(target_x - self.rect.x) < 1 and abs(target_y - self.rect.y) < 1:
+            self._finish_aim_dash()
+            return
+
+        self._aim_dash_elapsed = 0
+        self._aim_dash_duration = self.AIM_DASH_DURATION
+        self._aim_dash_start_x = self.rect.x
+        self._aim_dash_start_y = self.rect.y
+        self._aim_dash_target_x = target_x
+        self._aim_dash_target_y = target_y
+        self._target_x = target_x
+        self._target_y = target_y
+
+    def _update_aim_dash(self) -> None:
+        self._aim_dash_elapsed += 1
+        progress = min(1.0, self._aim_dash_elapsed / self._aim_dash_duration)
+        self.rect.x = self._aim_dash_start_x + (self._aim_dash_target_x - self._aim_dash_start_x) * progress
+        self.rect.y = self._aim_dash_start_y + (self._aim_dash_target_y - self._aim_dash_start_y) * progress
+        self._clamp_to_arena()
+
+        if progress >= 1.0:
+            self._finish_aim_dash()
+
+    def _finish_aim_dash(self) -> None:
+        self._aim_dash_duration = 0
+        self._aim_dash_elapsed = 0
+        bullets = self._aim_attack(self._aim_fire_target)
+        self._aim_fire_target = None
+        self._spawn_bullets(bullets)
         self.attack_pattern = (self.attack_pattern + 1) % 3
+
+    def _select_attack_direction_for_target(self, player_pos: Tuple[float, float]) -> None:
+        dx = player_pos[0] - self.rect.centerx
+        dy = player_pos[1] - self.rect.centery
+        if abs(dx) > abs(dy) * 1.2:
+            self.attack_direction = 'right' if dx > 0 else 'left'
+        else:
+            self.attack_direction = 'down' if dy >= 0 else 'up'
 
     def _spread_attack(self) -> List[Bullet]:
         B = get_game_constants().BOSS
@@ -1082,12 +1193,25 @@ class Boss(Entity):
     def _aim_attack(self, player_pos: Tuple[float, float] = None) -> List[Bullet]:
         bullets = []
 
+        if player_pos:
+            self._select_attack_direction_for_target(player_pos)
+
         direction_sources = self._get_direction_sources()
 
         source_x, source_y = direction_sources.get(self.attack_direction, (self.rect.centerx, self.rect.bottom))
 
-        target_offsets = self._get_target_offsets()
-        dx, dy = target_offsets.get(self.attack_direction, (0, BOSS_ATTACK_DISTANCE))
+        if player_pos:
+            aim_dx = player_pos[0] - source_x
+            aim_dy = player_pos[1] - source_y
+        else:
+            target_offsets = self._get_target_offsets()
+            aim_dx, aim_dy = target_offsets.get(self.attack_direction, (0, BOSS_ATTACK_DISTANCE))
+
+        aim_vector = Vector2(aim_dx, aim_dy)
+        if aim_vector.length() <= 0:
+            aim_vector = Vector2(0, BOSS_ATTACK_DISTANCE)
+        aim_vector = aim_vector.normalize()
+        spread_axis = Vector2(-aim_vector.y, aim_vector.x)
 
         bullet_data = BulletData(
             damage=BOSS_AIM_BULLET_DAMAGE_BASE + self.phase * self.AIM_DAMAGE_INCREMENT,
@@ -1097,10 +1221,16 @@ class Boss(Entity):
         )
 
         for i in range(self.AIM_BULLET_COUNT):
-            bullet = Bullet(source_x - BOSS_BULLET_OFFSET_X + i * BOSS_BULLET_OFFSET_X, source_y, bullet_data)
-            velocity = Vector2(dx, dy)
-            velocity = velocity.normalize() * BOSS_AIM_SPEED
-            bullet.velocity = velocity
+            offset = (i - (self.AIM_BULLET_COUNT - 1) / 2) * BOSS_BULLET_OFFSET_X
+            bullet_x = source_x + spread_axis.x * offset
+            bullet_y = source_y + spread_axis.y * offset
+            bullet = Bullet(bullet_x, bullet_y, bullet_data)
+            if player_pos:
+                velocity = Vector2(player_pos[0] - bullet_x, player_pos[1] - bullet_y)
+                velocity = aim_vector if velocity.length() <= 0 else velocity.normalize()
+            else:
+                velocity = aim_vector
+            bullet.velocity = velocity * BOSS_AIM_SPEED
             bullets.append(bullet)
 
         return bullets
