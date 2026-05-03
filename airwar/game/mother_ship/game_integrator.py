@@ -1,5 +1,5 @@
 """Game integrator — bridges mothership state with game systems."""
-from typing import Dict, List, TYPE_CHECKING
+from typing import Dict, List, NamedTuple, TYPE_CHECKING
 import pygame
 import math
 from .mother_ship_state import MotherShipState, GameSaveData
@@ -34,6 +34,15 @@ if TYPE_CHECKING:
     from .mother_ship import MotherShip
 
 
+class GatlingTurretSpec(NamedTuple):
+    name: str
+    offset_x: float
+    angle_min: float
+    angle_max: float
+    period: int
+    phase_offset: int
+
+
 class GameIntegrator:
     """Game integrator — bridges mothership state with game systems.
     
@@ -49,9 +58,22 @@ class GameIntegrator:
     MOTHERSHIP_GATLING_DAMAGE = 24
     MOTHERSHIP_GATLING_FIRE_RATE = 3
     MOTHERSHIP_GATLING_BULLET_SPEED = 18
-    MOTHERSHIP_GATLING_SWEEP_ARC_DEGREES = 72
+    MOTHERSHIP_GATLING_TOTAL_SWEEP_DEGREES = 120
+    MOTHERSHIP_GATLING_SWEEP_ARC_DEGREES = 80
+    MOTHERSHIP_GATLING_OVERLAP_DEGREES = 40
     MOTHERSHIP_GATLING_SWEEP_PERIOD = 96
-    MOTHERSHIP_GATLING_BARREL_X_OFFSETS = (-42, 42)
+    MOTHERSHIP_GATLING_RIGHT_SWEEP_PERIOD = 108
+    MOTHERSHIP_GATLING_BARREL_X_OFFSETS = (-56, 56)
+    MOTHERSHIP_GATLING_TURRETS = (
+        GatlingTurretSpec(
+            "left", MOTHERSHIP_GATLING_BARREL_X_OFFSETS[0],
+            -60.0, 20.0, MOTHERSHIP_GATLING_SWEEP_PERIOD, 0
+        ),
+        GatlingTurretSpec(
+            "right", MOTHERSHIP_GATLING_BARREL_X_OFFSETS[1],
+            -20.0, 60.0, MOTHERSHIP_GATLING_RIGHT_SWEEP_PERIOD, 21
+        ),
+    )
     MOTHERSHIP_GATLING_MUZZLE_Y_OFFSET = -64
     MOTHERSHIP_GATLING_BULLET_TYPE = "mothership_gatling"
     MOTHERSHIP_BULLET_DESPAWN_MARGIN = 80
@@ -228,9 +250,7 @@ class GameIntegrator:
                 self._mothership_bullets.append(bullet)
 
     def _update_mothership_gatling(self) -> None:
-        self._mothership_gatling_sweep_frame = (
-            self._mothership_gatling_sweep_frame + 1
-        ) % self.MOTHERSHIP_GATLING_SWEEP_PERIOD
+        self._mothership_gatling_sweep_frame += 1
         self._mothership_gatling_timer += 1
         if self._mothership_gatling_timer >= self.MOTHERSHIP_GATLING_FIRE_RATE:
             self._mothership_gatling_timer = 0
@@ -241,13 +261,12 @@ class GameIntegrator:
             return
 
         mother_ship_pos = self._mother_ship.get_docking_position()
-        angle_rad = math.radians(self._current_gatling_sweep_angle())
-        vx = math.sin(angle_rad) * self.MOTHERSHIP_GATLING_BULLET_SPEED
-        vy = -math.cos(angle_rad) * self.MOTHERSHIP_GATLING_BULLET_SPEED
-
-        for offset_x in self.MOTHERSHIP_GATLING_BARREL_X_OFFSETS:
+        for turret in self.MOTHERSHIP_GATLING_TURRETS:
+            angle_rad = math.radians(self._current_gatling_sweep_angle(turret))
+            vx = math.sin(angle_rad) * self.MOTHERSHIP_GATLING_BULLET_SPEED
+            vy = -math.cos(angle_rad) * self.MOTHERSHIP_GATLING_BULLET_SPEED
             bullet = Bullet(
-                mother_ship_pos[0] + offset_x,
+                mother_ship_pos[0] + turret.offset_x,
                 mother_ship_pos[1] + self.MOTHERSHIP_GATLING_MUZZLE_Y_OFFSET,
                 BulletData(
                     damage=self.MOTHERSHIP_GATLING_DAMAGE,
@@ -262,12 +281,20 @@ class GameIntegrator:
             bullet.velocity.y = vy
             self._mothership_bullets.append(bullet)
 
-    def _current_gatling_sweep_angle(self) -> float:
-        period = max(2, self.MOTHERSHIP_GATLING_SWEEP_PERIOD)
-        phase = (self._mothership_gatling_sweep_frame % period) / period
+    def _current_gatling_sweep_angle(self, turret: str | GatlingTurretSpec = "left") -> float:
+        spec = self._get_gatling_turret(turret)
+        period = max(2, spec.period)
+        phase = ((self._mothership_gatling_sweep_frame + spec.phase_offset) % period) / period
         sweep_t = phase * 2 if phase <= 0.5 else (1.0 - phase) * 2
-        arc = self.MOTHERSHIP_GATLING_SWEEP_ARC_DEGREES
-        return -arc / 2 + arc * sweep_t
+        return spec.angle_min + (spec.angle_max - spec.angle_min) * sweep_t
+
+    def _get_gatling_turret(self, turret: str | GatlingTurretSpec) -> GatlingTurretSpec:
+        if isinstance(turret, GatlingTurretSpec):
+            return turret
+        for spec in self.MOTHERSHIP_GATLING_TURRETS:
+            if spec.name == turret:
+                return spec
+        return self.MOTHERSHIP_GATLING_TURRETS[0]
 
     def _get_mothership_targets(self) -> List:
         if not self._game_scene:
