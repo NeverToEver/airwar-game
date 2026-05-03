@@ -1,6 +1,7 @@
 """Shared sprite utilities — caches, glow effects, gradients, and ripples."""
 import pygame
 import math
+from airwar.config.design_tokens import Colors
 
 # Try to import Rust sprite functions
 try:
@@ -74,9 +75,9 @@ def prewarm_glow_caches() -> None:
                 _explosive_missile_cache[key] = _bytes_to_surface(data, surf_w, surf_h)
 
         for radius, glow_radius in [(8, 8), (10, 10), (12, 12), (15, 15), (20, 15)]:
-            key = (radius, (255, 100, 50), glow_radius)
+            key = (radius, Colors.ACCENT_EXPLOSIVE, glow_radius)
             if key not in _glow_circle_cache:
-                data = create_glow_circle(radius, 255, 100, 50, glow_radius)
+                data = create_glow_circle(radius, *Colors.ACCENT_EXPLOSIVE, glow_radius)
                 surf_size = (radius + glow_radius) * 2 + 4
                 _glow_circle_cache[key] = _bytes_to_surface(data, surf_size, surf_size)
 

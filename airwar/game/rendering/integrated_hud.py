@@ -4,6 +4,7 @@ from airwar.utils.fonts import get_cjk_font
 from typing import List
 from airwar.config.design_tokens import get_design_tokens
 from airwar.ui.discrete_battery import DiscreteBatteryIndicator
+from airwar.ui.scene_rendering_utils import render_cached_text
 
 
 class IntegratedHUD:
@@ -41,12 +42,7 @@ class IntegratedHUD:
 
     def _render_value(self, font, text, color, cache_key: str):
         """Render text surface, reusing cached surface if text unchanged."""
-        entry = self._text_cache.get(cache_key)
-        if entry is not None and entry[0] == text:
-            return entry[1]
-        surf = font.render(text, True, color)
-        self._text_cache[cache_key] = (text, surf)
-        return surf
+        return render_cached_text(font, text, color, cache_key, self._text_cache)
 
     def _setup_layout(self):
         colors = self._tokens.colors

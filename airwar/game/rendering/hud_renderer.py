@@ -5,6 +5,7 @@ import pygame
 from airwar.utils.fonts import get_cjk_font
 from ...ui.buff_stats_panel import BuffStatsPanel, AttackModePanel
 from ...ui.chamfered_panel import draw_chamfered_panel
+from ...ui.scene_rendering_utils import render_cached_text
 from ...ui.segmented_bar import BossHealthBar
 from ...config.design_tokens import get_design_tokens, SystemColors, SystemUI
 from ..constants import GAME_CONSTANTS
@@ -82,12 +83,7 @@ class HUDRenderer:
         self._text_cache: dict = {}
 
     def _render_value(self, font, text, color, cache_key: str):
-        entry = self._text_cache.get(cache_key)
-        if entry is not None and entry[0] == text:
-            return entry[1]
-        surf = font.render(text, True, color)
-        self._text_cache[cache_key] = (text, surf)
-        return surf
+        return render_cached_text(font, text, color, cache_key, self._text_cache)
 
     def render_hud(self, surface: pygame.Surface, score: int, difficulty: str,
                   player_health: int, player_max_health: int, kills: int,

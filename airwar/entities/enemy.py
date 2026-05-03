@@ -5,6 +5,7 @@ import random
 import math
 from typing import List, Optional, Tuple, TYPE_CHECKING
 from dataclasses import dataclass
+from airwar.config.design_tokens import Colors
 from .base import Entity, EnemyData, Vector2
 from .bullet import Bullet, BulletData
 from .interfaces import IBulletSpawner
@@ -114,7 +115,7 @@ class Enemy(Entity):
         self._bullet_spawner: Optional[IBulletSpawner] = None
         self.entity_id = id(self)
         self._init_movement(data.enemy_type)
-        self._sync_rects()
+        self.sync_rects()
         self._difficulty_multiplier = 1.0
         self._fire_rate_modifier = 1.0
         self._movement_enhancements = {}
@@ -133,13 +134,13 @@ class Enemy(Entity):
         self._exit_end_y = self.EXIT_END_Y
 
         # Lifetime timer: 15 seconds = 900 frames at 60fps
-        self._lifetime = 0
+        self.lifetime = 0
         consts = get_game_constants()
         self._max_lifetime = consts.ENEMY.LIFETIME
         self._move_range_x = consts.ENEMY.MOVE_RANGE_X
         self._move_range_y = consts.ENEMY.MOVE_RANGE_Y
-        self._active_position_x = x
-        self._active_position_y = y
+        self.active_position_x = x
+        self.active_position_y = y
 
         # Entry-to-active transition smoothing
         self._transition_timer = 0
@@ -180,18 +181,18 @@ class Enemy(Entity):
                 self._state = 'active'
                 self.rect.x = self._entry_target_x
                 self.rect.y = self._entry_target_y
-                self._sync_rects()
+                self.sync_rects()
                 # Record position for small-range movement
-                self._active_position_x = self.rect.x
-                self._active_position_y = self.rect.y
-                self._lifetime = 0
+                self.active_position_x = self.rect.x
+                self.active_position_y = self.rect.y
+                self.lifetime = 0
             else:
                 # Eased entry: decelerate into target position
                 t = self._entry_progress
                 t_eased = 1.0 - (1.0 - t) * (1.0 - t)  # ease-out quad
                 self.rect.x = self._entry_start_x + (self._entry_target_x - self._entry_start_x) * t_eased
                 self.rect.y = self._entry_start_y + (self._entry_target_y - self._entry_start_y) * t_eased
-                self._sync_rects()
+                self.sync_rects()
             return
 
         # Handle exit animation
@@ -204,12 +205,12 @@ class Enemy(Entity):
             # Smooth exit with curve
             self.rect.x = self._exit_start_x + (self._exit_end_x - self._exit_start_x) * t + math.sin(t * math.pi) * 30
             self.rect.y = self._exit_start_y + (self._exit_end_y - self._exit_start_y) * t
-            self._sync_rects()
+            self.sync_rects()
             return
 
         # Active state: check lifetime (15 seconds max)
-        self._lifetime += 1
-        if self._lifetime >= self._max_lifetime:
+        self.lifetime += 1
+        if self.lifetime >= self._max_lifetime:
             self._state = 'exiting'
             self._exit_start_x = self.rect.x
             self._exit_start_y = self.rect.y
@@ -233,7 +234,7 @@ class Enemy(Entity):
                 if self.move_type == "hover":
                     new_timer *= 0.08
                 setattr(self, self._timer_attr, new_timer)
-                self._sync_rects()
+                self.sync_rects()
                 # Fall through to skip rest of movement block
             else:
                 timer = getattr(self, self._timer_attr, 0.0)
@@ -243,7 +244,7 @@ class Enemy(Entity):
                 params = self._rust_params
                 new_x, new_y, new_timer = rust_update_movement(
                     self._rust_move_type_code, timer,
-                    self._active_position_x, self._active_position_y,
+                    self.active_position_x, self.active_position_y,
                     move_range_x, move_range_y,
                     params['offset'], params['amplitude'], params['frequency'], params['speed'], params['direction'],
                     params['zigzag_interval'], params['spiral_radius'],
@@ -260,7 +261,7 @@ class Enemy(Entity):
                     new_timer *= 0.08
                 setattr(self, self._timer_attr, new_timer)
 
-                self._sync_rects()
+                self.sync_rects()
         else:
             # Fallback to Python movement via strategy pattern
             self._movement_strategy.update(self)
@@ -270,9 +271,9 @@ class Enemy(Entity):
             self._transition_timer += 1
             t = self._transition_timer / self._transition_duration
             blend = t * t  # ease-in quad
-            self.rect.x = self._active_position_x + (self.rect.x - self._active_position_x) * blend
-            self.rect.y = self._active_position_y + (self.rect.y - self._active_position_y) * blend
-            self._sync_rects()
+            self.rect.x = self.active_position_x + (self.rect.x - self.active_position_x) * blend
+            self.rect.y = self.active_position_y + (self.rect.y - self.active_position_y) * blend
+            self.sync_rects()
 
         if self.rect.y > get_screen_height():
             self.active = False
@@ -337,6 +338,23 @@ class Enemy(Entity):
     def set_sprite(self, sprite: pygame.Surface) -> None:
         self._sprite = sprite
 
+    def begin_exit(self, x_offset: float, end_y: float) -> None:
+        """Begin the exit animation sequence.
+
+        Forces the enemy into 'exiting' state and sets the target
+        position for the exit animation curve.
+
+        Args:
+            x_offset: Target x-coordinate for exit end position.
+            end_y: Target y-coordinate for exit end position.
+        """
+        self._state = 'exiting'
+        self._exit_start_x = self.rect.x
+        self._exit_start_y = self.rect.y
+        self._exit_end_x = x_offset
+        self._exit_end_y = end_y
+        self._exit_progress = 0.0
+
     def get_rust_batch_params(self):
         """Return (base_tuple, extra_tuple) for batch Rust movement, or (None, None)."""
         if not hasattr(self, '_rust_move_type_code') or self.move_type == "zigzag":
@@ -348,7 +366,7 @@ class Enemy(Entity):
         c = get_game_constants()
         base = (
             self._rust_move_type_code, timer,
-            self._active_position_x, self._active_position_y,
+            self.active_position_x, self.active_position_y,
             float(c.ENEMY.MOVE_RANGE_X), float(c.ENEMY.MOVE_RANGE_Y),
             p['offset'], p['amplitude'], p['frequency'], p['speed'], p['direction'],
             p['zigzag_interval'],
@@ -456,7 +474,7 @@ class Enemy(Entity):
 
     # 6. Private behavior methods
 
-    def _sync_rects(self) -> None:
+    def sync_rects(self) -> None:
         self._collision_rect.x = self.rect.x - (self._collision_rect.width - self.rect.width) // 2
         self._collision_rect.y = self.rect.y - (self._collision_rect.height - self.rect.height) // 2
 
@@ -1026,7 +1044,7 @@ class Boss(Entity):
         if self.entering:
             warning_y = 20
             pulse = abs(math.sin(pygame.time.get_ticks() * 0.01)) * 0.3 + 0.7
-            warning_surf = self._get_warning_font().render("! 警告 !", True, (255, 50, 50))
+            warning_surf = self._get_warning_font().render("! 警告 !", True, Colors.ACCENT_DANGER)
             warning_surf.set_alpha(int(255 * pulse))
             warning_rect = warning_surf.get_rect(center=(surface.get_width() // 2, warning_y))
             surface.blit(warning_surf, warning_rect)
