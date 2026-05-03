@@ -33,6 +33,11 @@ def draw_single_bullet(surface: pygame.Surface, x: float, y: float, width: float
         core_color = (255, 220, 255)
         # Larger player bullet for visibility
         ew, eh = int(width * 1.4), int(height * 1.3)
+    elif owner == "mothership":
+        glow_color = (70, 220, 255, 45)
+        bullet_color = (75, 210, 245)
+        core_color = (210, 250, 255)
+        ew, eh = int(width * 1.2), int(height * 1.15)
     else:
         glow_color = (255, 200, 50, 30)
         bullet_color = (255, 220, 50)
@@ -75,6 +80,17 @@ def draw_single_bullet(surface: pygame.Surface, x: float, y: float, width: float
             (center_x - ew * 0.2, top_y + eh * 0.45),
         ]
         pygame.draw.polygon(surface, core_color, core_points)
+    elif owner == "mothership":
+        surface.blit(glow, (int(center_x - ew / 2 - 10), int(top_y - 5)))
+        points = [
+            (center_x, top_y),
+            (center_x + ew * 0.35, top_y + eh * 0.22),
+            (center_x + ew * 0.22, top_y + eh),
+            (center_x - ew * 0.22, top_y + eh),
+            (center_x - ew * 0.35, top_y + eh * 0.22),
+        ]
+        pygame.draw.polygon(surface, bullet_color, points)
+        pygame.draw.line(surface, core_color, (center_x, top_y + 2), (center_x, top_y + eh - 2), 2)
     else:
         surface.blit(glow, (int(x - 8), int(top_y - 4)))
         points = [

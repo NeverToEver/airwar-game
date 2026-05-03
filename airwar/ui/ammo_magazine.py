@@ -21,7 +21,7 @@ class AmmoMagazine:
     WARNING_CELL_THRESHOLD = 3  # bottom N cells turn red when ammo is low
     FRAME_PAD_X = 9
     FRAME_PAD_TOP = 28
-    FRAME_PAD_BOTTOM = 14
+    FRAME_PAD_BOTTOM = 30
     FRAME_RADIUS = 6
 
     # Colors
@@ -38,6 +38,7 @@ class AmmoMagazine:
     # Font sizes
     LABEL_FONT_SIZE = 16
     COUNT_FONT_SIZE = 13
+    DETAIL_FONT_SIZE = 11
 
     # Frame layout
     FRAME_X = 9
@@ -88,6 +89,7 @@ class AmmoMagazine:
         self._text_color = SystemColors.TEXT_DIM
         self._label_font: pygame.font.Font = None
         self._count_font: pygame.font.Font = None
+        self._detail_font: pygame.font.Font = None
         self._frame_cache = None
         self._frame_cache_key = (0, 0)
         self._pulse_phase = 0.0
@@ -107,6 +109,8 @@ class AmmoMagazine:
             self._label_font = get_cjk_font(self.LABEL_FONT_SIZE)
         if self._count_font is None:
             self._count_font = get_cjk_font(self.COUNT_FONT_SIZE)
+        if self._detail_font is None:
+            self._detail_font = get_cjk_font(self.DETAIL_FONT_SIZE)
 
     def _build_frame_cache(self, w: int, h: int) -> pygame.Surface:
         """Pre-render the metallic frame with corner rivets."""
@@ -144,7 +148,9 @@ class AmmoMagazine:
 
     def render(self, surface: pygame.Surface, ammo_count: float,
                ammo_max: float, *, is_cooldown: bool, is_docked: bool,
-               is_warning: bool, is_present: bool) -> None:
+               is_warning: bool, is_present: bool,
+               cooldown_remaining: float = 0.0,
+               cooldown_reduction: float = 0.0) -> None:
         """Render the ammo magazine.
 
         Args:
@@ -154,6 +160,8 @@ class AmmoMagazine:
             is_docked: True during DOCKED state (ammo depleting).
             is_warning: True when ammo is critically low.
             is_present: True when mothership is active/present.
+            cooldown_remaining: Actual remaining seconds during cooldown.
+            cooldown_reduction: Total cooldown reduction ratio from buffs and early exit.
         """
         if not is_present and ammo_count <= 0 and not is_cooldown:
             return  # Hide when not relevant
@@ -210,13 +218,31 @@ class AmmoMagazine:
                 # Empty
                 self._draw_cell(surface, cells_x, cy, None, None, 0, 0.0)
 
-        # Ammo count footer
-        count_text = f"{int(ammo_count)}/{int(ammo_max)}"
+        # Footer shows the actual return timer during cooldown, otherwise ammo cells.
+        cells_end_y = cells_start_y + self.CELL_COUNT * self.CELL_HEIGHT + (
+            self.CELL_COUNT - 1
+        ) * self.CELL_GAP
+        if is_cooldown:
+            count_text = f"{math.ceil(max(0.0, cooldown_remaining))}秒"
+        else:
+            count_text = f"{int(ammo_count)}/{int(ammo_max)}"
         count_color = self.COUNT_WARNING_COLOR if is_warning else self._text_color
         count_surf = self._count_font.render(count_text, True, count_color)
-        count_rect = count_surf.get_rect(
-            center=(fx + fw // 2, fy + fh - self.FRAME_PAD_BOTTOM // 2 - 1))
+        has_reduction = is_cooldown and cooldown_reduction > 0.005
+        count_y = cells_end_y + (8 if has_reduction else self.FRAME_PAD_BOTTOM // 2)
+        count_rect = count_surf.get_rect(center=(fx + fw // 2, count_y))
         surface.blit(count_surf, count_rect)
+
+        if has_reduction:
+            reduction_pct = min(99, int(round(cooldown_reduction * 100)))
+            reduction_text = f"返场 -{reduction_pct}%"
+            reduction_surf = self._detail_font.render(
+                reduction_text, True, self._cell_filled
+            )
+            reduction_rect = reduction_surf.get_rect(
+                center=(fx + fw // 2, cells_end_y + 22)
+            )
+            surface.blit(reduction_surf, reduction_rect)
 
     def _draw_cell(self, surface, x, y, fill_color, glow_color, alpha, ratio):
         """Draw a single ammo cell with optional fill and glow."""
