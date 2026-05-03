@@ -558,6 +558,7 @@ class EnemySpawner:
     LASER_FIRE_RATE = 60
     NORMAL_FIRE_RATE = 80
     ENTRY_SPAWN_Y = -50
+    DEFAULT_SPREAD_ENEMY_CAP = 2
 
     def __init__(self):
         self.spawn_timer = 0
@@ -585,6 +586,7 @@ class EnemySpawner:
         self._wave_enemies_spawned = 0
         self._wave_size = self._get_wave_size()
         self._pending_spawns: list = []
+        self._spread_enemy_cap = self.DEFAULT_SPREAD_ENEMY_CAP
 
     def _get_wave_size(self) -> int:
         return get_game_constants().BALANCE.WAVE_SIZE
@@ -612,6 +614,9 @@ class EnemySpawner:
         self.speed = speed
         self.spawn_rate = spawn_rate
         self.bullet_type = bullet_type
+
+    def set_spread_enemy_cap(self, cap: int) -> None:
+        self._spread_enemy_cap = max(0, int(cap))
 
     def set_bullet_spawner(self, spawner: IBulletSpawner) -> None:
         self._bullet_spawner = spawner
@@ -697,7 +702,20 @@ class EnemySpawner:
                     self._select_enemy_type(),
                     False,
                 ))
-        return spawn_data
+        return self._limit_spread_bullet_types(spawn_data)
+
+    def _limit_spread_bullet_types(self, spawn_data: list) -> list:
+        spread_count = 0
+        limited = []
+        for px, py, bullet_type, enemy_type, is_elite in spawn_data:
+            next_type = bullet_type
+            if bullet_type == "spread":
+                if spread_count >= self._spread_enemy_cap:
+                    next_type = "laser" if is_elite else "single"
+                else:
+                    spread_count += 1
+            limited.append((px, py, next_type, enemy_type, is_elite))
+        return limited
 
     def _spawn_one(self, enemies: List[Enemy], data: tuple) -> None:
         """Create a single enemy from precomputed spawn tuple and add to list."""

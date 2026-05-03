@@ -41,6 +41,7 @@ DIFFICULTY_SETTINGS = {
         'spawn_rate': 40,
         'max_delta': 6000,
         'difficulty_multiplier': 0.8,
+        'spread_enemy_cap': 1,
     },
     'medium': {
         'enemy_health': 200,
@@ -49,6 +50,7 @@ DIFFICULTY_SETTINGS = {
         'spawn_rate': 30,
         'max_delta': 8000,
         'difficulty_multiplier': 1.0,
+        'spread_enemy_cap': 2,
     },
     'hard': {
         'enemy_health': 170,
@@ -57,6 +59,7 @@ DIFFICULTY_SETTINGS = {
         'spawn_rate': 25,
         'max_delta': 12000,
         'difficulty_multiplier': 1.5,
+        'spread_enemy_cap': 3,
     },
 }
 

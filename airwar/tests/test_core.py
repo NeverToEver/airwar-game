@@ -44,7 +44,7 @@ class TestPlayer:
         p = Player(400, 900, PygameInputHandler())
         p._fire_cooldown = 0
         p.auto_fire()
-        assert len(p.get_bullets()) == 1
+        assert len(p.get_bullets()) == 2
 
     def test_player_takes_damage(self):
         from airwar.entities import Player

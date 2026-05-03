@@ -59,8 +59,7 @@ class Player(Entity):
     BOOST_RAMP_DELTA = 0.85
     BULLET_SPAWN_Y_OFFSET = 36
     SPREAD_ANGLES = (-15, 0, 15)
-    LASER_X_OFFSET = 3
-    SINGLE_X_OFFSET = 5
+    WING_MUZZLE_X_OFFSETS = (-24, 24)
     PHASE_DASH_COST_RATIO = 0.25
     PHASE_DASH_WINDUP_FRAMES = 5
     PHASE_DASH_ACTIVE_FRAMES = 14
@@ -438,54 +437,65 @@ class Player(Entity):
     def _create_bullets_for_shot_mode(self, return_first: bool = False) -> Optional[Bullet]:
         center_x = self.rect.x + self.rect.width / 2
         bullet_y = self.rect.y - self.BULLET_SPAWN_Y_OFFSET
-        aim_direction = self._get_aim_direction(center_x, bullet_y)
+        first_bullet = None
 
         if self._has_spread:
-            bullet_x = center_x - 5
-            first_bullet = None
-            for angle in self.SPREAD_ANGLES:
-                bullet = Bullet(
-                    bullet_x,
-                    bullet_y,
-                    BulletData(
-                        damage=self.bullet_damage,
-                        speed=self._constants.PLAYER.BULLET_SPEED,
-                        angle_offset=angle,
-                        bullet_type='spread_laser' if self._has_laser else 'spread'
+            for muzzle_x, muzzle_y in self._wing_muzzle_positions(center_x, bullet_y):
+                aim_direction = self._get_aim_direction(muzzle_x, muzzle_y)
+                for angle in self.SPREAD_ANGLES:
+                    bullet = self._create_bullet_from_muzzle(
+                        muzzle_x,
+                        muzzle_y,
+                        BulletData(
+                            damage=self.bullet_damage,
+                            speed=self._constants.PLAYER.BULLET_SPEED,
+                            angle_offset=angle,
+                            bullet_type='spread_laser' if self._has_laser else 'spread'
+                        ),
                     )
-                )
-                self._aim_bullet_velocity(bullet, aim_direction, angle)
-                if self._has_laser:
-                    bullet.data.is_laser = True
-                if self._has_explosive:
-                    bullet.data.is_explosive = True
-                self._bullets.append(bullet)
-                if first_bullet is None:
-                    first_bullet = bullet
+                    self._aim_bullet_velocity(bullet, aim_direction, angle)
+                    if self._has_laser:
+                        bullet.data.is_laser = True
+                    if self._has_explosive:
+                        bullet.data.is_explosive = True
+                    self._bullets.append(bullet)
+                    if first_bullet is None:
+                        first_bullet = bullet
             return first_bullet if return_first else None
-        elif self._has_laser:
-            bullet = Bullet(
-                center_x - self.LASER_X_OFFSET,
-                bullet_y,
-                BulletData(damage=self.bullet_damage, speed=self._constants.PLAYER.BULLET_SPEED,
-                          bullet_type='laser', is_laser=True)
+
+        for muzzle_x, muzzle_y in self._wing_muzzle_positions(center_x, bullet_y):
+            bullet = self._create_bullet_from_muzzle(
+                muzzle_x,
+                muzzle_y,
+                self._create_primary_bullet_data(),
             )
+            aim_direction = self._get_aim_direction(muzzle_x, muzzle_y)
             self._aim_bullet_velocity(bullet, aim_direction)
             if self._has_explosive:
                 bullet.data.is_explosive = True
             self._bullets.append(bullet)
-            return bullet
-        else:
-            bullet = Bullet(
-                center_x - self.SINGLE_X_OFFSET,
-                bullet_y,
-                BulletData(damage=self.bullet_damage, speed=self._constants.PLAYER.BULLET_SPEED)
+            if first_bullet is None:
+                first_bullet = bullet
+        return first_bullet
+
+    def _wing_muzzle_positions(self, center_x: float, bullet_y: float) -> tuple[tuple[float, float], ...]:
+        return tuple((center_x + offset_x, bullet_y) for offset_x in self.WING_MUZZLE_X_OFFSETS)
+
+    def _create_primary_bullet_data(self) -> BulletData:
+        if self._has_laser:
+            return BulletData(
+                damage=self.bullet_damage,
+                speed=self._constants.PLAYER.BULLET_SPEED,
+                bullet_type='laser',
+                is_laser=True,
             )
-            self._aim_bullet_velocity(bullet, aim_direction)
-            if self._has_explosive:
-                bullet.data.is_explosive = True
-            self._bullets.append(bullet)
-            return bullet
+        return BulletData(damage=self.bullet_damage, speed=self._constants.PLAYER.BULLET_SPEED)
+
+    def _create_bullet_from_muzzle(self, muzzle_x: float, muzzle_y: float, data: BulletData) -> Bullet:
+        bullet = Bullet(muzzle_x, muzzle_y, data)
+        bullet.rect.x = muzzle_x - bullet.rect.width / 2
+        bullet.rect.y = muzzle_y - bullet.rect.height / 2
+        return bullet
 
     def _get_aim_direction(self, origin_x: float, origin_y: float) -> Vector2:
         if self._aim_target is None:
