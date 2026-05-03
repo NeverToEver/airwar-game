@@ -47,6 +47,7 @@ class SpawnController:
             speed=settings['enemy_speed'],
             spawn_rate=settings['spawn_rate']
         )
+        self.enemy_spawner.set_spread_enemy_cap(settings.get('spread_enemy_cap', 2))
 
         self.enemies: List[Enemy] = []
         self.enemy_bullets: List[Bullet] = []

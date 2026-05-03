@@ -28,17 +28,26 @@ def _bullet_origin(player: Player) -> tuple[float, float]:
     )
 
 
+def _x_at_y(bullet: Bullet, target_y: float) -> float:
+    t = (target_y - bullet.rect.centery) / bullet.velocity.y
+    return bullet.rect.centerx + bullet.velocity.x * t
+
+
 def test_player_single_bullet_aims_at_crosshair() -> None:
     player = _make_player()
     origin_x, origin_y = _bullet_origin(player)
-    player.set_aim_target(origin_x + 300, origin_y)
+    aim_target = (origin_x + 300, origin_y - 120)
+    player.set_aim_target(*aim_target)
 
     player.auto_fire()
 
-    bullet = player.get_bullets()[0]
-    assert bullet.velocity.x > 0
-    assert math.isclose(bullet.velocity.y, 0.0, abs_tol=1e-6)
-    assert math.isclose(bullet.velocity.length(), bullet.data.speed, rel_tol=1e-6)
+    bullets = player.get_bullets()
+    assert len(bullets) == 2
+    assert bullets[0].rect.x < origin_x < bullets[1].rect.x
+    assert all(bullet.velocity.x > 0 for bullet in bullets)
+    assert all(bullet.velocity.y < 0 for bullet in bullets)
+    assert all(math.isclose(_x_at_y(bullet, aim_target[1]), aim_target[0], abs_tol=1e-6) for bullet in bullets)
+    assert all(math.isclose(bullet.velocity.length(), bullet.data.speed, rel_tol=1e-6) for bullet in bullets)
 
 
 def test_player_spread_rotates_around_crosshair_direction() -> None:
@@ -50,11 +59,12 @@ def test_player_spread_rotates_around_crosshair_direction() -> None:
     player.auto_fire()
 
     bullets = player.get_bullets()
-    assert len(bullets) == 3
+    assert len(bullets) == 6
     assert all(bullet.velocity.x > 0 for bullet in bullets)
-    assert bullets[0].velocity.y < 0
-    assert math.isclose(bullets[1].velocity.y, 0.0, abs_tol=1e-6)
-    assert bullets[2].velocity.y > 0
+    left_wing = bullets[:3]
+    right_wing = bullets[3:]
+    assert left_wing[0].velocity.y < left_wing[1].velocity.y < left_wing[2].velocity.y
+    assert right_wing[0].velocity.y < right_wing[1].velocity.y < right_wing[2].velocity.y
 
 
 @pytest.mark.parametrize("weapon_mode", ["laser", "explosive", "laser_explosive"])
@@ -69,12 +79,14 @@ def test_player_special_weapon_modes_aim_at_crosshair(weapon_mode: str) -> None:
 
     player.auto_fire()
 
-    bullet = player.get_bullets()[0]
-    assert math.isclose(bullet.velocity.x, 0.0, abs_tol=1e-6)
-    assert bullet.velocity.y > 0
-    assert math.isclose(bullet.velocity.length(), bullet.data.speed, rel_tol=1e-6)
-    assert bullet.data.is_laser is ("laser" in weapon_mode)
-    assert bullet.data.is_explosive is ("explosive" in weapon_mode)
+    bullets = player.get_bullets()
+    assert len(bullets) == 2
+    assert bullets[0].velocity.x > 0
+    assert bullets[1].velocity.x < 0
+    assert all(bullet.velocity.y > 0 for bullet in bullets)
+    assert all(math.isclose(bullet.velocity.length(), bullet.data.speed, rel_tol=1e-6) for bullet in bullets)
+    assert {bullet.data.is_laser for bullet in bullets} == {"laser" in weapon_mode}
+    assert {bullet.data.is_explosive for bullet in bullets} == {"explosive" in weapon_mode}
 
 
 def test_bullet_deactivates_when_leaving_horizontal_bounds() -> None:

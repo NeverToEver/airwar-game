@@ -61,6 +61,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     PAUSE_BAR_WIDTH = 4
     PAUSE_BAR_HEIGHT = 14
     PAUSE_BAR_GAP = 4
+    AIM_ASSIST_BREAK_DISTANCE = 38.0
+    AIM_ASSIST_BLEND = 0.45
 
     AUTO_SAVE_INTERVAL = 1800  # 30 seconds at 60fps
 
@@ -89,6 +91,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._boost_gauge: BoostGauge = None
         self._aim_crosshair = AimCrosshair()
         self._aim_position = (0.0, 0.0)
+        self._raw_aim_position = (0.0, 0.0)
+        self._aim_assist_target = None
         self._give_up_detector = None
         self._give_up_ui = None
         self._bullet_manager: BulletManager = None
@@ -131,7 +135,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         screen_width = get_screen_width()
         screen_height = get_screen_height()
         self._init_pause_button_layout()
-        self._set_aim_position(pygame.mouse.get_pos())
+        self._set_raw_aim_position(pygame.mouse.get_pos())
 
         difficulty = kwargs.get('difficulty', 'medium')
         username = kwargs.get('username', 'Player')
@@ -251,10 +255,10 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             if self.game_renderer.integrated_hud:
                 self.game_renderer.integrated_hud.toggle()
         elif event.type == pygame.MOUSEMOTION:
-            self._set_aim_position(event.pos)
+            self._set_raw_aim_position(event.pos)
             self.handle_mouse_motion(event.pos)
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            self._set_aim_position(event.pos)
+            self._set_raw_aim_position(event.pos)
             if event.button == 1 and self.handle_mouse_click(event.pos):
                 self._handle_button_click(self.get_hovered_button())
 
@@ -288,7 +292,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         4. Game logic update (if not paused).
         """
         self.reward_selector.update()
-        self._set_aim_position(pygame.mouse.get_pos())
+        self._set_raw_aim_position(pygame.mouse.get_pos())
+        self._update_aim_assist()
         self._aim_crosshair.update()
 
         if self.game_renderer and self.game_renderer.integrated_hud:
@@ -493,11 +498,71 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         # Render notifications above reward selector so critical messages are not obscured
         self._ui_manager.render_notification(surface)
 
-    def _set_aim_position(self, position: tuple[int, int]) -> None:
+    def _set_raw_aim_position(self, position: tuple[int, int]) -> None:
         x = max(0, min(float(position[0]), float(get_screen_width())))
         y = max(0, min(float(position[1]), float(get_screen_height())))
+        self._raw_aim_position = (x, y)
         self._aim_position = (x, y)
         self._sync_player_aim_target()
+
+    def _update_aim_assist(self) -> None:
+        target = self._resolve_aim_assist_target()
+        if target is None:
+            self._aim_position = self._raw_aim_position
+            self._sync_player_aim_target()
+            return
+
+        raw_x, raw_y = self._raw_aim_position
+        target_rect = self._target_rect(target)
+        target_x, target_y = target_rect.centerx, target_rect.centery
+        self._aim_position = (
+            raw_x + (target_x - raw_x) * self.AIM_ASSIST_BLEND,
+            raw_y + (target_y - raw_y) * self.AIM_ASSIST_BLEND,
+        )
+        self._sync_player_aim_target()
+
+    def _resolve_aim_assist_target(self):
+        raw_x, raw_y = self._raw_aim_position
+        if self._aim_assist_target and self._is_aim_assist_locked(self._aim_assist_target, raw_x, raw_y):
+            return self._aim_assist_target
+
+        for target in self._aim_assist_candidates():
+            if self._is_raw_aim_inside_target(target, raw_x, raw_y):
+                self._aim_assist_target = target
+                return target
+
+        self._aim_assist_target = None
+        return None
+
+    def _aim_assist_candidates(self) -> list:
+        if not self.spawn_controller:
+            return []
+        targets = [enemy for enemy in self.spawn_controller.enemies if getattr(enemy, 'active', False)]
+        boss = self.spawn_controller.boss
+        if boss and getattr(boss, 'active', False):
+            targets.append(boss)
+        return targets
+
+    def _is_raw_aim_inside_target(self, target, raw_x: float, raw_y: float) -> bool:
+        return self._target_rect(target).collidepoint(raw_x, raw_y)
+
+    def _is_aim_assist_locked(self, target, raw_x: float, raw_y: float) -> bool:
+        if not getattr(target, 'active', False):
+            return False
+        rect = self._target_rect(target)
+        if rect.collidepoint(raw_x, raw_y):
+            return True
+        dx = raw_x - rect.centerx
+        dy = raw_y - rect.centery
+        return (dx * dx + dy * dy) <= self.AIM_ASSIST_BREAK_DISTANCE * self.AIM_ASSIST_BREAK_DISTANCE
+
+    def _target_rect(self, target) -> pygame.Rect:
+        rect = target.get_hitbox() if hasattr(target, 'get_hitbox') else target.rect
+        if isinstance(rect, pygame.Rect):
+            return rect
+        if hasattr(target, 'get_hitbox'):
+            rect = target.get_hitbox()
+        return pygame.Rect(rect.x, rect.y, rect.width, rect.height)
 
     def _sync_player_aim_target(self) -> None:
         if self.player:
