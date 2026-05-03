@@ -23,13 +23,6 @@ def _code_hash(func) -> str:
         return "unknown"
 
 
-def clear_ship_caches() -> None:
-    """Clear all ship sprite caches. Useful when tweaking ship designs."""
-    _player_sprite_cache.clear()
-    _enemy_sprite_cache.clear()
-    _boss_sprite_cache.clear()
-
-
 # ─── Player (Forward-Swept Wing Attack Craft) ──────────────────────────────────
 
 def get_player_sprite(width: float = 50, height: float = 60) -> pygame.Surface:

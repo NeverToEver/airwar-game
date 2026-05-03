@@ -29,10 +29,14 @@ class SimpleDB:
             return {}
 
     def _save(self, data: dict) -> None:
-        tmp_path = self.db_path + ".tmp"
-        with open(tmp_path, 'w') as f:
-            json.dump(data, f, indent=2)
-        os.replace(tmp_path, self.db_path)
+        try:
+            tmp_path = self.db_path + ".tmp"
+            with open(tmp_path, 'w') as f:
+                json.dump(data, f, indent=2)
+            os.replace(tmp_path, self.db_path)
+        except (OSError, TypeError) as e:
+            import logging
+            logging.error(f"Failed to save database: {e}")
 
     def _hash_password(self, password: str, salt: str) -> str:
         return hashlib.pbkdf2_hmac(

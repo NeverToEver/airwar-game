@@ -3,7 +3,7 @@ import pygame
 from airwar.utils.fonts import get_cjk_font
 from typing import Dict
 from .scene import Scene
-from airwar.entities import Player, EnemySpawner, Boss, BossData
+from airwar.entities import Player
 from airwar.game.systems.health_system import HealthSystem
 from airwar.game.systems.reward_system import RewardSystem
 from airwar.game.rendering.hud_renderer import HUDRenderer
@@ -361,24 +361,6 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     def _on_give_up_complete(self) -> None:
         self.game_controller.on_player_hit(GAME_CONSTANTS.DAMAGE.INSTANT_KILL, self.player)
 
-    def _can_use_give_up(self) -> bool:
-        return (
-            self.game_controller.is_playing()
-            and not self.game_controller.state.paused
-            and not self.reward_selector.visible
-        )
-
-    def _on_reward_selected(self, reward: dict) -> None:
-        """Handle reward selection callback (compatibility layer).
-
-        Args:
-            reward: Selected reward configuration dictionary.
-        """
-        self._milestone_manager._on_reward_selected(reward, self.player)
-
-    def _check_milestones(self) -> None:
-        self._milestone_manager.check_and_trigger(self.player)
-
     def render(self, surface: pygame.Surface) -> None:
         """Render the game scene.
 
@@ -595,15 +577,6 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if self.game_controller:
             self.game_controller.cycle_count = value
 
-    @property
-    def boss(self):
-        """Get the current Boss instance.
-
-        Returns:
-            Boss instance or None if not present.
-        """
-        return self.spawn_controller.boss if self.spawn_controller else None
-
     def is_game_over(self) -> bool:
         """Check if the game is over.
 
@@ -656,18 +629,6 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         """
         if self.reward_system:
             self.reward_system.unlocked_buffs = value
-
-    def _calculate_damage_taken(self, damage: int) -> int:
-        return self.reward_system.calculate_damage_taken(damage)
-
-    def _try_dodge(self) -> bool:
-        return self.reward_system.try_dodge()
-
-    def _get_current_threshold(self, index: int) -> float:
-        return self.game_controller.get_current_threshold(index)
-
-    def _get_next_threshold(self) -> float:
-        return self.game_controller.get_next_threshold()
 
     @property
     def difficulty(self) -> str:

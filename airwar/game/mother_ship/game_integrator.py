@@ -22,12 +22,12 @@ class GameIntegrator:
         Coordinates between game state and mothership docking flow,
         updating entity states and UI during the docking process.
         """
-    MOTHSHIP_BULLET_DAMAGE = 250
-    MOTHSHIP_FIRE_RATE = 18       # ~3.3 shots/sec at 60fps — heavy missile cadence
-    MOTHSHIP_BULLET_SPEED = 10
-    MOTHSHIP_TARGET_COUNT = 5     # fire at up to 5 closest enemies per volley
-    MOTHSHIP_EXPLOSION_RADIUS = 80
-    MOTHSHIP_EXPLOSION_DAMAGE = 60
+    MOTHERSHIP_BULLET_DAMAGE = 250
+    MOTHERSHIP_FIRE_RATE = 18       # ~3.3 shots/sec at 60fps — heavy missile cadence
+    MOTHERSHIP_BULLET_SPEED = 10
+    MOTHERSHIP_TARGET_COUNT = 5     # fire at up to 5 closest enemies per volley
+    MOTHERSHIP_EXPLOSION_RADIUS = 80
+    MOTHERSHIP_EXPLOSION_DAMAGE = 60
     AMMO_CELL_COUNT = 10.0
 
     BAR_TYPE_HOLD = "hold"
@@ -156,7 +156,7 @@ class GameIntegrator:
         # 帧计数而非 delta-time：与项目其他开火逻辑一致，假定稳定 60fps。
         # 帧率下降时开火速度随之下降，可接受的 trade-off。
         self._mothership_fire_timer += 1
-        if self._mothership_fire_timer >= self.MOTHSHIP_FIRE_RATE:
+        if self._mothership_fire_timer >= self.MOTHERSHIP_FIRE_RATE:
             self._mothership_fire_timer = 0
             self._fire_at_enemies()
 
@@ -181,17 +181,17 @@ class GameIntegrator:
         ), e) for e in enemies if e.active]
         active_enemies.sort(key=lambda x: x[0])
 
-        for dist, target in active_enemies[:self.MOTHSHIP_TARGET_COUNT]:
+        for dist, target in active_enemies[:self.MOTHERSHIP_TARGET_COUNT]:
             if dist > 0:
-                vx = (target.rect.centerx - mother_ship_pos[0]) / dist * self.MOTHSHIP_BULLET_SPEED
-                vy = (target.rect.centery - mother_ship_pos[1]) / dist * self.MOTHSHIP_BULLET_SPEED
+                vx = (target.rect.centerx - mother_ship_pos[0]) / dist * self.MOTHERSHIP_BULLET_SPEED
+                vy = (target.rect.centery - mother_ship_pos[1]) / dist * self.MOTHERSHIP_BULLET_SPEED
 
                 bullet = Bullet(
                     mother_ship_pos[0],
                     mother_ship_pos[1],
                     BulletData(
-                        damage=self.MOTHSHIP_BULLET_DAMAGE,
-                        speed=self.MOTHSHIP_BULLET_SPEED,
+                        damage=self.MOTHERSHIP_BULLET_DAMAGE,
+                        speed=self.MOTHERSHIP_BULLET_SPEED,
                         owner="mothership",
                         bullet_type="explosive_missile",
                         is_explosive=True,
@@ -251,12 +251,12 @@ class GameIntegrator:
     def _trigger_explosion(self, x: float, y: float) -> None:
         """Trigger explosion visual effect at position."""
         if self._game_scene and hasattr(self._game_scene, 'trigger_explosion'):
-            self._game_scene.trigger_explosion(x, y, self.MOTHSHIP_EXPLOSION_RADIUS)
+            self._game_scene.trigger_explosion(x, y, self.MOTHERSHIP_EXPLOSION_RADIUS)
 
     def _apply_missile_splash(self, x: float, y: float, enemies, boss) -> None:
         """Apply AoE damage to enemies within explosion radius."""
-        radius_sq = self.MOTHSHIP_EXPLOSION_RADIUS ** 2
-        explosion_damage = self.MOTHSHIP_EXPLOSION_DAMAGE
+        radius_sq = self.MOTHERSHIP_EXPLOSION_RADIUS ** 2
+        explosion_damage = self.MOTHERSHIP_EXPLOSION_DAMAGE
 
         for enemy in enemies:
             if not enemy.active:

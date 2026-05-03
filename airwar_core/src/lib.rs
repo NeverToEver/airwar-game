@@ -15,19 +15,14 @@ fn airwar_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(vector2::vec2_add, m)?)?;
     m.add_function(wrap_pyfunction!(vector2::vec2_sub, m)?)?;
     m.add_function(wrap_pyfunction!(vector2::vec2_dot, m)?)?;
-    m.add_function(wrap_pyfunction!(vector2::vec2_cross, m)?)?;
     m.add_function(wrap_pyfunction!(vector2::vec2_scale, m)?)?;
     m.add_function(wrap_pyfunction!(vector2::vec2_distance, m)?)?;
-    m.add_function(wrap_pyfunction!(vector2::vec2_length_squared, m)?)?;
-    m.add_function(wrap_pyfunction!(vector2::vec2_distance_squared, m)?)?;
     m.add_function(wrap_pyfunction!(vector2::vec2_angle, m)?)?;
     m.add_function(wrap_pyfunction!(vector2::vec2_from_angle, m)?)?;
     m.add_function(wrap_pyfunction!(vector2::vec2_lerp, m)?)?;
     m.add_function(wrap_pyfunction!(vector2::vec2_clamp_length, m)?)?;
 
     // Collision functions
-    m.add_function(wrap_pyfunction!(collision::spatial_hash_collide, m)?)?;
-    m.add_function(wrap_pyfunction!(collision::spatial_hash_collide_single, m)?)?;
     m.add_function(wrap_pyfunction!(collision::batch_collide_bullets_vs_entities, m)?)?;
 
     // Persistent spatial hash
@@ -39,7 +34,6 @@ fn airwar_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(movement::compute_boss_attack, m)?)?;
 
     // Particle functions
-    m.add_function(wrap_pyfunction!(particles::update_particle, m)?)?;
     m.add_function(wrap_pyfunction!(particles::batch_update_particles, m)?)?;
     m.add_function(wrap_pyfunction!(particles::generate_explosion_particles, m)?)?;
 
