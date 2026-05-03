@@ -183,20 +183,6 @@ class BossConstants:
     })
 
 
-@dataclass
-class BoostConstants:
-    """Boost system constants.
-
-    Attributes:
-        CONSUMPTION_RATE: Boost consumed per frame while active and moving.
-        BASE_RECOVERY_RATE: Default recovery rate per frame.
-        SPEED_MULTIPLIER: Player speed multiplier during boost.
-    """
-    CONSUMPTION_RATE: int = 1
-    BASE_RECOVERY_RATE: float = 1.0
-    SPEED_MULTIPLIER: float = 1.7
-
-
 @dataclass(frozen=True)
 class EnemyConstants:
     """Enemy-related constants.
@@ -257,7 +243,6 @@ class GameConstants:
     TIMING: TimingConstants = field(default_factory=TimingConstants)
     BOSS: BossConstants = field(default_factory=BossConstants)
     ENEMY: EnemyConstants = field(default_factory=EnemyConstants)
-    BOOST: BoostConstants = field(default_factory=BoostConstants)
     REWARD: RewardConstants = field(default_factory=RewardConstants)
     
     def get_difficulty_multiplier(self, difficulty: str) -> float:

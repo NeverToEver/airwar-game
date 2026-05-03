@@ -6,6 +6,9 @@ and exit_confirm_scene.py into a single utility class.
 
 import pygame
 from typing import List, Tuple
+from airwar.ui.chamfered_panel import draw_chamfered_panel
+from airwar.config.design_tokens import SceneColors
+from airwar.utils.responsive import ResponsiveHelper
 
 
 class SceneRenderingUtils:
@@ -177,3 +180,179 @@ class SceneRenderingUtils:
             line_surf = pygame.Surface((line_width, 2), pygame.SRCALPHA)
             line_surf.fill((*color[:3], alpha_base - i * alpha_decrement))
             surface.blit(line_surf, (center_x - line_width // 2, top_y + offset_y))
+
+
+def draw_themed_title(
+    surface: pygame.Surface,
+    text: str,
+    font: pygame.font.Font,
+    pos: Tuple[int, int],
+) -> None:
+    """Draw title with military-style layered amber glow effect.
+
+    Renders two layers of glow (wide-dim and tight-bright) beneath the main
+    text, using SceneColors.GOLD_DIM and SceneColors.GOLD_PRIMARY.
+
+    Args:
+        surface: Surface to draw on.
+        text: Text string to render.
+        font: Pygame font object.
+        pos: (x, y) center position for the text.
+    """
+    for blur, alpha, color in [
+        (4, 20, SceneColors.GOLD_DIM),
+        (2, 35, SceneColors.GOLD_PRIMARY),
+    ]:
+        glow_surf = font.render(text, True, color)
+        glow_surf.set_alpha(alpha)
+        for offset_x in range(-blur, blur + 1, 2):
+            for offset_y in range(-blur, blur + 1, 2):
+                if offset_x * offset_x + offset_y * offset_y <= blur * blur:
+                    glow_rect = glow_surf.get_rect(
+                        center=(pos[0] + offset_x, pos[1] + offset_y)
+                    )
+                    surface.blit(glow_surf, glow_rect)
+
+    title = font.render(text, True, SceneColors.GOLD_PRIMARY)
+    surface.blit(title, title.get_rect(center=pos))
+
+
+def draw_themed_decorations(
+    surface: pygame.Surface,
+    width: int,
+    height: int,
+) -> None:
+    """Draw military-style corner bracket decorations around the title area.
+
+    Draws four L-shaped brackets (top-left, top-right, bottom-left,
+    bottom-right) centered horizontally at width//2, vertically at height//3.
+
+    Args:
+        surface: Surface to draw on.
+        width: Screen width in pixels.
+        height: Screen height in pixels.
+    """
+    center_x = width // 2
+
+    bracket_size = 20
+    bracket_color = SceneColors.BORDER_DIM
+
+    # Top bracket
+    pygame.draw.lines(
+        surface,
+        bracket_color,
+        False,
+        [
+            (center_x - 100, height // 3 - 50),
+            (center_x - 100, height // 3 - 50 - bracket_size),
+            (center_x - 100 + bracket_size, height // 3 - 50 - bracket_size),
+        ],
+        2,
+    )
+    pygame.draw.lines(
+        surface,
+        bracket_color,
+        False,
+        [
+            (center_x + 100, height // 3 - 50),
+            (center_x + 100, height // 3 - 50 - bracket_size),
+            (center_x + 100 - bracket_size, height // 3 - 50 - bracket_size),
+        ],
+        2,
+    )
+
+    # Bottom bracket
+    pygame.draw.lines(
+        surface,
+        bracket_color,
+        False,
+        [
+            (center_x - 100, height // 3 + 50),
+            (center_x - 100, height // 3 + 50 + bracket_size),
+            (center_x - 100 + bracket_size, height // 3 + 50 + bracket_size),
+        ],
+        2,
+    )
+    pygame.draw.lines(
+        surface,
+        bracket_color,
+        False,
+        [
+            (center_x + 100, height // 3 + 50),
+            (center_x + 100, height // 3 + 50 + bracket_size),
+            (center_x + 100 - bracket_size, height // 3 + 50 + bracket_size),
+        ],
+        2,
+    )
+
+
+def draw_themed_option_box(
+    surface: pygame.Surface,
+    text: str,
+    y: int,
+    is_selected: bool,
+    option_font: pygame.font.Font,
+    option_rects: List[pygame.Rect],
+    base_box_width: int,
+    base_box_height: int,
+    scale: float = 1.0,
+) -> None:
+    """Draw option box with military-style chamfered corners.
+
+    Renders a chamfered-panel option box with an outer glow effect when
+    selected. Uses SceneColors for the military color scheme.
+
+    Args:
+        surface: Surface to draw on.
+        text: Option text string.
+        y: Vertical center position of the box.
+        is_selected: Whether this option is currently selected.
+        option_font: Pygame font for option text.
+        option_rects: List to append the computed rect to (for mouse hit-testing).
+        base_box_width: Base width of the option box (before scaling).
+        base_box_height: Base height of the option box (before scaling).
+        scale: Responsive scale factor.
+    """
+    width, height = surface.get_size()
+    center_x = width // 2
+
+    box_width = ResponsiveHelper.scale(base_box_width, scale)
+    box_height = ResponsiveHelper.scale(base_box_height, scale)
+    box_rect = pygame.Rect(
+        center_x - box_width // 2, y - box_height // 2, box_width, box_height
+    )
+    option_rects.append(box_rect)
+
+    if is_selected:
+        draw_chamfered_panel(
+            surface,
+            box_rect.x - 4,
+            box_rect.y - 4,
+            box_rect.width + 8,
+            box_rect.height + 8,
+            SceneColors.BG_PANEL,
+            SceneColors.GOLD_GLOW,
+            SceneColors.GOLD_GLOW,
+            10,
+        )
+
+    draw_chamfered_panel(
+        surface,
+        box_rect.x,
+        box_rect.y,
+        box_rect.width,
+        box_rect.height,
+        SceneColors.BG_PANEL if is_selected else SceneColors.BG_PANEL_LIGHT,
+        SceneColors.GOLD_PRIMARY if is_selected else SceneColors.BORDER_DIM,
+        None,
+        8,
+    )
+
+    arrow = ">> " if is_selected else "   "
+    option_text = option_font.render(
+        f"{arrow}{text}",
+        True,
+        SceneColors.GOLD_PRIMARY if is_selected else SceneColors.TEXT_DIM,
+    )
+    text_rect = option_text.get_rect(center=(center_x, y))
+    surface.blit(option_text, text_rect)

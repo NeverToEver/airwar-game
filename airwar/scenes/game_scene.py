@@ -37,7 +37,7 @@ from airwar.game.managers import (
     UIManager,
     GameLoopManager,
 )
-from airwar.config import DIFFICULTY_SETTINGS, BOOST_CONFIG, get_screen_width, get_screen_height
+from airwar.config import DIFFICULTY_SETTINGS, BOOST_CONFIG, VALID_DIFFICULTIES, get_screen_width, get_screen_height
 from airwar.input import PygameInputHandler
 from airwar.utils.mouse_interaction import MouseInteractiveMixin
 from airwar.config.design_tokens import get_design_tokens
@@ -669,30 +669,30 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if not save_data or not self.game_controller or not self.player:
             return
 
-        self.game_controller.state.score = save_data.score
-        self.game_controller.state.kill_count = save_data.kill_count
-        self.game_controller.state.boss_kill_count = save_data.boss_kill_count
+        self.game_controller.state.score = max(0, save_data.score)
+        self.game_controller.state.kill_count = max(0, save_data.kill_count)
+        self.game_controller.state.boss_kill_count = max(0, save_data.boss_kill_count)
         self.game_controller.milestone_index = save_data.cycle_count
         self.game_controller.cycle_count = save_data.cycle_count
 
-        self.player.health = save_data.player_health
+        self.player.health = min(max(1, save_data.player_health), save_data.player_max_health)
         self.player.max_health = save_data.player_max_health
 
         self.reward_system.unlocked_buffs = save_data.unlocked_buffs
         self._restore_buff_levels(save_data.buff_levels)
         self._reapply_buff_effects()
 
-        self.game_controller.state.difficulty = save_data.difficulty
+        self.game_controller.state.difficulty = save_data.difficulty if save_data.difficulty in VALID_DIFFICULTIES else 'medium'
         self.game_controller.state.username = save_data.username
-        self.game_controller.state.score_multiplier = GAME_CONSTANTS.get_difficulty_multiplier(save_data.difficulty)
+        self.game_controller.state.score_multiplier = GAME_CONSTANTS.get_difficulty_multiplier(self.game_controller.state.difficulty)
 
         if save_data.is_in_mothership:
             self._restore_to_mothership_state()
-        elif save_data.player_x != 0 or save_data.player_y != 0:
-            self.player.rect.x = save_data.player_x
-            self.player.rect.y = save_data.player_y
         else:
-            self.player.rect.y = get_screen_height() - PlayerConstants.SCREEN_BOTTOM_OFFSET
+            sw = get_screen_width()
+            sh = get_screen_height()
+            self.player.rect.x = max(0, min(save_data.player_x, sw - self.player.rect.width))
+            self.player.rect.y = max(0, min(save_data.player_y, sh - self.player.rect.height))
 
         self.game_controller.state.entrance_animation = False
         self.game_controller.state.entrance_timer = 0

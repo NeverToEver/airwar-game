@@ -1,8 +1,7 @@
 """Mothership state machine — docking flow and state transitions."""
-from typing import Optional
 import pygame
 from .interfaces import IMotherShipStateMachine
-from .mother_ship_state import MotherShipState, DockingProgress, MotherShipCooldown, DockedStayProgress
+from .mother_ship_state import MotherShipState, MotherShipCooldown, DockedStayProgress
 from .event_bus import EventBus
 
 

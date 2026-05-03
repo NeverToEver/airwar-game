@@ -3,7 +3,6 @@ from typing import List, Dict, Optional
 import logging
 
 from .difficulty_strategies import (
-    DifficultyStrategy,
     DifficultyStrategyFactory,
 )
 from ...config.difficulty_config import BASE_ENEMY_PARAMS
@@ -160,7 +159,7 @@ class DifficultyManager:
             except (KeyboardInterrupt, SystemExit):
                 raise
             except Exception as e:
-                self._logger.critical(
+                self._logger.error(
                     f"Difficulty listener {listener.__class__.__name__} failed "
                     f"and will be removed: {e}", exc_info=True
                 )

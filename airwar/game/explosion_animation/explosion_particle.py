@@ -1,5 +1,4 @@
 """Explosion particle — single particle in an explosion effect."""
-import math
 from typing import Tuple
 
 

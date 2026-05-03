@@ -2,7 +2,7 @@
 import pygame
 from airwar.utils.fonts import get_cjk_font
 import math
-from airwar.config.design_tokens import get_design_tokens, SceneColors, SystemColors, SystemUI
+from airwar.config.design_tokens import get_design_tokens, SceneColors, SystemColors
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 
 

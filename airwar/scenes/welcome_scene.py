@@ -8,7 +8,7 @@ from airwar.utils.responsive import ResponsiveHelper
 from airwar.ui.menu_background import MenuBackground
 from airwar.ui.particles import ParticleSystem
 from airwar.ui.chamfered_panel import draw_chamfered_panel
-from airwar.config.design_tokens import get_design_tokens, SceneColors, SystemUI
+from airwar.config.design_tokens import get_design_tokens, SceneColors
 from airwar.window.window import get_window
 from airwar.utils.mouse_interaction import MouseInteractiveMixin
 
@@ -42,6 +42,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
     def __init__(self):
         Scene.__init__(self)
         MouseInteractiveMixin.__init__(self)
+        self._is_error = False
 
     def enter(self, **kwargs) -> None:
         self.clear_hover()
@@ -52,6 +53,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         self.username = ""
         self.password = ""
         self.message = ""
+        self._is_error = False
         self.message_timer = 0
         self.want_to_quit = False
         self.show_guest_confirm = False
@@ -212,35 +214,43 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
     def _do_login(self) -> None:
         if not self.username or not self.password:
             self.message = "请输入用户名和密码"
+            self._is_error = True
             self.message_timer = 120
             return
         if self.db.verify_user(self.username, self.password):
             self.message = ""
+            self._is_error = False
             self.running = False
         else:
             self.message = "用户名或密码错误"
+            self._is_error = True
             self.message_timer = 120
 
     def _do_register(self) -> None:
         if not self.username or not self.password:
             self.message = "请输入用户名和密码"
+            self._is_error = True
             self.message_timer = 120
             return
         if len(self.username) < 3:
             self.message = "用户名至少3个字符"
+            self._is_error = True
             self.message_timer = 120
             return
         if len(self.password) < 3:
             self.message = "密码至少3个字符"
+            self._is_error = True
             self.message_timer = 120
             return
         if self.db.create_user(self.username, self.password):
             self.message = "注册成功！现在可以开始游戏了"
+            self._is_error = False
             self.message_timer = 120
             self.mode = 'login'
             self.password = ""
         else:
             self.message = "用户名已存在"
+            self._is_error = True
             self.message_timer = 120
 
     # -- Update ---------------------------------------------------------
@@ -251,6 +261,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             self.message_timer -= 1
             if self.message_timer == 0:
                 self.message = ""
+                self._is_error = False
         self.cursor_timer += 1
         if self.cursor_timer >= 30:
             self.cursor_timer = 0
@@ -532,8 +543,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
     def _render_message(self, surface, sw, sh):
         SC = SceneColors
-        is_error = "Invalid" in self.message or "min" in self.message or "exists" in self.message
-        color = SC.DANGER_RED if is_error else SC.FOREST_GREEN
+        color = SC.DANGER_RED if self._is_error else SC.FOREST_GREEN
         msg_surf = self.input_font.render(self.message, True, color)
         surface.blit(msg_surf, msg_surf.get_rect(center=(sw // 2, sh - 75)))
 

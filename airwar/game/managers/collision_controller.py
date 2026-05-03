@@ -1,7 +1,6 @@
 """Collision detection between entities using spatial hashing."""
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import List, Tuple, Callable, Optional, TYPE_CHECKING
-import pygame
 
 from ..constants import GAME_CONSTANTS
 from ...config import EXPLOSION_RADIUS

@@ -47,6 +47,12 @@ class PersistenceManager(IPersistenceManager):
             self._validate_save_dict(save_dict)
 
             tmp_path = self._save_path + ".tmp"
+            if os.path.exists(tmp_path):
+                logger.warning(f"Found stale temp file {tmp_path}, cleaning up")
+                try:
+                    os.remove(tmp_path)
+                except OSError as e:
+                    logger.error(f"Failed to remove stale temp file {tmp_path}: {e}")
             with open(tmp_path, 'w', encoding='utf-8') as f:
                 json.dump(save_dict, f, indent=2, ensure_ascii=False)
             os.replace(tmp_path, self._save_path)
@@ -93,6 +99,32 @@ class PersistenceManager(IPersistenceManager):
                     f"Field '{key}' has wrong type: expected {expected_type.__name__}, "
                     f"got {type(data[key]).__name__}"
                 )
+
+        # Semantic validation
+        if 'player_max_health' in data and data['player_max_health'] <= 0:
+            raise SaveDataCorruptedError(
+                f"player_max_health must be > 0, got {data['player_max_health']}"
+            )
+        if 'player_health' in data and 'player_max_health' in data:
+            if not (1 <= data['player_health'] <= data['player_max_health']):
+                raise SaveDataCorruptedError(
+                    f"player_health must be between 1 and player_max_health "
+                    f"({data['player_max_health']}), got {data['player_health']}"
+                )
+        for key in ('score', 'kill_count', 'boss_kill_count', 'cycle_count'):
+            if key in data and data[key] < 0:
+                raise SaveDataCorruptedError(
+                    f"{key} must be >= 0, got {data[key]}"
+                )
+        if 'difficulty' in data and data['difficulty'] not in ('easy', 'medium', 'hard'):
+            raise SaveDataCorruptedError(
+                f"difficulty must be one of 'easy', 'medium', 'hard', "
+                f"got '{data['difficulty']}'"
+            )
+        if 'version' in data and data['version'] < 1:
+            raise SaveDataCorruptedError(
+                f"version must be >= 1, got {data['version']}"
+            )
 
     def load_game(self) -> Optional[GameSaveData]:
         if not self.has_saved_game():
