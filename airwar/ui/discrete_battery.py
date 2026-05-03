@@ -9,6 +9,22 @@ class DiscreteBatteryIndicator:
     所有有效段使用同一颜色，颜色根据血量比例整体变化。
     """
 
+    # Health thresholds
+    GREEN_THRESHOLD = 0.5
+    AMBER_THRESHOLD = 0.25
+
+    # Health colors
+    HEALTH_GREEN = (80, 200, 100)
+    HEALTH_AMBER = (230, 170, 50)
+    HEALTH_RED = (220, 60, 45)
+
+    # Empty segment color
+    EMPTY_COLOR = (12, 12, 14, 200)
+
+    # Border-radius divisors
+    VERT_BORDER_DIVISOR = 4
+    HORZ_BORDER_DIVISOR = 5
+
     def __init__(self, width: int, height: int, num_segments: int = 20,
                  orientation: str = 'vertical'):
         if orientation not in ('vertical', 'horizontal'):
@@ -27,12 +43,12 @@ class DiscreteBatteryIndicator:
 
     def _health_color(self, ratio: float):
         """根据血量比例返回整体颜色。"""
-        if ratio > 0.5:
-            return (80, 200, 100)
-        elif ratio > 0.25:
-            return (230, 170, 50)
+        if ratio > self.GREEN_THRESHOLD:
+            return self.HEALTH_GREEN
+        elif ratio > self.AMBER_THRESHOLD:
+            return self.HEALTH_AMBER
         else:
-            return (220, 60, 45)
+            return self.HEALTH_RED
 
     def render(self, surface: pygame.Surface, x: int, y: int) -> None:
         if self._orientation == 'vertical':
@@ -58,13 +74,13 @@ class DiscreteBatteryIndicator:
         seg_y = y
         for i in range(n):
             cur_h = base_h + (1 if i < rem else 0)
-            seg_r = max(1, cur_h // 4)
+            seg_r = max(1, cur_h // self.VERT_BORDER_DIVISOR)
             seg_rect = pygame.Rect(x, int(seg_y), w, cur_h)
 
             if i >= active_start:
                 pygame.draw.rect(surface, color, seg_rect, border_radius=seg_r)
             else:
-                pygame.draw.rect(surface, (12, 12, 14, 200), seg_rect, border_radius=seg_r)
+                pygame.draw.rect(surface, self.EMPTY_COLOR, seg_rect, border_radius=seg_r)
 
             seg_y += cur_h + gap
 
@@ -85,12 +101,12 @@ class DiscreteBatteryIndicator:
         seg_x = x
         for i in range(n):
             cur_w = base_w + (1 if i < rem else 0)
-            seg_r = max(1, cur_w // 5)
+            seg_r = max(1, cur_w // self.HORZ_BORDER_DIVISOR)
             seg_rect = pygame.Rect(int(seg_x), y, cur_w, h)
 
             if i < active_count:
                 pygame.draw.rect(surface, color, seg_rect, border_radius=seg_r)
             else:
-                pygame.draw.rect(surface, (12, 12, 14, 200), seg_rect, border_radius=seg_r)
+                pygame.draw.rect(surface, self.EMPTY_COLOR, seg_rect, border_radius=seg_r)
 
             seg_x += cur_w + gap

@@ -9,6 +9,15 @@ from airwar.ui.discrete_battery import DiscreteBatteryIndicator
 class IntegratedHUD:
     """Integrated HUD — unified heads-up display combining all HUD elements."""
     ANIM_SPEED = 0.06
+    PANEL_BG_ALPHA = 230
+    PANEL_BORDER_ALPHA = 180
+    BATTERY_WIDTH_CAP = 36
+    BATTERY_SEGMENTS = 30
+    BATTERY_BOTTOM_MARGIN = 30
+    HEALTH_DANGER_RATIO = 0.3
+    HEALTH_BAR_HEIGHT = 24
+    BAR_INSET = 20
+    BAR_Y_OFFSET = 46
 
     def __init__(self):
         self._tokens = get_design_tokens()
@@ -55,8 +64,8 @@ class IntegratedHUD:
         self.more_font_size = components.HUD_MORE_FONT_SIZE
         self.progress_bar_height = components.HUD_PROGRESS_BAR_HEIGHT
 
-        self.bg_color = (*colors.BACKGROUND_PANEL, 230)
-        self.border_color = (*colors.PANEL_BORDER, 180)
+        self.bg_color = (*colors.BACKGROUND_PANEL, self.PANEL_BG_ALPHA)
+        self.border_color = (*colors.PANEL_BORDER, self.PANEL_BORDER_ALPHA)
 
     def _get_font(self, size):
         """Return a cached font object for the given size."""
@@ -201,15 +210,15 @@ class IntegratedHUD:
         cw = self._current_width
         inner_h = panel_height - self.padding * 2
         if self._battery_collapsed is None:
-            bw = min(36, cw - 10)
+            bw = min(self.BATTERY_WIDTH_CAP, cw - 10)
             bh = inner_h // 3
             self._battery_collapsed = DiscreteBatteryIndicator(
-                width=bw, height=bh, num_segments=30, orientation='vertical')
+                width=bw, height=bh, num_segments=self.BATTERY_SEGMENTS, orientation='vertical')
 
         battery = self._battery_collapsed
         bw = battery._w
         tx = panel_x + (cw - bw) // 2
-        ty = panel_y + panel_height - self.padding - battery._h - 30
+        ty = panel_y + panel_height - self.padding - battery._h - self.BATTERY_BOTTOM_MARGIN
         battery.render(surface, tx, ty)
 
         border_rect = pygame.Rect(tx, ty, bw, battery._h)
@@ -299,10 +308,10 @@ class IntegratedHUD:
         value = self._render_value(value_font, value_text, coeff_color, "coeff")
         surface.blit(value, (content_x, y + 22))
 
-        bar_width = self.panel_width - self.padding * 2 - 20
+        bar_width = self.panel_width - self.padding * 2 - self.BAR_INSET
         bar_height = components.HUD_COEFFICIENT_BAR_HEIGHT
         bar_x = content_x
-        bar_y = y + 46
+        bar_y = y + self.BAR_Y_OFFSET
 
         max_mult = components.COEFFICIENT_MAX_MULTIPLIER
         pygame.draw.rect(
@@ -353,10 +362,10 @@ class IntegratedHUD:
         value = self._render_value(value_font, f"{progress}%", colors.PROGRESS_COLOR, "progress")
         surface.blit(value, (content_x, y + 22))
 
-        bar_width = self.panel_width - self.padding * 2 - 20
+        bar_width = self.panel_width - self.padding * 2 - self.BAR_INSET
         bar_height = self.progress_bar_height
         bar_x = content_x
-        bar_y = y + 46
+        bar_y = y + self.BAR_Y_OFFSET
 
         pygame.draw.rect(
             surface,
@@ -383,16 +392,16 @@ class IntegratedHUD:
         surface.blit(label, (content_x, y))
 
         health_ratio = health / max_health if max_health > 0 else 0
-        health_color = colors.HEALTH_NORMAL if health_ratio > 0.3 else colors.HEALTH_DANGER
+        health_color = colors.HEALTH_NORMAL if health_ratio > self.HEALTH_DANGER_RATIO else colors.HEALTH_DANGER
 
         value_font = self._get_font(self.value_font_size)
         value = self._render_value(value_font, f"{health}/{max_health}", health_color, "health")
         surface.blit(value, (content_x, y + 22))
 
         bar_width = self.panel_width - self.padding * 2 - 4
-        bar_height = 24
+        bar_height = self.HEALTH_BAR_HEIGHT
         bar_x = content_x
-        bar_y = y + 46
+        bar_y = y + self.BAR_Y_OFFSET
 
         # 深色圆角背景条 — 与 progress bar 风格一致
         pygame.draw.rect(
@@ -411,7 +420,7 @@ class IntegratedHUD:
 
         if self._battery_expanded is None:
             self._battery_expanded = DiscreteBatteryIndicator(
-                width=bar_width - 2, height=bar_height, num_segments=30,
+                width=bar_width - 2, height=bar_height, num_segments=self.BATTERY_SEGMENTS,
                 orientation='horizontal')
         self._battery_expanded.render(surface, bar_x + 1, bar_y)
 
@@ -470,7 +479,7 @@ class IntegratedHUD:
             buff_font = self._get_font(self.buff_font_size)
             buff_text = buff_font.render(buff[:8].upper(), True, text_color)
 
-            buff_width = self.panel_width - self.padding * 2 - 20
+            buff_width = self.panel_width - self.padding * 2 - self.BAR_INSET
             padding = 6
             buff_height = buff_text.get_height() + padding * 2
 

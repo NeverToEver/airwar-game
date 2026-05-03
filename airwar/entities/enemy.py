@@ -58,6 +58,38 @@ class Enemy(Entity):
         entity_id: Unique identifier for this entity.
     """
 
+    # --- Entry/Exit constants ---
+    ENTRY_START_Y = 150
+    EXIT_X_OFFSETS = (-300, 300, 0, -150, 150)
+    EXIT_END_Y = -150
+    EXIT_ACTIVE_END_Y = -100
+    TRANSITION_DURATION = 15
+    ENTRY_SPEED = 0.04
+    EXIT_SPEED = 0.03
+    FIRE_RATE_MIN = 10
+
+    # --- Movement pattern range constants ---
+    SINE_AMP_RANGE = (1.5, 3.0)
+    SINE_FREQ_RANGE = (0.03, 0.06)
+    ZIGZAG_INTERVAL_RANGE = (30, 60)
+    ZIGZAG_SPEED_RANGE = (1.5, 2.5)
+    DIVE_DELAY_RANGE = (20, 50)
+    HOVER_SPEED_RANGE = (1.0, 1.8)
+    HOVER_AMP_RANGE = (20, 40)
+    SPIRAL_SPEED_RANGE = (1.0, 2.0)
+    SPIRAL_RADIUS_RANGE = (30, 50)
+    SPIRAL_FREQ_RANGE = (0.05, 0.08)
+    NOISE_SPEED_RANGE = (0.02, 0.04)
+    NOISE_SCALE_X_RANGE = (0.5, 1.0)
+    NOISE_SCALE_Y_RANGE = (0.3, 0.6)
+    NOISE_AMP_X_RANGE = (0.6, 0.9)
+    NOISE_AMP_Y_RANGE = (0.3, 0.6)
+    AGGR_SPEED_RANGE = (0.025, 0.045)
+    AGGR_SCALE_X_RANGE = (0.6, 1.0)
+    AGGR_SCALE_Y_RANGE = (0.5, 0.8)
+    AGGR_AMP_X_RANGE = (0.5, 0.8)
+    AGGR_AMP_Y_RANGE = (0.4, 0.7)
+
     # 1. Special methods
 
     def __init__(self, x: float, y: float, data: EnemyData):
@@ -91,14 +123,14 @@ class Enemy(Entity):
         self._state = 'entering'
         self._entry_progress = 0.0
         self._entry_start_x = x
-        self._entry_start_y = y - 150  # Start above screen
+        self._entry_start_y = y - self.ENTRY_START_Y  # Start above screen
         self._entry_target_x = x
         self._entry_target_y = y
         self._exit_progress = 0.0
         self._exit_start_x = x
         self._exit_start_y = y
-        self._exit_end_x = random.choice([x - 300, x + 300, x, x - 150, x + 150])
-        self._exit_end_y = -150
+        self._exit_end_x = x + random.choice(self.EXIT_X_OFFSETS)
+        self._exit_end_y = self.EXIT_END_Y
 
         # Lifetime timer: 15 seconds = 900 frames at 60fps
         self._lifetime = 0
@@ -111,7 +143,7 @@ class Enemy(Entity):
 
         # Entry-to-active transition smoothing
         self._transition_timer = 0
-        self._transition_duration = 15  # frames to blend from entry to full pattern
+        self._transition_duration = self.TRANSITION_DURATION
 
     # 2. Properties
 
@@ -142,7 +174,7 @@ class Enemy(Entity):
                 self.active = False
                 return
 
-            self._entry_progress += 0.04
+            self._entry_progress += self.ENTRY_SPEED
             if self._entry_progress >= 1.0:
                 self._entry_progress = 1.0
                 self._state = 'active'
@@ -164,7 +196,7 @@ class Enemy(Entity):
 
         # Handle exit animation
         if self._state == 'exiting':
-            self._exit_progress += 0.03
+            self._exit_progress += self.EXIT_SPEED
             if self._exit_progress >= 1.0:
                 self.active = False
                 return
@@ -181,14 +213,8 @@ class Enemy(Entity):
             self._state = 'exiting'
             self._exit_start_x = self.rect.x
             self._exit_start_y = self.rect.y
-            self._exit_end_x = random.choice([
-                self.rect.x - 300,
-                self.rect.x + 300,
-                self.rect.x,
-                self.rect.x - 150,
-                self.rect.x + 150
-            ])
-            self._exit_end_y = -100
+            self._exit_end_x = self.rect.x + random.choice(self.EXIT_X_OFFSETS)
+            self._exit_end_y = self.EXIT_ACTIVE_END_Y
             return
 
         # Use cached movement ranges
@@ -252,7 +278,7 @@ class Enemy(Entity):
             self.active = False
 
         self.fire_timer += 1
-        fire_threshold = max(10, int(self.data.fire_rate / self._fire_rate_modifier))
+        fire_threshold = max(self.FIRE_RATE_MIN, int(self.data.fire_rate / self._fire_rate_modifier))
         if self.fire_timer >= fire_threshold:
             self.fire_timer = 0
             self._fire()
@@ -341,8 +367,8 @@ class Enemy(Entity):
         if enemy_type == "sine":
             self.move_type = "sine"
             self.move_offset = random.uniform(0, math.pi * 2)
-            self.move_amplitude = random.uniform(1.5, 3.0)
-            self.move_frequency = random.uniform(0.03, 0.06)
+            self.move_amplitude = random.uniform(*self.SINE_AMP_RANGE)
+            self.move_frequency = random.uniform(*self.SINE_FREQ_RANGE)
             self.start_x = self.rect.x
             self.move_timer = 0
 
@@ -350,49 +376,49 @@ class Enemy(Entity):
             self.move_type = "zigzag"
             self.direction = random.choice([-1, 1])
             self.zigzag_timer = 0
-            self.zigzag_interval = random.randint(30, 60)
-            self.zigzag_speed = random.uniform(1.5, 2.5)
+            self.zigzag_interval = random.randint(*self.ZIGZAG_INTERVAL_RANGE)
+            self.zigzag_speed = random.uniform(*self.ZIGZAG_SPEED_RANGE)
 
         elif enemy_type == "dive":
             self.move_type = "dive"
             self.target_x = self.start_x = self.rect.x
             self.dive_timer = 0
-            self.dive_delay = random.randint(20, 50)
+            self.dive_delay = random.randint(*self.DIVE_DELAY_RANGE)
             self.diving = False
 
         elif enemy_type == "hover":
             self.move_type = "hover"
             self.hover_timer = 0
-            self.hover_speed = random.uniform(1.0, 1.8)
-            self.hover_amplitude = random.uniform(20, 40)
+            self.hover_speed = random.uniform(*self.HOVER_SPEED_RANGE)
+            self.hover_amplitude = random.uniform(*self.HOVER_AMP_RANGE)
             self.start_x = self.rect.x
 
         elif enemy_type == "spiral":
             self.move_type = "spiral"
             self.spiral_timer = 0
-            self.spiral_speed = random.uniform(1.0, 2.0)
-            self.spiral_radius = random.uniform(30, 50)
-            self.spiral_frequency = random.uniform(0.05, 0.08)
+            self.spiral_speed = random.uniform(*self.SPIRAL_SPEED_RANGE)
+            self.spiral_radius = random.uniform(*self.SPIRAL_RADIUS_RANGE)
+            self.spiral_frequency = random.uniform(*self.SPIRAL_FREQ_RANGE)
             self.start_x = self.rect.x
 
         elif enemy_type == "noise":
             self.move_type = "noise"
             self.noise_timer = 0.0
-            self.noise_speed = random.uniform(0.02, 0.04)  # slower for smooth movement
-            self.noise_scale_x = random.uniform(0.5, 1.0)
-            self.noise_scale_y = random.uniform(0.3, 0.6)
-            self.noise_amplitude_x = random.uniform(0.6, 0.9)
-            self.noise_amplitude_y = random.uniform(0.3, 0.6)
+            self.noise_speed = random.uniform(*self.NOISE_SPEED_RANGE)  # slower for smooth movement
+            self.noise_scale_x = random.uniform(*self.NOISE_SCALE_X_RANGE)
+            self.noise_scale_y = random.uniform(*self.NOISE_SCALE_Y_RANGE)
+            self.noise_amplitude_x = random.uniform(*self.NOISE_AMP_X_RANGE)
+            self.noise_amplitude_y = random.uniform(*self.NOISE_AMP_Y_RANGE)
             self.noise_seed = random.randint(0, 9999)
 
         elif enemy_type == "aggressive":
             self.move_type = "aggressive"
             self.agg_timer = 0.0
-            self.agg_speed = random.uniform(0.025, 0.045)  # moderate speed for smoothness
-            self.agg_scale_x = random.uniform(0.6, 1.0)
-            self.agg_scale_y = random.uniform(0.5, 0.8)
-            self.agg_amplitude_x = random.uniform(0.5, 0.8)
-            self.agg_amplitude_y = random.uniform(0.4, 0.7)
+            self.agg_speed = random.uniform(*self.AGGR_SPEED_RANGE)  # moderate speed for smoothness
+            self.agg_scale_x = random.uniform(*self.AGGR_SCALE_X_RANGE)
+            self.agg_scale_y = random.uniform(*self.AGGR_SCALE_Y_RANGE)
+            self.agg_amplitude_x = random.uniform(*self.AGGR_AMP_X_RANGE)
+            self.agg_amplitude_y = random.uniform(*self.AGGR_AMP_Y_RANGE)
             self.agg_seed = random.randint(0, 9999)
 
         else:
@@ -500,12 +526,20 @@ class EnemySpawner:
     """
 
     ENEMIES_PER_FRAME = 2
+    DEFAULT_SPEED = 3.0
+    DEFAULT_SPAWN_RATE = 30
+    MAX_CONCURRENT_ENEMIES = 5
+    MIN_SPAWN_Y = -30
+    MAX_SPAWN_Y_FRACTION = 0.70
+    LASER_FIRE_RATE = 60
+    NORMAL_FIRE_RATE = 80
+    ENTRY_SPAWN_Y = -50
 
     def __init__(self):
         self.spawn_timer = 0
         self.health = 100
-        self.speed = 3.0
-        self.spawn_rate = 30
+        self.speed = self.DEFAULT_SPEED
+        self.spawn_rate = self.DEFAULT_SPAWN_RATE
         self.bullet_type = "single"
         self._bullet_spawner: Optional[IBulletSpawner] = None
         self._enemy_type_distribution = {
@@ -518,7 +552,7 @@ class EnemySpawner:
             "noise": 0.20,
             "aggressive": 0.20,
         }
-        self._max_enemies = 5
+        self._max_enemies = self.MAX_CONCURRENT_ENEMIES
         self._wave_active = False
         self._wave_enemies_spawned = 0
         self._wave_size = self._get_wave_size()
@@ -605,7 +639,7 @@ class EnemySpawner:
         spawn_data = []
         for px, py in positions:
             px = max(collision_size // 2, min(px, screen_width - collision_size // 2))
-            py = max(-30, min(py, int(screen_height * 0.70)))
+            py = max(self.MIN_SPAWN_Y, min(py, int(screen_height * self.MAX_SPAWN_Y_FRACTION)))
             spawn_data.append((
                 px, py,
                 random.choice(bullet_types),
@@ -620,11 +654,11 @@ class EnemySpawner:
             health=self.health,
             speed=self.speed,
             bullet_type=bullet_type,
-            fire_rate=60 if bullet_type == "laser" else 80,
+            fire_rate=self.LASER_FIRE_RATE if bullet_type == "laser" else self.NORMAL_FIRE_RATE,
             enemy_type=enemy_type
         )
         enemy = Enemy(px, py, enemy_data)
-        enemy._entry_start_y = -50
+        enemy._entry_start_y = self.ENTRY_SPAWN_Y
         enemy._entry_start_x = px
         if self._bullet_spawner:
             enemy.set_bullet_spawner(self._bullet_spawner)
@@ -676,6 +710,18 @@ class Boss(Entity):
     """
 
     ATTACK_DIRECTIONS = ['down', 'left', 'right', 'up']
+    ENTRY_FONT_SIZE = 36
+    ESCAPE_FONT_SIZE = 28
+    DEFAULT_PHASE_DURATION = 120
+    ENTRY_SPEED = 2
+    ESCAPE_DRIFT = 0.5
+    LERP_FACTOR = 0.025
+    MIN_Y = 50
+    CENTER_OFFSET = 60
+    SPREAD_DAMAGE_INCREMENT = 2
+    AIM_DAMAGE_INCREMENT = 3
+    AIM_BULLET_COUNT = 3
+    WAVE_BULLET_COUNT = 8
 
     _warning_font = None
     _escape_font = None
@@ -683,13 +729,13 @@ class Boss(Entity):
     @classmethod
     def _get_warning_font(cls):
         if cls._warning_font is None:
-            cls._warning_font = get_cjk_font(36)
+            cls._warning_font = get_cjk_font(cls.ENTRY_FONT_SIZE)
         return cls._warning_font
 
     @classmethod
     def _get_escape_font(cls):
         if cls._escape_font is None:
-            cls._escape_font = get_cjk_font(28)
+            cls._escape_font = get_cjk_font(cls.ESCAPE_FONT_SIZE)
         return cls._escape_font
 
     def __init__(self, x: float, y: float, data: BossData):
@@ -707,7 +753,7 @@ class Boss(Entity):
         # Movement phase system
         self._move_phase = 0
         self._move_phase_timer = 0
-        self._move_phase_duration = 120
+        self._move_phase_duration = self.DEFAULT_PHASE_DURATION
         self._target_x: float = float(x)
         self._target_y: float = 180.0
         self.survival_timer = 0
@@ -755,7 +801,7 @@ class Boss(Entity):
             player_pos: (x, y) of the player for aim attacks.
         """
         if self.entering:
-            self.rect.y += 2 * slow_factor
+            self.rect.y += self.ENTRY_SPEED * slow_factor
             if self.rect.y >= self.target_y:
                 self.rect.y = self.target_y
                 self.entering = False
@@ -770,7 +816,7 @@ class Boss(Entity):
 
         if self.survival_timer >= self.data.escape_time - get_game_constants().ENEMY.ESCAPE_WARNING:
             self._show_escape_warning = True
-            self.rect.y -= 0.5
+            self.rect.y -= self.ESCAPE_DRIFT
 
         self._move_phase_timer += 1
         if self._move_phase_timer >= self._move_phase_duration:
@@ -778,14 +824,14 @@ class Boss(Entity):
             self._move_phase_duration = random.randint(90, 200)
             self._select_next_target(player_pos)
 
-        lerp_speed = 0.025 * self.data.speed
+        lerp_speed = self.LERP_FACTOR * self.data.speed
         self.rect.x = self.rect.x + (self._target_x - self.rect.x) * lerp_speed
         self.rect.y = self.rect.y + (self._target_y - self.rect.y) * lerp_speed
 
         screen_w = get_screen_width()
         screen_h = get_screen_height()
         self.rect.x = max(0, min(self.rect.x, screen_w - self.rect.width))
-        self.rect.y = max(50, min(self.rect.y, screen_h // 2 + 60))
+        self.rect.y = max(self.MIN_Y, min(self.rect.y, screen_h // 2 + self.CENTER_OFFSET))
 
         self.rect.y += int(math.sin(self.survival_timer * 0.025) * 0.4)
 
@@ -892,7 +938,7 @@ class Boss(Entity):
             vy = math.sin(rad) * speed
 
             bullet_data = BulletData(
-                damage=B.BULLET_DAMAGE_BASE + self.phase * 2,
+                damage=B.BULLET_DAMAGE_BASE + self.phase * self.SPREAD_DAMAGE_INCREMENT,
                 speed=B.SPREAD_SPEED,
                 owner="enemy",
                 bullet_type="spread"
@@ -914,13 +960,13 @@ class Boss(Entity):
         dx, dy = target_offsets.get(self.attack_direction, (0, BOSS_ATTACK_DISTANCE))
 
         bullet_data = BulletData(
-            damage=BOSS_AIM_BULLET_DAMAGE_BASE + self.phase * 3,
+            damage=BOSS_AIM_BULLET_DAMAGE_BASE + self.phase * self.AIM_DAMAGE_INCREMENT,
             speed=BOSS_AIM_SPEED,
             owner="enemy",
             bullet_type="laser"
         )
 
-        for i in range(3):
+        for i in range(self.AIM_BULLET_COUNT):
             bullet = Bullet(source_x - BOSS_BULLET_OFFSET_X + i * BOSS_BULLET_OFFSET_X, source_y, bullet_data)
             velocity = Vector2(dx, dy)
             velocity = velocity.normalize() * BOSS_AIM_SPEED
@@ -936,7 +982,7 @@ class Boss(Entity):
 
         center_x, center_y = direction_sources.get(self.attack_direction, (self.rect.centerx, self.rect.centery))
 
-        for i in range(8):
+        for i in range(self.WAVE_BULLET_COUNT):
             if self.attack_direction == 'left':
                 angle = 180 + BOSS_WAVE_ANGLE_INTERVAL * i
             elif self.attack_direction == 'right':

@@ -13,15 +13,33 @@ from ..spawners.enemy_bullet_spawner import EnemyBulletSpawner
 
 class SpawnController:
     """Enemy and boss spawn controller with wave-based spawning.
-    
+
         Manages enemy wave lifecycle and boss spawn timing. Uses EnemySpawner
         for enemy creation and tracks boss state for escape/cleanup logic.
-    
+
         Attributes:
             enemies: List of active Enemy entities.
             enemy_bullets: List of active enemy bullet entities.
             boss: Current Boss instance or None.
         """
+    BOSS_SPAWN_INTERVAL = 1800
+    ESCAPE_PENALTY_MULT = 1.5
+    ENEMY_EXIT_X_OFFSETS = [-300, 300, 0, -150, 150]
+    ENEMY_EXIT_END_Y = -100
+    BOSS_BASE_HEALTH = 2000
+    BOSS_HEALTH_SCALING = 0.5
+    ESCAPE_TIME_DIVISOR = 45
+    MIN_ESCAPE_TIME = 1200
+    MAX_ESCAPE_TIME = 3600
+    BOSS_BASE_SPEED = 1.5
+    BOSS_SPEED_INCREMENT = 0.1
+    BOSS_BASE_SCORE = 400
+    BOSS_SCORE_INCREMENT = 100
+    BOSS_SPRITE_WIDTH = 120
+    BOSS_SPRITE_HEIGHT = 100
+    BOSS_BASE_FIRE_RATE = 45
+    BOSS_FIRE_RATE_DECREMENT = 2
+    BOSS_SPAWN_Y = -100
     def __init__(self, settings: dict):
         self.enemy_spawner = EnemySpawner()
         self.enemy_spawner.set_params(
@@ -34,9 +52,9 @@ class SpawnController:
         self.enemy_bullets: List[Bullet] = []
         self.boss: Optional[Boss] = None
         self.boss_spawn_timer = 0
-        self.boss_spawn_interval = settings.get('boss_spawn_interval', 1800)
+        self.boss_spawn_interval = settings.get('boss_spawn_interval', self.BOSS_SPAWN_INTERVAL)
         self._base_boss_spawn_interval = self.boss_spawn_interval
-        self._escape_penalty_multiplier = settings.get('escape_penalty_multiplier', 1.5)
+        self._escape_penalty_multiplier = settings.get('escape_penalty_multiplier', self.ESCAPE_PENALTY_MULT)
         self.boss_killed = False
         self._bullet_spawner: Optional[IBulletSpawner] = None
         self._difficulty_manager: Optional['DifficultyManager'] = None
@@ -84,30 +102,27 @@ class SpawnController:
                 enemy._state = 'exiting'
                 enemy._exit_start_x = enemy.rect.x
                 enemy._exit_start_y = enemy.rect.y
-                enemy._exit_end_x = random.choice([
-                    enemy.rect.x - 300, enemy.rect.x + 300,
-                    enemy.rect.x, enemy.rect.x - 150, enemy.rect.x + 150,
-                ])
-                enemy._exit_end_y = -100
+                enemy._exit_end_x = enemy.rect.x + random.choice(self.ENEMY_EXIT_X_OFFSETS)
+                enemy._exit_end_y = self.ENEMY_EXIT_END_Y
                 enemy._exit_progress = 0.0
 
         screen_width = get_screen_width()
-        base_health = 2000 * (1 + boss_kill_count * 0.5)
-        escape_time = round(base_health / bullet_damage * 45)
-        escape_time = max(1200, min(escape_time, 3600))
+        base_health = self.BOSS_BASE_HEALTH * (1 + boss_kill_count * self.BOSS_HEALTH_SCALING)
+        escape_time = round(base_health / bullet_damage * self.ESCAPE_TIME_DIVISOR)
+        escape_time = max(self.MIN_ESCAPE_TIME, min(escape_time, self.MAX_ESCAPE_TIME))
 
         boss_data = BossData(
             health=base_health,
-            speed=1.5 + boss_kill_count * 0.1,
-            score=400 + boss_kill_count * 100,
-            width=120,
-            height=100,
-            fire_rate=45 - boss_kill_count * 2,
+            speed=self.BOSS_BASE_SPEED + boss_kill_count * self.BOSS_SPEED_INCREMENT,
+            score=self.BOSS_BASE_SCORE + boss_kill_count * self.BOSS_SCORE_INCREMENT,
+            width=self.BOSS_SPRITE_WIDTH,
+            height=self.BOSS_SPRITE_HEIGHT,
+            fire_rate=self.BOSS_BASE_FIRE_RATE - boss_kill_count * self.BOSS_FIRE_RATE_DECREMENT,
             phase=1,
             escape_time=escape_time
         )
 
-        boss = Boss(screen_width // 2 - boss_data.width // 2, -100, boss_data)
+        boss = Boss(screen_width // 2 - boss_data.width // 2, self.BOSS_SPAWN_Y, boss_data)
         if self._bullet_spawner:
             boss.set_bullet_spawner(self._bullet_spawner)
         self.boss = boss

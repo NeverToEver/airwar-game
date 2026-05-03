@@ -34,14 +34,36 @@ class HUDLayout:
 
 class HUDRenderer:
     """HUD renderer — score, health bar, boss HP, buff stats, notifications.
-    
+
         Renders all heads-up display elements including military-style and
         original-style boss health bars.
-    
+
         Attributes:
             hud_font: Primary font for HUD text elements.
             _buff_stats_panel: BuffStatsPanel for active buff display.
         """
+    BOSS_TIMER_FONT_SIZE = 32
+    BOSS_HURRY_FONT_SIZE = 30
+    BUFF_BAR_X_OFFSET = 8
+    BUFF_BAR_Y_OFFSET = 8
+    BUFF_BAR_WIDTH = 180
+    BUFF_BAR_HEIGHT = 36
+    MAX_VISIBLE_BUFFS = 8
+    BUFF_TRUNCATE_LEN = 4
+    BUFF_WRAP_X = 200
+    NOTIFICATION_Y = 100
+    TIMER_PANEL_H = 36
+    TIMER_COLOR_SAFE = (120, 185, 210)
+    TIMER_COLOR_URGENT = (255, 85, 80)
+    TIMER_WARN_THRESHOLD_1 = 0.5
+    TIMER_WARN_THRESHOLD_2 = 0.75
+    HURRY_PROGRESS_THRESHOLD = 0.7
+    HURRY_PULSE_SPEED = 0.008
+    HURRY_PULSE_AMP = 0.4
+    HURRY_PULSE_BASE = 0.6
+    HURRY_COLOR = (220, 70, 55)
+    DEFAULT_TOTAL_PHASES = 3
+
     def __init__(self):
         pygame.font.init()
         self._tokens = get_design_tokens()
@@ -53,8 +75,8 @@ class HUDRenderer:
         self._boss_small_font = get_cjk_font(tokens.typography.SMALL_SIZE)
         self._boss_label_font = get_cjk_font(SystemUI.MILITARY_LABEL_SIZE)
         self._boss_warning_font = get_cjk_font(SystemUI.MILITARY_SMALL_SIZE)
-        self._boss_timer_font = get_cjk_font(32)
-        self._boss_hurry_font = get_cjk_font(30)
+        self._boss_timer_font = get_cjk_font(self.BOSS_TIMER_FONT_SIZE)
+        self._boss_hurry_font = get_cjk_font(self.BOSS_HURRY_FONT_SIZE)
         self._buff_stats_panel = BuffStatsPanel()
         self._attack_mode_panel = AttackModePanel()
         self._text_cache: dict = {}
@@ -100,21 +122,21 @@ class HUDRenderer:
         y = surface.get_height() - 50
         shown = set()
 
-        pygame.draw.rect(surface, (20, 20, 40), (x - 8, y - 8, 180, 36), border_radius=8)
+        pygame.draw.rect(surface, (20, 20, 40), (x - self.BUFF_BAR_X_OFFSET, y - self.BUFF_BAR_Y_OFFSET, self.BUFF_BAR_WIDTH, self.BUFF_BAR_HEIGHT), border_radius=8)
 
-        for buff in reversed(list(unlocked_buffs)[:8]):
+        for buff in reversed(list(unlocked_buffs)[:self.MAX_VISIBLE_BUFFS]):
             if buff in shown:
                 continue
             shown.add(buff)
 
             color = get_buff_color(buff)
-            text = self.buff_font.render(buff[:4].upper(), True, color)
+            text = self.buff_font.render(buff[:self.BUFF_TRUNCATE_LEN].upper(), True, color)
             rect = text.get_rect(x=x, y=y)
             pygame.draw.rect(surface, color, rect, 1, border_radius=4)
             surface.blit(text, (x + 4, y + 4))
             x += text.get_width() + 14
 
-            if x > 200:
+            if x > self.BUFF_WRAP_X:
                 break
 
     def render_notification(self, surface: pygame.Surface, notification: str,
@@ -126,7 +148,7 @@ class HUDRenderer:
             text = self.notif_font.render(notification, True, color)
             text.set_alpha(alpha)
             x = surface.get_width() // 2 - text.get_width() // 2
-            y = 100
+            y = self.NOTIFICATION_Y
             surface.blit(text, (x, y))
 
     def render_boss_health_bar(self, surface: pygame.Surface, boss, use_themed_style: bool = True) -> None:
@@ -168,7 +190,7 @@ class HUDRenderer:
 
     def _render_boss_timer(self, surface, x, y, bar_width, time_remaining, progress):
         """Render boss escape timer in a styled panel below the health bar."""
-        timer_panel_h = 36
+        timer_panel_h = self.TIMER_PANEL_H
         timer_panel = pygame.Rect(x, y, bar_width, timer_panel_h)
 
         # Panel background
@@ -176,15 +198,15 @@ class HUDRenderer:
         pygame.draw.rect(surface, (55, 90, 130, 70), timer_panel, width=1, border_radius=6)
 
         # Timer color transitions from steel-blue (safe) to amber to red (urgent)
-        if progress < 0.5:
+        if progress < self.TIMER_WARN_THRESHOLD_1:
             t = 0.0
-        elif progress < 0.75:
-            t = (progress - 0.5) / 0.25
+        elif progress < self.TIMER_WARN_THRESHOLD_2:
+            t = (progress - self.TIMER_WARN_THRESHOLD_1) / (self.TIMER_WARN_THRESHOLD_2 - self.TIMER_WARN_THRESHOLD_1)
         else:
             t = 1.0
-        r = int(120 + 135 * t)
-        g = int(185 - 100 * t)
-        b = int(210 - 130 * t)
+        r = int(self.TIMER_COLOR_SAFE[0] + (self.TIMER_COLOR_URGENT[0] - self.TIMER_COLOR_SAFE[0]) * t)
+        g = int(self.TIMER_COLOR_SAFE[1] + (self.TIMER_COLOR_URGENT[1] - self.TIMER_COLOR_SAFE[1]) * t)
+        b = int(self.TIMER_COLOR_SAFE[2] + (self.TIMER_COLOR_URGENT[2] - self.TIMER_COLOR_SAFE[2]) * t)
         timer_color = (r, g, b)
 
         secs = int(time_remaining)
@@ -193,11 +215,11 @@ class HUDRenderer:
         surface.blit(timer_text, timer_rect)
 
         # HURRY warning — pulsing red above the timer panel when urgent
-        if progress > 0.7:
-            pulse = abs(math.sin(pygame.time.get_ticks() * 0.008)) * 0.4 + 0.6
+        if progress > self.HURRY_PROGRESS_THRESHOLD:
+            pulse = abs(math.sin(pygame.time.get_ticks() * self.HURRY_PULSE_SPEED)) * self.HURRY_PULSE_AMP + self.HURRY_PULSE_BASE
             alpha = int(200 * pulse)
             hurry_text = self._boss_hurry_font.render("逃跑中!", True,
-                                                       (220, 70, 55))
+                                                       self.HURRY_COLOR)
             hurry_text.set_alpha(alpha)
             hurry_rect = hurry_text.get_rect(midtop=(x + bar_width // 2, y + timer_panel_h + 6))
             surface.blit(hurry_text, hurry_rect)
@@ -230,7 +252,7 @@ class HUDRenderer:
 
         # Get phase info if available
         current_phase = getattr(boss, 'phase', 1)
-        total_phases = getattr(boss, 'total_phases', 3)
+        total_phases = getattr(boss, 'total_phases', self.DEFAULT_TOTAL_PHASES)
 
         boss_bar.render(
             surface, x, y,

@@ -44,11 +44,25 @@ class Player(Entity):
         is_shielded: Whether the player currently has shield active.
     """
 
+    # --- Class constants ---
+    PLAYER_SPRITE_W = 68
+    PLAYER_SPRITE_H = 82
+    DEFAULT_RECOVERY_RATE = 1.0
+    DEFAULT_SPEED_MULT = 1.7
+    PLAYER_HITBOX_W = 10
+    PLAYER_HITBOX_H = 14
+    BOOST_RAMP_MIN = 0.15
+    BOOST_RAMP_DELTA = 0.85
+    BULLET_SPAWN_Y_OFFSET = 36
+    SPREAD_ANGLES = (-15, 0, 15)
+    LASER_X_OFFSET = 3
+    SINGLE_X_OFFSET = 5
+
     # 1. Special methods
 
     def __init__(self, x: float, y: float, input_handler: InputHandler):
         constants = get_game_constants()
-        super().__init__(x, y, 68, 82)
+        super().__init__(x, y, self.PLAYER_SPRITE_W, self.PLAYER_SPRITE_H)
         self._constants = constants  # Cache for hot path access
         self._input_handler = input_handler
         self.health = constants.PLAYER.MAX_HEALTH
@@ -57,13 +71,9 @@ class Player(Entity):
         self.speed = self.base_speed
         self.bullet_damage = constants.PLAYER.BULLET_DAMAGE
         # Boost system
-        self.boost_max: float = 200
-        self.boost_current: float = self.boost_max
         self.boost_active: bool = False
-        self.boost_recovery_rate: float = 1.0
-        self.boost_speed_mult: float = 1.7
-        self.boost_recovery_delay: int = 45
-        self.boost_recovery_ramp: int = 60
+        self.boost_recovery_rate: float = self.DEFAULT_RECOVERY_RATE
+        self.boost_speed_mult: float = self.DEFAULT_SPEED_MULT
         self._boost_idle_frames: int = 0
         self.mothership_cooldown_mult: float = 1.0
         self._fire_cooldown = 0
@@ -75,8 +85,8 @@ class Player(Entity):
         self.is_shielded = False
         self._shield_duration = 0
         self.controls_locked = False
-        self.hitbox_width = 10
-        self.hitbox_height = 14
+        self.hitbox_width = self.PLAYER_HITBOX_W
+        self.hitbox_height = self.PLAYER_HITBOX_H
         self._hitbox_timer = 0
         self._render_hitbox = False
         self._hitbox_glow_surf = None
@@ -249,7 +259,7 @@ class Player(Entity):
             if self._boost_idle_frames > self.boost_recovery_delay:
                 ramp_frames = self._boost_idle_frames - self.boost_recovery_delay
                 t = min(1.0, ramp_frames / self.boost_recovery_ramp)
-                rate = self.boost_recovery_rate * (0.15 + 0.85 * t)
+                rate = self.boost_recovery_rate * (self.BOOST_RAMP_MIN + self.BOOST_RAMP_DELTA * t)
                 self.boost_current = min(self.boost_max, self.boost_current + rate)
             self.speed = self.base_speed
 
@@ -272,12 +282,12 @@ class Player(Entity):
 
     def _create_bullets_for_shot_mode(self, return_first: bool = False) -> Optional[Bullet]:
         center_x = self.rect.x + self.rect.width / 2
-        bullet_y = self.rect.y - 36
+        bullet_y = self.rect.y - self.BULLET_SPAWN_Y_OFFSET
 
         if self._has_spread:
             bullet_x = center_x - 5
             first_bullet = None
-            for angle in [-15, 0, 15]:
+            for angle in self.SPREAD_ANGLES:
                 bullet = Bullet(
                     bullet_x,
                     bullet_y,
@@ -298,7 +308,7 @@ class Player(Entity):
             return first_bullet if return_first else None
         elif self._has_laser:
             bullet = Bullet(
-                center_x - 3,
+                center_x - self.LASER_X_OFFSET,
                 bullet_y,
                 BulletData(damage=self.bullet_damage, speed=self._constants.PLAYER.BULLET_SPEED,
                           bullet_type='laser', is_laser=True)
@@ -309,7 +319,7 @@ class Player(Entity):
             return bullet
         else:
             bullet = Bullet(
-                center_x - 5,
+                center_x - self.SINGLE_X_OFFSET,
                 bullet_y,
                 BulletData(damage=self.bullet_damage, speed=self._constants.PLAYER.BULLET_SPEED)
             )
