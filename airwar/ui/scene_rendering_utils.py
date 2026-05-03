@@ -5,10 +5,115 @@ and exit_confirm_scene.py into a single utility class.
 """
 
 import pygame
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.config.design_tokens import SceneColors
 from airwar.utils.responsive import ResponsiveHelper
+
+
+def fit_string_to_width(
+    font: pygame.font.Font,
+    text: str,
+    max_width: int,
+    ellipsis: str = "...",
+) -> str:
+    """Return text truncated to fit max_width using font metrics."""
+    if max_width <= 0 or not text:
+        return ""
+    if font.size(text)[0] <= max_width:
+        return text
+
+    ellipsis_width = font.size(ellipsis)[0]
+    if ellipsis_width > max_width:
+        return ""
+
+    lo = 0
+    hi = len(text)
+    best = ""
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        candidate = text[:mid] + ellipsis
+        if font.size(candidate)[0] <= max_width:
+            best = candidate
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return best
+
+
+def fit_text_to_width(
+    font: pygame.font.Font,
+    text: str,
+    color: Tuple[int, int, int],
+    max_width: int,
+    ellipsis: str = "...",
+) -> pygame.Surface:
+    """Render text guaranteed not to exceed max_width."""
+    return font.render(
+        fit_string_to_width(font, text, max_width, ellipsis),
+        True,
+        color,
+    )
+
+
+def wrap_text(
+    text: str,
+    font: pygame.font.Font,
+    max_width: int,
+    max_lines: Optional[int] = None,
+) -> List[str]:
+    """Wrap text by measured width, handling both spaced and CJK text."""
+    if max_width <= 0:
+        return [""]
+    if not text:
+        return [""]
+
+    tokens = text.split(" ") if " " in text else list(text)
+    use_spaces = " " in text
+    lines: List[str] = []
+    current = ""
+
+    for token in tokens:
+        candidate = f"{current} {token}" if current and use_spaces else current + token
+        if font.size(candidate)[0] <= max_width:
+            current = candidate
+            continue
+
+        if current:
+            lines.append(current)
+            if max_lines and len(lines) >= max_lines:
+                lines[-1] = fit_string_to_width(font, lines[-1], max_width)
+                return lines
+            current = token
+        else:
+            lines.append(fit_string_to_width(font, token, max_width))
+            if max_lines and len(lines) >= max_lines:
+                return lines
+            current = ""
+
+    if current:
+        lines.append(current)
+
+    if max_lines and len(lines) > max_lines:
+        lines = lines[:max_lines]
+        lines[-1] = fit_string_to_width(font, lines[-1], max_width)
+
+    return lines or [""]
+
+
+def adaptive_box_width(
+    font: pygame.font.Font,
+    text: str,
+    base_width: int,
+    surface_width: int,
+    *,
+    horizontal_padding: int = 96,
+    side_margin: int = 80,
+) -> int:
+    """Grow a centered box to fit text while staying inside the screen."""
+    needed = font.size(text)[0] + horizontal_padding
+    max_width = max(120, surface_width - side_margin)
+    return min(max(base_width, needed), max_width)
 
 
 class SceneRenderingUtils:
@@ -99,6 +204,9 @@ class SceneRenderingUtils:
         width, height = surface.get_size()
         center_x = width // 2
 
+        arrow = ">> " if is_selected else "   "
+        display_text = f"{arrow}{text}"
+        box_width = adaptive_box_width(font, display_text, box_width, width)
         box_rect = pygame.Rect(
             center_x - box_width // 2, y - box_height // 2, box_width, box_height
         )
@@ -139,11 +247,11 @@ class SceneRenderingUtils:
                 border_radius=border_radius,
             )
 
-        arrow = ">> " if is_selected else "   "
-        option_text = font.render(
-            f"{arrow}{text}",
-            True,
+        option_text = fit_text_to_width(
+            font,
+            display_text,
             selected_text_color if is_selected else unselected_text_color,
+            box_rect.width - 48,
         )
         text_rect = option_text.get_rect(center=(center_x, y))
         surface.blit(option_text, text_rect)
@@ -318,6 +426,15 @@ def draw_themed_option_box(
 
     box_width = ResponsiveHelper.scale(base_box_width, scale)
     box_height = ResponsiveHelper.scale(base_box_height, scale)
+    arrow = ">> " if is_selected else "   "
+    display_text = f"{arrow}{text}"
+    box_width = adaptive_box_width(
+        option_font,
+        display_text,
+        box_width,
+        width,
+        horizontal_padding=96,
+    )
     box_rect = pygame.Rect(
         center_x - box_width // 2, y - box_height // 2, box_width, box_height
     )
@@ -348,11 +465,11 @@ def draw_themed_option_box(
         8,
     )
 
-    arrow = ">> " if is_selected else "   "
-    option_text = option_font.render(
-        f"{arrow}{text}",
-        True,
+    option_text = fit_text_to_width(
+        option_font,
+        display_text,
         SceneColors.GOLD_PRIMARY if is_selected else SceneColors.TEXT_DIM,
+        box_rect.width - 48,
     )
     text_rect = option_text.get_rect(center=(center_x, y))
     surface.blit(option_text, text_rect)

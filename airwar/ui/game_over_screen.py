@@ -5,6 +5,7 @@ import pygame
 from airwar.utils.fonts import get_cjk_font
 from airwar.config.design_tokens import get_design_tokens, SceneColors, SystemUI
 from airwar.ui.chamfered_panel import draw_chamfered_panel
+from airwar.ui.scene_rendering_utils import fit_text_to_width
 
 
 class ScreenAction(Enum):
@@ -83,7 +84,13 @@ class GameOverScreen:
 
     def _init_buttons(self, screen_width: int, screen_height: int):
         scale = screen_width / 800
-        button_width = int(280 * scale)
+        button_font = get_cjk_font(int(self._tokens.typography.SMALL_SIZE * scale))
+        button_width = max(
+            int(280 * scale),
+            button_font.size("返回主菜单")[0] + int(96 * scale),
+            button_font.size("退出游戏")[0] + int(96 * scale),
+        )
+        button_width = min(button_width, screen_width - int(120 * scale))
         button_height = int(60 * scale)
         center_x = screen_width // 2
         menu_button_y = int(480 * scale)
@@ -256,7 +263,7 @@ class GameOverScreen:
                         border_surf.get_rect(), width=2, border_radius=10)
         surface.blit(border_surf, scaled_rect.topleft)
 
-        text_surf = font.render(text, True, text_color)
+        text_surf = fit_text_to_width(font, text, text_color, scaled_rect.width - int(48 * scale))
         text_rect = text_surf.get_rect(center=scaled_rect.center)
         surface.blit(text_surf, text_rect)
 
@@ -321,6 +328,6 @@ class GameOverScreen:
             8
         )
 
-        text_surf = font.render(text, True, text_color)
+        text_surf = fit_text_to_width(font, text, text_color, scaled_rect.width - int(48 * scale))
         text_rect = text_surf.get_rect(center=scaled_rect.center)
         surface.blit(text_surf, text_rect)

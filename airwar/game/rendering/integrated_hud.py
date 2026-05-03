@@ -3,8 +3,9 @@ import pygame
 from airwar.utils.fonts import get_cjk_font
 from typing import List
 from airwar.config.design_tokens import get_design_tokens
+from airwar.ui.buff_display import get_buff_display_name
 from airwar.ui.discrete_battery import DiscreteBatteryIndicator
-from airwar.ui.scene_rendering_utils import render_cached_text
+from airwar.ui.scene_rendering_utils import fit_text_to_width, render_cached_text
 
 
 class IntegratedHUD:
@@ -473,10 +474,14 @@ class IntegratedHUD:
                 text_color = components.BUFF_TEXT_LIGHT
 
             buff_font = self._get_font(self.buff_font_size)
-            buff_text = buff_font.render(buff[:12], True, text_color)
-
             buff_width = self.panel_width - self.padding * 2 - self.BAR_INSET
             padding = 6
+            buff_text = fit_text_to_width(
+                buff_font,
+                get_buff_display_name(buff),
+                text_color,
+                buff_width - padding * 2,
+            )
             buff_height = buff_text.get_height() + padding * 2
 
             bg_rect = pygame.Rect(
@@ -527,4 +532,3 @@ class IntegratedHUD:
             visible.append(buffs[idx])
         
         return visible
-
