@@ -1,13 +1,13 @@
-"""子弹管理器模块
+"""Bullet manager module.
 
-统一管理玩家子弹和敌人子弹的更新、清理和状态同步。
-遵循单一职责原则，将子弹相关操作从 GameScene 中分离。
+Unified management of player and enemy bullet updates, cleanup, and state sync.
+Separates bullet-related operations from GameScene.
 
-设计原则:
-- 单一职责: 仅负责子弹生命周期管理
-- 依赖注入: 通过构造函数接收依赖
-- 门面模式: 提供统一的子弹操作入口
-- 组合优于继承: 通过组合协调不同子弹类型
+Design principles:
+- Single responsibility: Bullet lifecycle management only.
+- Dependency injection: Dependencies received via constructor.
+- Facade pattern: Unified bullet operation entry point.
+- Composition over inheritance: Coordinates different bullet types.
 
 Usage:
     from airwar.game.managers import BulletManager
@@ -30,35 +30,32 @@ from ...config import get_screen_height
 
 
 class PlayerProtocol(Protocol):
-    """玩家协议 - 定义玩家必须提供的子弹相关接口"""
+    """Player protocol - defines the bullet-related interface a player must provide."""
 
     def get_bullets(self) -> list: ...
     def remove_bullet(self, bullet) -> None: ...
 
 
 class SpawnControllerProtocol(Protocol):
-    """生成控制器协议 - 定义敌人生成器必须提供的子弹相关接口"""
+    """Spawn controller protocol - defines the bullet-related interface a spawner must provide."""
 
     @property
     def enemy_bullets(self) -> list: ...
 
 
 class BulletManager:
-    """子弹生命周期管理器
+    """Bullet lifecycle manager.
 
-    统一管理玩家子弹和敌人子弹的:
-    - 更新 (update)
-    - 清理 (cleanup)
-    - 清空 (clear)
+    Manages player and enemy bullet updates, cleanup, and clearing.
 
-    职责边界:
-    - 管理子弹的更新和清理
-    - 不负责碰撞检测 (由 CollisionController 负责)
-    - 不负责子弹生成 (由 Player 和 SpawnController 负责)
+    Responsibilities:
+    - Bullet updates and cleanup.
+    - Does not handle collision detection (handled by CollisionController).
+    - Does not handle bullet spawning (handled by Player and SpawnController).
 
     Attributes:
-        _player: 玩家对象 (提供子弹获取和删除接口)
-        _spawn_controller: 敌人生成控制器 (提供敌人子弹列表)
+        _player: Player object (provides bullet access and removal).
+        _spawn_controller: Enemy spawn controller (provides enemy bullet list).
     """
 
     def __init__(
@@ -66,11 +63,11 @@ class BulletManager:
         player: PlayerProtocol,
         spawn_controller: SpawnControllerProtocol
     ) -> None:
-        """初始化子弹管理器
+        """Initialize the bullet manager.
 
         Args:
-            player: 玩家对象，必须实现 PlayerProtocol
-            spawn_controller: 敌人生成控制器，必须实现 SpawnControllerProtocol
+            player: Player object implementing PlayerProtocol.
+            spawn_controller: Enemy spawn controller implementing SpawnControllerProtocol.
         """
         self._player = player
         self._spawn_controller = spawn_controller
@@ -79,46 +76,45 @@ class BulletManager:
         self._batch_bullet_map = {}
 
     def update_all(self) -> None:
-        """更新所有子弹 (玩家子弹 + 敌人子弹)
+        """Update all bullets (player + enemy).
 
-        不执行清理操作，仅更新子弹位置和状态。
-        用于正常游戏循环中的子弹更新。
+        Does not perform cleanup, only updates position and state.
+        Used during normal game loop updates.
         """
         self._update_player_bullets(cleanup=False)
         self._update_enemy_bullets(cleanup=False)
 
     def update_with_cleanup(self) -> None:
-        """更新并清理所有子弹
+        """Update and clean up all bullets.
 
-        在更新子弹的同时，移除已非活跃的子弹。
-        用于停靠状态或其他需要清理子弹的场景。
+        Removes inactive bullets during the update.
+        Used when docking or other cleanup scenarios.
         """
         self._update_player_bullets(cleanup=True)
         self._update_enemy_bullets(cleanup=True)
 
     def cleanup(self) -> None:
-        """清理非活跃的敌人子弹
+        """Clean up inactive enemy bullets.
 
-        仅清理敌人子弹中的非活跃项。
-        玩家子弹的清理由 Player.cleanup_inactive_bullets() 负责。
+        Only cleans enemy bullets. Player bullet cleanup is handled by Player.cleanup_inactive_bullets().
         """
         self._cleanup_enemy_bullets()
 
     def clear_enemy_bullets(self) -> None:
-        """清空所有敌人子弹
+        """Clear all enemy bullets.
 
-        将所有敌人子弹标记为非活跃并清空列表。
-        通常在 Boss 被击杀后调用。
+        Marks all enemy bullets as inactive and clears the list.
+        Typically called after a boss is killed.
         """
         for bullet in self._spawn_controller.enemy_bullets[:]:
             bullet.active = False
         self._spawn_controller.enemy_bullets.clear()
 
     def _update_player_bullets(self, cleanup: bool) -> None:
-        """更新玩家子弹
+        """Update player bullets.
 
         Args:
-            cleanup: 是否在更新后清理非活跃子弹
+            cleanup: Whether to remove inactive bullets after update.
         """
         if self._use_rust:
             self._update_bullets_batch(self._player.get_bullets(), cleanup)
@@ -129,10 +125,10 @@ class BulletManager:
             self._player.cleanup_inactive_bullets()
 
     def _update_enemy_bullets(self, cleanup: bool) -> None:
-        """更新敌人子弹
+        """Update enemy bullets.
 
         Args:
-            cleanup: 是否在更新后清理非活跃子弹
+            cleanup: Whether to remove inactive bullets after update.
         """
         if self._use_rust:
             self._update_bullets_batch(self._spawn_controller.enemy_bullets, cleanup)
@@ -211,12 +207,12 @@ class BulletManager:
             if not is_active:
                 bullet.active = False
 
-        # 注意：cleanup 由调用者处理
-        # - 玩家子弹：由 Player.cleanup_inactive_bullets() 清理
-        # - 敌人子弹：由 _cleanup_enemy_bullets() 清理
+        # Note: cleanup is handled by the caller
+        # - Player bullets: cleaned by Player.cleanup_inactive_bullets()
+        # - Enemy bullets: cleaned by _cleanup_enemy_bullets()
 
     def _cleanup_enemy_bullets(self) -> None:
-        """清理敌人子弹列表中的非活跃子弹"""
+        """Remove inactive bullets from the enemy bullet list."""
         bullets = self._spawn_controller.enemy_bullets
         if not bullets:
             return

@@ -1,12 +1,12 @@
-"""里程碑管理器模块
+"""Milestone manager module.
 
-统一管理里程碑触发和奖励选择流程。
-遵循单一职责原则，将里程碑相关操作从 GameScene 中分离。
+Unified management of milestone triggers and reward selection flow.
+Separates milestone-related operations from GameScene.
 
-设计原则:
-- 单一职责: 仅负责里程碑检查和奖励选择流程
-- 依赖注入: 通过构造函数接收依赖
-- 门面模式: 提供统一的里程碑操作入口
+Design principles:
+- Single responsibility: Milestone checking and reward selection only.
+- Dependency injection: Dependencies received via constructor.
+- Facade pattern: Unified milestone operation entry point.
 
 Usage:
     from airwar.game.managers import MilestoneManager
@@ -27,23 +27,21 @@ from .game_controller import GameplayState
 
 
 class MilestoneManager:
-    """里程碑触发和奖励选择流程管理器
+    """Milestone trigger and reward selection flow manager.
 
-    统一管理里程碑的:
-    - 检查 (check_and_trigger)
-    - 奖励选择回调 (on_reward_selected)
+    Manages milestone checking and reward selection callbacks.
 
-    职责边界:
-    - 管理里程碑检查逻辑
-    - 处理奖励选择回调
-    - 不负责奖励生成 (由 RewardSystem 负责)
-    - 不负责奖励渲染 (由 RewardSelector 负责)
+    Responsibilities:
+    - Milestone check logic.
+    - Reward selection callback handling.
+    - Does not handle reward generation (handled by RewardSystem).
+    - Does not handle reward rendering (handled by RewardSelector).
 
     Attributes:
-        _game_controller: 游戏控制器 (提供状态访问和游戏逻辑)
-        _reward_system: 奖励系统 (提供奖励选项生成)
-        _reward_selector: 奖励选择器 (用于显示和选择奖励)
-        _on_reward_selected_callback: 奖励选择完成后的回调
+        _game_controller: Game controller (provides state access and game logic).
+        _reward_system: Reward system (provides reward option generation).
+        _reward_selector: Reward selector (for display and selection).
+        _on_reward_selected_callback: Callback for reward selection completion.
     """
 
     def __init__(
@@ -51,11 +49,11 @@ class MilestoneManager:
         game_controller: 'GameController',
         reward_system: 'RewardSystem'
     ) -> None:
-        """初始化里程碑管理器
+        """Initialize the milestone manager.
 
         Args:
-            game_controller: 游戏控制器
-            reward_system: 奖励系统
+            game_controller: Game controller.
+            reward_system: Reward system.
         """
         self._game_controller = game_controller
         self._reward_system = reward_system
@@ -63,24 +61,24 @@ class MilestoneManager:
         self._on_reward_selected_callback: Optional[Callable] = None
 
     def set_reward_selector(self, reward_selector: 'RewardSelector') -> None:
-        """设置奖励选择器
+        """Set the reward selector.
 
         Args:
-            reward_selector: 奖励选择器实例
+            reward_selector: Reward selector instance.
         """
         self._reward_selector = reward_selector
 
     def check_and_trigger(self, player) -> bool:
-        """检查里程碑并触发奖励选择
+        """Check milestone and trigger reward selection.
 
-        检查当前分数是否达到下一个里程碑阈值，
-        如果达到则显示奖励选择界面。
+        Checks if the current score has reached the next milestone threshold.
+        If so, displays the reward selection UI.
 
         Args:
-            player: 玩家对象 (用于奖励应用)
+            player: Player object (for reward application).
 
         Returns:
-            bool: True 表示触发了里程碑，False 表示未触发
+            bool: True if a milestone was triggered, False otherwise.
         """
         if self._game_controller.state.gameplay_state != GameplayState.PLAYING:
             return False
@@ -92,10 +90,10 @@ class MilestoneManager:
         return False
 
     def _trigger_reward_selection(self, player) -> None:
-        """触发奖励选择流程
+        """Trigger the reward selection flow.
 
         Args:
-            player: 玩家对象
+            player: Player object.
         """
         boss_kill_count = self._game_controller.difficulty_manager.get_boss_kill_count()
         options = self._reward_system.generate_options(
@@ -106,11 +104,11 @@ class MilestoneManager:
         self._game_controller.state.paused = True
 
     def _show_reward_selection(self, options: list, player) -> None:
-        """显示奖励选择器
+        """Show the reward selector.
 
         Args:
-            options: 奖励选项列表
-            player: 玩家对象 (用于回调)
+            options: List of reward options.
+            player: Player object (for callback).
         """
         if not self._reward_selector:
             return
@@ -120,11 +118,11 @@ class MilestoneManager:
         self._reward_selector.on_select = lambda reward: self._on_reward_selected(reward, player)
 
     def _on_reward_selected(self, reward: dict, player) -> None:
-        """处理奖励选择回调
+        """Handle reward selection callback.
 
         Args:
-            reward: 选择的奖励配置字典
-            player: 玩家对象
+            reward: Selected reward config dict.
+            player: Player object.
         """
         self._game_controller.on_reward_selected(reward, player)
         if self._reward_selector:
@@ -133,18 +131,18 @@ class MilestoneManager:
             self._on_reward_selected_callback(reward)
 
     def set_on_reward_selected_callback(self, callback: Callable) -> None:
-        """设置奖励选择完成后的回调
+        """Set the callback for reward selection completion.
 
         Args:
-            callback: 回调函数
+            callback: Callback function.
         """
         self._on_reward_selected_callback = callback
 
     @property
     def is_reward_visible(self) -> bool:
-        """检查奖励选择器是否可见
+        """Check if the reward selector is visible.
 
         Returns:
-            bool: True 表示奖励选择器可见
+            bool: True if the reward selector is visible.
         """
         return self._reward_selector.visible if self._reward_selector else False

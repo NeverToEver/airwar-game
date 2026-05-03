@@ -99,12 +99,10 @@ class SpawnController:
         # Force all existing enemies to exit when boss appears
         for enemy in self.enemies:
             if enemy.active and getattr(enemy, '_state', None) == 'active':
-                enemy._state = 'exiting'
-                enemy._exit_start_x = enemy.rect.x
-                enemy._exit_start_y = enemy.rect.y
-                enemy._exit_end_x = enemy.rect.x + random.choice(self.ENEMY_EXIT_X_OFFSETS)
-                enemy._exit_end_y = self.ENEMY_EXIT_END_Y
-                enemy._exit_progress = 0.0
+                enemy.begin_exit(
+                    enemy.rect.x + random.choice(self.ENEMY_EXIT_X_OFFSETS),
+                    self.ENEMY_EXIT_END_Y
+                )
 
         screen_width = get_screen_width()
         base_health = self.BOSS_BASE_HEALTH * (1 + boss_kill_count * self.BOSS_HEALTH_SCALING)

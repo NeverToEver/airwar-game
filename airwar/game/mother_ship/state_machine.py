@@ -2,7 +2,29 @@
 import pygame
 from .interfaces import IMotherShipStateMachine
 from .mother_ship_state import MotherShipState, MotherShipCooldown, DockedStayProgress
-from .event_bus import EventBus
+from .event_bus import (
+    EventBus,
+    EVENT_STATE_CHANGED,
+    EVENT_H_PRESSED,
+    EVENT_H_RELEASED,
+    EVENT_H_RELEASED_EARLY,
+    EVENT_PROGRESS_COMPLETE,
+    EVENT_DOCKING_ANIMATION_COMPLETE,
+    EVENT_UNDOCKING_ANIMATION_COMPLETE,
+    EVENT_STAY_EXPIRED,
+    EVENT_ENTERING_COMPLETE,
+    EVENT_UNDOCK_REQUESTED,
+    EVENT_EXIT_COMPLETE,
+    EVENT_EXIT_PROGRESS_UPDATE,
+    EVENT_START_UNDOCKING_ANIMATION,
+    EVENT_UNDOCK_CANCELLED,
+    EVENT_START_ENTERING_ANIMATION,
+    EVENT_START_DOCKING_ANIMATION,
+    EVENT_STAY_STARTED,
+    EVENT_COOLDOWN_STARTED,
+    EVENT_GAME_RESUME,
+    EVENT_COOLDOWN_COMPLETE,
+)
 
 
 class MotherShipStateMachine(IMotherShipStateMachine):
@@ -31,17 +53,17 @@ class MotherShipStateMachine(IMotherShipStateMachine):
         self._register_handlers()
 
     def _register_handlers(self) -> None:
-        self._event_bus.subscribe('H_PRESSED', self._on_h_pressed)
-        self._event_bus.subscribe('H_RELEASED', self._on_h_released)
-        self._event_bus.subscribe('H_RELEASED_EARLY', self._on_h_released_early)
-        self._event_bus.subscribe('PROGRESS_COMPLETE', self._on_progress_complete)
-        self._event_bus.subscribe('DOCKING_ANIMATION_COMPLETE', self._on_docking_animation_complete)
-        self._event_bus.subscribe('UNDOCKING_ANIMATION_COMPLETE', self._on_undocking_animation_complete)
-        self._event_bus.subscribe('STAY_EXPIRED', self._on_stay_expired)
-        self._event_bus.subscribe('ENTERING_COMPLETE', self._on_entering_complete)
-        self._event_bus.subscribe('UNDOCK_REQUESTED', self._on_undock_requested)
-        self._event_bus.subscribe('EXIT_COMPLETE', self._on_exit_complete)
-        self._event_bus.subscribe('EXIT_PROGRESS_UPDATE', self._on_exit_progress_update)
+        self._event_bus.subscribe(EVENT_H_PRESSED, self._on_h_pressed)
+        self._event_bus.subscribe(EVENT_H_RELEASED, self._on_h_released)
+        self._event_bus.subscribe(EVENT_H_RELEASED_EARLY, self._on_h_released_early)
+        self._event_bus.subscribe(EVENT_PROGRESS_COMPLETE, self._on_progress_complete)
+        self._event_bus.subscribe(EVENT_DOCKING_ANIMATION_COMPLETE, self._on_docking_animation_complete)
+        self._event_bus.subscribe(EVENT_UNDOCKING_ANIMATION_COMPLETE, self._on_undocking_animation_complete)
+        self._event_bus.subscribe(EVENT_STAY_EXPIRED, self._on_stay_expired)
+        self._event_bus.subscribe(EVENT_ENTERING_COMPLETE, self._on_entering_complete)
+        self._event_bus.subscribe(EVENT_UNDOCK_REQUESTED, self._on_undock_requested)
+        self._event_bus.subscribe(EVENT_EXIT_COMPLETE, self._on_exit_complete)
+        self._event_bus.subscribe(EVENT_EXIT_PROGRESS_UPDATE, self._on_exit_progress_update)
 
     @property
     def current_state(self) -> MotherShipState:
@@ -60,26 +82,26 @@ class MotherShipStateMachine(IMotherShipStateMachine):
             if self._can_transition_to(MotherShipState.UNDOCKING):
                 self._change_state(MotherShipState.UNDOCKING)
                 self._exit_in_progress = False
-                self._event_bus.publish('STATE_CHANGED', state=self._current_state)
-                self._event_bus.publish('START_UNDOCKING_ANIMATION')
+                self._event_bus.publish(EVENT_STATE_CHANGED, state=self._current_state)
+                self._event_bus.publish(EVENT_START_UNDOCKING_ANIMATION)
             return
 
         if self._current_state == MotherShipState.COOLDOWN:
             if self._cooldown.can_activate() and self._can_transition_to(MotherShipState.PRESSING):
                 self._change_state(MotherShipState.PRESSING)
-                self._event_bus.publish('STATE_CHANGED', state=self._current_state)
+                self._event_bus.publish(EVENT_STATE_CHANGED, state=self._current_state)
             return
 
         if self._current_state == MotherShipState.IDLE:
             if self._cooldown.can_activate() and self._can_transition_to(MotherShipState.PRESSING):
                 self._change_state(MotherShipState.PRESSING)
-                self._event_bus.publish('STATE_CHANGED', state=self._current_state)
+                self._event_bus.publish(EVENT_STATE_CHANGED, state=self._current_state)
 
     def _on_h_released(self, **kwargs) -> None:
         if self._can_transition_to(MotherShipState.IDLE):
             self._change_state(MotherShipState.IDLE)
-            self._event_bus.publish('STATE_CHANGED', state=self._current_state)
-            self._event_bus.publish('UNDOCK_CANCELLED')
+            self._event_bus.publish(EVENT_STATE_CHANGED, state=self._current_state)
+            self._event_bus.publish(EVENT_UNDOCK_CANCELLED)
 
     def _on_h_released_early(self, **kwargs) -> None:
         self._exit_in_progress = False
@@ -87,21 +109,21 @@ class MotherShipStateMachine(IMotherShipStateMachine):
     def _on_progress_complete(self, **kwargs) -> None:
         if self._can_transition_to(MotherShipState.ENTERING):
             self._change_state(MotherShipState.ENTERING)
-            self._event_bus.publish('STATE_CHANGED', state=self._current_state)
-            self._event_bus.publish('START_ENTERING_ANIMATION')
+            self._event_bus.publish(EVENT_STATE_CHANGED, state=self._current_state)
+            self._event_bus.publish(EVENT_START_ENTERING_ANIMATION)
 
     def _on_entering_complete(self, **kwargs) -> None:
         if self._can_transition_to(MotherShipState.DOCKING):
             self._change_state(MotherShipState.DOCKING)
-            self._event_bus.publish('STATE_CHANGED', state=self._current_state)
-            self._event_bus.publish('START_DOCKING_ANIMATION')
+            self._event_bus.publish(EVENT_STATE_CHANGED, state=self._current_state)
+            self._event_bus.publish(EVENT_START_DOCKING_ANIMATION)
 
     def _on_docking_animation_complete(self, **kwargs) -> None:
         if self._can_transition_to(MotherShipState.DOCKED):
             self._change_state(MotherShipState.DOCKED)
-            self._event_bus.publish('STATE_CHANGED', state=self._current_state)
+            self._event_bus.publish(EVENT_STATE_CHANGED, state=self._current_state)
             self._stay_progress.start_stay(pygame.time.get_ticks() / 1000.0)
-            self._event_bus.publish('STAY_STARTED')
+            self._event_bus.publish(EVENT_STAY_STARTED)
 
     def _on_undocking_animation_complete(self, **kwargs) -> None:
         if self._current_state == MotherShipState.UNDOCKING:
@@ -109,30 +131,30 @@ class MotherShipStateMachine(IMotherShipStateMachine):
             self._cooldown.start_cooldown(pygame.time.get_ticks() / 1000.0)
             self._stay_progress.reset()
             self._exit_in_progress = False
-            self._event_bus.publish('STATE_CHANGED', state=self._current_state)
-            self._event_bus.publish('COOLDOWN_STARTED')
-            self._event_bus.publish('GAME_RESUME')
+            self._event_bus.publish(EVENT_STATE_CHANGED, state=self._current_state)
+            self._event_bus.publish(EVENT_COOLDOWN_STARTED)
+            self._event_bus.publish(EVENT_GAME_RESUME)
 
     def _on_stay_expired(self, **kwargs) -> None:
         if self._current_state == MotherShipState.DOCKED:
             self._change_state(MotherShipState.UNDOCKING)
             self._exit_in_progress = False
-            self._event_bus.publish('STATE_CHANGED', state=self._current_state)
-            self._event_bus.publish('START_UNDOCKING_ANIMATION')
+            self._event_bus.publish(EVENT_STATE_CHANGED, state=self._current_state)
+            self._event_bus.publish(EVENT_START_UNDOCKING_ANIMATION)
 
     def _on_undock_requested(self, **kwargs) -> None:
         if self._current_state == MotherShipState.DOCKED:
             self._change_state(MotherShipState.UNDOCKING)
             self._exit_in_progress = False
-            self._event_bus.publish('STATE_CHANGED', state=self._current_state)
-            self._event_bus.publish('START_UNDOCKING_ANIMATION')
+            self._event_bus.publish(EVENT_STATE_CHANGED, state=self._current_state)
+            self._event_bus.publish(EVENT_START_UNDOCKING_ANIMATION)
 
     def _on_exit_complete(self, **kwargs) -> None:
         if self._current_state == MotherShipState.DOCKED and self._exit_in_progress:
             self._change_state(MotherShipState.UNDOCKING)
             self._exit_in_progress = False
-            self._event_bus.publish('STATE_CHANGED', state=self._current_state)
-            self._event_bus.publish('START_UNDOCKING_ANIMATION')
+            self._event_bus.publish(EVENT_STATE_CHANGED, state=self._current_state)
+            self._event_bus.publish(EVENT_START_UNDOCKING_ANIMATION)
 
     def _on_exit_progress_update(self, **kwargs) -> None:
         pass
@@ -148,12 +170,12 @@ class MotherShipStateMachine(IMotherShipStateMachine):
             self._cooldown.update_cooldown(current_time)
             if not self._cooldown.is_in_cooldown:
                 self._change_state(MotherShipState.IDLE)
-                self._event_bus.publish('STATE_CHANGED', state=self._current_state)
-                self._event_bus.publish('COOLDOWN_COMPLETE')
+                self._event_bus.publish(EVENT_STATE_CHANGED, state=self._current_state)
+                self._event_bus.publish(EVENT_COOLDOWN_COMPLETE)
         elif self._current_state == MotherShipState.DOCKED:
             self._stay_progress.update_stay(current_time)
             if self._stay_progress.is_expired():
-                self._event_bus.publish('STAY_EXPIRED')
+                self._event_bus.publish(EVENT_STAY_EXPIRED)
 
     def is_in_cooldown(self) -> bool:
         return self._current_state == MotherShipState.COOLDOWN

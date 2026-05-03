@@ -4,6 +4,24 @@ import pygame
 import math
 from .mother_ship_state import MotherShipState, GameSaveData
 from .progress_bar_ui import ProgressBarUI
+from .event_bus import (
+    EVENT_STATE_CHANGED,
+    EVENT_H_RELEASED_EARLY,
+    EVENT_ENTERING_COMPLETE,
+    EVENT_DOCKING_ANIMATION_COMPLETE,
+    EVENT_UNDOCKING_ANIMATION_COMPLETE,
+    EVENT_UNDOCK_REQUESTED,
+    EVENT_START_ENTERING_ANIMATION,
+    EVENT_START_DOCKING_ANIMATION,
+    EVENT_UNDOCK_CANCELLED,
+    EVENT_START_UNDOCKING_ANIMATION,
+    EVENT_COOLDOWN_STARTED,
+    EVENT_STAY_STARTED,
+    EVENT_GAME_RESUME,
+    EVENT_SAVE_GAME_REQUEST,
+    EVENT_EXIT_STARTED,
+    EVENT_EXIT_PROGRESS_UPDATE,
+)
 from airwar.entities.bullet import Bullet
 from airwar.entities.base import BulletData
 from airwar.config import get_screen_width, get_screen_height
@@ -86,19 +104,19 @@ class GameIntegrator:
         self._register_handlers()
 
     def _register_handlers(self) -> None:
-        self._event_bus.subscribe('STATE_CHANGED', self._on_state_changed)
-        self._event_bus.subscribe('SAVE_GAME_REQUEST', self._on_save_game_request)
-        self._event_bus.subscribe('GAME_RESUME', self._on_game_resume)
-        self._event_bus.subscribe('START_ENTERING_ANIMATION', self._on_start_entering_animation)
-        self._event_bus.subscribe('START_DOCKING_ANIMATION', self._on_start_docking_animation)
-        self._event_bus.subscribe('UNDOCK_CANCELLED', self._on_undock_cancelled)
-        self._event_bus.subscribe('START_UNDOCKING_ANIMATION', self._on_start_undocking_animation)
-        self._event_bus.subscribe('COOLDOWN_STARTED', self._on_cooldown_started)
-        self._event_bus.subscribe('STAY_STARTED', self._on_stay_started)
-        self._event_bus.subscribe('UNDOCK_REQUESTED', self._on_undock_requested)
-        self._event_bus.subscribe('H_RELEASED_EARLY', self._on_h_released_early)
-        self._event_bus.subscribe('EXIT_STARTED', self._on_exit_started)
-        self._event_bus.subscribe('EXIT_PROGRESS_UPDATE', self._on_exit_progress_update)
+        self._event_bus.subscribe(EVENT_STATE_CHANGED, self._on_state_changed)
+        self._event_bus.subscribe(EVENT_SAVE_GAME_REQUEST, self._on_save_game_request)
+        self._event_bus.subscribe(EVENT_GAME_RESUME, self._on_game_resume)
+        self._event_bus.subscribe(EVENT_START_ENTERING_ANIMATION, self._on_start_entering_animation)
+        self._event_bus.subscribe(EVENT_START_DOCKING_ANIMATION, self._on_start_docking_animation)
+        self._event_bus.subscribe(EVENT_UNDOCK_CANCELLED, self._on_undock_cancelled)
+        self._event_bus.subscribe(EVENT_START_UNDOCKING_ANIMATION, self._on_start_undocking_animation)
+        self._event_bus.subscribe(EVENT_COOLDOWN_STARTED, self._on_cooldown_started)
+        self._event_bus.subscribe(EVENT_STAY_STARTED, self._on_stay_started)
+        self._event_bus.subscribe(EVENT_UNDOCK_REQUESTED, self._on_undock_requested)
+        self._event_bus.subscribe(EVENT_H_RELEASED_EARLY, self._on_h_released_early)
+        self._event_bus.subscribe(EVENT_EXIT_STARTED, self._on_exit_started)
+        self._event_bus.subscribe(EVENT_EXIT_PROGRESS_UPDATE, self._on_exit_progress_update)
 
     def _update_mothership_input(self) -> None:
         # Mothership movement is only allowed while docked
@@ -207,7 +225,7 @@ class GameIntegrator:
 
         enemies = self._game_scene.get_enemies()
         boss = self._game_scene.get_boss()
-        screen_height = pygame.display.get_surface().get_height()
+        screen_height = get_screen_height()
 
         for bullet in self._mothership_bullets[:]:
             bullet.update()
@@ -473,7 +491,7 @@ class GameIntegrator:
 
         if progress >= 1.0:
             self._entering_animation_active = False
-            self._event_bus.publish('ENTERING_COMPLETE')
+            self._event_bus.publish(EVENT_ENTERING_COMPLETE)
 
     def _update_docking_animation(self) -> None:
         if not self._game_scene or not self._docking_start_position:
@@ -501,7 +519,7 @@ class GameIntegrator:
             self._docking_animation_active = False
             self._docking_animation_frame = 0
             self._player_control_disabled = False
-            self._event_bus.publish('DOCKING_ANIMATION_COMPLETE')
+            self._event_bus.publish(EVENT_DOCKING_ANIMATION_COMPLETE)
 
     def _update_undocking_animation(self) -> None:
         if not self._game_scene or not self._undocking_start_position:
@@ -542,7 +560,7 @@ class GameIntegrator:
                 self._undocking_phase = 1
                 self._mother_ship.deactivate_flyaway()
                 self._apply_cooldown_multiplier_from_player()
-                self._event_bus.publish('UNDOCKING_ANIMATION_COMPLETE')
+                self._event_bus.publish(EVENT_UNDOCKING_ANIMATION_COMPLETE)
 
     def _ease_in_out_cubic(self, t: float) -> float:
         if t < 0.5:
@@ -654,7 +672,7 @@ class GameIntegrator:
 
     def request_undock(self) -> None:
         """Publish UNDOCK_REQUESTED to the internal event bus."""
-        self._event_bus.publish('UNDOCK_REQUESTED')
+        self._event_bus.publish(EVENT_UNDOCK_REQUESTED)
 
     def is_player_control_disabled(self) -> bool:
         return self._player_control_disabled
@@ -673,4 +691,4 @@ class GameIntegrator:
         self._mother_ship.show()
         self._player_control_disabled = False
         self._input_detector.reset_progress()
-        self._event_bus.publish('STATE_CHANGED', state=MotherShipState.IDLE)
+        self._event_bus.publish(EVENT_STATE_CHANGED, state=MotherShipState.IDLE)

@@ -1,5 +1,6 @@
 """Buff implementations — 12 buff types for player power-ups."""
 from .base_buff import Buff, BuffResult
+from airwar.config.design_tokens import Colors
 
 
 class ExtraLifeBuff(Buff):
@@ -170,7 +171,7 @@ class SpreadShotBuff(Buff):
 class ExplosiveBuff(Buff):
     """Explosive buff — bullets deal area-of-effect damage on hit."""
     NAME = 'Explosive'
-    COLOR = (255, 100, 50)
+    COLOR = Colors.ACCENT_EXPLOSIVE
 
     def calculate_value(self, base_value: int, current_level: int) -> int:
         return current_level

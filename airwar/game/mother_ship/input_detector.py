@@ -2,6 +2,15 @@
 import pygame
 from .interfaces import IInputDetector
 from .mother_ship_state import DockingProgress
+from .event_bus import (
+    EVENT_H_PRESSED,
+    EVENT_H_RELEASED,
+    EVENT_H_RELEASED_EARLY,
+    EVENT_PROGRESS_COMPLETE,
+    EVENT_EXIT_PROGRESS_UPDATE,
+    EVENT_EXIT_COMPLETE,
+    EVENT_DOCKING_COMPLETE,
+)
 
 
 class InputDetector(IInputDetector):
@@ -37,7 +46,7 @@ class InputDetector(IInputDetector):
         self._h_was_pressed = is_h_currently_pressed
 
     def _on_h_pressed(self, current_time: float) -> None:
-        self._event_bus.publish('H_PRESSED', timestamp=current_time)
+        self._event_bus.publish(EVENT_H_PRESSED, timestamp=current_time)
         self._progress.is_pressing = True
         self._progress.press_start_time = current_time
 
@@ -45,22 +54,22 @@ class InputDetector(IInputDetector):
         if self._is_exiting:
             self._is_exiting = False
             self._exit_progress = 0.0
-            self._event_bus.publish('H_RELEASED_EARLY')
+            self._event_bus.publish(EVENT_H_RELEASED_EARLY)
         else:
             was_complete = self._progress.current_progress >= 1.0
             self._progress.reset()
 
             if was_complete:
-                self._event_bus.publish('DOCKING_COMPLETE')
+                self._event_bus.publish(EVENT_DOCKING_COMPLETE)
             else:
-                self._event_bus.publish('H_RELEASED')
+                self._event_bus.publish(EVENT_H_RELEASED)
 
     def _on_h_held(self, current_time: float) -> None:
         old_progress = self._progress.current_progress
         self._progress.update_progress(current_time)
 
         if old_progress < 1.0 and self._progress.current_progress >= 1.0:
-            self._event_bus.publish('PROGRESS_COMPLETE')
+            self._event_bus.publish(EVENT_PROGRESS_COMPLETE)
 
     def _on_exit_held(self, current_time: float) -> None:
         if self._exit_progress == 0.0:
@@ -70,12 +79,12 @@ class InputDetector(IInputDetector):
         old_progress = self._exit_progress
         self._exit_progress = min(elapsed / self._exit_required_duration, 1.0)
 
-        self._event_bus.publish('EXIT_PROGRESS_UPDATE', progress=self._exit_progress)
+        self._event_bus.publish(EVENT_EXIT_PROGRESS_UPDATE, progress=self._exit_progress)
 
         if old_progress < 1.0 and self._exit_progress >= 1.0:
             self._is_exiting = False
             self._exit_progress = 0.0
-            self._event_bus.publish('EXIT_COMPLETE')
+            self._event_bus.publish(EVENT_EXIT_COMPLETE)
 
     def is_h_pressed(self) -> bool:
         return pygame.key.get_pressed()[self.H_KEY]

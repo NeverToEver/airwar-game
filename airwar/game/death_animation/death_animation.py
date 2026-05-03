@@ -4,6 +4,7 @@ import random
 from typing import List
 
 import pygame
+from airwar.config.design_tokens import Colors
 
 
 class SparkParticle:
@@ -60,7 +61,7 @@ class DeathAnimation:
     GLOW_END_FRAME = 180
     GLOW_MAX_ALPHA = 150
     GLOW_COLOR = (255, 255, 255)
-    FLICKER_COLOR = (255, 50, 50)
+    FLICKER_COLOR = Colors.ACCENT_DANGER
 
     # Cache for flicker surfaces
     _flicker_cache = {}

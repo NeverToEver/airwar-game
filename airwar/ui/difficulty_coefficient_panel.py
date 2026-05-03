@@ -3,7 +3,7 @@ import pygame
 from airwar.utils.fonts import get_cjk_font
 from typing import TYPE_CHECKING, Tuple, List
 
-from airwar.config.design_tokens import SystemColors
+from airwar.config.design_tokens import Colors, SystemColors
 
 if TYPE_CHECKING:
     from airwar.game.systems.difficulty_manager import DifficultyManager
@@ -23,7 +23,7 @@ class DifficultyCoefficientPanel:
         (2.0, (100, 255, 100), (0, 255, 255)),
         (4.0, (255, 255, 100), (0, 200, 255)),
         (6.0, (255, 150, 50), (255, 150, 50)),
-        (float('inf'), (255, 50, 50), (255, 50, 50)),
+        (float('inf'), Colors.ACCENT_DANGER, Colors.ACCENT_DANGER),
     ]
 
     _bg_surface_cache = None

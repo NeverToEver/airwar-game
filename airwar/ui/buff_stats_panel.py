@@ -6,7 +6,7 @@ import pygame
 from airwar.utils.fonts import get_cjk_font
 import logging
 
-from airwar.config.design_tokens import SystemColors, SystemUI, get_design_tokens
+from airwar.config.design_tokens import Colors, SystemColors, SystemUI, get_design_tokens
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.ui.hex_icon import HexIcon, ICON_POWER, ICON_DEFENSE, ICON_SPEED
 from airwar.game.buffs.buff_registry import create_buff
@@ -492,7 +492,7 @@ class AttackModePanel:
         entries = [
             AttackModeEntry("散", "散射", spread_on, (255, 160, 30)),
             AttackModeEntry("光", "激光", laser_on, (255, 80, 180)),
-            AttackModeEntry("爆", "爆炸", explosive_on, (255, 100, 50)),
+            AttackModeEntry("爆", "爆炸", explosive_on, Colors.ACCENT_EXPLOSIVE),
         ]
 
         spacing = self.PANEL_WIDTH // 3

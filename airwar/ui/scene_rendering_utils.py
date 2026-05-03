@@ -356,3 +356,24 @@ def draw_themed_option_box(
     )
     text_rect = option_text.get_rect(center=(center_x, y))
     surface.blit(option_text, text_rect)
+
+
+def render_cached_text(font, text, color, cache_key: str, text_cache: dict):
+    """Render text surface, reusing cached surface if text unchanged.
+
+    Args:
+        font: Pygame font object.
+        text: Text string to render.
+        color: RGB color tuple.
+        cache_key: Key for the text cache dict.
+        text_cache: Dictionary mapping cache_key -> (text, surface).
+
+    Returns:
+        pygame.Surface: The rendered text surface (cached or fresh).
+    """
+    entry = text_cache.get(cache_key)
+    if entry is not None and entry[0] == text:
+        return entry[1]
+    surf = font.render(text, True, color)
+    text_cache[cache_key] = (text, surf)
+    return surf

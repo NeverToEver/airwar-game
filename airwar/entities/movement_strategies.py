@@ -28,9 +28,9 @@ class StraightMovement(MovementStrategy):
     """Straight movement with small vertical oscillation."""
 
     def update(self, enemy: 'Enemy') -> None:
-        enemy.rect.x = enemy._active_position_x
-        enemy.rect.y = enemy._active_position_y + math.sin(enemy._lifetime * 0.05) * 15
-        enemy._sync_rects()
+        enemy.rect.x = enemy.active_position_x
+        enemy.rect.y = enemy.active_position_y + math.sin(enemy.lifetime * 0.05) * 15
+        enemy.sync_rects()
 
 
 class SineMovement(MovementStrategy):
@@ -38,13 +38,13 @@ class SineMovement(MovementStrategy):
 
     def update(self, enemy: 'Enemy') -> None:
         enemy.move_timer += 1
-        enemy.rect.x = enemy._active_position_x + math.sin(
+        enemy.rect.x = enemy.active_position_x + math.sin(
             enemy.move_timer * enemy.move_frequency + enemy.move_offset
         ) * 80
-        enemy.rect.y = enemy._active_position_y + math.sin(
+        enemy.rect.y = enemy.active_position_y + math.sin(
             enemy.move_timer * enemy.move_frequency * 0.5
         ) * 50
-        enemy._sync_rects()
+        enemy.sync_rects()
 
 
 class ZigzagMovement(MovementStrategy):
@@ -57,11 +57,11 @@ class ZigzagMovement(MovementStrategy):
             enemy.direction *= -1
         new_x = enemy.rect.x + enemy.direction * enemy.zigzag_speed
         enemy.rect.x = max(
-            enemy._active_position_x - 80,
-            min(new_x, enemy._active_position_x + 80)
+            enemy.active_position_x - 80,
+            min(new_x, enemy.active_position_x + 80)
         )
-        enemy.rect.y = enemy._active_position_y + math.sin(enemy._lifetime * 0.1) * 25
-        enemy._sync_rects()
+        enemy.rect.y = enemy.active_position_y + math.sin(enemy.lifetime * 0.1) * 25
+        enemy.sync_rects()
 
 
 class DiveMovement(MovementStrategy):
@@ -70,9 +70,9 @@ class DiveMovement(MovementStrategy):
     def update(self, enemy: 'Enemy') -> None:
         enemy.dive_timer += 1
         wave = math.sin(enemy.dive_timer * 0.05) * 24
-        enemy.rect.x = enemy._active_position_x + wave
-        enemy.rect.y = enemy._active_position_y + math.sin(enemy.dive_timer * 0.03) * 15
-        enemy._sync_rects()
+        enemy.rect.x = enemy.active_position_x + wave
+        enemy.rect.y = enemy.active_position_y + math.sin(enemy.dive_timer * 0.03) * 15
+        enemy.sync_rects()
 
 
 class HoverMovement(MovementStrategy):
@@ -80,9 +80,9 @@ class HoverMovement(MovementStrategy):
 
     def update(self, enemy: 'Enemy') -> None:
         enemy.hover_timer += 0.08
-        enemy.rect.x = enemy._active_position_x + math.sin(enemy.hover_timer) * 80
-        enemy.rect.y = enemy._active_position_y + math.sin(enemy.hover_timer * 0.7) * 25
-        enemy._sync_rects()
+        enemy.rect.x = enemy.active_position_x + math.sin(enemy.hover_timer) * 80
+        enemy.rect.y = enemy.active_position_y + math.sin(enemy.hover_timer * 0.7) * 25
+        enemy.sync_rects()
 
 
 class SpiralMovement(MovementStrategy):
@@ -92,9 +92,9 @@ class SpiralMovement(MovementStrategy):
         enemy.spiral_timer += 1
         spiral_x = math.cos(enemy.spiral_timer * enemy.spiral_frequency) * 40
         spiral_y = math.sin(enemy.spiral_timer * enemy.spiral_frequency * 2) * 15
-        enemy.rect.x = enemy._active_position_x + spiral_x
-        enemy.rect.y = enemy._active_position_y + spiral_y
-        enemy._sync_rects()
+        enemy.rect.x = enemy.active_position_x + spiral_x
+        enemy.rect.y = enemy.active_position_y + spiral_y
+        enemy.sync_rects()
 
 
 class NoiseMovement(MovementStrategy):
@@ -105,8 +105,8 @@ class NoiseMovement(MovementStrategy):
         noise_x = _smooth_noise(enemy.noise_timer * enemy.noise_scale_x, enemy.noise_seed) * enemy.noise_amplitude_x
         noise_y = _smooth_noise(enemy.noise_timer * enemy.noise_scale_y, enemy.noise_seed + 500) * enemy.noise_amplitude_y
 
-        new_x = enemy._active_position_x + noise_x * 80
-        new_y = enemy._active_position_y + noise_y * 50
+        new_x = enemy.active_position_x + noise_x * 80
+        new_y = enemy.active_position_y + noise_y * 50
 
         max_delta = 6
         dx = new_x - enemy.rect.x
@@ -118,7 +118,7 @@ class NoiseMovement(MovementStrategy):
 
         enemy.rect.x = new_x
         enemy.rect.y = new_y
-        enemy._sync_rects()
+        enemy.sync_rects()
 
 
 class AggressiveMovement(MovementStrategy):
@@ -132,8 +132,8 @@ class AggressiveMovement(MovementStrategy):
 
         agg_range_x = 96
         agg_range_y = 60
-        new_x = enemy._active_position_x + noise_x * agg_range_x
-        new_y = enemy._active_position_y + noise_y * agg_range_y
+        new_x = enemy.active_position_x + noise_x * agg_range_x
+        new_y = enemy.active_position_y + noise_y * agg_range_y
 
         max_delta = 8
         dx = new_x - enemy.rect.x
@@ -145,7 +145,7 @@ class AggressiveMovement(MovementStrategy):
 
         enemy.rect.x = new_x
         enemy.rect.y = new_y
-        enemy._sync_rects()
+        enemy.sync_rects()
 
 
 def _smooth_noise(x: float, seed: int) -> float:

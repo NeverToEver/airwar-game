@@ -93,7 +93,6 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._input_coordinator: InputCoordinator = None
         self._ui_manager: UIManager = None
         self._game_loop_manager: GameLoopManager = None
-        self._auto_save_timer: int = 0
 
     def enter(self, **kwargs) -> None:
         """Initialize the game scene.
