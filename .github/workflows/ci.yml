@@ -36,7 +36,9 @@ jobs:
           python -m pip install -r requirements-dev.txt
 
       - name: Build Rust extension
-        run: python -m maturin develop --release --manifest-path airwar_core/Cargo.toml
+        run: |
+          python -m maturin build --release --manifest-path airwar_core/Cargo.toml --out "$RUNNER_TEMP/airwar-wheels"
+          python -m pip install "$RUNNER_TEMP"/airwar-wheels/*.whl
 
       - name: Run Ruff
         run: python -m ruff check .
