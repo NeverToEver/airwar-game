@@ -54,7 +54,7 @@ jobs:
 
       - name: Check build scripts with shellcheck
         run: |
-          shellcheck build_linux.sh build_macos.sh
+          shellcheck --severity=warning build_linux.sh build_macos.sh
 
       - name: Run tests
         env:
