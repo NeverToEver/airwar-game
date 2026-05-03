@@ -335,16 +335,15 @@ class SceneDirector:
         return None
 
     def _perform_save(self, game_scene: GameScene) -> bool:
-        if not game_scene or not game_scene.create_save_data():
+        if not game_scene:
             return False
-
         save_data = game_scene.create_save_data()
-        if save_data:
-            if not game_scene.is_mothership_docked():
-                save_data.is_in_mothership = False
-            persistence_manager = PersistenceManager()
-            return persistence_manager.save_game(save_data)
-        return False
+        if not save_data:
+            return False
+        if not game_scene.is_mothership_docked():
+            save_data.is_in_mothership = False
+        persistence_manager = PersistenceManager()
+        return persistence_manager.save_game(save_data)
 
     def _save_game_on_quit(self, game_scene: GameScene) -> None:
         self._perform_save(game_scene)
