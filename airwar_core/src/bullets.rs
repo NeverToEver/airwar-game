@@ -1,12 +1,13 @@
 use pyo3::prelude::*;
 
+type BulletUpdateInput = (u64, f32, f32, f32, f32, i32, bool, f32);
+type BulletUpdateOutput = (u64, f32, f32, bool);
+
 /// Bullet update data: (id, x, y, vx, vy, bullet_type, is_laser, screen_height)
 /// id is u64 to handle Python's arbitrary precision integers
 /// Returns: (id, new_x, new_y, is_active)
 #[pyfunction]
-pub fn batch_update_bullets(
-    bullets: Vec<(u64, f32, f32, f32, f32, i32, bool, f32)>,
-) -> Vec<(u64, f32, f32, bool)> {
+pub fn batch_update_bullets(bullets: Vec<BulletUpdateInput>) -> Vec<BulletUpdateOutput> {
     let mut results = Vec::with_capacity(bullets.len());
 
     for (id, x, y, vx, vy, _bullet_type, is_laser, screen_height) in bullets {
@@ -34,10 +35,10 @@ mod tests {
     #[test]
     fn test_batch_update_bullets_basic() {
         // (id, x, y, vx, vy, bullet_type, is_laser, screen_height)
-        let bullets: Vec<(u64, f32, f32, f32, f32, i32, bool, f32)> = vec![
-            (0u64, 100.0, 100.0, 0.0, -10.0, 0, false, 800.0),  // Active: moving up
-            (1u64, 200.0, -20.0, 0.0, -10.0, 0, false, 800.0),  // Inactive: off screen top
-            (2u64, 300.0, 850.0, 0.0, 10.0, 0, false, 800.0),   // Inactive: off screen bottom
+        let bullets: Vec<BulletUpdateInput> = vec![
+            (0u64, 100.0, 100.0, 0.0, -10.0, 0, false, 800.0), // Active: moving up
+            (1u64, 200.0, -20.0, 0.0, -10.0, 0, false, 800.0), // Inactive: off screen top
+            (2u64, 300.0, 850.0, 0.0, 10.0, 0, false, 800.0),  // Inactive: off screen bottom
         ];
         let results = batch_update_bullets(bullets);
         assert_eq!(results.len(), 3);
@@ -56,7 +57,7 @@ mod tests {
 
     #[test]
     fn test_batch_update_bullets_laser_stays_active() {
-        let bullets: Vec<(u64, f32, f32, f32, f32, i32, bool, f32)> = vec![
+        let bullets: Vec<BulletUpdateInput> = vec![
             (0u64, 100.0, -50.0, 0.0, -5.0, 2, true, 800.0), // laser, off top but stays active
         ];
         let results = batch_update_bullets(bullets);

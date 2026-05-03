@@ -123,9 +123,9 @@ class BossManager:
         )
 
         if not self._spawn_controller.boss.active:
-            self._on_boss_killed()
+            self.on_boss_killed()
 
-    def _on_boss_killed(self) -> None:
+    def on_boss_killed(self) -> None:
         """Handle boss killed.
 
         Applies lifesteal and clears all enemy bullets.

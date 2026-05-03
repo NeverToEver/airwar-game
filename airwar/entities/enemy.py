@@ -356,6 +356,15 @@ class Enemy(Entity):
         self._exit_end_y = end_y
         self._exit_progress = 0.0
 
+    def is_active_in_wave(self) -> bool:
+        return self.active and self._state != 'exiting'
+
+    def is_ready_for_batch_movement(self) -> bool:
+        return self.active and self._state == 'active'
+
+    def apply_batch_movement_result(self, result: tuple[float, float, float]) -> None:
+        self._batch_result = result
+
     def get_rust_batch_params(self):
         """Return (base_tuple, extra_tuple) for batch Rust movement, or (None, None)."""
         if not hasattr(self, '_rust_move_type_code') or self.move_type == "zigzag":
@@ -627,7 +636,7 @@ class EnemySpawner:
         # Count active enemies (not exiting or dead)
         active_enemies = 0
         for e in enemies:
-            if e.active and e._state != 'exiting':
+            if e.is_active_in_wave():
                 active_enemies += 1
 
         # Check if wave is complete (all enemies exited or died)

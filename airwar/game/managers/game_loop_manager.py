@@ -198,7 +198,7 @@ class GameLoopManager:
             extra_list = []
             batch_indices = []
             for i, enemy in enumerate(enemies):
-                if enemy.active and enemy._state == 'active':
+                if enemy.is_ready_for_batch_movement():
                     try:
                         base, extra = enemy.get_rust_batch_params()
                     except (ValueError, TypeError):
@@ -211,7 +211,7 @@ class GameLoopManager:
                 results = rust_batch_move(base_list, extra_list)
                 for j, (new_x, new_y, new_timer) in enumerate(results):
                     idx = batch_indices[j]
-                    enemies[idx]._batch_result = (new_x, new_y, new_timer)
+                    enemies[idx].apply_batch_movement_result((new_x, new_y, new_timer))
 
         for enemy in enemies:
             enemy.update(self._spawn_controller.enemies, self._reward_system.slow_factor)
@@ -235,7 +235,7 @@ class GameLoopManager:
                 score_multiplier=self._game_controller.state.score_multiplier,
                 on_enemy_killed=lambda score: self._game_controller.on_enemy_killed(score),
                 on_boss_killed=lambda score: (
-                    self._boss_manager._on_boss_killed(),
+                    self._boss_manager.on_boss_killed(),
                     self._game_controller.on_boss_killed(score),
                 ),
                 on_boss_hit=lambda score: self._boss_manager.on_boss_hit(score),

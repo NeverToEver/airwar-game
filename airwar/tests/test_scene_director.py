@@ -5,6 +5,7 @@ import pygame
 
 from airwar.game.scene_director import SceneDirector
 from airwar.scenes.scene import PauseAction
+from airwar.utils.database import DatabaseError
 
 
 class FakeGameScene:
@@ -51,3 +52,12 @@ def test_handle_scene_events_skips_consumed_escape_event():
     director._handle_scene_events([escape, other], skip_escape=True)
 
     director._scene_manager.handle_events.assert_called_once_with(other)
+
+
+def test_update_user_stats_handles_database_error_without_crashing():
+    user_db = MagicMock()
+    user_db.get_user_data.side_effect = DatabaseError("corrupt db")
+    director = SceneDirector(SimpleNamespace(), MagicMock(), user_db)
+    director._current_user = "pilot"
+
+    assert director._update_user_stats(1200, 5) is None

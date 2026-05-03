@@ -3,7 +3,7 @@ import pygame
 from airwar.utils.fonts import get_cjk_font
 import math
 from .scene import Scene
-from airwar.utils.database import UserDB
+from airwar.utils.database import DatabaseError, UserDB
 from airwar.utils.responsive import ResponsiveHelper
 from airwar.ui.menu_background import MenuBackground
 from airwar.ui.particles import ParticleSystem
@@ -251,14 +251,29 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             self.message_timer = 120
             self.show_delete_confirm = False
             return
-        if self.db.delete_user(self.delete_username):
+        if not self.password:
+            self.message = "请输入当前密码后再删除"
+            self._is_error = True
+            self.message_timer = 120
+            self.show_delete_confirm = False
+            self.focus = 'password'
+            return
+        try:
+            deleted = self.db.delete_user(self.delete_username, self.password)
+        except DatabaseError:
+            self.message = "账户数据保存失败"
+            self._is_error = True
+            self.message_timer = 120
+            self.show_delete_confirm = False
+            return
+        if deleted:
             self.message = f"用户 {self.delete_username} 已删除"
             self._is_error = False
             self.message_timer = 120
             self.username = ""
             self.password = ""
         else:
-            self.message = "用户不存在"
+            self.message = "用户不存在或密码错误"
             self._is_error = True
             self.message_timer = 120
         self.show_delete_confirm = False
@@ -269,7 +284,14 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             self._is_error = True
             self.message_timer = 120
             return
-        if self.db.verify_user(self.username, self.password):
+        try:
+            verified = self.db.verify_user(self.username, self.password)
+        except DatabaseError:
+            self.message = "账户数据读取失败"
+            self._is_error = True
+            self.message_timer = 120
+            return
+        if verified:
             self.message = ""
             self._is_error = False
             self.running = False
@@ -294,7 +316,14 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             self._is_error = True
             self.message_timer = 120
             return
-        if self.db.create_user(self.username, self.password):
+        try:
+            created = self.db.create_user(self.username, self.password)
+        except DatabaseError:
+            self.message = "账户数据保存失败"
+            self._is_error = True
+            self.message_timer = 120
+            return
+        if created:
             self.message = "注册成功！现在可以开始游戏了"
             self._is_error = False
             self.message_timer = 120

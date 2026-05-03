@@ -1,5 +1,9 @@
 use pyo3::prelude::*;
 
+type MovementBaseParams = (u8, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32);
+type MovementExtraParams = (f32, f32, f32, f32, f32, f32, f32, i32);
+type MovementResult = (f32, f32, f32);
+
 /// Movement pattern type (matches Python's move_type strings)
 /// 0 = straight, 1 = sine, 2 = zigzag, 3 = dive, 4 = hover, 5 = spiral
 /// 6 = noise, 7 = aggressive
@@ -94,10 +98,26 @@ pub fn update_movement(
     noise_seed: i32,
 ) -> (f32, f32, f32) {
     update_movement_inner(
-        move_type, timer, active_x, active_y, move_range_x, move_range_y,
-        offset, _amplitude, frequency, speed, direction, zigzag_interval,
-        _spiral_radius, current_x, current_y, noise_scale_x, noise_scale_y,
-        noise_amplitude_x, noise_amplitude_y, noise_seed,
+        move_type,
+        timer,
+        active_x,
+        active_y,
+        move_range_x,
+        move_range_y,
+        offset,
+        _amplitude,
+        frequency,
+        speed,
+        direction,
+        zigzag_interval,
+        _spiral_radius,
+        current_x,
+        current_y,
+        noise_scale_x,
+        noise_scale_y,
+        noise_amplitude_x,
+        noise_amplitude_y,
+        noise_seed,
     )
 }
 
@@ -111,31 +131,89 @@ pub fn update_movement(
 /// Returns Vec of (new_x, new_y, new_timer) in the same order.
 #[pyfunction]
 pub fn batch_update_movements(
-    base_params: Vec<(u8, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32)>,
-    extra_params: Vec<(f32, f32, f32, f32, f32, f32, f32, i32)>,
-) -> Vec<(f32, f32, f32)> {
-    base_params.into_iter().zip(extra_params.into_iter()).map(
-        |((move_type, timer, active_x, active_y, move_range_x, move_range_y,
-           offset, amplitude, frequency, speed, direction, zigzag_interval),
-          (spiral_radius, current_x, current_y, noise_scale_x, noise_scale_y,
-           noise_amplitude_x, noise_amplitude_y, noise_seed))| {
-            update_movement_inner(move_type, timer, active_x, active_y,
-                move_range_x, move_range_y, offset, amplitude, frequency, speed,
-                direction, zigzag_interval, spiral_radius, current_x, current_y,
-                noise_scale_x, noise_scale_y, noise_amplitude_x, noise_amplitude_y,
-                noise_seed)
-        }
-    ).collect()
+    base_params: Vec<MovementBaseParams>,
+    extra_params: Vec<MovementExtraParams>,
+) -> Vec<MovementResult> {
+    base_params
+        .into_iter()
+        .zip(extra_params)
+        .map(
+            |(
+                (
+                    move_type,
+                    timer,
+                    active_x,
+                    active_y,
+                    move_range_x,
+                    move_range_y,
+                    offset,
+                    amplitude,
+                    frequency,
+                    speed,
+                    direction,
+                    zigzag_interval,
+                ),
+                (
+                    spiral_radius,
+                    current_x,
+                    current_y,
+                    noise_scale_x,
+                    noise_scale_y,
+                    noise_amplitude_x,
+                    noise_amplitude_y,
+                    noise_seed,
+                ),
+            )| {
+                update_movement_inner(
+                    move_type,
+                    timer,
+                    active_x,
+                    active_y,
+                    move_range_x,
+                    move_range_y,
+                    offset,
+                    amplitude,
+                    frequency,
+                    speed,
+                    direction,
+                    zigzag_interval,
+                    spiral_radius,
+                    current_x,
+                    current_y,
+                    noise_scale_x,
+                    noise_scale_y,
+                    noise_amplitude_x,
+                    noise_amplitude_y,
+                    noise_seed,
+                )
+            },
+        )
+        .collect()
 }
 
 /// Inner implementation shared by single and batch variants.
+#[allow(clippy::too_many_arguments)]
 fn update_movement_inner(
-    move_type: u8, timer: f32, active_x: f32, active_y: f32,
-    move_range_x: f32, move_range_y: f32, offset: f32, _amplitude: f32,
-    frequency: f32, speed: f32, direction: f32, zigzag_interval: f32,
-    _spiral_radius: f32, current_x: f32, current_y: f32,
-    noise_scale_x: f32, noise_scale_y: f32, noise_amplitude_x: f32,
-    noise_amplitude_y: f32, noise_seed: i32,
+    move_type: u8,
+    timer: f32,
+    active_x: f32,
+    active_y: f32,
+    move_range_x: f32,
+    move_range_y: f32,
+    offset: f32,
+    _amplitude: f32,
+    frequency: f32,
+    speed: f32,
+    direction: f32,
+    zigzag_interval: f32,
+    _spiral_radius: f32,
+    current_x: f32,
+    current_y: f32,
+    noise_scale_x: f32,
+    noise_scale_y: f32,
+    noise_amplitude_x: f32,
+    noise_amplitude_y: f32,
+    noise_seed: i32,
 ) -> (f32, f32, f32) {
     let mtype = MovementType::from_u8(move_type);
     match mtype {
@@ -154,7 +232,11 @@ fn update_movement_inner(
         MovementType::Zigzag => {
             let t = timer + 1.0;
             let current_interval = t as i32 % zigzag_interval as i32;
-            let actual_direction = if current_interval == 0 && t > 0.0 { -direction } else { direction };
+            let actual_direction = if current_interval == 0 && t > 0.0 {
+                -direction
+            } else {
+                direction
+            };
             let x = active_x + actual_direction * speed;
             let y = active_y + (t * 0.1).sin() * (move_range_y * 0.5);
             (x, y, t)
@@ -191,22 +273,39 @@ fn update_movement_inner(
             let max_delta: f32 = 6.0;
             let dx = target_x - current_x;
             let dy = target_y - current_y;
-            let x = if dx.abs() > max_delta { current_x + max_delta * dx.signum() } else { target_x };
-            let y = if dy.abs() > max_delta { current_y + max_delta * dy.signum() } else { target_y };
+            let x = if dx.abs() > max_delta {
+                current_x + max_delta * dx.signum()
+            } else {
+                target_x
+            };
+            let y = if dy.abs() > max_delta {
+                current_y + max_delta * dy.signum()
+            } else {
+                target_y
+            };
             (x, y, t)
         }
         MovementType::Aggressive => {
             let increment = speed.max(0.001);
             let t = timer + increment;
             let noise_x = smooth_noise(t * noise_scale_x, noise_seed) * noise_amplitude_x;
-            let noise_y = smooth_noise(t * noise_scale_y, noise_seed + 500) * noise_amplitude_y + 0.15;
+            let noise_y =
+                smooth_noise(t * noise_scale_y, noise_seed + 500) * noise_amplitude_y + 0.15;
             let target_x = active_x + noise_x * 96.0;
             let target_y = active_y + noise_y * 60.0;
             let max_delta: f32 = 8.0;
             let dx = target_x - current_x;
             let dy = target_y - current_y;
-            let x = if dx.abs() > max_delta { current_x + max_delta * dx.signum() } else { target_x };
-            let y = if dy.abs() > max_delta { current_y + max_delta * dy.signum() } else { target_y };
+            let x = if dx.abs() > max_delta {
+                current_x + max_delta * dx.signum()
+            } else {
+                target_x
+            };
+            let y = if dy.abs() > max_delta {
+                current_y + max_delta * dy.signum()
+            } else {
+                target_y
+            };
             (x, y, t)
         }
     }
@@ -219,11 +318,15 @@ fn update_movement_inner(
 #[pyfunction]
 #[allow(clippy::too_many_arguments)]
 pub fn compute_boss_attack(
-    pattern: u8,        // 0=spread, 1=aim, 2=wave
+    pattern: u8, // 0=spread, 1=aim, 2=wave
     phase: u8,
-    attack_dir: u8,     // 0=down, 1=left, 2=right, 3=up
-    center_x: f32, _center_y: f32,
-    rect_bottom: f32, rect_left: f32, rect_right: f32, rect_top: f32,
+    attack_dir: u8, // 0=down, 1=left, 2=right, 3=up
+    center_x: f32,
+    _center_y: f32,
+    rect_bottom: f32,
+    rect_left: f32,
+    rect_right: f32,
+    rect_top: f32,
 ) -> Vec<(f32, f32, f32, f32, f32, u8, i32)> {
     let (base_angle, y_base) = match attack_dir {
         0 => (-90.0_f32, rect_bottom),
@@ -237,16 +340,38 @@ pub fn compute_boss_attack(
         0 => {
             // Spread attack
             let count = 5 + phase as i32;
-            let spread_angle: f32 = if attack_dir == 1 || attack_dir == 2 { 45.0 } else { 180.0 };
-            let offset = if attack_dir == 1 || attack_dir == 2 { 22.5 } else { 0.0 };
+            let spread_angle: f32 = if attack_dir == 1 || attack_dir == 2 {
+                45.0
+            } else {
+                180.0
+            };
+            let offset = if attack_dir == 1 || attack_dir == 2 {
+                22.5
+            } else {
+                0.0
+            };
             let speed: f32 = 5.0;
             let damage: i32 = 12 + phase as i32 * 2;
-            (0..count).map(|i| {
-                let t = if count > 1 { i as f32 / (count - 1) as f32 } else { 0.0 };
-                let angle = base_angle + (spread_angle * t) - offset;
-                let rad = angle_rad(angle);
-                (center_x, y_base, rad.cos() * speed, rad.sin() * speed, speed, 0u8, damage)
-            }).collect()
+            (0..count)
+                .map(|i| {
+                    let t = if count > 1 {
+                        i as f32 / (count - 1) as f32
+                    } else {
+                        0.0
+                    };
+                    let angle = base_angle + (spread_angle * t) - offset;
+                    let rad = angle_rad(angle);
+                    (
+                        center_x,
+                        y_base,
+                        rad.cos() * speed,
+                        rad.sin() * speed,
+                        speed,
+                        0u8,
+                        damage,
+                    )
+                })
+                .collect()
         }
         1 => {
             // Aim attack — 3 bullets
@@ -258,16 +383,33 @@ pub fn compute_boss_attack(
             };
             let speed: f32 = 7.0;
             let damage: i32 = 18 + phase as i32 * 3;
-            let dx = if attack_dir == 0 { 0.0 } else if attack_dir == 1 { -500.0 } else if attack_dir == 2 { 500.0 } else { 0.0 };
-            let dy = if attack_dir == 0 { 500.0 } else if attack_dir == 3 { -500.0 } else { 0.0 };
+            let dx = if attack_dir == 0 {
+                0.0
+            } else if attack_dir == 1 {
+                -500.0
+            } else if attack_dir == 2 {
+                500.0
+            } else {
+                0.0
+            };
+            let dy = if attack_dir == 0 {
+                500.0
+            } else if attack_dir == 3 {
+                -500.0
+            } else {
+                0.0
+            };
             let len = f32::sqrt(dx * dx + dy * dy).max(0.001);
             let nx = dx / len;
             let ny = dy / len;
             let offsets: [f32; 3] = [-30.0, 0.0, 30.0];
-            offsets.iter().map(|&off| {
-                let sx = source_x + off;
-                (sx, source_y, nx * speed, ny * speed, speed, 1u8, damage)
-            }).collect()
+            offsets
+                .iter()
+                .map(|&off| {
+                    let sx = source_x + off;
+                    (sx, source_y, nx * speed, ny * speed, speed, 1u8, damage)
+                })
+                .collect()
         }
         _ => {
             // Wave attack — 8 bullets
@@ -280,11 +422,21 @@ pub fn compute_boss_attack(
             let speed: f32 = 4.0;
             let damage: i32 = 12;
             let interval: f32 = 22.5;
-            (0..8).map(|i| {
-                let angle = base_angle + interval * i as f32;
-                let rad = angle_rad(angle);
-                (source_x, source_y, rad.cos() * speed, rad.sin() * speed, speed, 2u8, damage)
-            }).collect()
+            (0..8)
+                .map(|i| {
+                    let angle = base_angle + interval * i as f32;
+                    let rad = angle_rad(angle);
+                    (
+                        source_x,
+                        source_y,
+                        rad.cos() * speed,
+                        rad.sin() * speed,
+                        speed,
+                        2u8,
+                        damage,
+                    )
+                })
+                .collect()
         }
     }
 }
@@ -297,13 +449,20 @@ mod tests {
     fn test_smooth_noise_range() {
         for i in 0..100 {
             let val = smooth_noise(i as f32 * 0.1, 42);
-            assert!(val >= -1.0 && val <= 1.0, "smooth_noise out of range: {}", val);
+            assert!(
+                (-1.0..=1.0).contains(&val),
+                "smooth_noise out of range: {}",
+                val
+            );
         }
     }
 
     #[test]
     fn test_movement_straight() {
-        let (x, y, timer) = update_movement(0, 0.0, 100.0, 100.0, 80.0, 40.0, 0.0, 2.0, 0.05, 2.0, 1.0, 45.0, 40.0, 100.0, 100.0, 0.04, 0.02, 0.7, 0.4, 0);
+        let (x, y, timer) = update_movement(
+            0, 0.0, 100.0, 100.0, 80.0, 40.0, 0.0, 2.0, 0.05, 2.0, 1.0, 45.0, 40.0, 100.0, 100.0,
+            0.04, 0.02, 0.7, 0.4, 0,
+        );
         assert!((x - 100.0).abs() < 0.1);
         assert!(y > 90.0 && y < 120.0);
         assert_eq!(timer, 1.0);
@@ -311,7 +470,10 @@ mod tests {
 
     #[test]
     fn test_movement_noise() {
-        let (x, y, timer) = update_movement(6, 0.0, 100.0, 100.0, 80.0, 50.0, 0.0, 2.0, 0.05, 0.0, 0.0, 0.0, 0.0, 100.0, 100.0, 0.04, 0.02, 0.7, 0.4, 9999);
+        let (x, y, timer) = update_movement(
+            6, 0.0, 100.0, 100.0, 80.0, 50.0, 0.0, 2.0, 0.05, 0.0, 0.0, 0.0, 0.0, 100.0, 100.0,
+            0.04, 0.02, 0.7, 0.4, 9999,
+        );
         assert_eq!(timer, 0.001);
         // Should stay within max_delta=6 of current (100, 100)
         assert!((x - 100.0).abs() <= 6.1);
@@ -320,7 +482,10 @@ mod tests {
 
     #[test]
     fn test_movement_aggressive() {
-        let (x, y, timer) = update_movement(7, 0.0, 100.0, 100.0, 96.0, 60.0, 0.0, 2.0, 0.05, 0.0, 0.0, 0.0, 0.0, 100.0, 100.0, 0.04, 0.02, 0.6, 0.5, 9999);
+        let (x, y, timer) = update_movement(
+            7, 0.0, 100.0, 100.0, 96.0, 60.0, 0.0, 2.0, 0.05, 0.0, 0.0, 0.0, 0.0, 100.0, 100.0,
+            0.04, 0.02, 0.6, 0.5, 9999,
+        );
         assert_eq!(timer, 0.001);
         // Should stay within max_delta=8 of current (100, 100)
         assert!((x - 100.0).abs() <= 8.1);
@@ -331,24 +496,28 @@ mod tests {
     fn test_movement_types() {
         // Types 0-5 return timer+1, types 6-7 return timer+speed
         for move_type in 0..=5u8 {
-            let result = update_movement(move_type, 10.0, 100.0, 100.0, 80.0, 40.0, 0.0, 2.0, 0.05, 2.0, 1.0, 45.0, 40.0, 100.0, 100.0, 0.04, 0.02, 0.7, 0.4, 0);
+            let result = update_movement(
+                move_type, 10.0, 100.0, 100.0, 80.0, 40.0, 0.0, 2.0, 0.05, 2.0, 1.0, 45.0, 40.0,
+                100.0, 100.0, 0.04, 0.02, 0.7, 0.4, 0,
+            );
             assert_eq!(result.2, 11.0);
         }
         // Noise returns timer+2.0 (speed), Aggressive returns timer+2.0 (speed)
         for move_type in 6..=7u8 {
-            let result = update_movement(move_type, 10.0, 100.0, 100.0, 80.0, 40.0, 0.0, 2.0, 0.05, 2.0, 1.0, 45.0, 40.0, 100.0, 100.0, 0.04, 0.02, 0.7, 0.4, 0);
+            let result = update_movement(
+                move_type, 10.0, 100.0, 100.0, 80.0, 40.0, 0.0, 2.0, 0.05, 2.0, 1.0, 45.0, 40.0,
+                100.0, 100.0, 0.04, 0.02, 0.7, 0.4, 0,
+            );
             assert_eq!(result.2, 12.0);
         }
     }
 
     #[test]
     fn test_batch_update_movements() {
-        let base: Vec<(u8, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32)> = vec![
-            (0, 0.0, 200.0, 150.0, 80.0, 40.0, 0.0, 2.0, 0.05, 2.0, 1.0, 45.0),
-        ];
-        let extra: Vec<(f32, f32, f32, f32, f32, f32, f32, i32)> = vec![
-            (40.0, 200.0, 150.0, 0.04, 0.02, 0.7, 0.4, 0),
-        ];
+        let base: Vec<MovementBaseParams> = vec![(
+            0, 0.0, 200.0, 150.0, 80.0, 40.0, 0.0, 2.0, 0.05, 2.0, 1.0, 45.0,
+        )];
+        let extra: Vec<MovementExtraParams> = vec![(40.0, 200.0, 150.0, 0.04, 0.02, 0.7, 0.4, 0)];
         let results = batch_update_movements(base, extra);
         assert_eq!(results.len(), 1);
         assert!((results[0].0 - 200.0).abs() < 1.0);

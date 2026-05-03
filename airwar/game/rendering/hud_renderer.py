@@ -1,4 +1,5 @@
 """HUD renderer — score, health bar, boss HP, buff stats panel."""
+import logging
 import math
 from typing import List
 import pygame
@@ -10,6 +11,8 @@ from ...ui.segmented_bar import BossHealthBar
 from ...config.design_tokens import get_design_tokens, SystemColors, SystemUI
 from ..constants import GAME_CONSTANTS
 from ...utils.sprites import draw_ripple
+
+logger = logging.getLogger(__name__)
 
 
 class HUDLayout:
@@ -296,10 +299,9 @@ class HUDRenderer:
                 surface.get_height()
             )
         except (AttributeError, TypeError):
-            pass
+            logger.warning("Failed to render buff stats panel", exc_info=True)
         except Exception as e:
-            import logging
-            logging.warning(f"Failed to render buff stats panel: {e}")
+            logger.warning(f"Failed to render buff stats panel: {e}", exc_info=True)
 
     def render_attack_mode_panel(
         self,
@@ -317,7 +319,6 @@ class HUDRenderer:
                 surface.get_height()
             )
         except (AttributeError, TypeError):
-            pass
+            logger.warning("Failed to render attack mode panel", exc_info=True)
         except Exception as e:
-            import logging
-            logging.warning(f"Failed to render attack mode panel: {e}")
+            logger.warning(f"Failed to render attack mode panel: {e}", exc_info=True)
