@@ -476,6 +476,10 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             display = '*' * len(display)
         text_surf = self.input_font.render(display, True, SC.TEXT_PRIMARY)
         text_rect = text_surf.get_rect(midleft=(rect.x + 16, rect.centery))
+        # Clamp CJK text overflow: shift left so text stays within input box
+        max_right = rect.right - 6
+        if text_rect.right > max_right:
+            text_rect.right = max_right
         surface.blit(text_surf, text_rect)
 
         # Placeholder

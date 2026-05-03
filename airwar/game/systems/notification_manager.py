@@ -41,6 +41,10 @@ class NotificationManager:
                 text = self.notif_font.render(self.current_notification, True, color)
                 text.set_alpha(alpha)
                 x = surface.get_width() // 2 - text.get_width() // 2
+                # Clamp to screen edges so CJK text doesn't overflow
+                max_w = surface.get_width() - 40
+                if text.get_width() > max_w:
+                    x = 20
                 y = 100
                 surface.blit(text, (x, y))
             except pygame.error:
