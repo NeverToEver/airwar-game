@@ -18,6 +18,10 @@ class SpaceBackground:
     _gradient_cache = {}
     _star_cache = {}
 
+    FAR_LAYER = {'speed_mult': 0.3, 'count_divisor': 1, 'size_range': (0.5, 1.5), 'color_brightness': 80}
+    MID_LAYER = {'speed_mult': 0.6, 'count_divisor': 2, 'size_range': (1.0, 2.0), 'color_brightness': 120}
+    NEAR_LAYER = {'speed_mult': 1.2, 'count_divisor': 4, 'size_range': (1.5, 3.0), 'color_brightness': 160}
+
     def __init__(self, screen_width: int = 800, screen_height: int = 600):
         self.tokens = get_design_tokens()
         self.screen_width = screen_width
@@ -37,30 +41,30 @@ class SpaceBackground:
         # Far layer - tiny stars, very slow
         self._layer_far = StarLayer(
             screen_width, screen_height,
-            count=components.STAR_COUNT,
-            speed=anim.STAR_SPEED * 0.3,
-            size_range=(0.5, 1.5),
-            color=colors.star_color(80),
+            count=components.STAR_COUNT // self.FAR_LAYER['count_divisor'],
+            speed=anim.STAR_SPEED * self.FAR_LAYER['speed_mult'],
+            size_range=self.FAR_LAYER['size_range'],
+            color=colors.star_color(self.FAR_LAYER['color_brightness']),
             twinkle_speed_range=(anim.TWINKLE_SPEED_MIN, anim.TWINKLE_SPEED_MAX)
         )
 
         # Mid layer - medium stars
         self._layer_mid = StarLayer(
             screen_width, screen_height,
-            count=components.STAR_COUNT // 2,
-            speed=anim.STAR_SPEED * 0.6,
-            size_range=(1.0, 2.0),
-            color=colors.star_color(120),
+            count=components.STAR_COUNT // self.MID_LAYER['count_divisor'],
+            speed=anim.STAR_SPEED * self.MID_LAYER['speed_mult'],
+            size_range=self.MID_LAYER['size_range'],
+            color=colors.star_color(self.MID_LAYER['color_brightness']),
             twinkle_speed_range=(anim.TWINKLE_SPEED_MIN, anim.TWINKLE_SPEED_MAX)
         )
 
         # Near layer - larger stars, faster
         self._layer_near = StarLayer(
             screen_width, screen_height,
-            count=components.STAR_COUNT // 4,
-            speed=anim.STAR_SPEED * 1.2,
-            size_range=(1.5, 3.0),
-            color=colors.star_color(160),
+            count=components.STAR_COUNT // self.NEAR_LAYER['count_divisor'],
+            speed=anim.STAR_SPEED * self.NEAR_LAYER['speed_mult'],
+            size_range=self.NEAR_LAYER['size_range'],
+            color=colors.star_color(self.NEAR_LAYER['color_brightness']),
             twinkle_speed_range=(anim.TWINKLE_SPEED_MIN, anim.TWINKLE_SPEED_MAX)
         )
 
@@ -119,6 +123,11 @@ class SpaceBackground:
 class StarLayer:
     """Parallax star layer with twinkling effect."""
 
+    GLOW_BRIGHTNESS_THRESHOLD = 30
+    GLOW_ALPHA_CAP = 40
+    GLOW_ALPHA_DIVISOR = 4
+    CORE_BLUE_BOOST = 20
+
     def __init__(
         self,
         screen_width: int,
@@ -175,9 +184,9 @@ class StarLayer:
 
             size = max(1, int(star['size']))
 
-            if brightness > 30:
+            if brightness > self.GLOW_BRIGHTNESS_THRESHOLD:
                 glow_radius = size * 2
-                glow_alpha = min(40, brightness // 4)
+                glow_alpha = min(self.GLOW_ALPHA_CAP, brightness // self.GLOW_ALPHA_DIVISOR)
                 cache_key = (glow_radius, glow_alpha)
                 if cache_key not in self._glow_cache:
                     glow_surf = pygame.Surface((glow_radius * 2, glow_radius * 2), pygame.SRCALPHA)
@@ -194,7 +203,7 @@ class StarLayer:
             core_brightness = max(0, min(255, brightness))
             pygame.draw.circle(
                 surface,
-                (core_brightness, core_brightness, min(255, core_brightness + 20)),
+                (core_brightness, core_brightness, min(255, core_brightness + self.CORE_BLUE_BOOST)),
                 (x, y_pos),
                 size
             )
@@ -202,6 +211,12 @@ class StarLayer:
 
 class DustLayer:
     """Space dust particles drifting slowly."""
+
+    DUST_SIZE_RANGE = (1.0, 2.5)
+    DUST_PULSE_ALPHA_BASE = 0.6
+    DUST_PULSE_ALPHA_AMP = 0.4
+    DUST_PULSE_SIZE_BASE = 0.7
+    DUST_PULSE_SIZE_AMP = 0.3
 
     def __init__(
         self,
@@ -229,7 +244,7 @@ class DustLayer:
             self._dust.append({
                 'x': random.random(),
                 'y': random.random(),
-                'size': random.uniform(1.0, 2.5),
+                'size': random.uniform(*self.DUST_SIZE_RANGE),
                 'speed': speed * 0.3,
                 'alpha': random.randint(30, 80),
                 'drift_x': random.uniform(-0.0001, 0.0001),
@@ -261,8 +276,8 @@ class DustLayer:
             y = int(d['y'] * self._screen_height)
 
             pulse = math.sin(time * d['pulse_speed'] + d['pulse_offset'])
-            alpha = int(d['alpha'] * (0.6 + 0.4 * pulse))
-            size = max(1, int(d['size'] * (0.7 + 0.3 * pulse)))
+            alpha = int(d['alpha'] * (self.DUST_PULSE_ALPHA_BASE + self.DUST_PULSE_ALPHA_AMP * pulse))
+            size = max(1, int(d['size'] * (self.DUST_PULSE_SIZE_BASE + self.DUST_PULSE_SIZE_AMP * pulse)))
 
             cache_key = (size, alpha)
             if cache_key not in self._glow_cache:

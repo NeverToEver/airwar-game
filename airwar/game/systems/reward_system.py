@@ -35,16 +35,25 @@ REWARD_POOL = {
 
 class RewardSystem:
     """Reward system — generates and applies milestone buff rewards.
-    
+
         Manages buff levels, applies buff effects to the player, and generates
         reward options at score milestones. Tracks unlocked buffs and their
         cumulative levels.
-    
+
         Attributes:
             unlocked_buffs: List of buff names the player has acquired.
             buff_levels: Dict mapping buff names to current level counts.
             active_buffs: Dict of currently active Buff instances.
         """
+    REWARD_OPTIONS = 3
+    EXPLOSIVE_GATING_BOSS_KILLS = 3
+    MAX_RETRY_ATTEMPTS = 10
+    EXTRA_LIFE_BONUS_HP = 50
+    EXTRA_LIFE_HEAL = 30
+    ARMOR_MULTIPLIER = 0.85
+    EVASION_CHANCE = 0.2
+    LIFESTEAL_FRACTION = 0.1
+    EXPLOSIVE_SPLASH_FRACTION = 0.5
     def __init__(self, difficulty: str = 'medium'):
         self.unlocked_buffs: List[str] = []
         self.active_buffs: Dict[str, Buff] = {}
@@ -156,11 +165,11 @@ class RewardSystem:
 
         taken_one_shots = ONE_SHOT_BUFFS & set(self.buff_levels.keys())
 
-        for _ in range(3):
+        for _ in range(self.REWARD_OPTIONS):
             cat = random.choice(categories)
             rewards = REWARD_POOL[cat]
 
-            if cat == 'offense' and boss_kill_count < 3:
+            if cat == 'offense' and boss_kill_count < self.EXPLOSIVE_GATING_BOSS_KILLS:
                 rewards = [r for r in rewards if r['name'] not in ['Explosive']]
 
             # Filter out already-taken one-shot buffs
@@ -170,7 +179,7 @@ class RewardSystem:
 
             reward = random.choice(available)
             attempts = 0
-            while reward in options and attempts < 10:
+            while reward in options and attempts < self.MAX_RETRY_ATTEMPTS:
                 reward = random.choice(available)
                 attempts += 1
 
@@ -237,8 +246,8 @@ class RewardSystem:
         buff.apply(player)
 
     def _apply_extra_life(self, player) -> None:
-        player.max_health += 50
-        player.health = min(player.health + 30, player.max_health)
+        player.max_health += self.EXTRA_LIFE_BONUS_HP
+        player.health = min(player.health + self.EXTRA_LIFE_HEAL, player.max_health)
 
     def apply_reward(self, reward: Dict, player) -> str:
         name = reward['name']
@@ -265,19 +274,18 @@ class RewardSystem:
 
     def calculate_damage_taken(self, damage: int) -> int:
         if 'Armor' in self.unlocked_buffs:
-            return int(damage * 0.85)
+            return int(damage * self.ARMOR_MULTIPLIER)
         return damage
 
     def try_dodge(self) -> bool:
         if 'Evasion' in self.unlocked_buffs:
-            dodge_chance = 0.2
-            if random.random() < dodge_chance:
+            if random.random() < self.EVASION_CHANCE:
                 return True
         return False
 
     def apply_lifesteal(self, player, kill_value: int) -> None:
         if 'Lifesteal' in self.unlocked_buffs:
-            heal = int(player.max_health * 0.1)
+            heal = int(player.max_health * self.LIFESTEAL_FRACTION)
             player.health = min(player.health + heal, player.max_health)
 
     def do_explosive_damage(self, enemies: list, x: int, y: int, damage: int) -> None:
@@ -288,7 +296,7 @@ class RewardSystem:
             if enemy.active:
                 dist = ((enemy.rect.centerx - x) ** 2 + (enemy.rect.centery - y) ** 2) ** 0.5
                 if dist < GAME_CONSTANTS.REWARD.EXPLOSION_RADIUS:
-                    enemy.take_damage(int(damage * 0.5))
+                    enemy.take_damage(int(damage * self.EXPLOSIVE_SPLASH_FRACTION))
 
     def get_buff_color(self, name: str) -> tuple:
         if name in self.active_buffs:

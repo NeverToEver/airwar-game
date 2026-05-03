@@ -24,6 +24,57 @@ class WarningBanner:
     HOLD_DURATION = 4.0       # seconds — static pulse display
     EXIT_DURATION = 0.45      # seconds — ease-in slide out
 
+    # Text colors
+    WARNING_TEXT_COLOR = (255, 160, 40)
+    SUB_TEXT_COLOR = (220, 130, 50)
+
+    # Timing constraints
+    MAX_ELAPSED = 0.1
+    PULSE_MULT = 3.0
+
+    # Animation exponents (cubic)
+    EASE_OUT_EXP = 3
+    EASE_IN_EXP = 3
+
+    # Layout
+    BANNER_Y_FRACTION = 0.12
+
+    # Pulse overlay
+    PULSE_BASE = 0.8
+    PULSE_AMPLITUDE = 0.2
+    DIM_ALPHA_MAX = 60
+
+    # Glow bar
+    GLOW_FREQUENCY = 1.5
+    GLOW_ALPHA_BASE = 60
+    GLOW_ALPHA_RANGE = 40
+    GLOW_BAR_COLOR = (255, 140, 20)
+    GLOW_BAR_HEIGHT = 4
+
+    # Text positions
+    TEXT_CENTERY = 22
+    SUBTEXT_CENTERY = 44
+
+    # Banner background
+    BANNER_BG_COLOR = (28, 16, 8, 215)
+    ACCENT_TOP_COLOR = (255, 140, 20, 140)
+    ACCENT_BOTTOM_COLOR = (255, 100, 10, 140)
+    ACCENT_MID_COLOR = (255, 160, 40, 50)
+    ACCENT_TOP_WIDTH = 2
+    ACCENT_BOTTOM_WIDTH = 2
+    ACCENT_MID_WIDTH = 1
+
+    # Corner brackets
+    BRACKET_COLOR = (255, 140, 20, 170)
+    BRACKET_LENGTH = 12
+    BRACKET_THICKNESS = 2
+    BRACKET_MARGIN = 4
+    BRACKET_TOP = 6
+
+    # Hazard stripes
+    HAZARD_STRIPE_COLOR = (255, 150, 20, 90)
+    HAZARD_BG_COLOR = (40, 20, 5, 180)
+
     _STATE_INACTIVE = 0
     _STATE_ENTERING = 1
     _STATE_HOLDING = 2
@@ -66,9 +117,9 @@ class WarningBanner:
             self._main_font = get_cjk_font(28)
             self._sub_font = get_cjk_font(20)
         self._main_text = self._main_font.render(
-            self.WARNING_TEXT, True, (255, 160, 40))
+            self.WARNING_TEXT, True, self.WARNING_TEXT_COLOR)
         self._sub_text = self._sub_font.render(
-            self.SUB_TEXT, True, (220, 130, 50))
+            self.SUB_TEXT, True, self.SUB_TEXT_COLOR)
         return True
 
     def reset(self) -> None:
@@ -84,16 +135,16 @@ class WarningBanner:
         now = pygame.time.get_ticks()
         elapsed = (now - self._last_tick) / 1000.0
         self._last_tick = now
-        if elapsed > 0.1:
-            elapsed = 0.1
+        if elapsed > self.MAX_ELAPSED:
+            elapsed = self.MAX_ELAPSED
 
         self._state_time += elapsed
-        self._pulse_phase += elapsed * 3.0
+        self._pulse_phase += elapsed * self.PULSE_MULT
 
         if self._state == self._STATE_ENTERING:
             t = min(self._state_time / self.ENTER_DURATION, 1.0)
             # Ease-out-cubic: slide from above to resting position
-            eased = 1.0 - (1.0 - t) ** 3
+            eased = 1.0 - (1.0 - t) ** self.EASE_OUT_EXP
             self._y_offset = -self.BANNER_HEIGHT * (1.0 - eased)
             if t >= 1.0:
                 self._state = self._STATE_HOLDING
@@ -108,7 +159,7 @@ class WarningBanner:
         elif self._state == self._STATE_EXITING:
             t = min(self._state_time / self.EXIT_DURATION, 1.0)
             # Ease-in-cubic: slide up and away
-            eased = t ** 3
+            eased = t ** self.EASE_IN_EXP
             self._y_offset = -self.BANNER_HEIGHT * eased
             if t >= 1.0:
                 self._state = self._STATE_INACTIVE
@@ -123,7 +174,7 @@ class WarningBanner:
             return
 
         screen_w = surface.get_width()
-        target_y = int(surface.get_height() * 0.12)
+        target_y = int(surface.get_height() * self.BANNER_Y_FRACTION)
         banner_y = target_y + int(self._y_offset)
 
         # Build/cache background
@@ -136,23 +187,23 @@ class WarningBanner:
         surface.blit(self._banner_cache, (0, banner_y))
 
         # Pulse dimming — simple dark overlay instead of copy+BLEND_RGBA_MULT
-        pulse = 0.8 + 0.2 * math.sin(self._pulse_phase)
-        dim_alpha = int(60 * (1.0 - pulse))
+        pulse = self.PULSE_BASE + self.PULSE_AMPLITUDE * math.sin(self._pulse_phase)
+        dim_alpha = int(self.DIM_ALPHA_MAX * (1.0 - pulse))
         if dim_alpha > 5:
             dim_rect = pygame.Rect(0, banner_y, screen_w, self.BANNER_HEIGHT)
             pygame.draw.rect(surface, (0, 0, 0, dim_alpha), dim_rect)
 
         # Glow bar at bottom edge
-        glow_alpha = int(60 + 40 * math.sin(self._pulse_phase * 1.5))
-        pygame.draw.rect(surface, (255, 140, 20, glow_alpha),
-                         (0, banner_y + self.BANNER_HEIGHT - 4, screen_w, 4))
+        glow_alpha = int(self.GLOW_ALPHA_BASE + self.GLOW_ALPHA_RANGE * math.sin(self._pulse_phase * self.GLOW_FREQUENCY))
+        pygame.draw.rect(surface, (*self.GLOW_BAR_COLOR, glow_alpha),
+                         (0, banner_y + self.BANNER_HEIGHT - self.GLOW_BAR_HEIGHT, screen_w, self.GLOW_BAR_HEIGHT))
 
         # Centered text
         if self._main_text and self._sub_text:
             main_rect = self._main_text.get_rect(
-                center=(screen_w // 2, banner_y + 22))
+                center=(screen_w // 2, banner_y + self.TEXT_CENTERY))
             sub_rect = self._sub_text.get_rect(
-                center=(screen_w // 2, banner_y + 44))
+                center=(screen_w // 2, banner_y + self.SUBTEXT_CENTERY))
             surface.blit(self._main_text, main_rect)
             surface.blit(self._sub_text, sub_rect)
 
@@ -162,37 +213,36 @@ class WarningBanner:
         surf = pygame.Surface((screen_w, h), pygame.SRCALPHA)
 
         # Dark panel
-        bg_color = (28, 16, 8, 215)
-        pygame.draw.rect(surf, bg_color, surf.get_rect())
+        pygame.draw.rect(surf, self.BANNER_BG_COLOR, surf.get_rect())
 
         # Accent lines
-        pygame.draw.line(surf, (255, 140, 20, 140), (0, 0), (screen_w, 0), 2)
-        pygame.draw.line(surf, (255, 100, 10, 140), (0, h - 1), (screen_w, h - 1), 2)
-        pygame.draw.line(surf, (255, 160, 40, 50), (0, 3), (screen_w, 3), 1)
+        pygame.draw.line(surf, self.ACCENT_TOP_COLOR, (0, 0), (screen_w, 0), self.ACCENT_TOP_WIDTH)
+        pygame.draw.line(surf, self.ACCENT_BOTTOM_COLOR, (0, h - 1), (screen_w, h - 1), self.ACCENT_BOTTOM_WIDTH)
+        pygame.draw.line(surf, self.ACCENT_MID_COLOR, (0, 3), (screen_w, 3), self.ACCENT_MID_WIDTH)
 
         # Hazard stripes on sides
         self._draw_hazard_stripes(surf, 0, self.HAZARD_WIDTH)
         self._draw_hazard_stripes(surf, screen_w - self.HAZARD_WIDTH, self.HAZARD_WIDTH)
 
         # Tech corner brackets
-        bc = (255, 140, 20, 170)
-        bl, bt = 12, 2
+        bl, bt = self.BRACKET_LENGTH, self.BRACKET_THICKNESS
         hw = self.HAZARD_WIDTH
-        pygame.draw.rect(surf, bc, (hw + 4, 6, bl, bt))
-        pygame.draw.rect(surf, bc, (hw + 4, 6, bt, bl))
-        pygame.draw.rect(surf, bc, (screen_w - hw - 4 - bl, 6, bl, bt))
-        pygame.draw.rect(surf, bc, (screen_w - hw - 4 - bt, 6, bt, bl))
-        pygame.draw.rect(surf, bc, (hw + 4, h - 6 - bt, bl, bt))
-        pygame.draw.rect(surf, bc, (hw + 4, h - 6 - bl, bt, bl))
-        pygame.draw.rect(surf, bc, (screen_w - hw - 4 - bl, h - 6 - bt, bl, bt))
-        pygame.draw.rect(surf, bc, (screen_w - hw - 4 - bt, h - 6 - bl, bt, bl))
+        m, t = self.BRACKET_MARGIN, self.BRACKET_TOP
+        pygame.draw.rect(surf, self.BRACKET_COLOR, (hw + m, t, bl, bt))
+        pygame.draw.rect(surf, self.BRACKET_COLOR, (hw + m, t, bt, bl))
+        pygame.draw.rect(surf, self.BRACKET_COLOR, (screen_w - hw - m - bl, t, bl, bt))
+        pygame.draw.rect(surf, self.BRACKET_COLOR, (screen_w - hw - m - bt, t, bt, bl))
+        pygame.draw.rect(surf, self.BRACKET_COLOR, (hw + m, h - t - bt, bl, bt))
+        pygame.draw.rect(surf, self.BRACKET_COLOR, (hw + m, h - t - bl, bt, bl))
+        pygame.draw.rect(surf, self.BRACKET_COLOR, (screen_w - hw - m - bl, h - t - bt, bl, bt))
+        pygame.draw.rect(surf, self.BRACKET_COLOR, (screen_w - hw - m - bt, h - t - bl, bt, bl))
 
         return surf
 
     def _draw_hazard_stripes(self, surf: pygame.Surface, start_x: int, width: int) -> None:
         h = self.BANNER_HEIGHT
-        stripe_color = (255, 150, 20, 90)
-        bg_stripe = (40, 20, 5, 180)
+        stripe_color = self.HAZARD_STRIPE_COLOR
+        bg_stripe = self.HAZARD_BG_COLOR
 
         pygame.draw.rect(surf, bg_stripe, (start_x, 0, width, h))
 

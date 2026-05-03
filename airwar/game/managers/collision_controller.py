@@ -47,21 +47,23 @@ class CollisionEvent:
 
 class CollisionController:
     """Collision controller — detects and handles entity collisions.
-    
+
         Supports spatial hashing (Rust-accelerated when available) for efficient
         collision detection between player bullets, enemy bullets, enemies,
         bosses, and the player.
-    
+
         Attributes:
             _events: Registered collision event callbacks.
             _use_rust: Whether Rust spatial hash acceleration is available.
         """
+    GRID_CELL_SIZE = 100
+
     def __init__(self):
         self._events: List[CollisionEvent] = []
         self._explosion_callback: Optional[Callable[[float, float, int], None]] = None
         # Spatial hash grid for collision optimization
         self._grid_cells = {}
-        self._grid_cell_size = 100
+        self._grid_cell_size = self.GRID_CELL_SIZE
         self._use_rust = RUST_AVAILABLE
         # Persistent spatial hash for incremental collision detection
         self._persistent_hash = None

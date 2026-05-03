@@ -5,6 +5,7 @@ from enum import Enum
 import logging
 from ...config import DIFFICULTY_SETTINGS, VALID_DIFFICULTIES, RIPPLE_FADE_SPEED
 from ..constants import GAME_CONSTANTS
+from ..death_animation import DeathAnimation
 from ..systems.health_system import HealthSystem
 from ..systems.reward_system import RewardSystem
 from ..systems.notification_manager import NotificationManager
@@ -40,7 +41,7 @@ class GameState:
     boss_kill_count: int = 0
     gameplay_state: GameplayState = GameplayState.PLAYING
     death_timer: int = 0
-    death_duration: int = 200
+    death_duration: int = DeathAnimation.ANIMATION_DURATION
 
 
 class GameController:
@@ -57,6 +58,9 @@ class GameController:
             difficulty_manager: DifficultyManager for progressive scaling.
             milestone_index: Current milestone level (0-based).
         """
+    INITIAL_DELTA = 2000
+    MAX_THRESHOLD = 100000
+
     # 1. Special methods
 
     def __init__(self, difficulty: str, username: str):
@@ -68,7 +72,7 @@ class GameController:
         self.state = GameState()
         self.state.difficulty = difficulty
         self.state.username = username
-        self.state.score_multiplier = {'easy': 1, 'medium': 2, 'hard': 3}[difficulty]
+        self.state.score_multiplier = GAME_CONSTANTS.get_difficulty_multiplier(difficulty)
 
         self.health_system = HealthSystem(difficulty)
         self.reward_system = RewardSystem(difficulty)
@@ -78,9 +82,9 @@ class GameController:
         self.cycle_count = 0
         self.milestone_index = 0
         self.max_cycles = GAME_CONSTANTS.BALANCE.MAX_CYCLES
-        self.initial_delta = 2000
+        self.initial_delta = self.INITIAL_DELTA
         self.max_delta = settings['max_delta']
-        self.max_threshold = 100000
+        self.max_threshold = self.MAX_THRESHOLD
         self.difficulty_multiplier = settings['difficulty_multiplier']
 
     # 3. Public lifecycle methods
@@ -203,7 +207,7 @@ class GameController:
 
     def update_ripples(self) -> None:
         for ripple in self.state.ripple_effects:
-            ripple['radius'] += 2.5
+            ripple['radius'] += GAME_CONSTANTS.ANIMATION.RIPPLE_EXPANSION_SPEED
             ripple['alpha'] -= RIPPLE_FADE_SPEED
             ripple['pulse'] += 1
         self.state.ripple_effects = [r for r in self.state.ripple_effects if r['alpha'] > 0]

@@ -17,15 +17,91 @@ class BoostGauge:
     ARC_END_DEG = -45            # full: bottom-right (= 315°)
     TICK_MAJOR_INTERVAL = 45    # degrees between major ticks
 
+    # Colors
+    BG_COLOR = (12, 16, 22)
+    ARC_COLOR = (55, 90, 130)
+    ARC_GLOW_COLOR = (70, 120, 170)
+    TICK_DIM_COLOR = (45, 55, 70)
+    TICK_MAJOR_COLOR = (120, 185, 220)
+
+    # Layout
+    NUM_TICKS = 31
+    TICK_DIVISOR = 30
+    MAJOR_TICK_INNER = 9
+    MINOR_TICK_INNER = 5
+    CENTER_X = 108
+    PANEL_W = 200
+    PANEL_H = 180
+    PANEL_PAD_X = 8
+    PANEL_PAD_Y = 12
+
+    # Hub circle
+    HUB_RADIUS = 9
+    HUB_INNER_RADIUS = 7
+    HUB_INNER_WIDTH = 1
+    HUB_DOT_RADIUS = 3
+
+    # Panel rendering
+    PANEL_BG_ALPHA = 215
+    PANEL_BORDER_RADIUS = 14
+    PANEL_INNER_INSET = -3
+    PANEL_INNER_BORDER_ALPHA = 50
+    PANEL_INNER_BORDER_RADIUS = 12
+    PANEL_OUTER_BORDER_ALPHA = 90
+
+    # Arc track
+    ARC_STEPS = 90
+    ARC_GLOW_BASE_ALPHA = 25
+    ARC_GLOW_ALPHA_RANGE = 20
+    ARC_GLOW_WIDTH = 5
+    ARC_CORE_BASE_ALPHA = 90
+    ARC_CORE_ALPHA_RANGE = 60
+    ARC_CORE_WIDTH = 2
+
+    # Dim ticks
+    DIM_TICK_MAJOR_ALPHA = 100
+    DIM_TICK_MINOR_ALPHA = 55
+    DIM_TICK_MAJOR_WIDTH = 3
+    DIM_TICK_MINOR_WIDTH = 1
+
+    # Lit ticks
+    TICK_LIT_MAJOR_ALPHA = 240
+    TICK_LIT_MINOR_ALPHA = 160
+    TICK_LIT_MAJOR_EXTRA = 5
+    TICK_LIT_MINOR_EXTRA = 2
+    TICK_LIT_MAJOR_WIDTH = 2
+    TICK_LIT_MINOR_WIDTH = 1
+
+    # Needle
+    NEEDLE_TIP_INSET = 10
+    NEEDLE_TAIL_LEN = 14
+    NEEDLE_ALPHA = 210
+    NEEDLE_WIDTH = 2
+    NEEDLE_TAIL_ALPHA = 90
+    NEEDLE_TAIL_WIDTH = 1
+    NEEDLE_TIP_ALPHA = 240
+    NEEDLE_TIP_RADIUS = 2
+
+    # Label sizes and offsets
+    LABEL_TITLE_FONT_SIZE = 14
+    LABEL_TITLE_Y_OFFSET = 10
+    LABEL_VALUE_FONT_SIZE = 24
+    LABEL_VALUE_Y_OFFSET = 30
+    LABEL_TINY_FONT_SIZE = 11
+    LABEL_EXTRA_RADIUS = 12
+    LABEL_ACTIVE_FONT_SIZE = 12
+    LABEL_ACTIVE_ALPHA = 200
+    LABEL_ACTIVE_Y_OFFSET = 44
+
     def __init__(self):
         tokens = get_design_tokens()
         c = tokens.colors
-        self._bg_color = (12, 16, 22)
-        self._arc_color = (55, 90, 130)
-        self._arc_glow = (70, 120, 170)
-        self._tick_dim = (45, 55, 70)
+        self._bg_color = self.BG_COLOR
+        self._arc_color = self.ARC_COLOR
+        self._arc_glow = self.ARC_GLOW_COLOR
+        self._tick_dim = self.TICK_DIM_COLOR
         self._tick_lit = SystemColors.ACCENT_TEAL
-        self._tick_major = (120, 185, 220)
+        self._tick_major = self.TICK_MAJOR_COLOR
         self._needle_color = c.TEXT_PRIMARY
         self._needle_active = c.WARNING
         self._text_color = c.TEXT_MUTED
@@ -39,12 +115,12 @@ class BoostGauge:
     def _build_ticks(self):
         """Pre-compute tick geometry for all 31 ticks (every 9°)."""
         ticks = []
-        for i in range(31):
-            t = i / 30
+        for i in range(self.NUM_TICKS):
+            t = i / self.TICK_DIVISOR
             deg = self.ARC_START_DEG - t * (self.ARC_START_DEG - self.ARC_END_DEG)
             rad = math.radians(deg)
             is_major = (i % 5 == 0)
-            inner = self.ARC_RADIUS - (9 if is_major else 5)
+            inner = self.ARC_RADIUS - (self.MAJOR_TICK_INNER if is_major else self.MINOR_TICK_INNER)
             outer = self.ARC_RADIUS
             ticks.append((rad, inner, outer, is_major, t))
         return ticks
@@ -58,14 +134,14 @@ class BoostGauge:
                boost_max: float, boost_active: bool) -> None:
         screen_h = surface.get_height()
 
-        cx = 108
+        cx = self.CENTER_X
         cy = screen_h - 98
         r = self.ARC_RADIUS
         ratio = boost_current / boost_max if boost_max > 0 else 0
 
         # Panel
-        pw, ph = 200, 180
-        px, py = 8, screen_h - ph - 12
+        pw, ph = self.PANEL_W, self.PANEL_H
+        px, py = self.PANEL_PAD_X, screen_h - ph - self.PANEL_PAD_Y
         self._render_panel(surface, px, py, pw, ph)
 
         # Arc track + dim ticks — cached as pre-rendered layer
@@ -91,9 +167,9 @@ class BoostGauge:
         self._draw_needle(surface, cx, cy, r, angle_deg, boost_active)
 
         # Center hub — metallic cap
-        pygame.draw.circle(surface, (*self._bg_color, 255), (cx, cy), 9)
-        pygame.draw.circle(surface, (*self._arc_color, 140), (cx, cy), 7, 1)
-        pygame.draw.circle(surface, (*self._tick_lit, 80), (cx, cy), 3)
+        pygame.draw.circle(surface, (*self._bg_color, 255), (cx, cy), self.HUB_RADIUS)
+        pygame.draw.circle(surface, (*self._arc_color, 140), (cx, cy), self.HUB_INNER_RADIUS, self.HUB_INNER_WIDTH)
+        pygame.draw.circle(surface, (*self._tick_lit, 80), (cx, cy), self.HUB_DOT_RADIUS)
 
         # Labels
         self._draw_labels(surface, cx, cy, r, boost_current, boost_max, boost_active)
@@ -104,21 +180,21 @@ class BoostGauge:
         cache_key = (w, h)
         if self._bg_cache is None or self._bg_cache.get('key') != cache_key:
             panel = pygame.Surface((w, h), pygame.SRCALPHA)
-            pygame.draw.rect(panel, (*self._bg_color, 215),
-                             panel.get_rect(), border_radius=14)
+            pygame.draw.rect(panel, (*self._bg_color, self.PANEL_BG_ALPHA),
+                             panel.get_rect(), border_radius=self.PANEL_BORDER_RADIUS)
             # Inner border accent
-            pygame.draw.rect(panel, (*self._arc_color, 50),
-                             panel.get_rect().inflate(-3, -3),
-                             width=1, border_radius=12)
+            pygame.draw.rect(panel, (*self._arc_color, self.PANEL_INNER_BORDER_ALPHA),
+                             panel.get_rect().inflate(self.PANEL_INNER_INSET, self.PANEL_INNER_INSET),
+                             width=1, border_radius=self.PANEL_INNER_BORDER_RADIUS)
             # Outer border
-            pygame.draw.rect(panel, (*self._arc_color, 90),
-                             panel.get_rect(), width=1, border_radius=14)
+            pygame.draw.rect(panel, (*self._arc_color, self.PANEL_OUTER_BORDER_ALPHA),
+                             panel.get_rect(), width=1, border_radius=self.PANEL_BORDER_RADIUS)
             self._bg_cache = {'key': cache_key, 'surf': panel}
         surface.blit(self._bg_cache['surf'], (x, y))
 
     def _draw_arc(self, surface, cx, cy, r):
         """Draw 270° arc track with subtle glow."""
-        steps = 90
+        steps = self.ARC_STEPS
         for i in range(steps):
             t1 = i / steps
             t2 = (i + 1) / steps
@@ -128,22 +204,22 @@ class BoostGauge:
             x1, y1 = cx + math.cos(a1) * r, cy - math.sin(a1) * r
             x2, y2 = cx + math.cos(a2) * r, cy - math.sin(a2) * r
             # Glow layer
-            glow_a = 25 + int(20 * (i / steps))
-            pygame.draw.line(surface, (*self._arc_glow, glow_a), (x1, y1), (x2, y2), 5)
+            glow_a = self.ARC_GLOW_BASE_ALPHA + int(self.ARC_GLOW_ALPHA_RANGE * (i / steps))
+            pygame.draw.line(surface, (*self._arc_glow, glow_a), (x1, y1), (x2, y2), self.ARC_GLOW_WIDTH)
             # Core arc
-            alpha = 90 + int(60 * (i / steps))
-            pygame.draw.line(surface, (*self._arc_color, alpha), (x1, y1), (x2, y2), 2)
+            alpha = self.ARC_CORE_BASE_ALPHA + int(self.ARC_CORE_ALPHA_RANGE * (i / steps))
+            pygame.draw.line(surface, (*self._arc_color, alpha), (x1, y1), (x2, y2), self.ARC_CORE_WIDTH)
 
     def _draw_ticks(self, surface, cx, cy, _ratio):
         """Draw all tick marks in dim state (for cached layer)."""
         for rad, inner, outer, is_major, t in self._ticks:
             color = self._tick_dim
-            alpha = 100 if is_major else 55
+            alpha = self.DIM_TICK_MAJOR_ALPHA if is_major else self.DIM_TICK_MINOR_ALPHA
             x1 = cx + math.cos(rad) * inner
             y1 = cy - math.sin(rad) * inner
             x2 = cx + math.cos(rad) * outer
             y2 = cy - math.sin(rad) * outer
-            w = 3 if is_major else 1
+            w = self.DIM_TICK_MAJOR_WIDTH if is_major else self.DIM_TICK_MINOR_WIDTH
             pygame.draw.line(surface, (*color, alpha), (x1, y1), (x2, y2), w)
 
     def _draw_ticks_lit(self, surface, cx, cy, ratio):
@@ -152,46 +228,46 @@ class BoostGauge:
             if t > ratio:
                 continue
             color = self._tick_major if is_major else self._tick_lit
-            alpha = 240 if is_major else 160
-            r2 = outer + (5 if is_major else 2)
+            alpha = self.TICK_LIT_MAJOR_ALPHA if is_major else self.TICK_LIT_MINOR_ALPHA
+            r2 = outer + (self.TICK_LIT_MAJOR_EXTRA if is_major else self.TICK_LIT_MINOR_EXTRA)
             x1 = cx + math.cos(rad) * inner
             y1 = cy - math.sin(rad) * inner
             x2 = cx + math.cos(rad) * r2
             y2 = cy - math.sin(rad) * r2
-            w = 2 if is_major else 1
+            w = self.TICK_LIT_MAJOR_WIDTH if is_major else self.TICK_LIT_MINOR_WIDTH
             pygame.draw.line(surface, (*color, alpha), (x1, y1), (x2, y2), w)
 
     def _draw_needle(self, surface, cx, cy, r, angle_deg, active):
         """Pointer needle."""
         rad = math.radians(angle_deg)
-        tip_r = r - 10
+        tip_r = r - self.NEEDLE_TIP_INSET
         tip_x = cx + math.cos(rad) * tip_r
         tip_y = cy - math.sin(rad) * tip_r
 
         back_rad = math.radians(angle_deg + 180)
-        tail_x = cx + math.cos(back_rad) * 14
-        tail_y = cy - math.sin(back_rad) * 14
+        tail_x = cx + math.cos(back_rad) * self.NEEDLE_TAIL_LEN
+        tail_y = cy - math.sin(back_rad) * self.NEEDLE_TAIL_LEN
 
         color = self._needle_active if active else self._needle_color
-        pygame.draw.line(surface, (*color, 210), (cx, cy), (tip_x, tip_y), 2)
-        pygame.draw.line(surface, (*color, 90), (cx, cy), (tail_x, tail_y), 1)
-        pygame.draw.circle(surface, (*color, 240), (int(tip_x), int(tip_y)), 2)
+        pygame.draw.line(surface, (*color, self.NEEDLE_ALPHA), (cx, cy), (tip_x, tip_y), self.NEEDLE_WIDTH)
+        pygame.draw.line(surface, (*color, self.NEEDLE_TAIL_ALPHA), (cx, cy), (tail_x, tail_y), self.NEEDLE_TAIL_WIDTH)
+        pygame.draw.circle(surface, (*color, self.NEEDLE_TIP_ALPHA), (int(tip_x), int(tip_y)), self.NEEDLE_TIP_RADIUS)
 
     def _draw_labels(self, surface, cx, cy, r, current, max_val, active):
         """Title, value, min/max, and BOOSTING indicator."""
-        title_font = self._get_font(14)
+        title_font = self._get_font(self.LABEL_TITLE_FONT_SIZE)
         title = title_font.render("加速燃料", True, self._text_color)
-        surface.blit(title, title.get_rect(center=(cx, cy + 10)))
+        surface.blit(title, title.get_rect(center=(cx, cy + self.LABEL_TITLE_Y_OFFSET)))
 
-        val_font = self._get_font(24)
+        val_font = self._get_font(self.LABEL_VALUE_FONT_SIZE)
         val_color = self._text_bright if active else self._text_color
         val = val_font.render(str(int(current)), True, val_color)
-        surface.blit(val, val.get_rect(center=(cx, cy + 30)))
+        surface.blit(val, val.get_rect(center=(cx, cy + self.LABEL_VALUE_Y_OFFSET)))
 
-        tiny = self._get_font(11)
+        tiny = self._get_font(self.LABEL_TINY_FONT_SIZE)
         rad_start = math.radians(self.ARC_START_DEG)
         rad_end = math.radians(self.ARC_END_DEG)
-        lr = r + 12
+        lr = r + self.LABEL_EXTRA_RADIUS
 
         zero = tiny.render("0", True, self._text_color)
         lx, ly = cx + math.cos(rad_start) * lr, cy - math.sin(rad_start) * lr
@@ -202,6 +278,6 @@ class BoostGauge:
         surface.blit(full, full.get_rect(center=(rx, ry)))
 
         if active:
-            af = self._get_font(12)
-            at = af.render("加速中", True, (*self._needle_active, 200))
-            surface.blit(at, at.get_rect(center=(cx, cy + 44)))
+            af = self._get_font(self.LABEL_ACTIVE_FONT_SIZE)
+            at = af.render("加速中", True, (*self._needle_active, self.LABEL_ACTIVE_ALPHA))
+            surface.blit(at, at.get_rect(center=(cx, cy + self.LABEL_ACTIVE_Y_OFFSET)))
