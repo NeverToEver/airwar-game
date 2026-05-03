@@ -3,6 +3,7 @@ import pygame
 from airwar.config.design_tokens import get_design_tokens, SystemColors, SystemUI
 from airwar.utils.fonts import get_cjk_font
 from airwar.utils.responsive import ResponsiveHelper
+from airwar.ui.scene_rendering_utils import adaptive_box_width, fit_text_to_width
 
 
 class EffectsRenderer:
@@ -35,7 +36,15 @@ class EffectsRenderer:
         width = surface.get_width()
         center_x = width // 2
 
-        box_width = ResponsiveHelper.scale(option_width, scale)
+        option_font = get_cjk_font(self._tokens.typography.OPTION_SIZE)
+        arrow = ">> " if is_selected else "   "
+        display_text = f"{arrow}{text}"
+        box_width = adaptive_box_width(
+            option_font,
+            display_text,
+            ResponsiveHelper.scale(option_width, scale),
+            width,
+        )
         box_height = ResponsiveHelper.scale(option_height, scale)
         box_rect = pygame.Rect(center_x - box_width // 2, y - box_height // 2, box_width, box_height)
 
@@ -54,9 +63,12 @@ class EffectsRenderer:
             pygame.draw.rect(surface, colors_config.BUTTON_UNSELECTED_BG, box_rect, border_radius=12)
             pygame.draw.rect(surface, colors.get('unselected', colors_config.TEXT_MUTED), box_rect, 2, border_radius=12)
 
-        arrow = ">> " if is_selected else "   "
-        option_text = get_cjk_font(self._tokens.typography.OPTION_SIZE).render(f"{arrow}{text}", True,
-            colors.get('selected', colors_config.HUD_AMBER) if is_selected else colors.get('unselected', colors_config.TEXT_MUTED))
+        option_text = fit_text_to_width(
+            option_font,
+            display_text,
+            colors.get('selected', colors_config.HUD_AMBER) if is_selected else colors.get('unselected', colors_config.TEXT_MUTED),
+            box_rect.width - 48,
+        )
         text_rect = option_text.get_rect(center=(center_x, y))
         surface.blit(option_text, text_rect)
 

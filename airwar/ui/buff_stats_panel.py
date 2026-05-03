@@ -7,9 +7,10 @@ from airwar.utils.fonts import get_cjk_font
 import logging
 
 from airwar.config.design_tokens import Colors, SystemColors, SystemUI, get_design_tokens
+from airwar.ui.buff_display import get_buff_display_name
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.ui.hex_icon import HexIcon, ICON_POWER, ICON_DEFENSE, ICON_SPEED
-from airwar.game.buffs.buff_registry import create_buff
+from airwar.ui.scene_rendering_utils import fit_text_to_width
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +65,7 @@ class BuffStatsAggregator:
 
     def _get_buff_color(self, name: str, reward_system) -> Tuple[int, int, int]:
         try:
+            from airwar.game.buffs.buff_registry import create_buff
             return create_buff(name).get_color()
         except (ValueError, AttributeError):
             return SystemColors.STATS_TEXT
@@ -111,7 +113,7 @@ class BuffStatsAggregator:
                 value = formatter(reward_system, player) if formatter else "ON"
 
                 entries.append(BuffStatEntry(
-                    name=buff_name,
+                    name=get_buff_display_name(buff_name),
                     short_name=self._get_short_name(buff_name),
                     value=value,
                     level=self._get_buff_level(buff_name, reward_system),
@@ -169,7 +171,6 @@ class BuffStatsAggregator:
 
         return summary
 
-
 class BuffStatsPanel:
     """Buff stats panel — displays active buffs and their current levels."""
     _MAX_CACHE_SIZE = 50
@@ -187,7 +188,7 @@ class BuffStatsPanel:
         self._tokens = get_design_tokens()
         colors = self._tokens.colors
 
-        self._panel_width = 160
+        self._panel_width = 190
         self._panel_padding = 10
         self._item_height = 28
         self._item_spacing = 4
@@ -250,8 +251,9 @@ class BuffStatsPanel:
 
             summary = self._aggregator.get_summary_stats(reward_system, player)
 
+            panel_width = self._calculate_panel_width(buff_entries, summary, screen_width)
             panel_height = self._calculate_panel_height(len(buff_entries))
-            panel_x = screen_width - self._panel_width - 15
+            panel_x = screen_width - panel_width - 15
             panel_y = (screen_height - panel_height) // 2
 
             if panel_y < 50:
@@ -260,13 +262,13 @@ class BuffStatsPanel:
             if use_themed_style:
                 self._render_themed_style(
                     surface, buff_entries, summary,
-                    self._panel_width, panel_height,
+                    panel_width, panel_height,
                     panel_x, panel_y
                 )
             else:
-                cache_key = (self._panel_width, panel_height, tuple(sorted(reward_system.unlocked_buffs)))
+                cache_key = (panel_width, panel_height, tuple(sorted(reward_system.unlocked_buffs)))
                 if cache_key not in BuffStatsPanel._panel_surface_cache:
-                    panel_surface = self._create_panel_surface(self._panel_width, panel_height)
+                    panel_surface = self._create_panel_surface(panel_width, panel_height)
                     self._render_header(panel_surface)
                     self._render_buff_items(panel_surface, buff_entries)
                     self._render_summary(panel_surface, summary)
@@ -280,6 +282,26 @@ class BuffStatsPanel:
             logger.debug(f"Failed to render buff stats panel: {e}")
         except Exception as e:
             logger.warning(f"Unexpected error rendering buff stats panel: {e}", exc_info=True)
+
+    def _calculate_panel_width(
+        self,
+        buff_entries: List[BuffStatEntry],
+        summary: Dict[str, str],
+        screen_width: int,
+    ) -> int:
+        max_content = self._title_font.size("当前增益")[0]
+        for entry in buff_entries:
+            value_width = self._value_font.size(entry.value)[0]
+            name_width = self._name_font.size(entry.name)[0]
+            max_content = max(max_content, name_width + value_width + 72)
+        if summary:
+            summary_width = sum(
+                self._summary_font.size(f"{key}:{value}")[0] + 12
+                for key, value in list(summary.items())[:4]
+            )
+            max_content = max(max_content, summary_width + 24)
+        max_width = max(170, screen_width - 140)
+        return min(max(self._panel_width, max_content), max_width)
 
     def _render_header(self, surface: pygame.Surface) -> None:
         title = self._title_font.render("当前增益", True, self._title_color)
@@ -308,10 +330,11 @@ class BuffStatsPanel:
         bg_rect = pygame.Rect(x, y_offset, item_width, item_height)
         pygame.draw.rect(surface, (*entry.color[:3], 15), bg_rect, border_radius=4)
 
-        name_text = self._name_font.render(entry.short_name, True, entry.color)
+        value_text = self._value_font.render(entry.value, True, SystemColors.STATS_TEXT_BRIGHT)
+        max_name_width = item_width - value_text.get_width() - 26
+        name_text = fit_text_to_width(self._name_font, entry.name, entry.color, max_name_width)
         surface.blit(name_text, (x + 5, y_offset + 4))
 
-        value_text = self._value_font.render(entry.value, True, SystemColors.STATS_TEXT_BRIGHT)
         value_rect = value_text.get_rect(right=x + item_width - 5, centery=y_offset + item_height // 2)
         surface.blit(value_text, value_rect)
 
@@ -396,6 +419,8 @@ class BuffStatsPanel:
             x_offset = 10
             for key, value in list(summary.items())[:4]:
                 text = summary_font.render(f"{key}:{value}", True, SystemColors.AMBER_PRIMARY)
+                if x_offset + text.get_width() > panel_width - 10:
+                    break
                 content_surf.blit(text, (x_offset, y_offset))
                 x_offset += text.get_width() + 15
 
@@ -422,11 +447,14 @@ class BuffStatsPanel:
 
         # Buff name
         name_font = get_cjk_font(SystemUI.MILITARY_SMALL_SIZE)
-        name_text = name_font.render(entry.short_name, True, SystemColors.TEXT_PRIMARY)
+        value_text = name_font.render(entry.value, True, SystemColors.AMBER_PRIMARY)
+        max_name_width = max(24, panel_width - value_text.get_width() - 58)
+        name_text = fit_text_to_width(
+            name_font, entry.name, SystemColors.TEXT_PRIMARY, max_name_width
+        )
         surface.blit(name_text, (38, y_offset + 2))
 
         # Buff value
-        value_text = name_font.render(entry.value, True, SystemColors.AMBER_PRIMARY)
         value_rect = value_text.get_rect(right=panel_width - 10, top=y_offset + 2)
         surface.blit(value_text, value_rect)
 
@@ -448,9 +476,10 @@ class AttackModeEntry:
 class AttackModePanel:
     """Horizontal attack mode indicator strip at top-left."""
 
-    PANEL_WIDTH = 240
+    PANEL_WIDTH = 280
     PANEL_HEIGHT = 80
     LIGHT_SIZE = 16
+    ENTRY_MIN_WIDTH = 78
 
     def __init__(self):
         pygame.font.init()
@@ -474,16 +503,30 @@ class AttackModePanel:
 
         panel_x = 15
         panel_y = 95
+        entries = [
+            AttackModeEntry("散", "散射", spread_on, (255, 160, 30)),
+            AttackModeEntry("光", "激光", laser_on, (255, 80, 180)),
+            AttackModeEntry("爆", "爆炸", explosive_on, Colors.ACCENT_EXPLOSIVE),
+        ]
+        entry_width = max(
+            self.ENTRY_MIN_WIDTH,
+            max(self._name_font.size(entry.short_name)[0] + 28 for entry in entries),
+        )
+        panel_width = max(
+            self.PANEL_WIDTH,
+            entry_width * len(entries) + 24,
+            self._font.size("攻击")[0] + 24,
+        )
 
         draw_chamfered_panel(
-            surface, panel_x, panel_y, self.PANEL_WIDTH, self.PANEL_HEIGHT,
+            surface, panel_x, panel_y, panel_width, self.PANEL_HEIGHT,
             SystemColors.BG_PANEL,
             SystemColors.BORDER_GLOW,
             SystemColors.AMBER_GLOW,
             chamfer_depth=5
         )
 
-        content_surf = pygame.Surface((self.PANEL_WIDTH, self.PANEL_HEIGHT), pygame.SRCALPHA)
+        content_surf = pygame.Surface((panel_width, self.PANEL_HEIGHT), pygame.SRCALPHA)
         content_surf.fill((0, 0, 0, 0))
 
         # Title
@@ -491,13 +534,7 @@ class AttackModePanel:
         title_rect = title.get_rect(left=12, top=6)
         content_surf.blit(title, title_rect)
 
-        entries = [
-            AttackModeEntry("散", "散射", spread_on, (255, 160, 30)),
-            AttackModeEntry("光", "激光", laser_on, (255, 80, 180)),
-            AttackModeEntry("爆", "爆炸", explosive_on, Colors.ACCENT_EXPLOSIVE),
-        ]
-
-        spacing = self.PANEL_WIDTH // 3
+        spacing = panel_width // len(entries)
         hex_center_y = 46
         label_top_y = hex_center_y + self.LIGHT_SIZE + 4
 

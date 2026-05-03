@@ -8,6 +8,7 @@ from airwar.utils.responsive import ResponsiveHelper
 from airwar.ui.menu_background import MenuBackground
 from airwar.ui.particles import ParticleSystem
 from airwar.ui.chamfered_panel import draw_chamfered_panel
+from airwar.ui.scene_rendering_utils import fit_text_to_width, wrap_text
 from airwar.config.design_tokens import get_design_tokens, SceneColors
 from airwar.window.window import get_window
 from airwar.utils.mouse_interaction import MouseInteractiveMixin
@@ -29,15 +30,17 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
     """
 
     # Layout constants
-    PANEL_W = 440
-    PANEL_H = 460
+    PANEL_W = 480
+    PANEL_H = 500
     CHAMFER = 12
-    INPUT_W = 340
+    INPUT_W = 370
     INPUT_H = 54
-    BTN_W = 160
+    BTN_W = 180
     BTN_H = 48
     DIFF_OPTION_H = 48
     DIFF_GAP = 8
+    PANEL_GAP = 30
+    STACKED_PANEL_GAP = 24
 
     def __init__(self):
         Scene.__init__(self)
@@ -329,15 +332,13 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         self._render_title(surface)
 
         # Compute layout
-        total_w = self.PANEL_W * 2 + 30
-        start_x = (sw - total_w) // 2
-        panel_y = sh // 2 - self.PANEL_H // 2 - 20
+        layout = self._get_layout(sw, sh)
 
         # Left panel: Login
-        self._render_left_panel(surface, start_x, panel_y)
+        self._render_left_panel(surface, layout["left_x"], layout["left_y"])
 
         # Right panel: Difficulty + Quick Tips
-        self._render_right_panel(surface, start_x + self.PANEL_W + 30, panel_y)
+        self._render_right_panel(surface, layout["right_x"], layout["right_y"])
 
         # Bottom hint
         self._render_bottom_hint(surface, sw, sh)
@@ -357,20 +358,49 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         if self.show_delete_confirm:
             self._render_delete_confirm(surface)
 
+    def _get_layout(self, sw: int, sh: int) -> dict:
+        total_w = self.PANEL_W * 2 + self.PANEL_GAP
+        title_clearance = 110
+        bottom_clearance = 96
+        if sw >= total_w + 24:
+            start_x = (sw - total_w) // 2
+            panel_y = max(title_clearance, sh // 2 - self.PANEL_H // 2 - 20)
+            return {
+                "left_x": start_x,
+                "left_y": panel_y,
+                "right_x": start_x + self.PANEL_W + self.PANEL_GAP,
+                "right_y": panel_y,
+            }
+
+        total_h = self.PANEL_H * 2 + self.STACKED_PANEL_GAP
+        panel_x = max(20, (sw - self.PANEL_W) // 2)
+        panel_y = max(
+            title_clearance,
+            (sh - bottom_clearance - total_h + title_clearance) // 2,
+        )
+        return {
+            "left_x": panel_x,
+            "left_y": panel_y,
+            "right_x": panel_x,
+            "right_y": panel_y + self.PANEL_H + self.STACKED_PANEL_GAP,
+        }
+
     def _render_title(self, surface):
         SC = SceneColors
-        sw = surface.get_width()
-        ty = 45 + math.sin(self.animation_time * 0.04) * 4
+        sw, sh = surface.get_width(), surface.get_height()
+        title_size = min(self._tokens.typography.TITLE_SIZE, max(72, sh // 10))
+        title_font = get_cjk_font(title_size)
+        ty = max(62, int(title_size * 0.72)) + math.sin(self.animation_time * 0.04) * 3
 
         for blur, alpha, color in [(4, 18, SC.GOLD_DIM), (2, 30, SC.GOLD_PRIMARY)]:
-            glow = self.title_font.render("空 战", True, color)
+            glow = title_font.render("空 战", True, color)
             glow.set_alpha(alpha)
             for ox in range(-blur, blur + 1, 2):
                 for oy in range(-blur, blur + 1, 2):
                     if ox * ox + oy * oy <= blur * blur:
                         r = glow.get_rect(center=(sw // 2 + ox, int(ty) + oy))
                         surface.blit(glow, r)
-        title = self.title_font.render("空 战", True, SC.GOLD_PRIMARY)
+        title = title_font.render("空 战", True, SC.GOLD_PRIMARY)
         surface.blit(title, title.get_rect(center=(sw // 2, int(ty))))
 
     def _render_left_panel(self, surface, px, py):
@@ -392,7 +422,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
         # Username field
         input_x = px + (self.PANEL_W - self.INPUT_W) // 2
-        uname_y = py + 90
+        uname_y = py + 105
         uname_rect = pygame.Rect(input_x, uname_y, self.INPUT_W, self.INPUT_H)
         self.register_button('username_field', uname_rect)
         self._draw_input(surface, uname_rect, "用户名", self.username,
@@ -407,17 +437,25 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
         # Buttons
         btn_y = pass_y + self.INPUT_H + 35
-        login_rect = pygame.Rect(px + self.PANEL_W // 2 - self.BTN_W - 12, btn_y,
-                                 self.BTN_W, self.BTN_H)
-        register_rect = pygame.Rect(px + self.PANEL_W // 2 + 12, btn_y,
-                                    self.BTN_W, self.BTN_H)
+        login_text = "登录"
+        register_text = "注册"
+        btn_w = max(
+            self.BTN_W,
+            self.button_font.size(login_text)[0] + 72,
+            self.button_font.size(register_text)[0] + 72,
+        )
+        login_rect = pygame.Rect(px + self.PANEL_W // 2 - btn_w - 14, btn_y,
+                                 btn_w, self.BTN_H)
+        register_rect = pygame.Rect(px + self.PANEL_W // 2 + 14, btn_y,
+                                    btn_w, self.BTN_H)
         self._draw_button(surface, login_rect, "登录", 'login',
                          SceneColors.FOREST_GREEN, is_primary=True)
         self._draw_button(surface, register_rect, "注册", 'register',
                          SceneColors.GOLD_DIM)
 
         # Guest mode button (ghost style — subtle border, fills on hover)
-        guest_btn_w = self.BTN_W
+        ghost_font = get_cjk_font(self._tokens.typography.SMALL_SIZE)
+        guest_btn_w = max(self.BTN_W, ghost_font.size("游客模式")[0] + 72)
         guest_btn_h = 40
         guest_y = btn_y + self.BTN_H + 18
         guest_rect = pygame.Rect(px + self.PANEL_W // 2 - guest_btn_w // 2,
@@ -426,7 +464,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
         # Delete user button (ghost style — red accent)
         SC = SceneColors
-        delete_btn_w = 120
+        delete_btn_w = max(140, ghost_font.size("删除用户")[0] + 44)
         delete_btn_h = 34
         delete_y = guest_y + guest_btn_h + 12
         delete_rect = pygame.Rect(px + self.PANEL_W // 2 - delete_btn_w // 2,
@@ -484,11 +522,14 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             ("L", "切换HUD面板"),
         ]
         tip_y = tips_title_y + 26
+        key_x = px + 35
+        desc_right = px + self.PANEL_W - 35
+        max_key_w = desc_right - key_x - 92
         for key, desc in controls:
-            key_surf = self.tip_font.render(key, True, SC.ACCENT_PRIMARY)
+            key_surf = fit_text_to_width(self.tip_font, key, SC.ACCENT_PRIMARY, max_key_w)
             desc_surf = self.tip_font.render(desc, True, SC.TEXT_DIM)
-            surface.blit(key_surf, (px + 35, tip_y))
-            surface.blit(desc_surf, (px + self.PANEL_W - desc_surf.get_width() - 35, tip_y))
+            surface.blit(key_surf, (key_x, tip_y))
+            surface.blit(desc_surf, (desc_right - desc_surf.get_width(), tip_y))
             tip_y += 20
 
     def _draw_diff_option(self, surface, x, y, w, label, index, selected):
@@ -529,9 +570,9 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
                              bg_color, border_color, None, 6)
 
         # Label above
-        label_y = rect.y - 22
         label_color = SC.GOLD_PRIMARY if is_active else SC.TEXT_DIM
         label_surf = self.hint_font.render(label, True, label_color)
+        label_y = rect.y - label_surf.get_height() - 6
         surface.blit(label_surf, (rect.x + 8, label_y))
 
         # Text content
@@ -579,7 +620,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
                              None, 6)
 
         text_color = SC.TEXT_BRIGHT if active else SC.TEXT_PRIMARY
-        text_surf = self.button_font.render(text, True, text_color)
+        text_surf = fit_text_to_width(self.button_font, text, text_color, rect.width - 32)
         surface.blit(text_surf, text_surf.get_rect(center=rect.center))
 
     def _draw_ghost_button(self, surface, rect, text, btn_name):
@@ -595,7 +636,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
         text_color = SC.TEXT_PRIMARY if hover else SC.TEXT_DIM
         font = get_cjk_font(self._tokens.typography.SMALL_SIZE)
-        text_surf = font.render(text, True, text_color)
+        text_surf = fit_text_to_width(font, text, text_color, rect.width - 28)
         surface.blit(text_surf, text_surf.get_rect(center=rect.center))
 
     def _render_bottom_hint(self, surface, sw, sh):
@@ -626,7 +667,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         surface.blit(overlay, (0, 0))
 
         # Dialog box
-        dlg_w, dlg_h = 480, 280
+        dlg_w, dlg_h = 560, 300
         dlg_x = (sw - dlg_w) // 2
         dlg_y = (sh - dlg_h) // 2
         draw_chamfered_panel(surface, dlg_x, dlg_y, dlg_w, dlg_h,
@@ -636,16 +677,19 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         title = self.section_font.render("游客模式", True, SC.GOLD_PRIMARY)
         surface.blit(title, title.get_rect(center=(sw // 2, dlg_y + 50)))
 
-        # Description
-        desc = self.hint_font.render(
-            "Play without an account — progress and", True, SC.TEXT_DIM)
-        desc2 = self.hint_font.render(
-            "high scores will not be saved.", True, SC.TEXT_DIM)
-        surface.blit(desc, desc.get_rect(center=(sw // 2, dlg_y + 115)))
-        surface.blit(desc2, desc2.get_rect(center=(sw // 2, dlg_y + 148)))
+        self._render_dialog_lines(
+            surface,
+            [
+                "不登录也可以开始游戏。",
+                "游客模式不会保存进度和最高分。",
+            ],
+            sw // 2,
+            dlg_y + 112,
+            dlg_w - 80,
+        )
 
         # Buttons
-        btn_w, btn_h = 170, 46
+        btn_w, btn_h = 190, 46
         gap = 20
         total_btn_w = btn_w * 2 + gap
         btn_start_x = sw // 2 - total_btn_w // 2
@@ -675,7 +719,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         surface.blit(overlay, (0, 0))
 
         # Dialog box
-        dlg_w, dlg_h = 480, 260
+        dlg_w, dlg_h = 620, 280
         dlg_x = (sw - dlg_w) // 2
         dlg_y = (sh - dlg_h) // 2
         draw_chamfered_panel(surface, dlg_x, dlg_y, dlg_w, dlg_h,
@@ -685,16 +729,19 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         title = self.section_font.render("删除用户", True, SC.DANGER_RED)
         surface.blit(title, title.get_rect(center=(sw // 2, dlg_y + 50)))
 
-        # Description
-        desc = self.hint_font.render(
-            f'确定要删除用户 "{self.delete_username}" 吗？', True, SC.TEXT_DIM)
-        desc2 = self.hint_font.render(
-            "此操作不可撤销，所有数据将被永久删除。", True, SC.TEXT_DIM)
-        surface.blit(desc, desc.get_rect(center=(sw // 2, dlg_y + 105)))
-        surface.blit(desc2, desc2.get_rect(center=(sw // 2, dlg_y + 138)))
+        self._render_dialog_lines(
+            surface,
+            [
+                f'确定要删除用户 "{self.delete_username}" 吗？',
+                "此操作不可撤销，所有数据将被永久删除。",
+            ],
+            sw // 2,
+            dlg_y + 104,
+            dlg_w - 80,
+        )
 
         # Buttons
-        btn_w, btn_h = 170, 46
+        btn_w, btn_h = 190, 46
         gap = 20
         total_btn_w = btn_w * 2 + gap
         btn_start_x = sw // 2 - total_btn_w // 2
@@ -711,6 +758,14 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         self._draw_button(surface, cancel_rect, "取消",
                           'delete_confirm_no', SC.GOLD_DIM,
                           is_focused=(self.delete_confirm_focus == 'no'))
+
+    def _render_dialog_lines(self, surface, lines, center_x, start_y, max_width):
+        y = start_y
+        for line in lines:
+            for wrapped in wrap_text(line, self.hint_font, max_width, max_lines=2):
+                text = self.hint_font.render(wrapped, True, SceneColors.TEXT_DIM)
+                surface.blit(text, text.get_rect(center=(center_x, y)))
+                y += 30
 
     def _render_fullscreen_button(self, surface, sw, sh):
         SC = SceneColors

@@ -6,6 +6,7 @@ from typing import List, Callable, Optional
 from airwar.utils.mouse_interaction import MouseSelectableMixin
 from airwar.config.design_tokens import SceneColors, SystemUI, get_design_tokens
 from airwar.ui.chamfered_panel import draw_chamfered_panel
+from airwar.ui.scene_rendering_utils import fit_text_to_width, wrap_text
 
 
 class RewardSelector(MouseSelectableMixin):
@@ -113,6 +114,25 @@ class RewardSelector(MouseSelectableMixin):
         }
 
         self._init_themed_colors()
+
+    def _calculate_option_box_width(self, surface: pygame.Surface) -> int:
+        max_width = max(360, surface.get_width() - 160)
+        box_width = 500 if self.use_themed_style else 480
+        for option in self.options:
+            buff_name = option.get('name', '')
+            level = self.buff_levels.get(buff_name, 0)
+            is_upgraded = buff_name in self.unlocked_buffs and level > 0
+            name_text = f"> {buff_name} [Lv.{level}]" if is_upgraded else f"> {buff_name}"
+            desc_text = option.get('desc', '')
+            box_width = max(
+                box_width,
+                self.option_font.size(name_text)[0] + 70,
+                min(self.hint_font.size(desc_text)[0] + 70, max_width),
+            )
+        return min(box_width, max_width)
+
+    def _calculate_panel_width(self, surface: pygame.Surface, box_width: int) -> int:
+        return min(max(box_width + 40, 540), max(400, surface.get_width() - 120))
 
     def _init_themed_colors(self) -> None:
         self.themed_colors = {
@@ -311,12 +331,12 @@ class RewardSelector(MouseSelectableMixin):
         surface.blit(border_surf, panel_rect.topleft)
 
     def _draw_option_item(self, surface: pygame.Surface, option: dict, index: int,
-                          center_x: int, start_y: int, is_selected: bool) -> None:
-        option_height = 80
-        option_gap = 15
+                          center_x: int, start_y: int, is_selected: bool,
+                          box_width: int) -> None:
+        option_height = 84
+        option_gap = 14
         y = start_y + index * (option_height + option_gap)
         
-        box_width = 440
         box_height = option_height
         box_rect = pygame.Rect(center_x - box_width // 2, y, box_width, box_height)
         self.append_option_rect(box_rect)
@@ -363,14 +383,16 @@ class RewardSelector(MouseSelectableMixin):
             name_text = f"{arrow} {buff_name}"
             text_color = self.colors['selected'] if is_selected else self.colors['unselected']
         
-        text = self.option_font.render(name_text, True, text_color)
-        text_rect = text.get_rect(midleft=(box_rect.x + 25, box_rect.centery - 8))
+        text = fit_text_to_width(self.option_font, name_text, text_color, box_width - 50)
+        text_rect = text.get_rect(midleft=(box_rect.x + 25, box_rect.centery - 14))
         surface.blit(text, text_rect)
 
         desc_color = self.colors['desc_selected'] if is_selected else self.colors['desc_unselected']
-        desc = self.hint_font.render(option['desc'], True, desc_color)
-        desc_rect = desc.get_rect(midleft=(box_rect.x + 35, box_rect.centery + 16))
-        surface.blit(desc, desc_rect)
+        desc_y = box_rect.centery + 8
+        for line in wrap_text(option['desc'], self.hint_font, box_width - 70, max_lines=2):
+            desc = self.hint_font.render(line, True, desc_color)
+            surface.blit(desc, desc.get_rect(midleft=(box_rect.x + 35, desc_y)))
+            desc_y += 22
 
     def _draw_title(self, surface: pygame.Surface) -> None:
         width, height = surface.get_size()
@@ -411,20 +433,25 @@ class RewardSelector(MouseSelectableMixin):
         else:
             self._draw_panel(surface)
 
-        panel_height = 320
+        box_width = self._calculate_option_box_width(surface)
+        panel_height = 340
         center_x = width // 2
         panel_y = height // 2 - panel_height // 2 + self.glow_offset * 0.3
 
-        option_section_height = 80 * 3 + 15 * 2
+        option_section_height = 84 * 3 + 14 * 2
         start_y = panel_y + (panel_height - option_section_height) // 2 + 10
 
         self.clear_option_rects()
         effective_index = self.get_effective_selected_index(self.selected_index)
         for i, option in enumerate(self.options):
             if self.use_themed_style:
-                self._draw_themed_option_item(surface, option, i, center_x, start_y, i == effective_index)
+                self._draw_themed_option_item(
+                    surface, option, i, center_x, start_y, i == effective_index, box_width
+                )
             else:
-                self._draw_option_item(surface, option, i, center_x, start_y, i == effective_index)
+                self._draw_option_item(
+                    surface, option, i, center_x, start_y, i == effective_index, box_width
+                )
 
         self._draw_bottom_hint(surface)
 
@@ -465,7 +492,8 @@ class RewardSelector(MouseSelectableMixin):
         """Draw panel in military style with chamfered corners."""
         width, height = surface.get_size()
 
-        panel_width = 500
+        box_width = self._calculate_option_box_width(surface)
+        panel_width = self._calculate_panel_width(surface, box_width)
         panel_height = 340
         panel_x = width // 2 - panel_width // 2
         panel_y = height // 2 - panel_height // 2 + self.glow_offset * 0.3
@@ -482,13 +510,13 @@ class RewardSelector(MouseSelectableMixin):
         )
 
     def _draw_themed_option_item(self, surface: pygame.Surface, option: dict, index: int,
-                          center_x: int, start_y: int, is_selected: bool) -> None:
+                          center_x: int, start_y: int, is_selected: bool,
+                          box_width: int) -> None:
         """Draw option item in military style with chamfered corners."""
-        option_height = 80
-        option_gap = 15
+        option_height = 84
+        option_gap = 14
         y = start_y + index * (option_height + option_gap)
 
-        box_width = 460
         box_height = option_height
         box_rect = pygame.Rect(center_x - box_width // 2, y, box_width, box_height)
         self.append_option_rect(box_rect)
@@ -541,11 +569,13 @@ class RewardSelector(MouseSelectableMixin):
             name_text = f"{arrow} {buff_name}"
             text_color = SceneColors.GOLD_PRIMARY if is_selected else SceneColors.TEXT_DIM
 
-        text = self.option_font.render(name_text, True, text_color)
-        text_rect = text.get_rect(midleft=(box_rect.x + 25, box_rect.centery - 8))
+        text = fit_text_to_width(self.option_font, name_text, text_color, box_width - 50)
+        text_rect = text.get_rect(midleft=(box_rect.x + 25, box_rect.centery - 14))
         surface.blit(text, text_rect)
 
         desc_color = SceneColors.FOREST_GREEN if is_selected else SceneColors.TEXT_DIM
-        desc = self.hint_font.render(option['desc'], True, desc_color)
-        desc_rect = desc.get_rect(midleft=(box_rect.x + 35, box_rect.centery + 16))
-        surface.blit(desc, desc_rect)
+        desc_y = box_rect.centery + 8
+        for line in wrap_text(option['desc'], self.hint_font, box_width - 70, max_lines=2):
+            desc = self.hint_font.render(line, True, desc_color)
+            surface.blit(desc, desc.get_rect(midleft=(box_rect.x + 35, desc_y)))
+            desc_y += 22
