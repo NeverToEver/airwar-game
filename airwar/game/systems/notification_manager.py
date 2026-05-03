@@ -1,8 +1,11 @@
 """On-screen notification display and lifecycle management."""
+import logging
 import pygame
 from airwar.utils.fonts import get_cjk_font
 from typing import Optional
 from ..constants import GAME_CONSTANTS
+
+logger = logging.getLogger(__name__)
 
 
 class NotificationManager:
@@ -32,10 +35,13 @@ class NotificationManager:
 
     def render(self, surface: pygame.Surface) -> None:
         if self.timer > 0 and self.current_notification:
-            alpha = min(255, self.timer * 4)
-            color = (0, 255, 150) if alpha > GAME_CONSTANTS.TIMING.NOTIFICATION_ALPHA_THRESHOLD else (150, 255, 200)
-            text = self.notif_font.render(self.current_notification, True, color)
-            text.set_alpha(alpha)
-            x = surface.get_width() // 2 - text.get_width() // 2
-            y = 100
-            surface.blit(text, (x, y))
+            try:
+                alpha = min(255, self.timer * 4)
+                color = (0, 255, 150) if alpha > GAME_CONSTANTS.TIMING.NOTIFICATION_ALPHA_THRESHOLD else (150, 255, 200)
+                text = self.notif_font.render(self.current_notification, True, color)
+                text.set_alpha(alpha)
+                x = surface.get_width() // 2 - text.get_width() // 2
+                y = 100
+                surface.blit(text, (x, y))
+            except pygame.error:
+                logger.warning("Failed to render notification text")

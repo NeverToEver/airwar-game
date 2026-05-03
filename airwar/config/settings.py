@@ -1,6 +1,4 @@
 """Settings — global constants for dimensions, speeds, and rendering."""
-from airwar.config.game_config import GameConfig, get_screen_width, get_screen_height, set_screen_size
-
 SCREEN_WIDTH = 1920
 SCREEN_HEIGHT = 1080
 FPS = 60

@@ -3,6 +3,8 @@ import logging
 from typing import Dict, List, Callable
 from .interfaces import IEventBus
 
+logger = logging.getLogger(__name__)
+
 
 class EventBus(IEventBus):
     """Event bus — publish/subscribe messaging for mothership events.
@@ -32,5 +34,5 @@ class EventBus(IEventBus):
                     callback(**kwargs)
                 except (KeyboardInterrupt, SystemExit):
                     raise
-                except Exception as e:
-                    logging.error(f"Event callback error [{event}]: {e}")
+                except Exception:
+                    logger.error(f"Event callback error [{event}]", exc_info=True)

@@ -7,10 +7,9 @@ from airwar.utils.responsive import ResponsiveHelper
 from airwar.ui.menu_background import MenuBackground
 from airwar.ui.particles import ParticleSystem
 from airwar.ui.effects import EffectsRenderer
-from airwar.config.design_tokens import get_design_tokens, SceneColors, SystemUI
+from airwar.config.design_tokens import get_design_tokens, SceneColors
 from airwar.utils.mouse_interaction import MouseSelectableMixin
-from airwar.ui.chamfered_panel import draw_chamfered_panel
-from airwar.ui.scene_rendering_utils import SceneRenderingUtils
+from airwar.ui.scene_rendering_utils import SceneRenderingUtils, draw_themed_title, draw_themed_decorations, draw_themed_option_box
 
 
 class PauseScene(Scene, MouseSelectableMixin):
@@ -185,76 +184,18 @@ class PauseScene(Scene, MouseSelectableMixin):
 
     def _draw_themed_title(self, surface: pygame.Surface, text: str, font: pygame.font.Font, pos: tuple) -> None:
         """Draw title in military style with amber glow."""
-        for blur, alpha, color in [(4, 20, SceneColors.GOLD_DIM), (2, 35, SceneColors.GOLD_PRIMARY)]:
-            glow_surf = font.render(text, True, color)
-            glow_surf.set_alpha(alpha)
-            for offset_x in range(-blur, blur + 1, 2):
-                for offset_y in range(-blur, blur + 1, 2):
-                    if offset_x * offset_x + offset_y * offset_y <= blur * blur:
-                        glow_rect = glow_surf.get_rect(center=(pos[0] + offset_x, pos[1] + offset_y))
-                        surface.blit(glow_surf, glow_rect)
-
-        title = font.render(text, True, SceneColors.GOLD_PRIMARY)
-        surface.blit(title, title.get_rect(center=pos))
+        draw_themed_title(surface, text, font, pos)
 
     def _draw_themed_decorations(self, surface: pygame.Surface, width: int, height: int) -> None:
         """Draw military style decorations."""
-        center_x = width // 2
-
-        # Corner brackets
-        bracket_size = 20
-        bracket_color = SceneColors.BORDER_DIM
-
-        # Top bracket
-        pygame.draw.lines(surface, bracket_color, False,
-                        [(center_x - 100, height // 3 - 50), (center_x - 100, height // 3 - 50 - bracket_size), (center_x - 100 + bracket_size, height // 3 - 50 - bracket_size)], 2)
-        pygame.draw.lines(surface, bracket_color, False,
-                        [(center_x + 100, height // 3 - 50), (center_x + 100, height // 3 - 50 - bracket_size), (center_x + 100 - bracket_size, height // 3 - 50 - bracket_size)], 2)
-
-        # Bottom bracket
-        pygame.draw.lines(surface, bracket_color, False,
-                        [(center_x - 100, height // 3 + 50), (center_x - 100, height // 3 + 50 + bracket_size), (center_x - 100 + bracket_size, height // 3 + 50 + bracket_size)], 2)
-        pygame.draw.lines(surface, bracket_color, False,
-                        [(center_x + 100, height // 3 + 50), (center_x + 100, height // 3 + 50 + bracket_size), (center_x + 100 - bracket_size, height // 3 + 50 + bracket_size)], 2)
+        draw_themed_decorations(surface, width, height)
 
     def _draw_themed_option_box(self, surface: pygame.Surface, text: str, y: int, is_selected: bool, scale: float = 1.0) -> None:
         """Draw option box in military style with chamfered corners."""
-        width, height = surface.get_size()
-        center_x = width // 2
-
-        box_width = ResponsiveHelper.scale(self.base_box_width, scale)
-        box_height = ResponsiveHelper.scale(self.base_box_height, scale)
-        box_rect = pygame.Rect(center_x - box_width // 2, y - box_height // 2, box_width, box_height)
-        self.append_option_rect(box_rect)
-
-        if is_selected:
-            # Draw glow
-            draw_chamfered_panel(
-                surface,
-                box_rect.x - 4, box_rect.y - 4,
-                box_rect.width + 8, box_rect.height + 8,
-                SceneColors.BG_PANEL,
-                SceneColors.GOLD_GLOW,
-                SceneColors.GOLD_GLOW,
-                10
-            )
-
-        # Draw chamfered box
-        draw_chamfered_panel(
-            surface,
-            box_rect.x, box_rect.y,
-            box_rect.width, box_rect.height,
-            SceneColors.BG_PANEL if is_selected else SceneColors.BG_PANEL_LIGHT,
-            SceneColors.GOLD_PRIMARY if is_selected else SceneColors.BORDER_DIM,
-            None,
-            8
+        draw_themed_option_box(
+            surface, text, y, is_selected, self.option_font, self._option_rects,
+            self.base_box_width, self.base_box_height, scale,
         )
-
-        arrow = ">> " if is_selected else "   "
-        option_text = self.option_font.render(f"{arrow}{text}", True,
-                                             SceneColors.GOLD_PRIMARY if is_selected else SceneColors.TEXT_DIM)
-        text_rect = option_text.get_rect(center=(center_x, y))
-        surface.blit(option_text, text_rect)
 
     def get_result(self) -> PauseAction:
         return self.result

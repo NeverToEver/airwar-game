@@ -5,7 +5,6 @@ and reduce complexity in Enemy.update(). Each strategy handles one movement type
 """
 from abc import ABC, abstractmethod
 import math
-import random
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:

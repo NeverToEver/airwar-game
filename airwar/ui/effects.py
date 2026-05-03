@@ -1,6 +1,5 @@
 """UI effects — visual feedback effects for the interface."""
 import pygame
-import math
 from airwar.config.design_tokens import get_design_tokens, SystemColors, SystemUI
 from airwar.utils.responsive import ResponsiveHelper
 

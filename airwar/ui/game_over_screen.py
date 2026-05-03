@@ -130,14 +130,6 @@ class GameOverScreen:
                     self._running = False
                 break
 
-    def _get_event_type(self, name: str):
-        import pygame
-        return getattr(pygame, name, None)
-
-    def _get_key(self, name: str):
-        import pygame
-        return getattr(pygame, f'K_{name}', None)
-
     def _render_game_over(self, surface, score: int, kills: int,
                          username: Optional[str], high_score: Optional[int],
                          screen_width: int, screen_height: int) -> None:

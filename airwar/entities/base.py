@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 import math
 import pygame
 from typing import Tuple, Optional
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass
