@@ -1,6 +1,5 @@
 """Design tokens — color themes, typography, spacing, and animation values."""
 from typing import Tuple
-import pygame
 
 
 class Colors:

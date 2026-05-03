@@ -125,7 +125,6 @@ class TestBullet:
 
     def test_bullet_deactivates_offscreen(self):
         from airwar.entities import Bullet, BulletData
-        from airwar.config import SCREEN_HEIGHT
         b = Bullet(400, -100, BulletData(speed=14))
         b.update()
         assert b.active is False

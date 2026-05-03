@@ -1,0 +1,16 @@
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+extend-exclude = [
+    "build",
+    "dist",
+    "airwar_core/target",
+]
+
+[tool.ruff.lint]
+select = ["E9", "F401", "F821", "F822", "F823"]
+
+[tool.ruff.lint.per-file-ignores]
+"airwar/**/__init__.py" = ["F401"]
+"airwar/core_bindings.py" = ["F401"]
+"airwar/utils/sprites.py" = ["F401"]

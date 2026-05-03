@@ -40,7 +40,7 @@ MOVEMENT_TYPE_MAP = {
 }
 
 if TYPE_CHECKING:
-    from airwar.scenes.game_scene import GameScene
+    pass
 
 
 class Enemy(Entity):

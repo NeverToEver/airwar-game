@@ -116,7 +116,7 @@ class SceneDirector:
                     self._save_and_quit(current_scene)
                     self._logger.info("Game flow ended: quit")
                     return self._show_exit_confirm(saved=True)
-                escape_handled = result == True
+                escape_handled = result == "resume"
 
             self._handle_scene_events(events, escape_handled)
 

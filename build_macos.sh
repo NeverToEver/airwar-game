@@ -13,43 +13,48 @@ cd "$SCRIPT_DIR"
 
 echo "=== Air War macOS Build ==="
 
-# 1. Build Rust extension for macOS
-echo "[1/4] Building Rust extension (macOS target)..."
-cd airwar_core
-cargo build --release
-cd ..
+# 1. Create isolated build environment
+echo "[1/4] Preparing build environment..."
+python3 -m venv .venv-build
+. .venv-build/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements-dev.txt
 
-# 2. Install Rust extension
-echo "[2/4] Installing Rust extension..."
-RUST_DYLIB="airwar_core/target/release/libairwar_core.dylib"
-if [ -f "$RUST_DYLIB" ]; then
-    SITE_PACKAGES=$(python3 -c "import site; print(site.getusersitepackages())")
-    mkdir -p "$SITE_PACKAGES/airwar_core"
-    cp "$RUST_DYLIB" "$SITE_PACKAGES/airwar_core/airwar_core.cpython-312-darwin.so"
-    echo "   Rust extension installed."
+# 2. Build and install Rust extension into the build environment
+echo "[2/4] Building Rust extension..."
+if command -v cargo >/dev/null 2>&1; then
+    if python -m maturin develop --release --manifest-path airwar_core/Cargo.toml; then
+        echo "   Rust extension installed in .venv-build."
+    else
+        echo "   WARNING: Rust extension build failed."
+        echo "   Game will fall back to pure Python."
+    fi
 else
-    echo "   WARNING: Rust .dylib not found at $RUST_DYLIB"
+    echo "   WARNING: cargo not found."
     echo "   Game will fall back to pure Python."
 fi
 
-# 3. Install PyInstaller
-echo "[3/4] Checking PyInstaller..."
-python3 -c "import PyInstaller" 2>/dev/null || pip3 install pyinstaller --break-system-packages
+# 3. Validate imports
+echo "[3/4] Validating Python environment..."
+python -c "import pygame, PIL, PyInstaller; from airwar.core_bindings import RUST_AVAILABLE; print('Rust acceleration:', RUST_AVAILABLE)"
 
 # 4. Build standalone app bundle
 echo "[4/4] Building macOS app bundle..."
 rm -rf build dist
-pyinstaller \
+PYINSTALLER_ARGS=(
     --name="AirWar" \
     --add-data="airwar/data:airwar/data" \
-    --collect-all airwar_core \
     --hidden-import=pygame \
     --hidden-import=PIL \
     --hidden-import=PIL.Image \
     --noconsole \
     --onefile \
-    --osx-bundle-identifier=com.airwar.game \
-    main.py
+    --osx-bundle-identifier=com.airwar.game
+)
+if python -c "from airwar.core_bindings import RUST_AVAILABLE; raise SystemExit(0 if RUST_AVAILABLE else 1)"; then
+    PYINSTALLER_ARGS+=(--collect-all airwar_core)
+fi
+python -m PyInstaller "${PYINSTALLER_ARGS[@]}" main.py
 
 echo ""
 echo "=== Build complete ==="

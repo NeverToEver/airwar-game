@@ -2,6 +2,7 @@
 import json
 import os
 import logging
+import time
 from typing import Optional
 from .interfaces import IPersistenceManager
 from .mother_ship_state import GameSaveData, SaveDataCorruptedError
@@ -42,7 +43,7 @@ class PersistenceManager(IPersistenceManager):
             os.makedirs(self.SAVE_DIRECTORY, exist_ok=True)
 
             save_dict = data.to_dict()
-            save_dict['timestamp'] = __import__('time').time()
+            save_dict['timestamp'] = time.time()
 
             self._validate_save_dict(save_dict)
 

@@ -95,7 +95,7 @@ airwar-game/                  # Project root
 |??   |-- utils/               Utilities (database, sprite rendering, mouse interaction)
 |??   |-- window/              Window management
 |??   |-- data/                Runtime save files
-|??   |-- tests/               Test suite (~695 tests)
+|??   |-- tests/               Core smoke tests
 |??   |-- core_bindings.py     Rust <-> Python bridge
 |-- airwar_core/              Rust native extension (maturin + PyO3)
 |??   |-- src/
@@ -170,27 +170,34 @@ build_windows.bat
 Output at `dist/AirWar` (~40MB standalone executable with Python runtime + Rust extension + all dependencies). Double-click to run, no environment setup needed.
 
 **Prerequisites (build-time only):**
-- Python 3.12+ and PyInstaller (auto-installed by script)
+- Python 3.12+
 - Rust toolchain (for compiling the acceleration extension; falls back to pure Python on failure)
 - Platform C compiler (Linux: gcc, macOS: Xcode CLT, Windows: VS Build Tools)
+
+Build scripts create and use a local `.venv-build/` environment for PyInstaller and packaging tools.
 
 ## Tests
 
 Tests must be run from the project root directory, not the `airwar/` subdirectory.
+Pytest configuration lives at the project root in `pytest.ini`.
 
 ```bash
 # Run all tests
+pip install -r requirements-dev.txt
 python3 -m pytest
+
+# Lint
+python3 -m ruff check .
 
 # Smoke tests only (core functionality)
 python3 -m pytest -m smoke
 
 # Specific test file
-python3 -m pytest airwar/tests/test_entities.py
+python3 -m pytest airwar/tests/test_core.py
 
 # Specific test class/method
-python3 -m pytest airwar/tests/test_entities.py::TestPlayer -v
+python3 -m pytest airwar/tests/test_core.py::TestPlayer -v
 
 # Rust binding tests
-python3 -m pytest airwar/tests/test_vector2_bindings.py airwar/tests/test_collision_bindings.py airwar/tests/test_movement_bindings.py airwar/tests/test_particle_bindings.py
+python3 -m pytest tests/test_bullet_bindings.py
 ```

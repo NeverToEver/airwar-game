@@ -161,6 +161,11 @@ class CollisionController:
         on_clear_bullets: Callable = None,
     ) -> None:
         self._events.clear()
+        player_hit_handler = self._make_player_hit_handler(
+            player,
+            on_player_hit,
+            on_clear_bullets,
+        )
 
         # Build spatial hash grid for enemies
         self._clear_grid()
@@ -184,7 +189,7 @@ class CollisionController:
             enemy_bullets,
             player,
             lambda d: reward_system.calculate_damage_taken(d),
-            on_player_hit
+            player_hit_handler
         ):
             self._events.append(CollisionEvent(type='player_hit'))
         
@@ -192,10 +197,7 @@ class CollisionController:
             player.get_hitbox(),
             enemies,
             lambda: reward_system.try_dodge(),
-            lambda d: (
-                on_player_hit(d, player),
-                on_clear_bullets() if on_clear_bullets else None
-            )
+            player_hit_handler
         ):
             self._events.append(CollisionEvent(type='player_hit'))
         
@@ -219,12 +221,24 @@ class CollisionController:
                 boss,
                 player,
                 lambda d: reward_system.calculate_damage_taken(d),
-                lambda d, p: (
-                    on_player_hit(d, p),
-                    on_clear_bullets() if on_clear_bullets else None
-                )
+                player_hit_handler
             ):
                 self._events.append(CollisionEvent(type='player_hit'))
+
+    def _make_player_hit_handler(
+        self,
+        player: 'Player',
+        on_player_hit: Callable[[int, 'Player'], None] = None,
+        on_clear_bullets: Callable = None,
+    ) -> Callable[[int, 'Player'], None]:
+        def handle_player_hit(damage: int, target=None) -> None:
+            hit_target = target or player
+            if on_player_hit:
+                on_player_hit(damage, hit_target)
+            if on_clear_bullets:
+                on_clear_bullets()
+
+        return handle_player_hit
 
     def check_player_bullets_vs_enemies(
         self,

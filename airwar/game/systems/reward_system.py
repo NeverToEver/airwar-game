@@ -163,7 +163,11 @@ class RewardSystem:
         # One-shot buffs: binary abilities that have no effect beyond level 1
         ONE_SHOT_BUFFS = {'Spread Shot', 'Explosive', 'Laser'}
 
-        taken_one_shots = ONE_SHOT_BUFFS & set(self.buff_levels.keys())
+        unlocked = set(unlocked_buffs)
+        taken_one_shots = {
+            name for name in ONE_SHOT_BUFFS
+            if self.buff_levels.get(name, 0) > 0 or name in unlocked
+        }
 
         for _ in range(self.REWARD_OPTIONS):
             cat = random.choice(categories)

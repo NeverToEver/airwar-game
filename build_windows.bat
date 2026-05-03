@@ -10,38 +10,46 @@ setlocal enabledelayedexpansion
 
 echo === Air War Windows Build ===
 
-REM 1. Build Rust extension
-echo [1/4] Building Rust extension...
-cd airwar_core
-cargo build --release
-cd ..
+REM 1. Create isolated build environment
+echo [1/4] Preparing build environment...
+python -m venv .venv-build
+call .venv-build\Scripts\activate.bat
+python -m pip install --upgrade pip
+python -m pip install -r requirements-dev.txt
 
-REM 2. Install Rust extension
-echo [2/4] Installing Rust extension...
-set RUST_DLL=airwar_core\target\release\airwar_core.dll
-if exist "%RUST_DLL%" (
-    for /f "tokens=*" %%i in ('python -c "import site; print(site.getusersitepackages())"') do set SITE_PKGS=%%i
-    if not exist "%SITE_PKGS%\airwar_core" mkdir "%SITE_PKGS%\airwar_core"
-    copy /Y "%RUST_DLL%" "%SITE_PKGS%\airwar_core\airwar_core.cp312-win_amd64.pyd"
-    echo    Rust extension installed.
+REM 2. Build and install Rust extension into the build environment
+echo [2/4] Building Rust extension...
+where cargo >nul 2>nul
+if %errorlevel% equ 0 (
+    python -m maturin develop --release --manifest-path airwar_core\Cargo.toml
+    if errorlevel 1 (
+        echo    WARNING: Rust extension build failed.
+        echo    Game will fall back to pure Python.
+    ) else (
+        echo    Rust extension installed in .venv-build.
+    )
 ) else (
-    echo    WARNING: Rust .dll not found at %RUST_DLL%
+    echo    WARNING: cargo not found.
     echo    Game will fall back to pure Python.
 )
 
-REM 3. Install PyInstaller
-echo [3/4] Checking PyInstaller...
-python -c "import PyInstaller" 2>nul || pip install pyinstaller
+REM 3. Validate imports
+echo [3/4] Validating Python environment...
+python -c "import pygame, PIL, PyInstaller; from airwar.core_bindings import RUST_AVAILABLE; print('Rust acceleration:', RUST_AVAILABLE)"
 
 REM 4. Build standalone executable
 echo [4/4] Building standalone executable...
 if exist build rmdir /s /q build
 if exist dist rmdir /s /q dist
 
-pyinstaller ^
+set COLLECT_AIRWAR_CORE=
+python -c "from airwar.core_bindings import RUST_AVAILABLE; raise SystemExit(0 if RUST_AVAILABLE else 1)"
+if %errorlevel% equ 0 set COLLECT_AIRWAR_CORE=--collect-all airwar_core
+
+python -m PyInstaller ^
     --name="AirWar" ^
     --add-data="airwar\data;airwar\data" ^
-    --collect-all airwar_core ^
+    %COLLECT_AIRWAR_CORE% ^
     --hidden-import=pygame ^
     --hidden-import=PIL ^
     --hidden-import=PIL.Image ^

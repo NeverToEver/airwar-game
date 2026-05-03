@@ -1,0 +1,150 @@
+from dataclasses import dataclass
+
+from airwar.entities.base import BulletData, EnemyData, Rect
+from airwar.game.constants import GAME_CONSTANTS
+from airwar.game.managers.collision_controller import CollisionController
+
+
+@dataclass
+class FakeBullet:
+    rect: Rect
+    data: BulletData
+    active: bool = True
+
+    def get_rect(self):
+        return self.rect
+
+
+class FakeEnemy:
+    def __init__(self, rect, health=10, score=25):
+        self.rect = rect
+        self._hitbox = rect
+        self.data = EnemyData(health=health, score=score)
+        self.health = health
+        self.active = True
+
+    def get_hitbox(self):
+        return self._hitbox
+
+    def get_rect(self):
+        return self.rect
+
+    def take_damage(self, damage):
+        self.health -= damage
+        if self.health <= 0:
+            self.active = False
+
+
+class FakePlayer:
+    def __init__(self, rect):
+        self._hitbox = rect
+        self.rect = rect
+        self.health = 100
+
+    def get_hitbox(self):
+        return self._hitbox
+
+    def take_damage(self, damage):
+        self.health -= damage
+
+
+def test_player_bullet_kills_enemy_and_deactivates_without_piercing():
+    controller = CollisionController()
+    controller._use_rust = False
+    bullet = FakeBullet(Rect(0, 0, 10, 10), BulletData(damage=20, owner="player"))
+    enemy = FakeEnemy(Rect(0, 0, 20, 20), health=10, score=30)
+
+    score, kills = controller.check_player_bullets_vs_enemies(
+        [bullet],
+        [enemy],
+        score_multiplier=2,
+        explosive_level=0,
+        piercing_level=0,
+    )
+
+    assert score == 60
+    assert kills == 1
+    assert enemy.active is False
+    assert bullet.active is False
+
+
+def test_piercing_bullet_stays_active_after_enemy_hit():
+    controller = CollisionController()
+    controller._use_rust = False
+    bullet = FakeBullet(Rect(0, 0, 10, 10), BulletData(damage=5, owner="player"))
+    enemy = FakeEnemy(Rect(0, 0, 20, 20), health=10, score=30)
+
+    score, kills = controller.check_player_bullets_vs_enemies(
+        [bullet],
+        [enemy],
+        score_multiplier=1,
+        explosive_level=0,
+        piercing_level=1,
+    )
+
+    assert score == 0
+    assert kills == 0
+    assert enemy.health == 5
+    assert bullet.active is True
+
+
+def test_enemy_bullet_hits_player_once():
+    controller = CollisionController()
+    player = FakePlayer(Rect(0, 0, 20, 20))
+    bullet = FakeBullet(
+        Rect(5, 5, 5, 5),
+        BulletData(damage=40, owner="enemy"),
+    )
+    hits = []
+
+    did_hit = controller.check_enemy_bullets_vs_player(
+        [bullet],
+        player,
+        lambda damage: damage // 2,
+        lambda damage, target: hits.append((damage, target)),
+    )
+
+    assert did_hit is True
+    assert hits == [(20, player)]
+
+
+def test_boss_collision_ignores_entering_boss():
+    controller = CollisionController()
+    player = FakePlayer(Rect(0, 0, 20, 20))
+
+    class Boss(FakeEnemy):
+        def is_entering(self):
+            return True
+
+    boss = Boss(Rect(0, 0, 20, 20))
+
+    did_hit = controller.check_boss_vs_player(
+        boss,
+        player,
+        lambda damage: damage,
+        lambda damage, target: target.take_damage(damage),
+    )
+
+    assert did_hit is False
+    assert player.health == 100
+
+
+def test_boss_collision_applies_configured_damage_after_entering():
+    controller = CollisionController()
+    player = FakePlayer(Rect(0, 0, 20, 20))
+
+    class Boss(FakeEnemy):
+        def is_entering(self):
+            return False
+
+    boss = Boss(Rect(0, 0, 20, 20))
+
+    did_hit = controller.check_boss_vs_player(
+        boss,
+        player,
+        lambda damage: damage,
+        lambda damage, target: target.take_damage(damage),
+    )
+
+    assert did_hit is True
+    assert player.health == 100 - GAME_CONSTANTS.DAMAGE.BOSS_COLLISION_DAMAGE
