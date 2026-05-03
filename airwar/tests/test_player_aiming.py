@@ -65,6 +65,7 @@ def test_player_spread_rotates_around_crosshair_direction() -> None:
     right_wing = bullets[3:]
     assert left_wing[0].velocity.y < left_wing[1].velocity.y < left_wing[2].velocity.y
     assert right_wing[0].velocity.y < right_wing[1].velocity.y < right_wing[2].velocity.y
+    assert player.SPREAD_ANGLES == (-10, 0, 10)
 
 
 @pytest.mark.parametrize("weapon_mode", ["laser", "explosive", "laser_explosive"])
