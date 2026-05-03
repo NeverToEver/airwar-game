@@ -143,18 +143,21 @@ class PersistenceManager(IPersistenceManager):
 
         except SaveDataCorruptedError as e:
             logger.error(f"Save data corrupted: {e}")
+            self.delete_save()
             return None
         except PermissionError as e:
             logger.error(f"Permission denied to load file: {self._save_path}")
             return None
         except json.JSONDecodeError as e:
             logger.error(f"Invalid JSON in save file: {e}")
+            self.delete_save()
             return None
         except OSError as e:
             logger.error(f"IO error while loading game: {e}")
             return None
         except Exception as e:
             logger.critical(f"Unexpected error loading game: {e}")
+            self.delete_save()
             return None
 
     def has_saved_game(self) -> bool:
