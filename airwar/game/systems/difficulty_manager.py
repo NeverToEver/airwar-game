@@ -152,6 +152,8 @@ class DifficultyManager:
         for listener in self._listeners:
             try:
                 listener.on_difficulty_changed(params)
+            except (KeyboardInterrupt, SystemExit):
+                raise
             except Exception as e:
                 self._logger.critical(
                     f"Difficulty listener {listener.__class__.__name__} failed "

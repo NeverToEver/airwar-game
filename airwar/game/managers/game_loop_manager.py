@@ -238,7 +238,10 @@ class GameLoopManager:
                 player_invincible=self._game_controller.state.player_invincible,
                 score_multiplier=self._game_controller.state.score_multiplier,
                 on_enemy_killed=lambda score: self._game_controller.on_enemy_killed(score),
-                on_boss_killed=lambda score: self._game_controller.on_boss_killed(score),
+                on_boss_killed=lambda score: (
+                    self._boss_manager._on_boss_killed(),
+                    self._game_controller.on_boss_killed(score),
+                ),
                 on_boss_hit=lambda score: self._boss_manager.on_boss_hit(score),
                 on_player_hit=on_player_hit,
                 on_lifesteal=lambda player, score: self._reward_system.apply_lifesteal(player, score),

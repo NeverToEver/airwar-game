@@ -30,5 +30,7 @@ class EventBus(IEventBus):
             for callback in self._subscribers[event]:
                 try:
                     callback(**kwargs)
+                except (KeyboardInterrupt, SystemExit):
+                    raise
                 except Exception as e:
                     logging.error(f"Event callback error [{event}]: {e}")

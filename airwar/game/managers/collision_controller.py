@@ -15,15 +15,11 @@ if TYPE_CHECKING:
 # Try to import Rust collision functions
 try:
     from airwar.core_bindings import (
-        spatial_hash_collide,
-        spatial_hash_collide_single,
         batch_collide_bullets_vs_entities,
         PersistentSpatialHash,
         RUST_AVAILABLE,
     )
 except ImportError:
-    spatial_hash_collide = None
-    spatial_hash_collide_single = None
     batch_collide_bullets_vs_entities = None
     PersistentSpatialHash = None
     RUST_AVAILABLE = False
@@ -204,15 +200,14 @@ class CollisionController:
                 reward_system.piercing_level
             )
             
-            if boss_score > 0:
-                self._events.append(CollisionEvent(type='boss_hit', score=boss_score))
-                if on_boss_hit:
-                    on_boss_hit(boss_score)
-            
             if boss_killed:
                 self._events.append(CollisionEvent(type='boss_killed', score=boss_score))
                 if on_boss_killed:
                     on_boss_killed(boss_score)
+            elif boss_score > 0:
+                self._events.append(CollisionEvent(type='boss_hit', score=boss_score))
+                if on_boss_hit:
+                    on_boss_hit(boss_score)
             
             if not player_invincible and self.check_boss_vs_player(
                 boss,

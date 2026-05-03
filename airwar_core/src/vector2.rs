@@ -35,12 +35,6 @@ pub fn vec2_dot(x1: f32, y1: f32, x2: f32, y2: f32) -> f32 {
     x1 * x2 + y1 * y2
 }
 
-/// 向量叉积（返回标量）
-#[pyfunction]
-pub fn vec2_cross(x1: f32, y1: f32, x2: f32, y2: f32) -> f32 {
-    x1 * y2 - y1 * x2
-}
-
 /// 标量乘法
 #[pyfunction]
 pub fn vec2_scale(x: f32, y: f32, scalar: f32) -> (f32, f32) {
@@ -53,20 +47,6 @@ pub fn vec2_distance(x1: f32, y1: f32, x2: f32, y2: f32) -> f32 {
     let dx = x2 - x1;
     let dy = y2 - y1;
     (dx * dx + dy * dy).sqrt()
-}
-
-/// 向量长度平方（避免开方，更快）
-#[pyfunction]
-pub fn vec2_length_squared(x: f32, y: f32) -> f32 {
-    x * x + y * y
-}
-
-/// 向量距离平方（避免开方，更快）
-#[pyfunction]
-pub fn vec2_distance_squared(x1: f32, y1: f32, x2: f32, y2: f32) -> f32 {
-    let dx = x2 - x1;
-    let dy = y2 - y1;
-    dx * dx + dy * dy
 }
 
 /// 向量角度（弧度）
@@ -131,11 +111,6 @@ mod tests {
     }
 
     #[test]
-    fn test_vec2_cross() {
-        assert!((vec2_cross(1.0, 0.0, 0.0, 1.0) - 1.0).abs() < 0.001);
-    }
-
-    #[test]
     fn test_vec2_add() {
         let (x, y) = vec2_add(1.0, 2.0, 3.0, 4.0);
         assert_eq!(x, 4.0);
@@ -154,16 +129,6 @@ mod tests {
         let (x, y) = vec2_scale(2.0, 3.0, 2.0);
         assert_eq!(x, 4.0);
         assert_eq!(y, 6.0);
-    }
-
-    #[test]
-    fn test_vec2_length_squared() {
-        assert!((vec2_length_squared(3.0, 4.0) - 25.0).abs() < 0.001);
-    }
-
-    #[test]
-    fn test_vec2_distance_squared() {
-        assert!((vec2_distance_squared(0.0, 0.0, 3.0, 4.0) - 25.0).abs() < 0.001);
     }
 
     #[test]

@@ -90,9 +90,3 @@ def get_cjk_font(size: int) -> pygame.font.Font:
     if path:
         return pygame.font.Font(path, size)
     return pygame.font.Font(None, size)
-
-
-@lru_cache(maxsize=32)
-def get_cjk_font_ui(size: int) -> pygame.font.Font:
-    """Alias for get_cjk_font — use for UI text."""
-    return get_cjk_font(size)

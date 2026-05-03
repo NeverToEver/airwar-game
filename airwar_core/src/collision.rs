@@ -148,95 +148,6 @@ pub fn check_entity_collision(
     check_collision(&a, &b)
 }
 
-/// Spatial hash collision detection - returns collision pairs
-/// entities: vec of (id, x, y, half_size)
-#[pyfunction]
-pub fn spatial_hash_collide(
-    entities: Vec<(i32, f32, f32, f32)>,
-    cell_size: i32,
-) -> Vec<(i32, i32)> {
-    let mut grid = SpatialHashGrid::new(cell_size);
-    let mut collision_pairs = Vec::new();
-
-    // Insert all entities into spatial hash
-    for (id, x, y, half_size) in &entities {
-        grid.insert(*id, *x, *y, *half_size);
-    }
-
-    // Check collisions only between entities that share grid cells
-    let mut checked = std::collections::HashSet::new();
-
-    for (id, x, y, half_size) in &entities {
-        let potential = grid.get_potential_collisions(*x, *y, *half_size);
-
-        for &other_id in &potential {
-            if other_id == *id {
-                continue;
-            }
-
-            // Create unique pair key to avoid double checking
-            let (smaller, larger) = if *id < other_id {
-                (*id, other_id)
-            } else {
-                (other_id, *id)
-            };
-
-            let pair_key = ((smaller as i64) << 32) | (larger as i64);
-
-            if checked.contains(&pair_key) {
-                continue;
-            }
-            checked.insert(pair_key);
-
-            // Get positions and check collision
-            if let (Some((ox, oy, o_half)), Some((_, _, _))) = (
-                grid.get_position(other_id),
-                grid.get_position(*id),
-            ) {
-                if check_entity_collision(*x, *y, *half_size, ox, oy, o_half) {
-                    collision_pairs.push((*id, other_id));
-                }
-            }
-        }
-    }
-
-    collision_pairs
-}
-
-/// Check collision between a list of entities and a single target
-/// Returns list of entity IDs that collide with the target
-#[pyfunction]
-pub fn spatial_hash_collide_single(
-    entities: Vec<(i32, f32, f32, f32)>,
-    target_x: f32,
-    target_y: f32,
-    target_half: f32,
-    cell_size: i32,
-) -> Vec<i32> {
-    let mut grid = SpatialHashGrid::new(cell_size);
-    let mut collisions = Vec::new();
-    let target_aabb = AABB::from_xy_half_size(target_x, target_y, target_half);
-
-    // Insert all entities
-    for (id, x, y, half_size) in &entities {
-        grid.insert(*id, *x, *y, *half_size);
-    }
-
-    // Check potential collisions with target
-    let potential = grid.get_potential_collisions(target_x, target_y, target_half);
-
-    for &id in &potential {
-        if let Some((x, y, half_size)) = grid.get_position(id) {
-            let entity_aabb = AABB::from_xy_half_size(x, y, half_size);
-            if check_collision(&target_aabb, &entity_aabb) {
-                collisions.push(id);
-            }
-        }
-    }
-
-    collisions
-}
-
 /// Persistent spatial hash for incremental collision detection
 /// Avoids rebuilding the grid every frame
 #[pyclass]
@@ -425,36 +336,10 @@ mod tests {
     }
 
     #[test]
-    fn test_spatial_hash_collide() {
-        let entities = vec![
-            (1, 0.0, 0.0, 10.0),
-            (2, 5.0, 5.0, 10.0),  // Should collide with 1
-            (3, 100.0, 100.0, 10.0),  // Should not collide with 1
-        ];
-
-        let collisions = spatial_hash_collide(entities, 100);
-        assert!(collisions.iter().any(|(a, b)| (*a == 1 && *b == 2) || (*a == 2 && *b == 1)));
-    }
-
-    #[test]
     fn test_batch_collide_bullets_vs_entities() {
         let bullets = vec![(1i64, 0.0, 0.0, 5.0), (2i64, 100.0, 100.0, 5.0)];
         let enemies = vec![(1i32, 0.0, 0.0, 10.0), (2i32, 100.0, 100.0, 10.0)];
         let hits = batch_collide_bullets_vs_entities(bullets, enemies, 50);
         assert_eq!(hits.len(), 2);
-    }
-
-    #[test]
-    fn test_spatial_hash_collide_single() {
-        let entities = vec![
-            (1, 0.0, 0.0, 10.0),
-            (2, 5.0, 5.0, 10.0),
-            (3, 100.0, 100.0, 10.0),
-        ];
-
-        let collisions = spatial_hash_collide_single(entities, 5.0, 5.0, 10.0, 100);
-        assert!(collisions.contains(&1));
-        assert!(collisions.contains(&2));
-        assert!(!collisions.contains(&3));
     }
 }

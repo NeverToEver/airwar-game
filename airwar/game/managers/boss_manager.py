@@ -119,8 +119,8 @@ class BossManager:
         Args:
             score: 击中获得的分数
         """
-        self._game_controller.state.score += score
         self._game_controller.show_notification(f"+{score} BOSS 分数!")
+        self._game_controller.state.score += score
 
         if not self._spawn_controller.boss.active:
             self._on_boss_killed()

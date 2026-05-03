@@ -13,18 +13,13 @@ try:
         vec2_add,
         vec2_sub,
         vec2_dot,
-        vec2_cross,
         vec2_scale,
         vec2_distance,
-        vec2_length_squared,
-        vec2_distance_squared,
         vec2_angle,
         vec2_from_angle,
         vec2_lerp,
         vec2_clamp_length,
         # Collision functions
-        spatial_hash_collide,
-        spatial_hash_collide_single,
         batch_collide_bullets_vs_entities,
         PersistentSpatialHash,
         # Movement functions
@@ -32,7 +27,6 @@ try:
         batch_update_movements,
         compute_boss_attack,
         # Particle functions
-        update_particle,
         batch_update_particles,
         generate_explosion_particles,
         # Sprite functions
@@ -58,18 +52,13 @@ __all__ = [
     'vec2_add',
     'vec2_sub',
     'vec2_dot',
-    'vec2_cross',
     'vec2_scale',
     'vec2_distance',
-    'vec2_length_squared',
-    'vec2_distance_squared',
     'vec2_angle',
     'vec2_from_angle',
     'vec2_lerp',
     'vec2_clamp_length',
     # Collision functions
-    'spatial_hash_collide',
-    'spatial_hash_collide_single',
     'batch_collide_bullets_vs_entities',
     'PersistentSpatialHash',
     # Movement functions
@@ -77,7 +66,6 @@ __all__ = [
     'batch_update_movements',
     'compute_boss_attack',
     # Particle functions
-    'update_particle',
     'batch_update_particles',
     'generate_explosion_particles',
     # Sprite functions

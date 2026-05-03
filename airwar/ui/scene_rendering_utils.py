@@ -1,7 +1,7 @@
 """Shared UI rendering utilities for scene files.
 
 Consolidates duplicated rendering code across death_scene.py, pause_scene.py,
-exit_confirm_scene.py, and menu_scene.py into a single utility class.
+and exit_confirm_scene.py into a single utility class.
 """
 
 import pygame

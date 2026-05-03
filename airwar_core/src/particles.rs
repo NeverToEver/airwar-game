@@ -30,30 +30,6 @@ impl Particle {
     }
 }
 
-/// Update a single particle
-#[pyfunction]
-pub fn update_particle(
-    x: f32, y: f32, vx: f32, vy: f32,
-    life: i32, max_life: i32, _size: f32,
-    dt: f32
-) -> (f32, f32, f32, f32, i32, f32) {
-    let mut px = x;
-    let mut py = y;
-    let mut pvx = vx;
-    let mut pvy = vy;
-    let mut plife = life;
-
-    px += pvx * dt;
-    py += pvy * dt;
-    pvx *= 0.98;
-    pvy *= 0.98;
-    plife -= 1;
-
-    let alpha = if max_life > 0 { plife as f32 / max_life as f32 } else { 0.0 };
-
-    (px, py, pvx, pvy, plife, alpha)
-}
-
 /// Batch update particles - takes arrays of particle data and returns updated data
 /// Input: (x, y, vx, vy, life, max_life, size, dt) for each particle
 /// Output: (x, y, vx, vy, life, size, is_alive) for each particle (Python filters dead)
@@ -123,17 +99,6 @@ fn fast_rand() -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_update_particle() {
-        let (x, y, vx, vy, life, alpha) = update_particle(0.0, 0.0, 1.0, 1.0, 30, 30, 3.0, 1.0);
-        assert!(x > 0.0);
-        assert!(y > 0.0);
-        assert!(vx < 1.0); // Should be dampened
-        assert!(vy < 1.0);
-        assert_eq!(life, 29);
-        assert!(alpha > 0.0 && alpha <= 1.0);
-    }
 
     #[test]
     fn test_batch_update_particles() {
