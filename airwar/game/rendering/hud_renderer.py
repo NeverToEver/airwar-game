@@ -95,19 +95,27 @@ class HUDRenderer:
         surface.blit(progress_text, HUDLayout.PROGRESS_POS)
 
         diff_text = self.hud_font.render(f"{difficulty.upper()}", True, HUDLayout.PROGRESS_COLOR)
-        surface.blit(diff_text, (surface.get_width() + HUDLayout.DIFFICULTY_OFFSET_X, HUDLayout.DIFFICULTY_Y))
+        diff_rect = diff_text.get_rect(right=surface.get_width() - 15)
+        diff_rect.y = HUDLayout.DIFFICULTY_Y
+        surface.blit(diff_text, diff_rect)
 
         health_color = HUDLayout.HEALTH_NORMAL
         if player_health < player_max_health * HUDLayout.HEALTH_DANGER_RATIO:
             health_color = HUDLayout.HEALTH_DANGER
         health_text = self.hud_font.render(f"生命: {player_health}/{player_max_health}", True, health_color)
-        surface.blit(health_text, (surface.get_width() + HUDLayout.HEALTH_OFFSET_X, HUDLayout.HEALTH_Y))
+        health_rect = health_text.get_rect(right=surface.get_width() - 15)
+        health_rect.y = HUDLayout.HEALTH_Y
+        surface.blit(health_text, health_rect)
 
         kills_text = self.hud_font.render(f"击杀: {kills}", True, HUDLayout.KILLS_COLOR)
-        surface.blit(kills_text, (surface.get_width() + HUDLayout.KILLS_OFFSET_X, HUDLayout.KILLS_Y))
+        kills_rect = kills_text.get_rect(right=surface.get_width() - 15)
+        kills_rect.y = HUDLayout.KILLS_Y
+        surface.blit(kills_text, kills_rect)
 
         boss_text = self.hud_font.render(f"BOSS: {boss_kills}", True, HUDLayout.BOSS_COLOR)
-        surface.blit(boss_text, (surface.get_width() + HUDLayout.BOSS_OFFSET_X, HUDLayout.BOSS_Y))
+        boss_rect = boss_text.get_rect(right=surface.get_width() - 15)
+        boss_rect.y = HUDLayout.BOSS_Y
+        surface.blit(boss_text, boss_rect)
 
     def render_buffs(self, surface: pygame.Surface, unlocked_buffs: List[str],
                      get_buff_color) -> None:
