@@ -2,6 +2,7 @@
 import pygame
 from typing import Tuple
 from airwar.config.design_tokens import SystemColors, SystemUI
+from airwar.utils.fonts import get_cjk_font
 
 
 class SegmentedProgressBar:
@@ -205,7 +206,7 @@ class BossHealthBar:
         self.width = width
         self.height = height
         self.segment_count = 8  # 8 段 (每段 12.5%)
-        self._default_font = pygame.font.Font(pygame.font.get_default_font(), 20)
+        self._default_font = get_cjk_font(20)
         self.progress_bar = SegmentedProgressBar(
             width - 24,  # 减去标签宽度
             height - 8,
@@ -241,8 +242,8 @@ class BossHealthBar:
         if font is None:
             font = self._default_font
 
-        # 标签区域 (左侧)
-        label_width = 24
+        # 标签区域 (左侧) — wider for CJK boss names
+        label_width = 60
         bar_x = x + label_width
         bar_y = y + 4
 
@@ -283,7 +284,7 @@ class BossHealthBar:
         if total_phases > 1:
             phase_text = f"阶段 {current_phase}/{total_phases}"
             phase_surf = font.render(phase_text, True, SystemColors.AMBER_DIM)
-            phase_rect = phase_surf.get_rect(right=bar_x + self.width - label_width - 10,
+            phase_rect = phase_surf.get_rect(left=bar_x + 8,
                                             top=y - 22)
             surface.blit(phase_surf, phase_rect)
 

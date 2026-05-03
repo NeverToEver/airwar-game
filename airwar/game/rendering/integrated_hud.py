@@ -473,7 +473,7 @@ class IntegratedHUD:
                 text_color = components.BUFF_TEXT_LIGHT
 
             buff_font = self._get_font(self.buff_font_size)
-            buff_text = buff_font.render(buff[:8].upper(), True, text_color)
+            buff_text = buff_font.render(buff[:12], True, text_color)
 
             buff_width = self.panel_width - self.padding * 2 - self.BAR_INSET
             padding = 6

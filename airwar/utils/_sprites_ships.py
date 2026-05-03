@@ -9,6 +9,7 @@ from ._sprites_common import draw_glow_circle
 _player_sprite_cache = {}
 _enemy_sprite_cache = {}
 _boss_sprite_cache = {}
+_elite_sprite_cache = {}
 
 
 @functools.lru_cache(maxsize=4)
@@ -436,6 +437,190 @@ def _draw_enemy_ship(surface: pygame.Surface, x: float, y: float, width: float =
             pygame.draw.ellipse(surface, (40, 160, 255, alpha),
                               (int(tx - width * 0.03), int(flame_y),
                                int(width * 0.06), int(height * 0.035)))
+
+# ─── Elite Enemy (Golden Armored Commander) ─────────────────────────────
+
+def _elite_colors(health_ratio):
+    """Elite commander: gold-trimmed dark armor with amber energy glow."""
+    if health_ratio > 0.6:
+        return (22, 24, 30), (60, 55, 30), (120, 100, 40), (220, 180, 60), (255, 180, 30), (255, 220, 100)
+    elif health_ratio > 0.3:
+        return (28, 26, 28), (65, 55, 35), (115, 95, 45), (200, 160, 55), (240, 160, 25), (240, 200, 80)
+    else:
+        return (32, 24, 24), (65, 48, 35), (105, 75, 40), (170, 120, 45), (220, 130, 20), (210, 160, 60)
+
+
+def get_elite_enemy_sprite(width: float = 65, height: float = 65, health_ratio: float = 1.0) -> pygame.Surface:
+    health_bucket = int(health_ratio * 10)
+    cache_key = (int(width), int(height), health_bucket, _code_hash(_draw_elite_enemy_ship))
+    if cache_key not in _elite_sprite_cache:
+        size = max(int(width) * 3, int(height) * 2) + 50
+        surf = pygame.Surface((size, size), pygame.SRCALPHA)
+        draw_x = (size - int(width)) // 2
+        draw_y = (size - int(height)) // 2
+        _draw_elite_enemy_ship(surf, draw_x, draw_y, width, height, health_ratio)
+        _elite_sprite_cache[cache_key] = surf
+    return _elite_sprite_cache[cache_key]
+
+
+def draw_elite_enemy_ship(surface: pygame.Surface, x: float, y: float, width: float = 65, height: float = 65, health_ratio: float = 1.0) -> None:
+    sprite = get_elite_enemy_sprite(width, height, health_ratio)
+    size = sprite.get_width()
+    surface.blit(sprite, (round(x) - size // 2, round(y) - size // 2))
+
+
+def _draw_elite_enemy_ship(surface: pygame.Surface, x: float, y: float, width: float = 65, height: float = 65, health_ratio: float = 1.0) -> None:
+    """Elite Commander — reinforced angular armor with golden trim and amber energy core."""
+    center_x = x + width / 2
+    armor_dark, armor_mid, armor_light, gold_trim, amber_core, amber_glow = _elite_colors(health_ratio)
+
+    # ── Energy shield aura (subtle outer glow) ──────────────────────────
+    shield_points = [
+        (center_x, y - height * 0.15),
+        (center_x + width * 0.45, y + height * 0.05),
+        (center_x + width * 0.50, y + height * 0.40),
+        (center_x + width * 0.20, y + height * 0.78),
+        (center_x, y + height * 0.88),
+        (center_x - width * 0.20, y + height * 0.78),
+        (center_x - width * 0.50, y + height * 0.40),
+        (center_x - width * 0.45, y + height * 0.05),
+    ]
+    pygame.draw.polygon(surface, (*amber_glow, 25), shield_points)
+
+    # ── Reinforced angular wings (wider, heavier than regular) ──────────
+    # Left wing — broad angular blade
+    wing_left = [
+        (center_x - width * 0.06, y + height * 0.28),
+        (center_x - width * 0.12, y + height * 0.44),
+        (center_x - width * 0.08, y + height * 0.58),
+        (x - width * 0.48, y + height * 0.68),
+        (x - width * 0.38, y + height * 0.46),
+        (x - width * 0.42, y + height * 0.26),
+    ]
+    pygame.draw.polygon(surface, armor_dark, wing_left)
+    wing_left_inner = [
+        (center_x - width * 0.04, y + height * 0.32),
+        (center_x - width * 0.09, y + height * 0.46),
+        (center_x - width * 0.06, y + height * 0.54),
+        (x - width * 0.36, y + height * 0.63),
+        (x - width * 0.28, y + height * 0.46),
+        (x - width * 0.32, y + height * 0.30),
+    ]
+    pygame.draw.polygon(surface, armor_mid, wing_left_inner)
+    # Gold trim on wing edge
+    pygame.draw.line(surface, gold_trim,
+                   (center_x - width * 0.06, y + height * 0.28),
+                   (x - width * 0.42, y + height * 0.26), 3)
+
+    # Right wing
+    wing_right = [
+        (center_x + width * 0.06, y + height * 0.28),
+        (center_x + width * 0.12, y + height * 0.44),
+        (center_x + width * 0.08, y + height * 0.58),
+        (x + width + width * 0.48, y + height * 0.68),
+        (x + width + width * 0.38, y + height * 0.46),
+        (x + width + width * 0.42, y + height * 0.26),
+    ]
+    pygame.draw.polygon(surface, armor_dark, wing_right)
+    wing_right_inner = [
+        (center_x + width * 0.04, y + height * 0.32),
+        (center_x + width * 0.09, y + height * 0.46),
+        (center_x + width * 0.06, y + height * 0.54),
+        (x + width + width * 0.36, y + height * 0.63),
+        (x + width + width * 0.28, y + height * 0.46),
+        (x + width + width * 0.32, y + height * 0.30),
+    ]
+    pygame.draw.polygon(surface, armor_mid, wing_right_inner)
+    pygame.draw.line(surface, gold_trim,
+                   (center_x + width * 0.06, y + height * 0.28),
+                   (x + width + width * 0.42, y + height * 0.26), 3)
+
+    # ── Central reinforced body (bulkier than regular) ──────────────────
+    body = [
+        (center_x, y - height * 0.08),
+        (center_x + width * 0.18, y + height * 0.06),
+        (center_x + width * 0.20, y + height * 0.34),
+        (center_x + width * 0.10, y + height * 0.62),
+        (center_x, y + height * 0.80),
+        (center_x - width * 0.10, y + height * 0.62),
+        (center_x - width * 0.20, y + height * 0.34),
+        (center_x - width * 0.18, y + height * 0.06),
+    ]
+    pygame.draw.polygon(surface, armor_dark, body)
+    body_inner = [
+        (center_x, y + height * 0.00),
+        (center_x + width * 0.13, y + height * 0.10),
+        (center_x + width * 0.15, y + height * 0.34),
+        (center_x + width * 0.07, y + height * 0.58),
+        (center_x, y + height * 0.72),
+        (center_x - width * 0.07, y + height * 0.58),
+        (center_x - width * 0.15, y + height * 0.34),
+        (center_x - width * 0.13, y + height * 0.10),
+    ]
+    pygame.draw.polygon(surface, armor_mid, body_inner)
+
+    # ── Gold chevron insignia (elite rank mark) ─────────────────────────
+    chevron_y = y + height * 0.40
+    chevron = [
+        (center_x, chevron_y - height * 0.08),
+        (center_x + width * 0.10, chevron_y + height * 0.04),
+        (center_x, chevron_y),
+        (center_x - width * 0.10, chevron_y + height * 0.04),
+    ]
+    pygame.draw.polygon(surface, gold_trim, chevron)
+    pygame.draw.polygon(surface, amber_core, chevron, 1)
+
+    # ── Amber energy core (replaces red sensor) ─────────────────────────
+    core_y = y + height * 0.20
+    # Core housing
+    housing = [
+        (center_x - width * 0.10, core_y - height * 0.06),
+        (center_x + width * 0.10, core_y - height * 0.06),
+        (center_x + width * 0.08, core_y + height * 0.08),
+        (center_x - width * 0.08, core_y + height * 0.08),
+    ]
+    pygame.draw.polygon(surface, (18, 18, 20), housing)
+    pygame.draw.polygon(surface, gold_trim, housing, 1)
+    # Glowing amber core
+    draw_glow_circle(surface, (int(center_x), int(core_y)), 9, amber_core, 26)
+    draw_glow_circle(surface, (int(center_x), int(core_y)), 5, amber_glow, 18)
+    draw_glow_circle(surface, (int(center_x), int(core_y)), 2, (255, 240, 180), 8)
+
+    # ── Secondary sensor nodes (golden) ─────────────────────────────────
+    for sx, sy_f in [(center_x - width * 0.07, 0.10), (center_x + width * 0.07, 0.10)]:
+        draw_glow_circle(surface, (int(sx), int(y + height * sy_f)), 2, amber_core, 6)
+
+    # ── Armor plate seams (gold-lined) ──────────────────────────────────
+    for i in range(3):
+        line_y = y + height * (0.30 + i * 0.13)
+        pygame.draw.line(surface, gold_trim,
+                       (center_x - width * 0.16, line_y),
+                       (center_x + width * 0.16, line_y), 1)
+
+    # ── Twin heavy thrusters (orange exhaust) ───────────────────────────
+    for tx, ty in [(center_x - width * 0.08, y + height * 0.64),
+                     (center_x + width * 0.08, y + height * 0.64)]:
+        # Thruster housing
+        pygame.draw.polygon(surface, (18, 18, 20), [
+            (tx - width * 0.06, ty),
+            (tx + width * 0.06, ty),
+            (tx + width * 0.07, ty + height * 0.12),
+            (tx - width * 0.07, ty + height * 0.12),
+        ])
+        # Gold thruster trim
+        pygame.draw.line(surface, gold_trim,
+                       (tx - width * 0.06, ty),
+                       (tx + width * 0.06, ty), 1)
+        # Orange/amber exhaust flames
+        for i in range(4):
+            flame_y = ty + height * 0.10 + i * height * 0.05
+            alpha = 180 - i * 40
+            r = 255 - i * 20
+            g = 140 - i * 25
+            pygame.draw.ellipse(surface, (r, g, 20, alpha),
+                              (int(tx - width * 0.04), int(flame_y),
+                               int(width * 0.08), int(height * 0.04)))
+
 
 # ─── Boss (Alien Mothership — Organic-Mechanical Hybrid) ──────────────────────
 

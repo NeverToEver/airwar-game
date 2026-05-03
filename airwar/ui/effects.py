@@ -1,6 +1,7 @@
 """UI effects — visual feedback effects for the interface."""
 import pygame
 from airwar.config.design_tokens import get_design_tokens, SystemColors, SystemUI
+from airwar.utils.fonts import get_cjk_font
 from airwar.utils.responsive import ResponsiveHelper
 
 
@@ -78,7 +79,7 @@ class EffectsRenderer:
             pygame.draw.rect(surface, colors.get('unselected', colors_config.TEXT_MUTED), box_rect, 2, border_radius=12)
 
         arrow = ">> " if is_selected else "   "
-        option_text = pygame.font.Font(None, self._tokens.typography.OPTION_SIZE).render(f"{arrow}{text}", True,
+        option_text = get_cjk_font(self._tokens.typography.OPTION_SIZE).render(f"{arrow}{text}", True,
             colors.get('selected', colors_config.HUD_AMBER) if is_selected else colors.get('unselected', colors_config.TEXT_MUTED))
         text_rect = option_text.get_rect(center=(center_x, y))
         surface.blit(option_text, text_rect)
