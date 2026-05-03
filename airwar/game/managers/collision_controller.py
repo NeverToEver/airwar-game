@@ -68,6 +68,11 @@ class CollisionController:
         if self._use_rust and PersistentSpatialHash is not None:
             self._persistent_hash = PersistentSpatialHash(self._grid_cell_size)
         self._previous_enemy_ids: set = set()
+        # Reusable temp containers for Rust batch collision
+        self._bullet_data: List[tuple] = []
+        self._bullet_map: dict = {}
+        self._enemy_data: List[tuple] = []
+        self._enemy_map: dict = {}
 
     def _clear_grid(self) -> None:
         """Clear the spatial hash grid."""
@@ -233,8 +238,10 @@ class CollisionController:
 
         # Use Rust batch collision — single FFI call for all bullet-enemy pairs
         if self._use_rust and batch_collide_bullets_vs_entities is not None:
-            bullet_data = []
-            bullet_map = {}
+            bullet_data = self._bullet_data
+            bullet_map = self._bullet_map
+            bullet_data.clear()
+            bullet_map.clear()
             for i, bullet in enumerate(player_bullets):
                 if bullet.active:
                     r = bullet.rect
@@ -242,8 +249,10 @@ class CollisionController:
                                        float(max(r.width, r.height)) / 2.0))
                     bullet_map[i] = bullet
 
-            enemy_data = []
-            enemy_map = {}
+            enemy_data = self._enemy_data
+            enemy_map = self._enemy_map
+            enemy_data.clear()
+            enemy_map.clear()
             for i, enemy in enumerate(enemies):
                 if enemy.active:
                     eid = -i - 1

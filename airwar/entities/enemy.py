@@ -102,7 +102,10 @@ class Enemy(Entity):
 
         # Lifetime timer: 15 seconds = 900 frames at 60fps
         self._lifetime = 0
-        self._max_lifetime = get_game_constants().ENEMY.LIFETIME
+        consts = get_game_constants()
+        self._max_lifetime = consts.ENEMY.LIFETIME
+        self._move_range_x = consts.ENEMY.MOVE_RANGE_X
+        self._move_range_y = consts.ENEMY.MOVE_RANGE_Y
         self._active_position_x = x
         self._active_position_y = y
 
@@ -188,10 +191,9 @@ class Enemy(Entity):
             self._exit_end_y = -100
             return
 
-        # Movement range around active position
-        C = get_game_constants()
-        move_range_x = C.ENEMY.MOVE_RANGE_X
-        move_range_y = C.ENEMY.MOVE_RANGE_Y
+        # Use cached movement ranges
+        move_range_x = self._move_range_x
+        move_range_y = self._move_range_y
 
         # Try Rust movement first if available
         # Exclude zigzag: Rust uses active_x as base instead of current x,
@@ -546,10 +548,13 @@ class EnemySpawner:
     def update(self, enemies: List[Enemy], slow_factor: float = 1.0,
                player_pos: tuple = None) -> None:
         # Count active enemies (not exiting or dead)
-        active_enemies = [e for e in enemies if e.active and e._state != 'exiting']
+        active_enemies = 0
+        for e in enemies:
+            if e.active and e._state != 'exiting':
+                active_enemies += 1
 
         # Check if wave is complete (all enemies exited or died)
-        if self._wave_active and len(active_enemies) == 0 and self._wave_enemies_spawned >= self._wave_size:
+        if self._wave_active and active_enemies == 0 and self._wave_enemies_spawned >= self._wave_size:
             self._wave_active = False
             self._wave_enemies_spawned = 0
             self._pending_spawns = []

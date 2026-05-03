@@ -1,4 +1,5 @@
 """HUD renderer — score, health bar, boss HP, buff stats panel."""
+import math
 from typing import List
 import pygame
 from airwar.utils.fonts import get_cjk_font
@@ -56,6 +57,15 @@ class HUDRenderer:
         self._boss_hurry_font = get_cjk_font(30)
         self._buff_stats_panel = BuffStatsPanel()
         self._attack_mode_panel = AttackModePanel()
+        self._text_cache: dict = {}
+
+    def _render_value(self, font, text, color, cache_key: str):
+        entry = self._text_cache.get(cache_key)
+        if entry is not None and entry[0] == text:
+            return entry[1]
+        surf = font.render(text, True, color)
+        self._text_cache[cache_key] = (text, surf)
+        return surf
 
     def render_hud(self, surface: pygame.Surface, score: int, difficulty: str,
                   player_health: int, player_max_health: int, kills: int,
@@ -178,13 +188,12 @@ class HUDRenderer:
         timer_color = (r, g, b)
 
         secs = int(time_remaining)
-        timer_text = self._boss_timer_font.render(f"{secs}s", True, timer_color)
+        timer_text = self._render_value(self._boss_timer_font, f"{secs}s", timer_color, "boss_timer")
         timer_rect = timer_text.get_rect(center=timer_panel.center)
         surface.blit(timer_text, timer_rect)
 
         # HURRY warning — pulsing red above the timer panel when urgent
         if progress > 0.7:
-            import math
             pulse = abs(math.sin(pygame.time.get_ticks() * 0.008)) * 0.4 + 0.6
             alpha = int(200 * pulse)
             hurry_text = self._boss_hurry_font.render("逃跑中!", True,
@@ -233,8 +242,8 @@ class HUDRenderer:
         )
 
         # Time remaining — styled panel below the bar
-        time_remaining = getattr(boss, 'get_time_remaining', lambda: 0)()
-        progress = getattr(boss, 'get_survival_progress', lambda: 0)()
+        time_remaining = boss.get_time_remaining()
+        progress = boss.get_survival_progress()
         self._render_boss_timer(surface, x, y + bar_height + 4, bar_width,
                                 time_remaining, progress)
 
