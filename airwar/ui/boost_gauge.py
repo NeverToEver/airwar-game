@@ -3,6 +3,7 @@ import math
 import pygame
 from airwar.utils.fonts import get_cjk_font
 from airwar.config.design_tokens import get_design_tokens, SystemColors
+import contextlib
 
 
 class BoostGauge:
@@ -148,10 +149,8 @@ class BoostGauge:
         cache_key = (cx, cy, int(screen_h))
         if self._arc_cache is None or self._arc_cache_key != cache_key:
             arc_layer = pygame.Surface((pw, ph), pygame.SRCALPHA)
-            try:
+            with contextlib.suppress(pygame.error):
                 arc_layer = arc_layer.convert_alpha()
-            except pygame.error:
-                pass
             self._draw_arc(arc_layer, cx - px, cy - py, r)
             self._draw_ticks(arc_layer, cx - px, cy - py, 0.0)
             self._arc_cache = arc_layer
@@ -212,7 +211,7 @@ class BoostGauge:
 
     def _draw_ticks(self, surface, cx, cy, _ratio):
         """Draw all tick marks in dim state (for cached layer)."""
-        for rad, inner, outer, is_major, t in self._ticks:
+        for rad, inner, outer, is_major, _t in self._ticks:
             color = self._tick_dim
             alpha = self.DIM_TICK_MAJOR_ALPHA if is_major else self.DIM_TICK_MINOR_ALPHA
             x1 = cx + math.cos(rad) * inner

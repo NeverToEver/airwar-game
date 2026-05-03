@@ -87,9 +87,8 @@ class DeathScene(Scene, MouseSelectableMixin):
                 self._select_option()
         elif event.type == pygame.MOUSEMOTION:
             self.handle_mouse_motion(event.pos)
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            if self.handle_mouse_click(event.pos):
-                self._select_option()
+        elif event.type == pygame.MOUSEBUTTONDOWN and self.handle_mouse_click(event.pos):
+            self._select_option()
 
     def _select_option(self) -> None:
         self.running = False

@@ -15,30 +15,6 @@ class EffectsRenderer:
         self._chamfer_border_cache = {}
         self._chamfer_glow_cache = {}
 
-    def render_glow_text(
-        self,
-        surface: pygame.Surface,
-        text: str,
-        font: pygame.font.Font,
-        pos: tuple,
-        color: tuple,
-        glow_color: tuple,
-        glow_radius: int = None
-    ):
-        """渲染发光文字"""
-        if glow_radius is None:
-            glow_radius = self._tokens.animation.GLOW_RADIUS_DEFAULT
-
-        for i in range(glow_radius, 0, -1):
-            alpha = int(100 / i)
-            glow_surf = font.render(text, True, glow_color)
-            glow_surf.set_alpha(alpha)
-            glow_rect = glow_surf.get_rect(center=(pos[0], pos[1] + i))
-            surface.blit(glow_surf, glow_rect)
-
-        main_text = font.render(text, True, color)
-        surface.blit(main_text, main_text.get_rect(center=pos))
-
     def render_option_box(
         self,
         surface: pygame.Surface,

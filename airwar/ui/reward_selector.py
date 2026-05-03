@@ -163,9 +163,8 @@ class RewardSelector(MouseSelectableMixin):
                 self._confirm_selection()
         elif event.type == pygame.MOUSEMOTION:
             self.handle_mouse_motion(event.pos)
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            if self.handle_mouse_click(event.pos):
-                self._confirm_selection()
+        elif event.type == pygame.MOUSEBUTTONDOWN and self.handle_mouse_click(event.pos):
+            self._confirm_selection()
 
     def _confirm_selection(self) -> None:
         if self.on_select and self.options:
@@ -384,16 +383,10 @@ class RewardSelector(MouseSelectableMixin):
         width, height = surface.get_size()
 
         if self.use_themed_style:
-            if (self.animation_time // 25) % 2 == 0:
-                hint_color = SceneColors.TEXT_DIM
-            else:
-                hint_color = SceneColors.TEXT_PRIMARY
+            hint_color = SceneColors.TEXT_DIM if self.animation_time // 25 % 2 == 0 else SceneColors.TEXT_PRIMARY
             hint = self.hint_font.render("W/S 选择, 回车确认", True, hint_color)
         else:
-            if (self.animation_time // 25) % 2 == 0:
-                hint_color = (90, 100, 140)
-            else:
-                hint_color = (120, 130, 170)
+            hint_color = (90, 100, 140) if self.animation_time // 25 % 2 == 0 else (120, 130, 170)
             hint = self.hint_font.render("W/S 选择, 回车确认", True, hint_color)
         surface.blit(hint, hint.get_rect(center=(width // 2, height - 50)))
 
@@ -418,7 +411,6 @@ class RewardSelector(MouseSelectableMixin):
         else:
             self._draw_panel(surface)
 
-        panel_width = 480
         panel_height = 320
         center_x = width // 2
         panel_y = height // 2 - panel_height // 2 + self.glow_offset * 0.3
@@ -505,12 +497,7 @@ class RewardSelector(MouseSelectableMixin):
         level = self.buff_levels.get(buff_name, 0)
         is_upgraded = buff_name in self.unlocked_buffs and level > 0
 
-        if is_upgraded:
-            glow_color = SceneColors.GOLD_GLOW
-        elif is_selected:
-            glow_color = SceneColors.GOLD_GLOW
-        else:
-            glow_color = None
+        glow_color = SceneColors.GOLD_GLOW if is_upgraded or is_selected else None
 
         # Draw glow for selected/upgraded
         if glow_color:

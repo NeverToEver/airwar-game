@@ -77,7 +77,7 @@ class ProgressBarUI(IMotherShipUI):
             self._render_progress_text(surface, center_x, center_y + 5)
 
     def _render_progress_bar(self, surface: pygame.Surface, bar_x: int, bar_y: int) -> None:
-        bg_rect = pygame.Rect(bar_x, bar_y, self._bar_width, self._bar_height)
+        pygame.Rect(bar_x, bar_y, self._bar_width, self._bar_height)
 
         bg_surface = pygame.Surface((self._bar_width, self._bar_height), pygame.SRCALPHA)
         pygame.draw.rect(
@@ -97,7 +97,7 @@ class ProgressBarUI(IMotherShipUI):
         progress_width = int(self._bar_width * self._progress)
         if progress_width > 0:
             progress_color = self._get_progress_color()
-            progress_rect = pygame.Rect(bar_x, bar_y, progress_width, self._bar_height)
+            pygame.Rect(bar_x, bar_y, progress_width, self._bar_height)
             progress_surface = pygame.Surface((progress_width, self._bar_height), pygame.SRCALPHA)
             pygame.draw.rect(
                 progress_surface, (*progress_color, 200),
@@ -195,4 +195,4 @@ class ProgressBarUI(IMotherShipUI):
             return self._progress_color_active
 
     def _lerp_color(self, color1: tuple, color2: tuple, t: float) -> tuple:
-        return tuple(int(c1 + (c2 - c1) * t) for c1, c2 in zip(color1, color2))
+        return tuple(int(c1 + (c2 - c1) * t) for c1, c2 in zip(color1, color2, strict=False))

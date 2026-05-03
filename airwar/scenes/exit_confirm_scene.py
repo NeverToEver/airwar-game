@@ -96,9 +96,8 @@ class ExitConfirmScene(Scene, MouseSelectableMixin):
                 self._select_option()
         elif event.type == pygame.MOUSEMOTION:
             self.handle_mouse_motion(event.pos)
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            if self.handle_mouse_click(event.pos):
-                self._select_option()
+        elif event.type == pygame.MOUSEBUTTONDOWN and self.handle_mouse_click(event.pos):
+            self._select_option()
 
     def _select_option(self) -> None:
         self.running = False
@@ -143,10 +142,7 @@ class ExitConfirmScene(Scene, MouseSelectableMixin):
         center_x = width // 2
 
         title_y = height // 3 + self.glow_offset * 0.3
-        if self.saved:
-            title_text = "游戏已保存"
-        else:
-            title_text = "退出游戏"
+        title_text = "游戏已保存" if self.saved else "退出游戏"
 
         if self.use_themed_style:
             self._draw_themed_title(surface, title_text, self.title_font, (center_x, title_y))

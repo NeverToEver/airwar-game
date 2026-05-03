@@ -4,6 +4,7 @@ import math
 import random
 from typing import List, Tuple
 from airwar.config.design_tokens import get_design_tokens
+import contextlib
 
 
 class SpaceBackground:
@@ -90,10 +91,8 @@ class SpaceBackground:
                 g = int(bg_primary[1] * (1 - ratio) + bg_secondary[1] * ratio)
                 b = int(bg_primary[2] * (1 - ratio) + bg_secondary[2] * ratio)
                 pygame.draw.line(gradient, (r, g, b), (0, y), (self.screen_width, y))
-            try:
+            with contextlib.suppress(pygame.error):
                 gradient = gradient.convert()
-            except pygame.error:
-                pass
             SpaceBackground._gradient_cache[cache_key] = gradient
         self._cached_gradient = SpaceBackground._gradient_cache[cache_key]
 
@@ -235,8 +234,6 @@ class DustLayer:
 
     def _init_dust(self, screen_width: int, screen_height: int, count: int) -> None:
         import random
-        colors = get_design_tokens().colors
-        particle_color = colors.PARTICLE_PRIMARY
 
         self._dust = []
         for _ in range(count):

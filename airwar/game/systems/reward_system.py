@@ -282,10 +282,7 @@ class RewardSystem:
         return damage
 
     def try_dodge(self) -> bool:
-        if 'Evasion' in self.unlocked_buffs:
-            if random.random() < self.EVASION_CHANCE:
-                return True
-        return False
+        return bool('Evasion' in self.unlocked_buffs and random.random() < self.EVASION_CHANCE)
 
     def apply_lifesteal(self, player, kill_value: int) -> None:
         if 'Lifesteal' in self.unlocked_buffs:

@@ -8,9 +8,12 @@ extend-exclude = [
 ]
 
 [tool.ruff.lint]
-select = ["E9", "F401", "F821", "F822", "F823"]
+select = ["E9", "F", "B", "SIM"]
+ignore = ["SIM102"]
 
 [tool.ruff.lint.per-file-ignores]
 "airwar/**/__init__.py" = ["F401"]
+"airwar/config/__init__.py" = ["F401", "F403", "F405"]
 "airwar/core_bindings.py" = ["F401"]
+"airwar/game/systems/difficulty_strategies.py" = ["B024"]
 "airwar/utils/sprites.py" = ["F401"]
