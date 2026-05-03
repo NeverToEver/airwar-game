@@ -60,6 +60,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     PAUSE_BAR_HEIGHT = 14
     PAUSE_BAR_GAP = 4
 
+    AUTO_SAVE_INTERVAL = 1800  # 30 seconds at 60fps
+
     def __init__(self):
         Scene.__init__(self)
         MouseInteractiveMixin.__init__(self)
@@ -91,6 +93,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._input_coordinator: InputCoordinator = None
         self._ui_manager: UIManager = None
         self._game_loop_manager: GameLoopManager = None
+        self._auto_save_timer: int = 0
 
     def enter(self, **kwargs) -> None:
         """Initialize the game scene.
@@ -195,6 +198,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             self._boss_manager,
             self.collision_controller,
         )
+
+        self._auto_save_timer = 0
 
     def _setup_reward_selector(self) -> None:
         self.reward_selector.hide = lambda: setattr(self.reward_selector, 'visible', False)
@@ -331,6 +336,24 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self.player.cleanup_inactive_bullets()
 
         self._milestone_manager.check_and_trigger(self.player)
+
+        self._auto_save_timer += 1
+        if self._auto_save_timer >= self.AUTO_SAVE_INTERVAL:
+            self._auto_save_timer = 0
+            self._try_auto_save()
+
+    def _try_auto_save(self) -> None:
+        """Periodic auto-save while game is running normally."""
+        if not self._mother_ship_integrator:
+            return
+        if self._mother_ship_integrator.is_docked():
+            return  # Manual dock save handles this — don't overwrite mid-dock
+        if not self.game_controller or not self.game_controller.is_playing():
+            return
+        save_data = self._mother_ship_integrator.create_save_data()
+        if save_data:
+            save_data.is_in_mothership = False
+            PersistenceManager().save_game(save_data)
 
     def _update_mothership_ammo_warning(self) -> None:
         """Check ammo level and activate warning banner when critically low.
@@ -686,6 +709,10 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self.game_controller.state.username = save_data.username
         self.game_controller.state.score_multiplier = GAME_CONSTANTS.get_difficulty_multiplier(self.game_controller.state.difficulty)
 
+        # Restore difficulty scaling so enemy stats scale correctly after load
+        if self.game_controller.difficulty_manager:
+            self.game_controller.difficulty_manager.set_boss_kill_count(save_data.boss_kill_count)
+
         if save_data.is_in_mothership:
             self._restore_to_mothership_state()
         else:
@@ -736,6 +763,17 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             screen_h = get_screen_height()
             self.player.rect.x = screen_w // 2 - self.player.rect.width // 2
             self.player.rect.y = screen_h // 2
+
+    def create_save_data(self):
+        """Create save data snapshot, or None if mothership not available."""
+        if not self._mother_ship_integrator:
+            return None
+        return self._mother_ship_integrator.create_save_data()
+
+    def is_mothership_docked(self) -> bool:
+        if not self._mother_ship_integrator:
+            return False
+        return self._mother_ship_integrator.is_docked()
 
     # IGameScene implementation for GameIntegrator layer compliance
 
