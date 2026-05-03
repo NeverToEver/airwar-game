@@ -12,43 +12,47 @@ cd "$SCRIPT_DIR"
 
 echo "=== Air War Linux Build ==="
 
-# 1. Build Rust extension
-echo "[1/4] Building Rust extension..."
-cd airwar_core
-cargo build --release
-cd ..
+# 1. Create isolated build environment
+echo "[1/4] Preparing build environment..."
+python3 -m venv .venv-build
+. .venv-build/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements-dev.txt
 
-# 2. Copy Rust .so to match PyO3 module name
-echo "[2/4] Installing Rust extension..."
-RUST_SO="airwar_core/target/release/libairwar_core.so"
-if [ -f "$RUST_SO" ]; then
-    # Install to user site-packages so PyInstaller can find it
-    SITE_PACKAGES=$(python3 -c "import site; print(site.getusersitepackages())")
-    mkdir -p "$SITE_PACKAGES/airwar_core"
-    cp "$RUST_SO" "$SITE_PACKAGES/airwar_core/airwar_core.cpython-312-x86_64-linux-gnu.so"
-    echo "   Rust extension installed to $SITE_PACKAGES/airwar_core/"
+# 2. Build and install Rust extension into the build environment
+echo "[2/4] Building Rust extension..."
+if command -v cargo >/dev/null 2>&1; then
+    if python -m maturin develop --release --manifest-path airwar_core/Cargo.toml; then
+        echo "   Rust extension installed in .venv-build."
+    else
+        echo "   WARNING: Rust extension build failed."
+        echo "   Game will fall back to pure Python (slower but functional)."
+    fi
 else
-    echo "   WARNING: Rust .so not found at $RUST_SO"
+    echo "   WARNING: cargo not found."
     echo "   Game will fall back to pure Python (slower but functional)."
 fi
 
-# 3. Install PyInstaller if needed
-echo "[3/4] Checking PyInstaller..."
-python3 -c "import PyInstaller" 2>/dev/null || pip install pyinstaller --break-system-packages
+# 3. Validate imports
+echo "[3/4] Validating Python environment..."
+python -c "import pygame, PIL, PyInstaller; from airwar.core_bindings import RUST_AVAILABLE; print('Rust acceleration:', RUST_AVAILABLE)"
 
 # 4. Build standalone executable
 echo "[4/4] Building standalone executable..."
 rm -rf build dist
-pyinstaller \
+PYINSTALLER_ARGS=(
     --name="AirWar" \
     --add-data="airwar/data:airwar/data" \
-    --collect-all airwar_core \
     --hidden-import=pygame \
     --hidden-import=PIL \
     --hidden-import=PIL.Image \
     --noconsole \
-    --onefile \
-    main.py
+    --onefile
+)
+if python -c "from airwar.core_bindings import RUST_AVAILABLE; raise SystemExit(0 if RUST_AVAILABLE else 1)"; then
+    PYINSTALLER_ARGS+=(--collect-all airwar_core)
+fi
+python -m PyInstaller "${PYINSTALLER_ARGS[@]}" main.py
 
 echo ""
 echo "=== Build complete ==="

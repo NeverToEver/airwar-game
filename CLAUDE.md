@@ -16,10 +16,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Key Numbers
 
-- Default resolution: 1920x?1080, FPS=60
+- Default resolution: 1920x1080, FPS=60
 - Player speed: 7 (base), ~12 with boost
 - Player bullet speed: 14
-- Test suite: 741 tests, 1 skip, <8s runtime
+- Test suite: 53 tests, <2s runtime in the current checkout
 
 ---
 
@@ -29,6 +29,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 pip install -r requirements.txt
+pip install -r requirements-dev.txt  # tests/build tooling
 ```
 
 ### Run the Game
@@ -43,6 +44,9 @@ python3 main.py
 # All tests
 python3 -m pytest
 
+# Lint
+python3 -m ruff check .
+
 # Smoke tests (core functionality)
 python3 -m pytest -m smoke
 
@@ -50,13 +54,13 @@ python3 -m pytest -m smoke
 python3 -m pytest -m "not slow"
 
 # Specific test file
-python3 -m pytest airwar/tests/test_entities.py
+python3 -m pytest airwar/tests/test_core.py
 
 # Specific test class/method
-python3 -m pytest airwar/tests/test_entities.py::TestPlayer -v
+python3 -m pytest airwar/tests/test_core.py::TestPlayer -v
 
 # Rust binding tests
-python3 -m pytest airwar/tests/test_vector2_bindings.py airwar/tests/test_collision_bindings.py airwar/tests/test_movement_bindings.py airwar/tests/test_particle_bindings.py
+python3 -m pytest tests/test_bullet_bindings.py
 ```
 
 ### Build Rust Extension
@@ -83,11 +87,11 @@ bash build_macos.sh
 build_windows.bat
 ```
 
-Build output at `dist/AirWar` (~40MB standalone executable with Python runtime + Rust extension). Requires Python 3.12+, Rust toolchain, PyInstaller (auto-installed by script).
+Build output at `dist/AirWar` (~40MB standalone executable with Python runtime + Rust extension when available). Requires Python 3.12+ and a platform compiler. Build scripts use `.venv-build/` and install packaging tools there.
 
 ### Test Configuration
 
-Config at `airwar/tests/pytest.ini` -- defaults: `-v --tb=short -ra`. Markers: `smoke` (core), `slow` (integration/performance). Fixtures: `temp_db`, `clean_imports`. Some tests require `pygame.init()`.
+Config at `pytest.ini` -- defaults: `-q --tb=short`. Markers: `smoke` (core), `slow` (integration/performance). Fixtures live under `airwar/tests/conftest.py`. Some tests require `pygame.init()`.
 
 **Note:** Tests must be run from the project root directory, not from within the `airwar/` subdirectory.
 
@@ -136,7 +140,7 @@ except ImportError:
 ```
 
 **Build:** `maturin develop --release` (requires Rust toolchain via rustup).  
-**Tests:** Python tests at `tests/test_*_bindings.py` exercise the Rust module (vector2, collision, movement, particles, sprites). No Rust-side test framework configured.
+**Tests:** Python tests at `tests/test_*_bindings.py` exercise installed Rust bindings. The current checkout includes bullet binding coverage; no Rust-side test framework is configured.
 
 ---
 

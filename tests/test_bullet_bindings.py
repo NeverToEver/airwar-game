@@ -1,6 +1,5 @@
 """Tests for bullet Rust bindings."""
 
-import pytest
 
 
 class TestBatchUpdateBullets:
