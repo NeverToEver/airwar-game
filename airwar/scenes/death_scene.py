@@ -93,9 +93,10 @@ class DeathScene(Scene, MouseSelectableMixin):
 
     def _select_option(self) -> None:
         self.running = False
-        if self.selected_index == 0:
+        effective = self.get_effective_selected_index(self.selected_index)
+        if effective == 0:
             self.result = 'return_to_menu'
-        elif self.selected_index == 1:
+        elif effective == 1:
             self.result = 'quit'
 
     def update(self, *args, **kwargs) -> None:

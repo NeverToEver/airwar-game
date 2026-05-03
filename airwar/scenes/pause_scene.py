@@ -98,13 +98,14 @@ class PauseScene(Scene, MouseSelectableMixin):
 
     def _select_option(self) -> None:
         self.running = False
-        if self.selected_index == 0:
+        effective = self.get_effective_selected_index(self.selected_index)
+        if effective == 0:
             self.result = PauseAction.RESUME
-        elif self.selected_index == 1:
+        elif effective == 1:
             self.result = PauseAction.MAIN_MENU
-        elif self.selected_index == 2:
+        elif effective == 2:
             self.result = PauseAction.SAVE_AND_QUIT
-        elif self.selected_index == 3:
+        elif effective == 3:
             self.result = PauseAction.QUIT_WITHOUT_SAVING
 
     def update(self, *args, **kwargs) -> None:

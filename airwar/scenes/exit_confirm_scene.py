@@ -102,11 +102,12 @@ class ExitConfirmScene(Scene, MouseSelectableMixin):
 
     def _select_option(self) -> None:
         self.running = False
-        if self.selected_index == 0:
+        effective = self.get_effective_selected_index(self.selected_index)
+        if effective == 0:
             self.result = ExitConfirmAction.RETURN_TO_MENU
-        elif self.selected_index == 1:
+        elif effective == 1:
             self.result = ExitConfirmAction.START_NEW_GAME
-        elif self.selected_index == 2:
+        elif effective == 2:
             self.result = ExitConfirmAction.QUIT_GAME
 
     def update(self, *args, **kwargs) -> None:

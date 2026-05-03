@@ -439,10 +439,12 @@ class DesignTokens:
         self.forest = SceneColors
 
     def get_font(self, size: int):
-        return pygame.font.Font(pygame.font.get_default_font(), size)
+        from airwar.utils.fonts import get_cjk_font
+        return get_cjk_font(size)
 
     def get_scaled_font(self, base_size: int, scale: float):
-        return pygame.font.Font(pygame.font.get_default_font(), int(base_size * scale))
+        from airwar.utils.fonts import get_cjk_font
+        return get_cjk_font(int(base_size * scale))
 
 
 _tokens_instance = None

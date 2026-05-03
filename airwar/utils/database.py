@@ -102,3 +102,26 @@ class UserDB(SimpleDB):
             self._save(data)
             return True
         return False
+    def delete_user(self, user_id: str, password: str = None) -> bool:
+        """Delete a user account.
+
+        If password is provided, it will be verified before deletion.
+        If password is None, deletes the user without verification
+        (for forgotten-password recovery).
+
+        Args:
+            user_id: Username to delete.
+            password: Optional password for verification.
+
+        Returns:
+            True if user was deleted, False if not found or verification failed.
+        """
+        if password is not None and not self.verify_user(user_id, password):
+            return False
+        data = self._load()
+        if user_id not in data:
+            return False
+        del data[user_id]
+        self._save(data)
+        return True
+

@@ -134,7 +134,7 @@ class HUDRenderer:
             shown.add(buff)
 
             color = get_buff_color(buff)
-            text = self.buff_font.render(buff[:self.BUFF_TRUNCATE_LEN].upper(), True, color)
+            text = self.buff_font.render(buff[:self.BUFF_TRUNCATE_LEN], True, color)
             rect = text.get_rect(x=x, y=y)
             pygame.draw.rect(surface, color, rect, 1, border_radius=4)
             surface.blit(text, (x + 4, y + 4))

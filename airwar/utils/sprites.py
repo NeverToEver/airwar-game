@@ -23,10 +23,13 @@ from ._sprites_ships import (
     _player_sprite_cache,
     _enemy_sprite_cache,
     _boss_sprite_cache,
+    _elite_sprite_cache,
     get_player_sprite,
     draw_player_ship,
     get_enemy_sprite,
     draw_enemy_ship,
+    get_elite_enemy_sprite,
+    draw_elite_enemy_ship,
     get_boss_sprite,
     draw_boss_ship,
 )

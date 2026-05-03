@@ -58,6 +58,9 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         self.want_to_quit = False
         self.show_guest_confirm = False
         self.guest_confirm_focus = 'yes'  # 'yes' | 'no'
+        self.show_delete_confirm = False
+        self.delete_confirm_focus = 'no'  # 'yes' | 'no'
+        self.delete_username = ""
         self.animation_time = 0
         self.cursor_visible = True
         self.cursor_timer = 0
@@ -114,6 +117,17 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
                 return
             self.want_to_quit = True
             self.running = False
+            return
+
+        # Delete user confirmation mode — navigate buttons, Enter to confirm
+        if self.show_delete_confirm:
+            if event.key == pygame.K_RETURN:
+                if self.delete_confirm_focus == 'yes':
+                    self._do_delete_user()
+                else:
+                    self.show_delete_confirm = False
+            elif event.key in (pygame.K_LEFT, pygame.K_RIGHT, pygame.K_TAB):
+                self.delete_confirm_focus = 'no' if self.delete_confirm_focus == 'yes' else 'yes'
             return
 
         # Guest confirmation mode — navigate buttons, Enter to confirm
@@ -210,6 +224,34 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             self.running = False
         elif button_name == 'guest_confirm_no':
             self.show_guest_confirm = False
+        elif button_name == 'delete_user':
+            if self.username:
+                self.delete_username = self.username
+                self.show_delete_confirm = True
+                self.delete_confirm_focus = 'no'
+            else:
+                self.message = "请先输入用户名"
+                self._is_error = True
+                self.message_timer = 120
+
+    def _do_delete_user(self) -> None:
+        if not self.delete_username:
+            self.message = "请输入用户名"
+            self._is_error = True
+            self.message_timer = 120
+            self.show_delete_confirm = False
+            return
+        if self.db.delete_user(self.delete_username):
+            self.message = f"用户 {self.delete_username} 已删除"
+            self._is_error = False
+            self.message_timer = 120
+            self.username = ""
+            self.password = ""
+        else:
+            self.message = "用户不存在"
+            self._is_error = True
+            self.message_timer = 120
+        self.show_delete_confirm = False
 
     def _do_login(self) -> None:
         if not self.username or not self.password:
@@ -312,6 +354,10 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         if self.show_guest_confirm:
             self._render_guest_confirm(surface)
 
+        # Delete user confirmation overlay (topmost)
+        if self.show_delete_confirm:
+            self._render_delete_confirm(surface)
+
     def _render_title(self, surface):
         SC = SceneColors
         sw = surface.get_width()
@@ -378,6 +424,25 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         guest_rect = pygame.Rect(px + self.PANEL_W // 2 - guest_btn_w // 2,
                                  guest_y, guest_btn_w, guest_btn_h)
         self._draw_ghost_button(surface, guest_rect, "游客模式", 'skip_login')
+
+        # Delete user button (ghost style — red accent)
+        SC = SceneColors
+        delete_btn_w = 120
+        delete_btn_h = 34
+        delete_y = guest_y + guest_btn_h + 12
+        delete_rect = pygame.Rect(px + self.PANEL_W // 2 - delete_btn_w // 2,
+                                  delete_y, delete_btn_w, delete_btn_h)
+        self.register_button('delete_user', delete_rect)
+        delete_hover = self.is_button_hovered('delete_user')
+        delete_fill = (80, 20, 20) if delete_hover else SC.BG_PANEL_LIGHT
+        delete_border = (200, 60, 60) if delete_hover else SC.BORDER_DIM
+        draw_chamfered_panel(surface, delete_rect.x, delete_rect.y,
+                             delete_rect.width, delete_rect.height,
+                             delete_fill, delete_border, None, 6)
+        delete_color = (255, 100, 100) if delete_hover else SC.TEXT_DIM
+        delete_font = get_cjk_font(self._tokens.typography.SMALL_SIZE)
+        delete_text = delete_font.render("删除用户", True, delete_color)
+        surface.blit(delete_text, delete_text.get_rect(center=delete_rect.center))
 
     def _render_right_panel(self, surface, px, py):
         SC = SceneColors
@@ -598,6 +663,55 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         self._draw_button(surface, cancel_rect, "返回",
                           'guest_confirm_no', SC.GOLD_DIM,
                           is_focused=(self.guest_confirm_focus == 'no'))
+
+
+    def _render_delete_confirm(self, surface):
+        """覆盖确认对话框：删除用户账号"""
+        SC = SceneColors
+        sw, sh = surface.get_width(), surface.get_height()
+
+        # Dim overlay
+        overlay = pygame.Surface((sw, sh), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 160))
+        surface.blit(overlay, (0, 0))
+
+        # Dialog box
+        dlg_w, dlg_h = 480, 260
+        dlg_x = (sw - dlg_w) // 2
+        dlg_y = (sh - dlg_h) // 2
+        draw_chamfered_panel(surface, dlg_x, dlg_y, dlg_w, dlg_h,
+                             SC.BG_PANEL_LIGHT, SC.GOLD_PRIMARY, SC.GOLD_GLOW, 12)
+
+        # Title
+        title = self.section_font.render("删除用户", True, SC.DANGER_RED)
+        surface.blit(title, title.get_rect(center=(sw // 2, dlg_y + 50)))
+
+        # Description
+        desc = self.hint_font.render(
+            f'确定要删除用户 "{self.delete_username}" 吗？', True, SC.TEXT_DIM)
+        desc2 = self.hint_font.render(
+            "此操作不可撤销，所有数据将被永久删除。", True, SC.TEXT_DIM)
+        surface.blit(desc, desc.get_rect(center=(sw // 2, dlg_y + 105)))
+        surface.blit(desc2, desc2.get_rect(center=(sw // 2, dlg_y + 138)))
+
+        # Buttons
+        btn_w, btn_h = 170, 46
+        gap = 20
+        total_btn_w = btn_w * 2 + gap
+        btn_start_x = sw // 2 - total_btn_w // 2
+        btn_y = dlg_y + dlg_h - 70
+
+        # Confirm button (danger — red)
+        confirm_rect = pygame.Rect(btn_start_x, btn_y, btn_w, btn_h)
+        self._draw_button(surface, confirm_rect, "确认删除",
+                          'delete_confirm_yes', SC.DANGER_RED, is_primary=True,
+                          is_focused=(self.delete_confirm_focus == 'yes'))
+
+        # Cancel button
+        cancel_rect = pygame.Rect(btn_start_x + btn_w + gap, btn_y, btn_w, btn_h)
+        self._draw_button(surface, cancel_rect, "取消",
+                          'delete_confirm_no', SC.GOLD_DIM,
+                          is_focused=(self.delete_confirm_focus == 'no'))
 
     def _render_fullscreen_button(self, surface, sw, sh):
         SC = SceneColors

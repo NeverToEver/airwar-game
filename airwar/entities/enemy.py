@@ -547,6 +547,7 @@ class EnemySpawner:
     DEFAULT_SPEED = 3.0
     DEFAULT_SPAWN_RATE = 30
     MAX_CONCURRENT_ENEMIES = 5
+    ELITES_PER_WAVE = 2
     MIN_SPAWN_Y = -30
     MAX_SPAWN_Y_FRACTION = 0.70
     LASER_FIRE_RATE = 60
@@ -570,6 +571,10 @@ class EnemySpawner:
             "noise": 0.20,
             "aggressive": 0.20,
         }
+        self._elite_type_distribution = {
+            "aggressive": 0.50,
+            "noise": 0.50,
+        }
         self._max_enemies = self.MAX_CONCURRENT_ENEMIES
         self._wave_active = False
         self._wave_enemies_spawned = 0
@@ -587,6 +592,15 @@ class EnemySpawner:
             if rand < cumulative:
                 return enemy_type
         return "straight"
+
+    def _select_elite_type(self) -> str:
+        rand = random.random()
+        cumulative = 0.0
+        for enemy_type, prob in self._elite_type_distribution.items():
+            cumulative += prob
+            if rand < cumulative:
+                return enemy_type
+        return "aggressive"
 
     def set_params(self, health: int, speed: float, spawn_rate: int, bullet_type: str = "single") -> None:
         self.health = health
@@ -654,33 +668,131 @@ class EnemySpawner:
             positions.append((center_x - front_width // 2 + int(t * front_width), front_y))
 
         bullet_types = ("single", "spread", "laser")
+        elite_bullet_types = ("spread", "laser")
         spawn_data = []
-        for px, py in positions:
+
+        # Pick which positions get elite enemies
+        elite_count = min(self.ELITES_PER_WAVE, len(positions))
+        elite_indices = set(random.sample(range(len(positions)), elite_count))
+
+        for i, (px, py) in enumerate(positions):
             px = max(collision_size // 2, min(px, screen_width - collision_size // 2))
             py = max(self.MIN_SPAWN_Y, min(py, int(screen_height * self.MAX_SPAWN_Y_FRACTION)))
-            spawn_data.append((
-                px, py,
-                random.choice(bullet_types),
-                self._select_enemy_type(),
-            ))
+            if i in elite_indices:
+                spawn_data.append((
+                    px, py,
+                    random.choice(elite_bullet_types),
+                    self._select_elite_type(),
+                    True,  # is_elite flag
+                ))
+            else:
+                spawn_data.append((
+                    px, py,
+                    random.choice(bullet_types),
+                    self._select_enemy_type(),
+                    False,
+                ))
         return spawn_data
 
     def _spawn_one(self, enemies: List[Enemy], data: tuple) -> None:
         """Create a single enemy from precomputed spawn tuple and add to list."""
-        px, py, bullet_type, enemy_type = data
-        enemy_data = EnemyData(
-            health=self.health,
-            speed=self.speed,
-            bullet_type=bullet_type,
-            fire_rate=self.LASER_FIRE_RATE if bullet_type == "laser" else self.NORMAL_FIRE_RATE,
-            enemy_type=enemy_type
-        )
-        enemy = Enemy(px, py, enemy_data)
+        px, py, bullet_type, enemy_type, is_elite = data
+        if is_elite:
+            elite_data = EliteEnemyData(
+                health=int(self.health * 2.5),
+                speed=self.speed * 1.3,
+                enemy_type=enemy_type,
+                fire_rate=int(self.LASER_FIRE_RATE if bullet_type == "laser" else self.NORMAL_FIRE_RATE * 0.6),
+                bullet_type=bullet_type,
+            )
+            enemy = EliteEnemy(px, py, elite_data)
+        else:
+            enemy_data = EnemyData(
+                health=self.health,
+                speed=self.speed,
+                bullet_type=bullet_type,
+                fire_rate=self.LASER_FIRE_RATE if bullet_type == "laser" else self.NORMAL_FIRE_RATE,
+                enemy_type=enemy_type
+            )
+            enemy = Enemy(px, py, enemy_data)
         enemy._entry_start_y = self.ENTRY_SPAWN_Y
         enemy._entry_start_x = px
         if self._bullet_spawner:
             enemy.set_bullet_spawner(self._bullet_spawner)
         enemies.append(enemy)
+
+
+@dataclass
+class EliteEnemyData:
+    """Data class for Elite enemy configuration.
+
+    Elite enemies are tougher variants that replace regular enemies in waves.
+    They have 2.5x health, faster fire rate, more aggressive movement patterns,
+    and a distinctive golden/amber visual style.
+
+    Attributes:
+        health: Maximum health points (2.5x base).
+        speed: Movement speed (1.3x base).
+        score: Score awarded when destroyed (3x base).
+        enemy_type: Movement pattern type (always aggressive/noise).
+        fire_rate: Frames between shots (40% faster than base).
+        bullet_type: Type of bullet fired ("spread" or "laser").
+    """
+    health: int = 250
+    speed: float = 3.9
+    score: int = 300
+    enemy_type: str = "aggressive"
+    fire_rate: int = 40
+    bullet_type: str = "spread"
+
+
+class EliteEnemy(Enemy):
+    """Elite enemy — tougher, more aggressive variant of regular enemies.
+
+    Elite enemies replace 2 enemies per wave. They feature reinforced armor
+    (2.5x HP), faster movement (1.3x), aggressive attack patterns, and a
+    distinctive golden/amber visual style with energy shield glow.
+
+    Attributes:
+        data: EliteEnemyData configuration.
+        _shield_pulse: Timer for energy shield visual effect.
+    """
+
+    VISUAL_SCALE = 1.3
+    ENTRY_SPEED = 0.03
+    ELITE_FIRE_RATE = 30
+    MIN_SPAWN_Y = -30
+    SPAWN_START_Y = -80
+
+    def __init__(self, x: float, y: float, data: EliteEnemyData):
+        self.elite_data = data
+        enemy_data = EnemyData(
+            health=data.health,
+            speed=data.speed,
+            score=data.score,
+            enemy_type=data.enemy_type,
+            fire_rate=data.fire_rate,
+            bullet_type=data.bullet_type,
+        )
+        super().__init__(x, y, enemy_data)
+        self._shield_pulse: float = 0.0
+        self._is_elite = True
+
+    def render(self, surface: pygame.Surface) -> None:
+        from ..utils.sprites import draw_elite_enemy_ship
+        health_ratio = self.health / self.max_health if self.max_health > 0 else 0.0
+        draw_elite_enemy_ship(
+            surface,
+            self.rect.centerx, self.rect.centery,
+            self.rect.width * self.VISUAL_SCALE,
+            self.rect.height * self.VISUAL_SCALE,
+            health_ratio
+        )
+
+    def update(self, enemies: List['Enemy'] = None, slow_factor: float = 1.0,
+               player_pos: Tuple[int, int] = None, *args, **kwargs) -> None:
+        self._shield_pulse += 0.08
+        super().update(enemies, slow_factor, player_pos, *args, **kwargs)
 
 
 @dataclass
@@ -851,7 +963,7 @@ class Boss(Entity):
         self.rect.x = max(0, min(self.rect.x, screen_w - self.rect.width))
         self.rect.y = max(self.MIN_Y, min(self.rect.y, screen_h // 2 + self.CENTER_OFFSET))
 
-        self.rect.y += int(math.sin(self.survival_timer * 0.025) * 0.4)
+        self.rect.y += math.sin(self.survival_timer * 0.025) * 0.4
 
         self.phase_timer += 1
         if self.phase_timer >= get_game_constants().BOSS.PHASE_INTERVAL and self.phase < 3:
