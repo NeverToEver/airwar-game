@@ -90,6 +90,7 @@ class Enemy(Entity):
     AGGR_SCALE_Y_RANGE = (0.5, 0.8)
     AGGR_AMP_X_RANGE = (0.5, 0.8)
     AGGR_AMP_Y_RANGE = (0.4, 0.7)
+    SPREAD_FIRE_OFFSETS = (-28, -14, 0, 14, 28)
 
     # 1. Special methods
 
@@ -495,7 +496,7 @@ class Enemy(Entity):
         center_x = self.rect.centerx
 
         if self.data.bullet_type == "spread":
-            for angle in [-40, -20, 0, 20, 40]:
+            for angle in self.SPREAD_FIRE_OFFSETS:
                 bullet_data = BulletData(
                     damage=self._get_damage(),
                     speed=5.0,

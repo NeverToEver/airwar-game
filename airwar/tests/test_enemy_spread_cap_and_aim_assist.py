@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import pygame
 
 from airwar.entities.base import Rect
-from airwar.entities.enemy import EnemySpawner
+from airwar.entities.enemy import Enemy, EnemySpawner
 from airwar.config import DIFFICULTY_SETTINGS
 from airwar.game.managers.spawn_controller import SpawnController
 from airwar.scenes.game_scene import GameScene
@@ -33,6 +33,10 @@ def test_enemy_wave_limits_spread_bullet_types() -> None:
     assert sum(1 for item in limited if item[2] == "spread") == 2
     assert limited[2][2] == "laser"
     assert limited[3][2] == "single"
+
+
+def test_enemy_spread_fire_pattern_is_narrowed() -> None:
+    assert Enemy.SPREAD_FIRE_OFFSETS == (-28, -14, 0, 14, 28)
 
 
 def test_aim_assist_sticks_while_mouse_stays_near_target() -> None:
