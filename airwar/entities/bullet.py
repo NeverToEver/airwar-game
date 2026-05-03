@@ -8,6 +8,7 @@ import pygame
 from collections import deque
 from typing import List
 from .base import Entity, BulletData, Vector2
+from ..config import get_screen_width, get_screen_height
 from ..utils.sprites import draw_bullet, draw_explosive_missile
 
 
@@ -33,6 +34,7 @@ class Bullet(Entity):
     _trail_surface_cache: dict = {}
     _trail_cache_order: deque = deque()
     _TRAIL_CACHE_MAX_SIZE: int = 256
+    OFFSCREEN_MARGIN: int = 80
 
     def __init__(self, x: float, y: float, data: BulletData):
         super().__init__(x, y, 10, 10)
@@ -56,8 +58,17 @@ class Bullet(Entity):
         self.rect.x += self.velocity.x
         self.rect.y += self.velocity.y
 
-        if self.rect.y < -self.rect.height:
+        if self._is_offscreen():
             self.active = False
+
+    def _is_offscreen(self) -> bool:
+        margin = self.OFFSCREEN_MARGIN
+        return (
+            self.rect.right < -margin
+            or self.rect.left > get_screen_width() + margin
+            or self.rect.bottom < -margin
+            or self.rect.top > get_screen_height() + margin
+        )
 
     def has_hit_enemy(self, enemy_id: int) -> bool:
         return enemy_id in self._hit_enemies

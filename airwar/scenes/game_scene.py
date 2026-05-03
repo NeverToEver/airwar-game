@@ -17,6 +17,7 @@ from airwar.ui.reward_selector import RewardSelector
 from airwar.ui.boost_gauge import BoostGauge
 from airwar.ui.ammo_magazine import AmmoMagazine
 from airwar.ui.warning_banner import WarningBanner
+from airwar.ui.aim_crosshair import AimCrosshair
 from airwar.game.mother_ship import (
     EventBus,
     InputDetector,
@@ -86,6 +87,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._ammo_magazine: AmmoMagazine = None
         self._warning_banner: WarningBanner = None
         self._boost_gauge: BoostGauge = None
+        self._aim_crosshair = AimCrosshair()
+        self._aim_position = (0.0, 0.0)
         self._give_up_detector = None
         self._give_up_ui = None
         self._bullet_manager: BulletManager = None
@@ -128,6 +131,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         screen_width = get_screen_width()
         screen_height = get_screen_height()
         self._init_pause_button_layout()
+        self._set_aim_position(pygame.mouse.get_pos())
 
         difficulty = kwargs.get('difficulty', 'medium')
         username = kwargs.get('username', 'Player')
@@ -152,6 +156,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             screen_height - PlayerConstants.SCREEN_BOTTOM_OFFSET,
             input_handler
         )
+        self._sync_player_aim_target()
         self.player.rect.y = PlayerConstants.INITIAL_Y
         self.player.bullet_damage = settings['bullet_damage']
         boost_cfg = BOOST_CONFIG[difficulty]
@@ -164,6 +169,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._boost_gauge = BoostGauge()
         self._ammo_magazine = AmmoMagazine()
         self._warning_banner = WarningBanner()
+        self._aim_crosshair = AimCrosshair()
 
         self._setup_reward_selector()
         self._init_mother_ship_system(screen_width, screen_height)
@@ -245,9 +251,12 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             if self.game_renderer.integrated_hud:
                 self.game_renderer.integrated_hud.toggle()
         elif event.type == pygame.MOUSEMOTION:
+            self._set_aim_position(event.pos)
             self.handle_mouse_motion(event.pos)
-        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.handle_mouse_click(event.pos):
-            self._handle_button_click(self.get_hovered_button())
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            self._set_aim_position(event.pos)
+            if event.button == 1 and self.handle_mouse_click(event.pos):
+                self._handle_button_click(self.get_hovered_button())
 
     def _handle_button_click(self, button_name: str) -> None:
         """Handle mouse button click events.
@@ -279,6 +288,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         4. Game logic update (if not paused).
         """
         self.reward_selector.update()
+        self._set_aim_position(pygame.mouse.get_pos())
+        self._aim_crosshair.update()
 
         if self.game_renderer and self.game_renderer.integrated_hud:
             unlocked_buffs = getattr(self.reward_system, 'unlocked_buffs', [])
@@ -473,12 +484,33 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if self._warning_banner:
             self._warning_banner.render(surface)
 
+        self._render_aim_crosshair(surface)
+
         # Reward selector must render last to cover all game elements
         if self.reward_selector.visible:
             self.reward_selector.render(surface)
 
         # Render notifications above reward selector so critical messages are not obscured
         self._ui_manager.render_notification(surface)
+
+    def _set_aim_position(self, position: tuple[int, int]) -> None:
+        x = max(0, min(float(position[0]), float(get_screen_width())))
+        y = max(0, min(float(position[1]), float(get_screen_height())))
+        self._aim_position = (x, y)
+        self._sync_player_aim_target()
+
+    def _sync_player_aim_target(self) -> None:
+        if self.player:
+            self.player.set_aim_target(*self._aim_position)
+
+    def _render_aim_crosshair(self, surface: pygame.Surface) -> None:
+        if not self.game_controller or not self.game_controller.is_playing():
+            return
+        if self.game_controller.state.paused:
+            return
+        if self.reward_selector and self.reward_selector.visible:
+            return
+        self._aim_crosshair.render(surface, self._aim_position)
 
     def _init_pause_button_layout(self) -> None:
         """Pre-calculate pause button geometry and register button regions.

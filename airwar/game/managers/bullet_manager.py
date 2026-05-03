@@ -26,7 +26,7 @@ except ImportError:
     batch_update_bullets = None
     RUST_AVAILABLE = False
 
-from ...config import get_screen_height
+from ...config import get_screen_height, get_screen_width
 
 
 class PlayerProtocol(Protocol):
@@ -204,12 +204,21 @@ class BulletManager:
                     bullet._trail.pop(0)
 
             # Update active state
-            if not is_active:
+            if not is_active or self._is_bullet_outside_screen(bullet):
                 bullet.active = False
 
         # Note: cleanup is handled by the caller
         # - Player bullets: cleaned by Player.cleanup_inactive_bullets()
         # - Enemy bullets: cleaned by _cleanup_enemy_bullets()
+
+    def _is_bullet_outside_screen(self, bullet) -> bool:
+        margin = getattr(bullet, "OFFSCREEN_MARGIN", 80)
+        return (
+            bullet.rect.right < -margin
+            or bullet.rect.left > get_screen_width() + margin
+            or bullet.rect.bottom < -margin
+            or bullet.rect.top > get_screen_height() + margin
+        )
 
     def _cleanup_enemy_bullets(self) -> None:
         """Remove inactive bullets from the enemy bullet list."""

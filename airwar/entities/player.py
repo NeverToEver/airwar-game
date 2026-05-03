@@ -6,13 +6,14 @@ movement, weapon firing, health and shield systems.
 
 # === Standard library ===
 import math
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 # === Third-party ===
 import pygame
 
 # === Local: same package ===
 from .base import Entity
+from .base import Vector2
 from .bullet import Bullet, BulletData
 
 # === Local: different package in airwar ===
@@ -114,6 +115,8 @@ class Player(Entity):
         self._phase_dash_start = (0.0, 0.0)
         self._phase_dash_target = (0.0, 0.0)
         self._phase_dash_direction = (0.0, -1.0)
+        self._aim_target: Tuple[float, float] | None = None
+        self._last_aim_direction = Vector2(0, -1)
 
     # 2. Properties
 
@@ -292,6 +295,12 @@ class Player(Entity):
         if hasattr(listener, 'on_bullet_fired'):
             self._bullet_listeners.append(listener)
 
+    def set_aim_target(self, x: float, y: float) -> None:
+        self._aim_target = (x, y)
+
+    def get_aim_target(self) -> Tuple[float, float] | None:
+        return self._aim_target
+
     # 5. Private lifecycle methods
 
     def _update_movement(self) -> None:
@@ -429,6 +438,7 @@ class Player(Entity):
     def _create_bullets_for_shot_mode(self, return_first: bool = False) -> Optional[Bullet]:
         center_x = self.rect.x + self.rect.width / 2
         bullet_y = self.rect.y - self.BULLET_SPAWN_Y_OFFSET
+        aim_direction = self._get_aim_direction(center_x, bullet_y)
 
         if self._has_spread:
             bullet_x = center_x - 5
@@ -444,6 +454,7 @@ class Player(Entity):
                         bullet_type='spread_laser' if self._has_laser else 'spread'
                     )
                 )
+                self._aim_bullet_velocity(bullet, aim_direction, angle)
                 if self._has_laser:
                     bullet.data.is_laser = True
                 if self._has_explosive:
@@ -459,6 +470,7 @@ class Player(Entity):
                 BulletData(damage=self.bullet_damage, speed=self._constants.PLAYER.BULLET_SPEED,
                           bullet_type='laser', is_laser=True)
             )
+            self._aim_bullet_velocity(bullet, aim_direction)
             if self._has_explosive:
                 bullet.data.is_explosive = True
             self._bullets.append(bullet)
@@ -469,10 +481,37 @@ class Player(Entity):
                 bullet_y,
                 BulletData(damage=self.bullet_damage, speed=self._constants.PLAYER.BULLET_SPEED)
             )
+            self._aim_bullet_velocity(bullet, aim_direction)
             if self._has_explosive:
                 bullet.data.is_explosive = True
             self._bullets.append(bullet)
             return bullet
+
+    def _get_aim_direction(self, origin_x: float, origin_y: float) -> Vector2:
+        if self._aim_target is None:
+            return self._last_aim_direction
+
+        dx = self._aim_target[0] - origin_x
+        dy = self._aim_target[1] - origin_y
+        length = math.hypot(dx, dy)
+        if length <= 0.001:
+            return self._last_aim_direction
+
+        direction = Vector2(dx / length, dy / length)
+        self._last_aim_direction = direction
+        return direction
+
+    def _aim_bullet_velocity(self, bullet: Bullet, aim_direction: Vector2, angle_offset: float = 0.0) -> None:
+        direction = aim_direction
+        if angle_offset:
+            angle_rad = math.radians(angle_offset)
+            cos_a = math.cos(angle_rad)
+            sin_a = math.sin(angle_rad)
+            direction = Vector2(
+                aim_direction.x * cos_a - aim_direction.y * sin_a,
+                aim_direction.x * sin_a + aim_direction.y * cos_a,
+            )
+        bullet.velocity = direction * bullet.data.speed
 
     def _render_hitbox_indicator(self, surface: pygame.Surface) -> None:
         hb = self.get_hitbox()
