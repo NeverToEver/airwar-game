@@ -8,10 +8,14 @@ from airwar.ui.discrete_battery import DiscreteBatteryIndicator
 
 class IntegratedHUD:
     """Integrated HUD — unified heads-up display combining all HUD elements."""
+    ANIM_SPEED = 0.06
+
     def __init__(self):
         self._tokens = get_design_tokens()
         self._setup_layout()
         self._is_expanded = False
+        self._anim_progress = 0.0
+        self._anim_direction = 0
         self._current_width = int(self.panel_width * self._tokens.components.HUD_PANEL_COLLAPSED_RATIO)
         self._buff_scroll_offset = 0.0
         self._buff_scroll_speed = self._tokens.components.BUFF_SCROLL_SPEED
@@ -82,12 +86,25 @@ class IntegratedHUD:
         if self._battery_expanded:
             self._battery_expanded.set_health(health, max_health)
 
+    def update(self) -> None:
+        if self._anim_direction == 0:
+            return
+        self._anim_progress += self.ANIM_SPEED * self._anim_direction
+        if self._anim_progress >= 1.0:
+            self._anim_progress = 1.0
+            self._anim_direction = 0
+            self._is_expanded = True
+        elif self._anim_progress <= 0.0:
+            self._anim_progress = 0.0
+            self._anim_direction = 0
+            self._is_expanded = False
+        collapsed_w = int(self.panel_width * self._tokens.components.HUD_PANEL_COLLAPSED_RATIO)
+        self._current_width = collapsed_w + int((self.panel_width - collapsed_w) * self._anim_progress)
+
     def toggle(self):
-        self._is_expanded = not self._is_expanded
-        if self._is_expanded:
-            self._current_width = self.panel_width
-        else:
-            self._current_width = int(self.panel_width * self._tokens.components.HUD_PANEL_COLLAPSED_RATIO)
+        if self._anim_direction != 0:
+            return
+        self._anim_direction = 1 if not self._is_expanded else -1
         self._panel_bg_cache.clear()
         self._text_cache.clear()
 
@@ -124,7 +141,8 @@ class IntegratedHUD:
 
         current_y = self._render_score_module(surface, score, colors, panel_x, current_y)
 
-        if self._is_expanded:
+        # Render expanded modules during animation or when fully expanded
+        if self._anim_progress > 0:
             if current_coefficient is not None and initial_coefficient is not None:
                 current_y = self._render_coefficient_module(
                     surface, current_coefficient, initial_coefficient, colors, panel_x, current_y
@@ -147,14 +165,16 @@ class IntegratedHUD:
                 current_y = self._render_buffs_module(
                     surface, unlocked_buffs, get_buff_color, colors, panel_x, current_y
                 )
-        else:
+
+        # Render collapsed content during animation or when fully collapsed
+        if self._anim_progress < 1.0:
             self._render_collapsed_health(
                 surface, player_health, player_max_health, colors, panel_x, panel_y, panel_height
             )
             self._render_expand_indicator(surface, panel_x, panel_y, panel_height, colors)
 
     def _render_panel_background(self, surface, rect, colors):
-        cache_key = (rect.width, rect.height, self._is_expanded)
+        cache_key = (rect.width, rect.height)
         if cache_key not in self._panel_bg_cache:
             overlay = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
             pygame.draw.rect(

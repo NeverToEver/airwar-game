@@ -280,6 +280,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             if self.player:
                 self.game_renderer.integrated_hud.update_health_tank(
                     self.player.health, self.player.max_health)
+            self.game_renderer.integrated_hud.update()
         if self._game_loop_manager.is_entrance_playing():
             self._game_loop_manager.update_entrance(self.player)
             if self._mother_ship_integrator:
