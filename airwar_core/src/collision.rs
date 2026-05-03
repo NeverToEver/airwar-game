@@ -140,8 +140,12 @@ pub fn check_collision(a: &AABB, b: &AABB) -> bool {
 
 /// Check collision between two entities described by position and half_size
 pub fn check_entity_collision(
-    ax: f32, ay: f32, a_half: f32,
-    bx: f32, by: f32, b_half: f32,
+    ax: f32,
+    ay: f32,
+    a_half: f32,
+    bx: f32,
+    by: f32,
+    b_half: f32,
 ) -> bool {
     let a = AABB::from_xy_half_size(ax, ay, a_half);
     let b = AABB::from_xy_half_size(bx, by, b_half);
@@ -207,7 +211,11 @@ impl PersistentSpatialHash {
                     continue;
                 }
 
-                let (smaller, larger) = if id < other_id { (id, other_id) } else { (other_id, id) };
+                let (smaller, larger) = if id < other_id {
+                    (id, other_id)
+                } else {
+                    (other_id, id)
+                };
                 let pair_key = ((smaller as i64) << 32) | (larger as i64);
 
                 if checked.contains(&pair_key) {

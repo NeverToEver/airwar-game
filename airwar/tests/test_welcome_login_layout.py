@@ -1,6 +1,7 @@
 import pygame
 
 from airwar.scenes.welcome_scene import WelcomeScene
+from airwar.utils.database import UserDB
 
 
 def _make_scene() -> WelcomeScene:
@@ -39,3 +40,25 @@ def test_welcome_login_render_registers_new_button_regions() -> None:
         assert rect is not None
         assert rect.width >= 44
         assert rect.height >= 38
+
+
+def test_delete_user_requires_current_password(tmp_path) -> None:
+    scene = _make_scene()
+    scene.db = UserDB(str(tmp_path / "users.json"))
+
+    assert scene.db.create_user("pilot", "secret") is True
+    scene.username = "pilot"
+    scene.password = ""
+    scene._handle_button_click("delete_user")
+    scene._do_delete_user()
+
+    assert scene.db.user_exists("pilot") is True
+    assert scene.message == "请输入当前密码后再删除"
+    assert scene._is_error is True
+
+    scene.password = "secret"
+    scene._handle_button_click("delete_user")
+    scene._do_delete_user()
+
+    assert scene.db.user_exists("pilot") is False
+    assert scene.message == "用户 pilot 已删除"

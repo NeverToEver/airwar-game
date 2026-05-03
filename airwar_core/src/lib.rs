@@ -1,11 +1,11 @@
 use pyo3::prelude::*;
 
-pub mod vector2;
+pub mod bullets;
 pub mod collision;
 pub mod movement;
 pub mod particles;
 pub mod sprites;
-pub mod bullets;
+pub mod vector2;
 
 #[pymodule]
 fn airwar_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -23,7 +23,10 @@ fn airwar_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(vector2::vec2_clamp_length, m)?)?;
 
     // Collision functions
-    m.add_function(wrap_pyfunction!(collision::batch_collide_bullets_vs_entities, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        collision::batch_collide_bullets_vs_entities,
+        m
+    )?)?;
 
     // Persistent spatial hash
     m.add_class::<collision::PersistentSpatialHash>()?;
@@ -35,7 +38,10 @@ fn airwar_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // Particle functions
     m.add_function(wrap_pyfunction!(particles::batch_update_particles, m)?)?;
-    m.add_function(wrap_pyfunction!(particles::generate_explosion_particles, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        particles::generate_explosion_particles,
+        m
+    )?)?;
 
     // Sprite functions
     m.add_function(wrap_pyfunction!(sprites::create_single_bullet_glow, m)?)?;

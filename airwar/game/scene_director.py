@@ -6,6 +6,7 @@ from ..config import FPS, set_screen_size
 from ..scenes import SceneManager, GameScene
 from ..scenes.scene import PauseAction, ExitConfirmAction
 from .mother_ship import PersistenceManager, GameSaveData
+from ..utils.database import DatabaseError
 
 
 class SceneDirector:
@@ -306,14 +307,18 @@ class SceneDirector:
     def _update_user_stats(self, score: int, kills: int) -> Optional[int]:
         if not self._current_user or not self._user_db:
             return None
-        user_data = self._user_db.get_user_data(self._current_user)
-        new_high = max(score, user_data.get('high_score', 0))
-        self._user_db.update_user_data(self._current_user, {
-            'high_score': new_high,
-            'total_kills': user_data.get('total_kills', 0) + kills,
-            'games_played': user_data.get('games_played', 0) + 1
-        })
-        return new_high
+        try:
+            user_data = self._user_db.get_user_data(self._current_user)
+            new_high = max(score, user_data.get('high_score', 0))
+            self._user_db.update_user_data(self._current_user, {
+                'high_score': new_high,
+                'total_kills': user_data.get('total_kills', 0) + kills,
+                'games_played': user_data.get('games_played', 0) + 1
+            })
+            return new_high
+        except DatabaseError:
+            self._logger.warning("Failed to update user stats", exc_info=True)
+            return None
 
     def _handle_scene_events(self, events: List[pygame.event.Event], skip_escape: bool = False) -> None:
         for event in events:

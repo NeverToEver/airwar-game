@@ -57,6 +57,7 @@ pub fn batch_update_particles(
 /// Generate explosion particles
 /// Returns list of (x, y, vx, vy, life, max_life, size)
 #[pyfunction]
+#[allow(clippy::too_many_arguments)]
 pub fn generate_explosion_particles(
     center_x: f32,
     center_y: f32,
@@ -111,7 +112,7 @@ mod tests {
         // Now returns all 3 particles with is_alive flag, Python filters
         assert_eq!(results.len(), 3);
         // Count alive particles
-        let alive_count = results.iter().filter(|r| r.6).count();  // is_alive is last element
+        let alive_count = results.iter().filter(|r| r.6).count(); // is_alive is last element
         assert_eq!(alive_count, 2);
     }
 
