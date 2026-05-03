@@ -3,6 +3,7 @@ import math
 import pygame
 from airwar.utils.fonts import get_cjk_font
 from airwar.config.design_tokens import SystemColors
+import contextlib
 
 
 class AmmoMagazine:
@@ -110,10 +111,8 @@ class AmmoMagazine:
     def _build_frame_cache(self, w: int, h: int) -> pygame.Surface:
         """Pre-render the metallic frame with corner rivets."""
         surf = pygame.Surface((w, h), pygame.SRCALPHA)
-        try:
+        with contextlib.suppress(pygame.error):
             surf = surf.convert_alpha()
-        except pygame.error:
-            pass
 
         r = self.FRAME_RADIUS
 
@@ -234,7 +233,6 @@ class AmmoMagazine:
         if fill_color and ratio > 0:
             fill_width = int(cw * ratio)
             if fill_width > 0:
-                fill_rect = pygame.Rect(x, y, fill_width, ch)
 
                 # Glow halo
                 glow_surf = pygame.Surface(

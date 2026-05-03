@@ -98,17 +98,16 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             self._handle_keydown(event)
         elif event.type == pygame.MOUSEMOTION:
             self.handle_mouse_motion(event.pos)
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            if self.handle_mouse_click(event.pos):
-                btn = self.get_hovered_button()
-                if btn:
-                    self._handle_button_click(btn)
-                # Clicking on input areas sets focus (only outside confirm mode)
-                if not self.show_guest_confirm:
-                    if btn == 'username_field':
-                        self.focus = 'username'
-                    elif btn == 'password_field':
-                        self.focus = 'password'
+        elif event.type == pygame.MOUSEBUTTONDOWN and self.handle_mouse_click(event.pos):
+            btn = self.get_hovered_button()
+            if btn:
+                self._handle_button_click(btn)
+            # Clicking on input areas sets focus (only outside confirm mode)
+            if not self.show_guest_confirm:
+                if btn == 'username_field':
+                    self.focus = 'username'
+                elif btn == 'password_field':
+                    self.focus = 'password'
 
     def _handle_keydown(self, event: pygame.event.Event) -> None:
         if event.key == pygame.K_ESCAPE:
@@ -376,7 +375,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
     def _render_left_panel(self, surface, px, py):
         SC = SceneColors
-        scale = ResponsiveHelper.get_scale_factor(surface.get_width(), surface.get_height())
+        ResponsiveHelper.get_scale_factor(surface.get_width(), surface.get_height())
 
         # Panel background
         draw_chamfered_panel(surface, px, py, self.PANEL_W, self.PANEL_H,
@@ -517,7 +516,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
     def _draw_input(self, surface, rect, label, text, is_active, is_password=False):
         SC = SceneColors
-        scale = ResponsiveHelper.get_scale_factor(surface.get_width(), surface.get_height())
+        ResponsiveHelper.get_scale_factor(surface.get_width(), surface.get_height())
 
         border_color = SC.GOLD_PRIMARY if is_active else SC.BORDER_DIM
         bg_color = SC.BG_PANEL if is_active else SC.BG_PANEL_LIGHT

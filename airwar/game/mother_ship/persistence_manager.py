@@ -61,7 +61,7 @@ class PersistenceManager(IPersistenceManager):
             logger.info(f"Game saved successfully to {self._save_path}")
             return True
 
-        except PermissionError as e:
+        except PermissionError:
             logger.error(f"Permission denied to save file: {self._save_path}")
             return False
         except OSError as e:
@@ -146,7 +146,7 @@ class PersistenceManager(IPersistenceManager):
             logger.error(f"Save data corrupted: {e}")
             self.delete_save()
             return None
-        except PermissionError as e:
+        except PermissionError:
             logger.error(f"Permission denied to load file: {self._save_path}")
             return None
         except json.JSONDecodeError as e:
@@ -172,7 +172,7 @@ class PersistenceManager(IPersistenceManager):
                 os.remove(self._save_path)
                 logger.info("Saved game deleted successfully")
             return True
-        except PermissionError as e:
+        except PermissionError:
             logger.error(f"Permission denied to delete save: {self._save_path}")
             return False
         except OSError as e:

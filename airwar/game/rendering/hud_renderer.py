@@ -236,7 +236,7 @@ class HUDRenderer:
         x = (surface.get_width() - bar_width) // 2
         y = 15
 
-        health_ratio = boss.health / boss.max_health
+        boss.health / boss.max_health
 
         # Draw chamfered panel background
         draw_chamfered_panel(
@@ -295,7 +295,7 @@ class HUDRenderer:
                 surface.get_width(),
                 surface.get_height()
             )
-        except (AttributeError, TypeError) as e:
+        except (AttributeError, TypeError):
             pass
         except Exception as e:
             import logging
@@ -316,7 +316,7 @@ class HUDRenderer:
                 surface.get_width(),
                 surface.get_height()
             )
-        except (AttributeError, TypeError) as e:
+        except (AttributeError, TypeError):
             pass
         except Exception as e:
             import logging

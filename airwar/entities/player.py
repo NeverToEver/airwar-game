@@ -244,7 +244,6 @@ class Player(Entity):
         if self.controls_locked:
             return
         direction = self._input_handler.get_movement_direction()
-        is_moving = direction.x != 0 or direction.y != 0
 
         # Boost: activate when Shift held + has energy
         boost_pressed = self._input_handler.is_boost_pressed()

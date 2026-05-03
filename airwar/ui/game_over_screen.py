@@ -102,10 +102,7 @@ class GameOverScreen:
 
     def _update_button_hover_states(self):
         for btn_key, btn_rect in self._buttons.items():
-            if btn_rect.collidepoint(self._mouse_pos):
-                target_scale = 1.05
-            else:
-                target_scale = 1.0
+            target_scale = 1.05 if btn_rect.collidepoint(self._mouse_pos) else 1.0
 
             current_scale = self._button_hover_scale[btn_key]
             self._button_hover_scale[btn_key] = current_scale + (target_scale - current_scale) * 0.15

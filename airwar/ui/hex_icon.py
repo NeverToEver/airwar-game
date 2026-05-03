@@ -42,10 +42,7 @@ def _get_hexagon_points(center: Tuple[float, float], size: float, pointy_top: bo
     """
     points = []
     for i in range(6):
-        if pointy_top:
-            angle = math.radians(60 * i - 30)
-        else:
-            angle = math.radians(60 * i)
+        angle = math.radians(60 * i - 30) if pointy_top else math.radians(60 * i)
         x = center[0] + size * math.cos(angle)
         y = center[1] + size * math.sin(angle)
         points.append((x, y))
@@ -123,8 +120,6 @@ def draw_icon(
     line_width = max(2, int(size / 6))
 
     if glow:
-        # 发光效果
-        glow_color = (*color[:3], 100) if len(color) == 3 else (*color[:3], 100)
         for layer in range(2, 0, -1):
             layer_color = (*color[:3], int(50 / layer))
             _draw_icon_shape(surface, icon_type, center, size + layer, layer_color, line_width)

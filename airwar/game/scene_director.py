@@ -150,14 +150,13 @@ class SceneDirector:
             self._window.flip()
             self._window.tick(FPS)
 
-            if isinstance(current_scene, GameScene):
-                if current_scene.is_game_over():
-                    self._clear_saved_game()
-                    result = self._handle_game_over(current_scene)
-                    if result:
-                        return "main_menu"
-                    else:
-                        return "quit"
+            if isinstance(current_scene, GameScene) and current_scene.is_game_over():
+                self._clear_saved_game()
+                result = self._handle_game_over(current_scene)
+                if result:
+                    return "main_menu"
+                else:
+                    return "quit"
 
         return "quit"
 
@@ -275,7 +274,7 @@ class SceneDirector:
         final_score = game_scene.score
         kills = game_scene.get_kill_count()
         boss_kills = game_scene.get_boss_kill_count()
-        high_score = self._update_user_stats(final_score, kills)
+        self._update_user_stats(final_score, kills)
 
         death_scene = self._scene_manager.get_scene("death")
         if not death_scene:

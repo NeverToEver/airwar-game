@@ -42,7 +42,7 @@ class BuffStatsAggregator:
             'Armor': lambda rs, _: f"-{rs.armor_level * 15}%",
             'Evasion': lambda rs, _: f"+{rs.evasion_level * 20}%",
             'Barrier': lambda rs, _: "+50",
-            'Extra Life': lambda rs, _: f"+50 HP",
+            'Extra Life': lambda rs, _: "+50 HP",
             'Regeneration': lambda rs, _: "+2/s",
             'Lifesteal': lambda rs, _: "+10%",
             'Slow Field': lambda rs, _: f"{int((1 - rs.slow_factor) * 100)}%",
@@ -103,10 +103,7 @@ class BuffStatsAggregator:
         for buff_name in reward_system.unlocked_buffs:
             try:
                 formatter = self._stat_formatters.get(buff_name)
-                if formatter:
-                    value = formatter(reward_system, player)
-                else:
-                    value = "ON"
+                value = formatter(reward_system, player) if formatter else "ON"
 
                 entries.append(BuffStatEntry(
                     name=buff_name,

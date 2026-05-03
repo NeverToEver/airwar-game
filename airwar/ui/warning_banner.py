@@ -2,6 +2,7 @@
 import math
 import pygame
 from airwar.utils.fonts import get_cjk_font
+import contextlib
 
 
 class WarningBanner:
@@ -255,7 +256,5 @@ class WarningBanner:
                 (start_x + offset + stripe_w + h, 0),
                 (start_x + offset + h, 0),
             ]
-            try:
+            with contextlib.suppress(ValueError, pygame.error):
                 pygame.draw.polygon(surf, stripe_color, points)
-            except (ValueError, pygame.error):
-                pass

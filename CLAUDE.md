@@ -447,6 +447,46 @@ Notifications render above the reward selector so critical messages (boss escape
 
 ---
 
+## CI (GitHub Actions)
+
+**Workflow:** `.github/workflows/ci.yml` — triggers on `push` and `pull_request`, single job on `ubuntu-latest`.
+
+**Steps (in order):** checkout → setup Python 3.12 → setup Rust stable → cache Cargo → install `libsdl2-dev` → pip install `requirements-dev.txt` → `maturin build --release` + pip install wheel → `ruff check .` → `python -m compileall` → `bash -n` build scripts → `pytest`
+
+### CI Validation (run locally before pushing)
+
+```bash
+# Ruff lint (same as CI)
+python3 -m ruff check .
+
+# Bytecode compilation check (same as CI)
+python3 -m compileall -q airwar main.py
+
+# Build script syntax (same as CI)
+bash -n build_linux.sh && bash -n build_macos.sh
+
+# Run tests in CI-like headless mode
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy python3 -m pytest
+```
+
+### CI-Specific Gotchas
+
+- **`SDL_VIDEODRIVER` env var:** CI uses `SDL_VIDEODRIVER` (VIDEO + DRIVER, no underscore). This is the SDL2 standard name — if CI tests fail with "no video device", verify this var is set to `dummy`.
+- **Rust extension is mandatory in CI:** Unlike local dev (which gracefully falls back to pure Python), CI builds and installs `airwar_core` wheel before running tests. If Rust build fails, CI fails.
+- **`libsdl2-dev` required:** Pygame needs SDL2 system headers for the dummy video driver to work in headless CI.
+- **pip cache:** Not currently configured — dependencies re-downloaded every CI run.
+
+### CI Improvement Backlog
+
+See review notes for prioritized list. Quick wins pending:
+1. Add `timeout-minutes: 15` to prevent hung-job billing
+2. Add `concurrency` group with `cancel-in-progress: true` to avoid redundant runs
+3. Add pip caching via `actions/setup-python` cache option
+4. Expand Ruff `select` rules beyond `E9, F401, F821, F822, F823`
+5. Add `shellcheck` for build scripts (not just `bash -n`)
+
+---
+
 ## Language Preference
 
 - **All responses in English** -- code comments, documentation, review reports, and all human-facing text output should use English to avoid character encoding issues (garbled text / luan ma) across different OS locales and terminal configurations.

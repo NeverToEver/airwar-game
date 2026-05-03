@@ -247,12 +247,11 @@ class GameIntegrator:
                     hit = True
                     break
 
-            if not hit and boss and boss.active:
-                if bullet.rect.colliderect(boss.rect):
-                    boss.take_damage(bullet_damage)
-                    if not boss.active:
-                        self._on_mothership_kill_boss(boss)
-                    hit = True
+            if not hit and boss and boss.active and bullet.rect.colliderect(boss.rect):
+                boss.take_damage(bullet_damage)
+                if not boss.active:
+                    self._on_mothership_kill_boss(boss)
+                hit = True
 
             if hit:
                 bullet.active = False

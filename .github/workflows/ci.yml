@@ -4,9 +4,14 @@ on:
   push:
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Check out repository
@@ -16,6 +21,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
@@ -28,7 +34,7 @@ jobs:
       - name: Install system packages
         run: |
           sudo apt-get update
-          sudo apt-get install -y libsdl2-dev
+          sudo apt-get install -y libsdl2-dev shellcheck
 
       - name: Install Python dependencies
         run: |
@@ -46,10 +52,9 @@ jobs:
       - name: Check Python bytecode compilation
         run: python -m compileall -q airwar main.py
 
-      - name: Check build script syntax
+      - name: Check build scripts with shellcheck
         run: |
-          bash -n build_linux.sh
-          bash -n build_macos.sh
+          shellcheck build_linux.sh build_macos.sh
 
       - name: Run tests
         env:

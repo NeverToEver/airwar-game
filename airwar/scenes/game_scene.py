@@ -242,10 +242,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
                 self.game_renderer.integrated_hud.toggle()
         elif event.type == pygame.MOUSEMOTION:
             self.handle_mouse_motion(event.pos)
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 1:
-                if self.handle_mouse_click(event.pos):
-                    self._handle_button_click(self.get_hovered_button())
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.handle_mouse_click(event.pos):
+            self._handle_button_click(self.get_hovered_button())
 
     def _handle_button_click(self, button_name: str) -> None:
         """Handle mouse button click events.

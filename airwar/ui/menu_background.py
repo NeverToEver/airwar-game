@@ -221,7 +221,6 @@ class MenuBackground:
         self._ensure_cached_surfaces(width, height)
         for spot in self._light_spots:
             x = spot['x'] * width
-            y = spot['y'] * height
             spot_width = spot['width'] * width
 
             pulse = math.sin(self._animation_time * spot['pulse_speed'] + spot['pulse_offset'])
@@ -250,10 +249,6 @@ class MenuBackground:
         for p in self._particles:
             x = p['x'] * width
             y = p['y'] * height
-
-            # 闪烁效果
-            pulse = math.sin(self._animation_time * p['pulse_speed'] + p['pulse_offset'])
-            alpha = int(p['brightness'] * (0.4 + 0.6 * pulse))
 
             # 绘制微粒
             pygame.draw.circle(

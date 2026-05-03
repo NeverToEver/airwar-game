@@ -326,9 +326,8 @@ class CollisionController:
                         enemies_killed += 1
                         score_gained += enemy.data.score * score_multiplier
 
-                    if bullet.data.owner == "player":
-                        if piercing_level <= 0:
-                            bullet.active = False
+                    if bullet.data.owner == "player" and piercing_level <= 0:
+                        bullet.active = False
                     break
 
         return score_gained, enemies_killed
@@ -391,10 +390,9 @@ class CollisionController:
         on_player_hit_func: Callable
     ) -> bool:
         for enemy in enemies:
-            if enemy.active and player_hitbox.colliderect(enemy.get_rect()):
-                if not try_dodge_func():
-                    on_player_hit_func(GAME_CONSTANTS.DAMAGE.ENEMY_COLLISION_DAMAGE)
-                    return True
+            if enemy.active and player_hitbox.colliderect(enemy.get_rect()) and not try_dodge_func():
+                on_player_hit_func(GAME_CONSTANTS.DAMAGE.ENEMY_COLLISION_DAMAGE)
+                return True
 
         return False
 

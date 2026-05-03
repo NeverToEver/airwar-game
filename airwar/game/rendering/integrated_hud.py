@@ -461,7 +461,7 @@ class IntegratedHUD:
         should_scroll = len(buffs) > self._buff_visible_count and self._is_expanded
         visible_buffs = buffs[:self._buff_visible_count] if not should_scroll else self._get_visible_buffs(buffs)
 
-        for idx, buff in enumerate(visible_buffs):
+        for _idx, buff in enumerate(visible_buffs):
             buff_color = get_buff_color(buff)
 
             brightness = (buff_color[0] * 299 + buff_color[1] * 587 + buff_color[2] * 114) / 1000

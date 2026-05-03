@@ -433,7 +433,7 @@ class MotherShip:
         pygame.draw.line(surface, self._colors['panel_line'],
                          (cx + 24, cy + 40), (cx + 20, cy + 76), 1)
 
-        guide_pulse = 0.6 + 0.4 * self._engine_pulse
+        0.6 + 0.4 * self._engine_pulse
         for side in [-1, 1]:
             for gy in [cy + 44, cy + 56, cy + 68]:
                 gx = cx + side * 22

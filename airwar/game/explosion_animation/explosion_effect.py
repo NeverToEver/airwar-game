@@ -253,7 +253,7 @@ class ExplosionEffect:
             # Save original particles list to return dead ones to pool
             original_particles = self._particles
             self._particles = []
-            for i, ((x, y, vx, vy, life, size, is_alive), original_max_life) in enumerate(zip(results, max_lives)):
+            for i, ((x, y, vx, vy, life, size, is_alive), original_max_life) in enumerate(zip(results, max_lives, strict=False)):
                 if is_alive:
                     self._particles.append(self._acquire_particle(
                         x, y, vx, vy, life, original_max_life, size
@@ -356,7 +356,6 @@ class ExplosionEffect:
         if self._shockwave_radius <= 0:
             return
 
-        total_life = self.DEBRIS_LIFE_MAX
         progress = self._shockwave_radius / self._shockwave_max_radius
         if progress > 1.0:
             return
@@ -402,7 +401,7 @@ class ExplosionEffect:
 
         life_ratio = particle.life / particle.max_life
         gray = int(180 * life_ratio)
-        color = (gray + 50, gray + 30, gray)
+        (gray + 50, gray + 30, gray)
         size = max(1, int(particle.size * (alpha / 255)))
 
         # Trail dots — 3 faint circles behind the particle

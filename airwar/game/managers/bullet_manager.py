@@ -159,7 +159,7 @@ class BulletManager:
         bullet_map = self._batch_bullet_map
         bullet_data.clear()
         bullet_map.clear()
-        for i, bullet in enumerate(bullets):
+        for _i, bullet in enumerate(bullets):
             if not bullet.active:
                 continue
             bullet_id = id(bullet)

@@ -76,10 +76,7 @@ class Bullet(Entity):
 
         if (self.data.bullet_type == "laser" or self.data.is_laser) and self._trail:
             # Player laser: green, Enemy laser: red
-            if self.data.owner == "player":
-                trail_color = (30, 255, 100)
-            else:
-                trail_color = (255, 30, 30)
+            trail_color = (30, 255, 100) if self.data.owner == "player" else (255, 30, 30)
             trail_len = len(self._trail)
             for i, (tx, ty, tw, th) in enumerate(self._trail):
                 alpha = int(120 * (i / trail_len))
