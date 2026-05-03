@@ -151,20 +151,32 @@ def test_mothership_phantom_first_render_is_not_abrupt(monkeypatch):
     assert surface.get_bounding_rect().width == 0
 
 
-def test_mothership_gatling_sweep_angle_ping_pongs():
+def test_mothership_gatling_turrets_cover_120_degrees_with_overlap():
     integrator = _make_integrator()
-    period = integrator.MOTHERSHIP_GATLING_SWEEP_PERIOD
+    left, right = integrator.MOTHERSHIP_GATLING_TURRETS
+
+    assert left.angle_min == -60.0
+    assert right.angle_max == 60.0
+    assert left.angle_max - left.angle_min == integrator.MOTHERSHIP_GATLING_SWEEP_ARC_DEGREES
+    assert right.angle_max - right.angle_min == integrator.MOTHERSHIP_GATLING_SWEEP_ARC_DEGREES
+    assert left.angle_max > right.angle_min
+    assert right.angle_max - left.angle_min == integrator.MOTHERSHIP_GATLING_TOTAL_SWEEP_DEGREES
+    assert left.angle_max - right.angle_min == integrator.MOTHERSHIP_GATLING_OVERLAP_DEGREES
+
+
+def test_mothership_gatling_turrets_sweep_out_of_sync():
+    integrator = _make_integrator()
 
     integrator._mothership_gatling_sweep_frame = 0
-    left = integrator._current_gatling_sweep_angle()
-    integrator._mothership_gatling_sweep_frame = period // 2
-    right = integrator._current_gatling_sweep_angle()
-    integrator._mothership_gatling_sweep_frame = period - 1
-    returning = integrator._current_gatling_sweep_angle()
+    left_start = integrator._current_gatling_sweep_angle("left")
+    right_start = integrator._current_gatling_sweep_angle("right")
+    integrator._mothership_gatling_sweep_frame = integrator.MOTHERSHIP_GATLING_SWEEP_PERIOD // 2
+    left_mid = integrator._current_gatling_sweep_angle("left")
+    right_mid = integrator._current_gatling_sweep_angle("right")
 
-    assert left < 0
-    assert right > 0
-    assert returning < right
+    assert left_start != right_start
+    assert left_mid != right_mid
+    assert integrator.MOTHERSHIP_GATLING_TURRETS[0].period != integrator.MOTHERSHIP_GATLING_TURRETS[1].period
 
 
 def test_mothership_gatling_fires_high_frequency_sweep_bullets():
@@ -180,10 +192,12 @@ def test_mothership_gatling_fires_high_frequency_sweep_bullets():
     ]
     missiles = [bullet for bullet in integrator._mothership_bullets if bullet.data.is_explosive]
 
-    assert len(gatling) == len(integrator.MOTHERSHIP_GATLING_BARREL_X_OFFSETS)
+    assert len(gatling) == len(integrator.MOTHERSHIP_GATLING_TURRETS)
     assert missiles == []
     assert {bullet.data.damage for bullet in gatling} == {integrator.MOTHERSHIP_GATLING_DAMAGE}
     assert {bullet.data.is_explosive for bullet in gatling} == {False}
+    assert gatling[0].rect.x < gatling[1].rect.x
+    assert gatling[0].velocity.x != gatling[1].velocity.x
 
 
 def test_mothership_gatling_hit_does_not_trigger_missile_explosion():
