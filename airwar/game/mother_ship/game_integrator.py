@@ -46,6 +46,15 @@ class GameIntegrator:
     MOTHERSHIP_TARGET_COUNT = 5     # fire at up to 5 closest enemies per volley
     MOTHERSHIP_EXPLOSION_RADIUS = 80
     MOTHERSHIP_EXPLOSION_DAMAGE = 60
+    MOTHERSHIP_GATLING_DAMAGE = 24
+    MOTHERSHIP_GATLING_FIRE_RATE = 3
+    MOTHERSHIP_GATLING_BULLET_SPEED = 18
+    MOTHERSHIP_GATLING_SWEEP_ARC_DEGREES = 72
+    MOTHERSHIP_GATLING_SWEEP_PERIOD = 96
+    MOTHERSHIP_GATLING_BARREL_X_OFFSETS = (-42, 42)
+    MOTHERSHIP_GATLING_MUZZLE_Y_OFFSET = -64
+    MOTHERSHIP_GATLING_BULLET_TYPE = "mothership_gatling"
+    MOTHERSHIP_BULLET_DESPAWN_MARGIN = 80
     AMMO_CELL_COUNT = 10.0
 
     BAR_TYPE_HOLD = "hold"
@@ -98,6 +107,8 @@ class GameIntegrator:
 
         self._mothership_bullets: List['Bullet'] = []
         self._mothership_fire_timer = 0
+        self._mothership_gatling_timer = 0
+        self._mothership_gatling_sweep_frame = 0
         self._score_reduction_factor = 1.0 / 3.0
 
     def attach_game_scene(self, game_scene) -> None:
@@ -178,26 +189,22 @@ class GameIntegrator:
         if self._mothership_fire_timer >= self.MOTHERSHIP_FIRE_RATE:
             self._mothership_fire_timer = 0
             self._fire_at_enemies()
+        self._update_mothership_gatling()
 
     def _fire_at_enemies(self) -> None:
         if not self._game_scene:
             return
 
         mother_ship_pos = self._mother_ship.get_docking_position()
-
-        enemies = list(self._game_scene.get_enemies())
-        boss = self._game_scene.get_boss()
-        if boss:
-            enemies.append(boss)
-
-        if not enemies:
+        targets = self._get_mothership_targets()
+        if not targets:
             return
 
         # Sort by distance and target the N closest
         active_enemies = [(math.sqrt(
             (e.rect.centerx - mother_ship_pos[0]) ** 2 +
             (e.rect.centery - mother_ship_pos[1]) ** 2
-        ), e) for e in enemies if e.active]
+        ), e) for e in targets]
         active_enemies.sort(key=lambda x: x[0])
 
         for dist, target in active_enemies[:self.MOTHERSHIP_TARGET_COUNT]:
@@ -220,12 +227,65 @@ class GameIntegrator:
                 bullet.velocity.y = vy
                 self._mothership_bullets.append(bullet)
 
+    def _update_mothership_gatling(self) -> None:
+        self._mothership_gatling_sweep_frame = (
+            self._mothership_gatling_sweep_frame + 1
+        ) % self.MOTHERSHIP_GATLING_SWEEP_PERIOD
+        self._mothership_gatling_timer += 1
+        if self._mothership_gatling_timer >= self.MOTHERSHIP_GATLING_FIRE_RATE:
+            self._mothership_gatling_timer = 0
+            self._fire_gatling_sweep()
+
+    def _fire_gatling_sweep(self) -> None:
+        if not self._game_scene or not self._get_mothership_targets():
+            return
+
+        mother_ship_pos = self._mother_ship.get_docking_position()
+        angle_rad = math.radians(self._current_gatling_sweep_angle())
+        vx = math.sin(angle_rad) * self.MOTHERSHIP_GATLING_BULLET_SPEED
+        vy = -math.cos(angle_rad) * self.MOTHERSHIP_GATLING_BULLET_SPEED
+
+        for offset_x in self.MOTHERSHIP_GATLING_BARREL_X_OFFSETS:
+            bullet = Bullet(
+                mother_ship_pos[0] + offset_x,
+                mother_ship_pos[1] + self.MOTHERSHIP_GATLING_MUZZLE_Y_OFFSET,
+                BulletData(
+                    damage=self.MOTHERSHIP_GATLING_DAMAGE,
+                    speed=self.MOTHERSHIP_GATLING_BULLET_SPEED,
+                    owner="mothership",
+                    bullet_type=self.MOTHERSHIP_GATLING_BULLET_TYPE,
+                )
+            )
+            bullet.rect.width = 6
+            bullet.rect.height = 14
+            bullet.velocity.x = vx
+            bullet.velocity.y = vy
+            self._mothership_bullets.append(bullet)
+
+    def _current_gatling_sweep_angle(self) -> float:
+        period = max(2, self.MOTHERSHIP_GATLING_SWEEP_PERIOD)
+        phase = (self._mothership_gatling_sweep_frame % period) / period
+        sweep_t = phase * 2 if phase <= 0.5 else (1.0 - phase) * 2
+        arc = self.MOTHERSHIP_GATLING_SWEEP_ARC_DEGREES
+        return -arc / 2 + arc * sweep_t
+
+    def _get_mothership_targets(self) -> List:
+        if not self._game_scene:
+            return []
+
+        targets = list(self._game_scene.get_enemies())
+        boss = self._game_scene.get_boss()
+        if boss:
+            targets.append(boss)
+        return [target for target in targets if getattr(target, 'active', False)]
+
     def _update_mothership_bullets(self) -> None:
         if not self._game_scene:
             return
 
         enemies = self._game_scene.get_enemies()
         boss = self._game_scene.get_boss()
+        screen_width = get_screen_width()
         screen_height = get_screen_height()
 
         for bullet in self._mothership_bullets[:]:
@@ -241,14 +301,14 @@ class GameIntegrator:
             for enemy in enemies:
                 if not enemy.active:
                     continue
-                if bullet.rect.colliderect(enemy.rect):
+                if bullet.rect.colliderect(self._entity_collision_rect(enemy)):
                     enemy.take_damage(bullet_damage)
                     if not enemy.active:
                         self._on_mothership_kill_enemy(enemy)
                     hit = True
                     break
 
-            if not hit and boss and boss.active and bullet.rect.colliderect(boss.rect):
+            if not hit and boss and boss.active and bullet.rect.colliderect(self._entity_collision_rect(boss)):
                 boss.take_damage(bullet_damage)
                 if not boss.active:
                     self._on_mothership_kill_boss(boss)
@@ -256,15 +316,27 @@ class GameIntegrator:
 
             if hit:
                 bullet.active = False
-                # Trigger explosion at hit point
-                self._trigger_explosion(hit_x, hit_y)
-                # AoE damage to all nearby enemies
-                self._apply_missile_splash(hit_x, hit_y, enemies, boss)
+                if bullet.data.is_explosive:
+                    # Trigger explosion at hit point
+                    self._trigger_explosion(hit_x, hit_y)
+                    # AoE damage to all nearby enemies
+                    self._apply_missile_splash(hit_x, hit_y, enemies, boss)
 
-            if bullet.rect.y < -50 or bullet.rect.y > screen_height + 50:
+            margin = self.MOTHERSHIP_BULLET_DESPAWN_MARGIN
+            if (
+                bullet.rect.x < -margin
+                or bullet.rect.x > screen_width + margin
+                or bullet.rect.y < -margin
+                or bullet.rect.y > screen_height + margin
+            ):
                 bullet.active = False
 
         self._mothership_bullets = [b for b in self._mothership_bullets if b.active]
+
+    def _entity_collision_rect(self, entity):
+        if hasattr(entity, 'get_hitbox'):
+            return entity.get_hitbox()
+        return entity.rect
 
     def _trigger_explosion(self, x: float, y: float) -> None:
         """Trigger explosion visual effect at position."""
@@ -284,7 +356,7 @@ class GameIntegrator:
             if dx * dx + dy * dy <= radius_sq:
                 enemy.take_damage(explosion_damage)
                 if not enemy.active and self._game_scene:
-                    self._game_scene.add_score(getattr(enemy, 'score', 100) // 3)
+                    self._game_scene.add_score(self._get_entity_score(enemy, 100) // 3)
                     self._game_scene.add_kill()
 
         if boss and boss.active:
@@ -292,12 +364,15 @@ class GameIntegrator:
             dy = y - boss.rect.centery
             if dx * dx + dy * dy <= radius_sq:
                 boss.take_damage(explosion_damage)
+                if not boss.active:
+                    self._on_mothership_kill_boss(boss)
 
     def _on_mothership_kill_enemy(self, enemy) -> None:
         if not self._game_scene:
             return
 
         base_score = getattr(enemy, 'score', 100)
+        base_score = self._get_entity_score(enemy, base_score)
         reduced_score = int(base_score * self._score_reduction_factor)
 
         self._game_scene.add_score(reduced_score)
@@ -309,6 +384,7 @@ class GameIntegrator:
             return
 
         base_score = getattr(boss, 'score', 1000)
+        base_score = self._get_entity_score(boss, base_score)
         reduced_score = int(base_score * self._score_reduction_factor)
 
         self._game_scene.add_score(reduced_score)
@@ -591,6 +667,12 @@ class GameIntegrator:
     def _clear_mothership_bullets(self) -> None:
         self._mothership_bullets.clear()
         self._mothership_fire_timer = 0
+        self._mothership_gatling_timer = 0
+        self._mothership_gatling_sweep_frame = 0
+
+    def _get_entity_score(self, entity, fallback: int) -> int:
+        data = getattr(entity, 'data', None)
+        return getattr(data, 'score', getattr(entity, 'score', fallback))
 
     def _clear_ripple_effects(self) -> None:
         if not self._game_scene:
@@ -652,6 +734,9 @@ class GameIntegrator:
             'cooldown_progress': cd.cooldown_progress,
             'cooldown_remaining': cd.get_remaining_time(),
             'cooldown_duration': cd.cooldown_duration,
+            'cooldown_base_duration': cd.BASE_COOLDOWN,
+            'cooldown_multiplier': cd.cooldown_multiplier,
+            'cooldown_reduction': max(0.0, 1.0 - cd.cooldown_multiplier),
             'hold_progress': self._input_detector.get_progress().current_progress if state == MotherShipState.PRESSING else 0.0,
             'stay_progress': stay.stay_progress,
             'stay_remaining': max(0.0, stay.stay_duration - (pygame.time.get_ticks() / 1000.0 - stay.stay_start_time)) if stay.is_staying else 0.0,

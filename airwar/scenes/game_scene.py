@@ -457,8 +457,10 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
                 ammo_max=ms_data.get('ammo_max', 10.0),
                 is_cooldown=ms_data.get('is_in_cooldown', False),
                 is_docked=ms_data.get('is_docked', False),
-                is_warning=ms_data.get('ammo_count', 0.0) <= 3.0,
+                is_warning=ms_data.get('ammo_warning', False),
                 is_present=ms_data.get('is_present', False),
+                cooldown_remaining=ms_data.get('cooldown_remaining', 0.0),
+                cooldown_reduction=ms_data.get('cooldown_reduction', 0.0),
             )
 
         if self._mother_ship_integrator:
