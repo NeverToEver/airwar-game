@@ -110,6 +110,7 @@ credentials.*
 # Rust (airwar_core)
 # -----------------------------------------------------------------------------
 airwar_core/target/
+/target/
 Cargo.lock
 
 # PyInstaller build artifacts
