@@ -75,6 +75,8 @@ class BulletManager:
         self._player = player
         self._spawn_controller = spawn_controller
         self._use_rust = RUST_AVAILABLE and batch_update_bullets is not None
+        self._batch_bullet_data = []
+        self._batch_bullet_map = {}
 
     def update_all(self) -> None:
         """更新所有子弹 (玩家子弹 + 敌人子弹)
@@ -157,8 +159,10 @@ class BulletManager:
         # Build bullet data for Rust: (id, x, y, vx, vy, bullet_type, is_laser, screen_height)
         # Use object id as unique identifier
         # bullet_type: 0=normal, 1=single, 2=laser (not used in current Rust impl)
-        bullet_data = []
-        bullet_map = {}
+        bullet_data = self._batch_bullet_data
+        bullet_map = self._batch_bullet_map
+        bullet_data.clear()
+        bullet_map.clear()
         for i, bullet in enumerate(bullets):
             if not bullet.active:
                 continue

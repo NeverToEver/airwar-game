@@ -24,6 +24,16 @@ class IntegratedHUD:
         self._hint_cache = None
         self._battery_collapsed: DiscreteBatteryIndicator = None
         self._battery_expanded: DiscreteBatteryIndicator = None
+        self._text_cache: dict = {}
+
+    def _render_value(self, font, text, color, cache_key: str):
+        """Render text surface, reusing cached surface if text unchanged."""
+        entry = self._text_cache.get(cache_key)
+        if entry is not None and entry[0] == text:
+            return entry[1]
+        surf = font.render(text, True, color)
+        self._text_cache[cache_key] = (text, surf)
+        return surf
 
     def _setup_layout(self):
         colors = self._tokens.colors
@@ -79,6 +89,7 @@ class IntegratedHUD:
         else:
             self._current_width = int(self.panel_width * self._tokens.components.HUD_PANEL_COLLAPSED_RATIO)
         self._panel_bg_cache.clear()
+        self._text_cache.clear()
 
     def is_expanded(self) -> bool:
         return self._is_expanded
@@ -243,7 +254,7 @@ class IntegratedHUD:
         surface.blit(label, (content_x, y))
 
         value_font = self._get_font(self.value_font_size)
-        value = value_font.render(f"{score:,}", True, colors.TEXT_PRIMARY)
+        value = self._render_value(value_font, f"{score:,}", colors.TEXT_PRIMARY, "score")
         surface.blit(value, (content_x, y + 22))
 
         return y + self.module_height + self.gap
@@ -265,7 +276,7 @@ class IntegratedHUD:
 
         value_font = self._get_font(self.value_font_size)
         value_text = f"{current:.1f}"
-        value = value_font.render(value_text, True, coeff_color)
+        value = self._render_value(value_font, value_text, coeff_color, "coeff")
         surface.blit(value, (content_x, y + 22))
 
         bar_width = self.panel_width - self.padding * 2 - 20
@@ -307,7 +318,7 @@ class IntegratedHUD:
         diff_color = diff_colors.get(difficulty.lower(), colors.TEXT_PRIMARY)
 
         value_font = self._get_font(self.value_font_size)
-        value = value_font.render(difficulty.upper(), True, diff_color)
+        value = self._render_value(value_font, difficulty.upper(), diff_color, "difficulty")
         surface.blit(value, (content_x, y + 22))
 
         return y + self.module_height + self.gap
@@ -319,7 +330,7 @@ class IntegratedHUD:
         surface.blit(label, (content_x, y))
 
         value_font = self._get_font(self.value_font_size)
-        value = value_font.render(f"{progress}%", True, colors.PROGRESS_COLOR)
+        value = self._render_value(value_font, f"{progress}%", colors.PROGRESS_COLOR, "progress")
         surface.blit(value, (content_x, y + 22))
 
         bar_width = self.panel_width - self.padding * 2 - 20
@@ -355,7 +366,7 @@ class IntegratedHUD:
         health_color = colors.HEALTH_NORMAL if health_ratio > 0.3 else colors.HEALTH_DANGER
 
         value_font = self._get_font(self.value_font_size)
-        value = value_font.render(f"{health}/{max_health}", True, health_color)
+        value = self._render_value(value_font, f"{health}/{max_health}", health_color, "health")
         surface.blit(value, (content_x, y + 22))
 
         bar_width = self.panel_width - self.padding * 2 - 4
@@ -393,7 +404,7 @@ class IntegratedHUD:
         surface.blit(label, (content_x, y))
 
         value_font = self._get_font(self.value_font_size)
-        value = value_font.render(f"{kills}", True, colors.TEXT_PRIMARY)
+        value = self._render_value(value_font, f"{kills}", colors.TEXT_PRIMARY, "kills")
         surface.blit(value, (content_x, y + 22))
 
         return y + self.module_height + self.gap
@@ -405,7 +416,7 @@ class IntegratedHUD:
         surface.blit(label, (content_x, y))
 
         value_font = self._get_font(self.value_font_size)
-        value = value_font.render(f"{boss_kills}", True, colors.WARNING)
+        value = self._render_value(value_font, f"{boss_kills}", colors.WARNING, "boss_kills")
         surface.blit(value, (content_x, y + 22))
 
         return y + self.module_height + self.gap

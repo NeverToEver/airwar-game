@@ -167,10 +167,6 @@ class GameLoopManager:
         if self._spawn_controller.boss:
             self._boss_manager.update(player)
 
-        self._spawn_controller.cleanup()
-        self._bullet_manager.cleanup()
-        player.cleanup_inactive_bullets()
-
         if not player.active:
             self._game_controller.state.running = False
 
@@ -202,7 +198,7 @@ class GameLoopManager:
             extra_list = []
             batch_indices = []
             for i, enemy in enumerate(enemies):
-                if enemy.active and getattr(enemy, '_state', None) == 'active':
+                if enemy.active and enemy._state == 'active':
                     try:
                         base, extra = enemy.get_rust_batch_params()
                     except (ValueError, TypeError):
