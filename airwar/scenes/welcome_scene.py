@@ -37,6 +37,14 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
     INPUT_H = 54
     BTN_W = 180
     BTN_H = 48
+    LOGIN_PAD_X = 36
+    LOGIN_LABEL_W = 104
+    LOGIN_LABEL_GAP = 16
+    LOGIN_ROW_GAP = 24
+    LOGIN_PRIMARY_GAP = 16
+    LOGIN_PRIMARY_W = 172
+    LOGIN_SECONDARY_W = 172
+    LOGIN_SECONDARY_H = 42
     DIFF_OPTION_H = 48
     DIFF_GAP = 8
     PANEL_GAP = 30
@@ -405,7 +413,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
     def _render_left_panel(self, surface, px, py):
         SC = SceneColors
-        ResponsiveHelper.get_scale_factor(surface.get_width(), surface.get_height())
+        layout = self._get_login_layout(px, py)
 
         # Panel background
         draw_chamfered_panel(surface, px, py, self.PANEL_W, self.PANEL_H,
@@ -413,62 +421,40 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
         # Section title
         title = self.section_font.render("飞行员登录", True, SC.GOLD_PRIMARY)
-        surface.blit(title, title.get_rect(center=(px + self.PANEL_W // 2, py + 32)))
+        surface.blit(title, title.get_rect(center=layout["title_center"]))
 
         # Decorative separator
-        sep_y = py + 58
+        sep_y = py + 72
         pygame.draw.line(surface, SC.BORDER_DIM,
                          (px + 30, sep_y), (px + self.PANEL_W - 30, sep_y), 1)
 
-        # Username field
-        input_x = px + (self.PANEL_W - self.INPUT_W) // 2
-        uname_y = py + 105
-        uname_rect = pygame.Rect(input_x, uname_y, self.INPUT_W, self.INPUT_H)
-        self.register_button('username_field', uname_rect)
-        self._draw_input(surface, uname_rect, "用户名", self.username,
-                         self.focus == 'username')
-
-        # Password field
-        pass_y = uname_y + self.INPUT_H + 30
-        pass_rect = pygame.Rect(input_x, pass_y, self.INPUT_W, self.INPUT_H)
-        self.register_button('password_field', pass_rect)
-        self._draw_input(surface, pass_rect, "密码", self.password,
-                         self.focus == 'password', is_password=True)
-
-        # Buttons
-        btn_y = pass_y + self.INPUT_H + 35
-        login_text = "登录"
-        register_text = "注册"
-        btn_w = max(
-            self.BTN_W,
-            self.button_font.size(login_text)[0] + 72,
-            self.button_font.size(register_text)[0] + 72,
+        self._draw_input_row(
+            surface,
+            layout["username_label"],
+            layout["username_field"],
+            "用户名",
+            self.username,
+            self.focus == 'username',
+            'username_field',
         )
-        login_rect = pygame.Rect(px + self.PANEL_W // 2 - btn_w - 14, btn_y,
-                                 btn_w, self.BTN_H)
-        register_rect = pygame.Rect(px + self.PANEL_W // 2 + 14, btn_y,
-                                    btn_w, self.BTN_H)
-        self._draw_button(surface, login_rect, "登录", 'login',
+        self._draw_input_row(
+            surface,
+            layout["password_label"],
+            layout["password_field"],
+            "密码",
+            self.password,
+            self.focus == 'password',
+            'password_field',
+            is_password=True,
+        )
+
+        self._draw_button(surface, layout["login"], "登录", 'login',
                          SceneColors.FOREST_GREEN, is_primary=True)
-        self._draw_button(surface, register_rect, "注册", 'register',
+        self._draw_button(surface, layout["register"], "注册", 'register',
                          SceneColors.GOLD_DIM)
 
-        # Guest mode button (ghost style — subtle border, fills on hover)
-        ghost_font = get_cjk_font(self._tokens.typography.SMALL_SIZE)
-        guest_btn_w = max(self.BTN_W, ghost_font.size("游客模式")[0] + 72)
-        guest_btn_h = 40
-        guest_y = btn_y + self.BTN_H + 18
-        guest_rect = pygame.Rect(px + self.PANEL_W // 2 - guest_btn_w // 2,
-                                 guest_y, guest_btn_w, guest_btn_h)
-        self._draw_ghost_button(surface, guest_rect, "游客模式", 'skip_login')
-
-        # Delete user button (ghost style — red accent)
-        SC = SceneColors
-        delete_btn_w = max(140, ghost_font.size("删除用户")[0] + 44)
-        delete_btn_h = 34
-        delete_y = guest_y + guest_btn_h + 12
-        delete_rect = pygame.Rect(px + self.PANEL_W // 2 - delete_btn_w // 2,
-                                  delete_y, delete_btn_w, delete_btn_h)
+        self._draw_ghost_button(surface, layout["guest"], "游客模式", 'skip_login')
+        delete_rect = layout["delete"]
         self.register_button('delete_user', delete_rect)
         delete_hover = self.is_button_hovered('delete_user')
         delete_fill = (80, 20, 20) if delete_hover else SC.BG_PANEL_LIGHT
@@ -480,6 +466,53 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         delete_font = get_cjk_font(self._tokens.typography.SMALL_SIZE)
         delete_text = delete_font.render("删除用户", True, delete_color)
         surface.blit(delete_text, delete_text.get_rect(center=delete_rect.center))
+
+    def _get_login_layout(self, px: int, py: int) -> dict:
+        content_x = px + self.LOGIN_PAD_X
+        content_w = self.PANEL_W - self.LOGIN_PAD_X * 2
+        field_x = content_x + self.LOGIN_LABEL_W + self.LOGIN_LABEL_GAP
+        field_w = content_w - self.LOGIN_LABEL_W - self.LOGIN_LABEL_GAP
+
+        user_y = py + 106
+        pass_y = user_y + self.INPUT_H + self.LOGIN_ROW_GAP
+        primary_y = pass_y + self.INPUT_H + 38
+        secondary_y = primary_y + self.BTN_H + 20
+
+        primary_total_w = self.LOGIN_PRIMARY_W * 2 + self.LOGIN_PRIMARY_GAP
+        primary_x = px + (self.PANEL_W - primary_total_w) // 2
+        secondary_total_w = self.LOGIN_SECONDARY_W * 2 + self.LOGIN_PRIMARY_GAP
+        secondary_x = px + (self.PANEL_W - secondary_total_w) // 2
+
+        return {
+            "title_center": (px + self.PANEL_W // 2, py + 38),
+            "username_label": pygame.Rect(content_x, user_y, self.LOGIN_LABEL_W, self.INPUT_H),
+            "username_field": pygame.Rect(field_x, user_y, field_w, self.INPUT_H),
+            "password_label": pygame.Rect(content_x, pass_y, self.LOGIN_LABEL_W, self.INPUT_H),
+            "password_field": pygame.Rect(field_x, pass_y, field_w, self.INPUT_H),
+            "login": pygame.Rect(primary_x, primary_y, self.LOGIN_PRIMARY_W, self.BTN_H),
+            "register": pygame.Rect(
+                primary_x + self.LOGIN_PRIMARY_W + self.LOGIN_PRIMARY_GAP,
+                primary_y,
+                self.LOGIN_PRIMARY_W,
+                self.BTN_H,
+            ),
+            "guest": pygame.Rect(secondary_x, secondary_y, self.LOGIN_SECONDARY_W, self.LOGIN_SECONDARY_H),
+            "delete": pygame.Rect(
+                secondary_x + self.LOGIN_SECONDARY_W + self.LOGIN_PRIMARY_GAP,
+                secondary_y,
+                self.LOGIN_SECONDARY_W,
+                self.LOGIN_SECONDARY_H,
+            ),
+        }
+
+    def _draw_input_row(self, surface, label_rect, input_rect, label, text, is_active, button_name, is_password=False):
+        SC = SceneColors
+        label_color = SC.GOLD_PRIMARY if is_active else SC.TEXT_DIM
+        label_surf = fit_text_to_width(self.hint_font, label, label_color, label_rect.width)
+        surface.blit(label_surf, label_surf.get_rect(midleft=(label_rect.x, label_rect.centery)))
+
+        self.register_button(button_name, input_rect)
+        self._draw_input(surface, input_rect, text, is_active, is_password=is_password)
 
     def _render_right_panel(self, surface, px, py):
         SC = SceneColors
@@ -555,7 +588,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         text = self.input_font.render(f"{prefix}{label}", True, color)
         surface.blit(text, text.get_rect(midleft=(x + 20, y + self.DIFF_OPTION_H // 2)))
 
-    def _draw_input(self, surface, rect, label, text, is_active, is_password=False):
+    def _draw_input(self, surface, rect, text, is_active, is_password=False):
         SC = SceneColors
         ResponsiveHelper.get_scale_factor(surface.get_width(), surface.get_height())
 
@@ -568,12 +601,6 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
                                  SC.BG_PANEL, SC.GOLD_GLOW, SC.GOLD_GLOW, 8)
         draw_chamfered_panel(surface, rect.x, rect.y, rect.width, rect.height,
                              bg_color, border_color, None, 6)
-
-        # Label above
-        label_color = SC.GOLD_PRIMARY if is_active else SC.TEXT_DIM
-        label_surf = self.hint_font.render(label, True, label_color)
-        label_y = rect.y - label_surf.get_height() - 6
-        surface.blit(label_surf, (rect.x + 8, label_y))
 
         # Text content
         display = text
