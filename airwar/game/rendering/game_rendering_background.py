@@ -138,8 +138,9 @@ class StarLayer:
         self._scroll_offset = 0.0
         self._stars: List[dict] = []
         self._glow_cache: dict = {}
-        self._sin_table = [math.sin(2 * math.pi * i / 1024) for i in range(1024)]
-        self._sin_table_mask = 1023
+        self._sin_table_size = 1024
+        self._sin_table = [math.sin(math.tau * i / self._sin_table_size) for i in range(self._sin_table_size)]
+        self._sin_table_mask = self._sin_table_size - 1
         self._init_stars(screen_width, screen_height, count)
 
     def _init_stars(self, screen_width: int, screen_height: int, count: int) -> None:
@@ -168,7 +169,7 @@ class StarLayer:
             x = int(star['x'] * self._screen_width)
             y_pos = int(y * self._screen_height)
 
-            idx = int((time * star['twinkle_speed'] + star['twinkle_offset']) * 162.974) & self._sin_table_mask
+            idx = int((time * star['twinkle_speed'] + star['twinkle_offset']) * (self._sin_table_size / math.tau)) & self._sin_table_mask
             twinkle = self._sin_table[idx]
             brightness = int(star['brightness'] * (0.5 + 0.5 * twinkle) * 255)
 
