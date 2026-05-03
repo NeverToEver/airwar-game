@@ -153,7 +153,7 @@ class CollisionController:
         explosive_level: int = 0,
         piercing_level: int = 0,
         player_invincible: bool = False,
-        score_multiplier: int = 1,
+        score_multiplier: float = 1.0,
         on_enemy_killed: Callable[[int], None] = None,
         on_boss_killed: Callable[[int], None] = None,
         on_boss_hit: Callable[[int], None] = None,
@@ -231,7 +231,7 @@ class CollisionController:
         self,
         player_bullets: List['Bullet'],
         enemies: List['Enemy'],
-        score_multiplier: int,
+        score_multiplier: float,
         explosive_level: int,
         piercing_level: int = 0,
     ) -> Tuple[int, int]:

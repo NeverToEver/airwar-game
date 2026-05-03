@@ -684,7 +684,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
         self.game_controller.state.difficulty = save_data.difficulty
         self.game_controller.state.username = save_data.username
-        self.game_controller.state.score_multiplier = {'easy': 1, 'medium': 2, 'hard': 3}.get(save_data.difficulty, 1)
+        self.game_controller.state.score_multiplier = GAME_CONSTANTS.get_difficulty_multiplier(save_data.difficulty)
 
         if save_data.is_in_mothership:
             self._restore_to_mothership_state()

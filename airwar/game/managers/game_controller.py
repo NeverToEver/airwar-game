@@ -25,7 +25,7 @@ class GameState:
     difficulty: str = 'medium'
     username: str = 'Player'
     score: int = 0
-    score_multiplier: int = 1
+    score_multiplier: float = 1.0
     paused: bool = False
     running: bool = True
     player_invincible: bool = False
