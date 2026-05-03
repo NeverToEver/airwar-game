@@ -14,6 +14,40 @@ class SaveDataCorruptedError(Exception):
     pass
 
 
+def _coerce_int_field(data: Dict, key: str, minimum: int | None = None) -> None:
+    if key not in data:
+        return
+
+    value = data[key]
+    if isinstance(value, bool):
+        raise SaveDataCorruptedError(f"Field '{key}' has wrong type: expected int, got bool")
+    if isinstance(value, float):
+        if not value.is_integer():
+            raise SaveDataCorruptedError(
+                f"Field '{key}' must be an integer value, got {value}"
+            )
+        value = int(value)
+    elif not isinstance(value, int):
+        raise SaveDataCorruptedError(
+            f"Field '{key}' has wrong type: expected int, got {type(value).__name__}"
+        )
+
+    if minimum is not None and value < minimum:
+        raise SaveDataCorruptedError(f"{key} must be >= {minimum}, got {value}")
+
+    data[key] = value
+
+
+def normalize_save_data(data: Dict) -> Dict:
+    """Normalize JSON save values while rejecting genuinely invalid data."""
+    normalized = dict(data)
+    for key in ('version', 'score', 'cycle_count', 'kill_count', 'boss_kill_count'):
+        _coerce_int_field(normalized, key, minimum=0 if key != 'version' else 1)
+    for key in ('player_health', 'player_max_health'):
+        _coerce_int_field(normalized, key, minimum=1)
+    return normalized
+
+
 class MotherShipState(Enum):
     """Mothership state enum — docking lifecycle states."""
     IDLE = "idle"
@@ -130,7 +164,7 @@ class GameSaveData:
     username: str = ""
 
     def to_dict(self) -> Dict:
-        return {
+        return normalize_save_data({
             'version': self.version,
             'score': self.score,
             'cycle_count': self.cycle_count,
@@ -146,7 +180,7 @@ class GameSaveData:
             'player_y': self.player_y,
             'is_in_mothership': self.is_in_mothership,
             'username': self.username,
-        }
+        })
 
     @classmethod
     def from_dict(cls, data: Dict) -> 'GameSaveData':
@@ -166,6 +200,7 @@ class GameSaveData:
 
         data.setdefault('player_x', 0.0)
         data.setdefault('player_y', 0.0)
+        data = normalize_save_data(data)
 
         return cls(**{k: v for k, v in data.items()
                       if k in cls.__dataclass_fields__})

@@ -151,7 +151,7 @@ class TestCollision:
 class TestBuffs:
     def test_buff_creation(self):
         from airwar.game.buffs.buff_registry import create_buff
-        for name in ['Power Shot', 'Rapid Fire', 'Armor', 'Extra Life']:
+        for name in ['Power Shot', 'Rapid Fire', 'Armor', 'Extra Life', 'Phase Dash']:
             b = create_buff(name)
             assert b is not None
             assert b.get_notification(1) is not None

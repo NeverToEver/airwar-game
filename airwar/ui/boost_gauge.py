@@ -103,6 +103,8 @@ class BoostGauge:
         self._tick_dim = self.TICK_DIM_COLOR
         self._tick_lit = SystemColors.ACCENT_TEAL
         self._tick_major = self.TICK_MAJOR_COLOR
+        self._cooldown_color = SystemColors.DANGER_RED
+        self._cooldown_dim = SystemColors.DANGER_RED_DIM
         self._needle_color = c.TEXT_PRIMARY
         self._needle_active = c.WARNING
         self._text_color = c.TEXT_MUTED
@@ -131,14 +133,26 @@ class BoostGauge:
             self._fonts[size] = get_cjk_font(size)
         return self._fonts[size]
 
-    def render(self, surface: pygame.Surface, boost_current: float,
-               boost_max: float, boost_active: bool) -> None:
+    def render(
+        self,
+        surface: pygame.Surface,
+        boost_current: float,
+        boost_max: float,
+        boost_active: bool,
+        boost_status: dict | None = None,
+    ) -> None:
         screen_h = surface.get_height()
 
         cx = self.CENTER_X
         cy = screen_h - 98
         r = self.ARC_RADIUS
         ratio = boost_current / boost_max if boost_max > 0 else 0
+        dash_cooling = bool(
+            boost_status
+            and boost_status.get('dash_enabled')
+            and boost_status.get('dash_cooldown', 0) > 0
+        )
+        dash_active = bool(boost_status and boost_status.get('dash_active'))
 
         # Panel
         pw, ph = self.PANEL_W, self.PANEL_H
@@ -159,19 +173,30 @@ class BoostGauge:
 
         # Lit ticks — drawn on top each frame
         if ratio > 0:
-            self._draw_ticks_lit(surface, cx, cy, ratio)
+            self._draw_ticks_lit(surface, cx, cy, ratio, dash_cooling)
 
         # Needle
         angle_deg = self.ARC_START_DEG - ratio * (self.ARC_START_DEG - self.ARC_END_DEG)
-        self._draw_needle(surface, cx, cy, r, angle_deg, boost_active)
+        self._draw_needle(surface, cx, cy, r, angle_deg, boost_active, dash_cooling)
 
         # Center hub — metallic cap
         pygame.draw.circle(surface, (*self._bg_color, 255), (cx, cy), self.HUB_RADIUS)
         pygame.draw.circle(surface, (*self._arc_color, 140), (cx, cy), self.HUB_INNER_RADIUS, self.HUB_INNER_WIDTH)
-        pygame.draw.circle(surface, (*self._tick_lit, 80), (cx, cy), self.HUB_DOT_RADIUS)
+        hub_color = self._cooldown_color if dash_cooling else self._tick_lit
+        pygame.draw.circle(surface, (*hub_color, 80), (cx, cy), self.HUB_DOT_RADIUS)
 
         # Labels
-        self._draw_labels(surface, cx, cy, r, boost_current, boost_max, boost_active)
+        self._draw_labels(
+            surface,
+            cx,
+            cy,
+            r,
+            boost_current,
+            boost_max,
+            boost_active,
+            dash_cooling,
+            dash_active,
+        )
 
     # ------------------------------------------------------------------
 
@@ -221,12 +246,15 @@ class BoostGauge:
             w = self.DIM_TICK_MAJOR_WIDTH if is_major else self.DIM_TICK_MINOR_WIDTH
             pygame.draw.line(surface, (*color, alpha), (x1, y1), (x2, y2), w)
 
-    def _draw_ticks_lit(self, surface, cx, cy, ratio):
+    def _draw_ticks_lit(self, surface, cx, cy, ratio, cooldown=False):
         """Draw only lit ticks on top of cached dim layer."""
         for rad, inner, outer, is_major, t in self._ticks:
             if t > ratio:
                 continue
-            color = self._tick_major if is_major else self._tick_lit
+            if cooldown:
+                color = self._cooldown_color if is_major else self._cooldown_dim
+            else:
+                color = self._tick_major if is_major else self._tick_lit
             alpha = self.TICK_LIT_MAJOR_ALPHA if is_major else self.TICK_LIT_MINOR_ALPHA
             r2 = outer + (self.TICK_LIT_MAJOR_EXTRA if is_major else self.TICK_LIT_MINOR_EXTRA)
             x1 = cx + math.cos(rad) * inner
@@ -236,7 +264,7 @@ class BoostGauge:
             w = self.TICK_LIT_MAJOR_WIDTH if is_major else self.TICK_LIT_MINOR_WIDTH
             pygame.draw.line(surface, (*color, alpha), (x1, y1), (x2, y2), w)
 
-    def _draw_needle(self, surface, cx, cy, r, angle_deg, active):
+    def _draw_needle(self, surface, cx, cy, r, angle_deg, active, cooldown=False):
         """Pointer needle."""
         rad = math.radians(angle_deg)
         tip_r = r - self.NEEDLE_TIP_INSET
@@ -247,19 +275,20 @@ class BoostGauge:
         tail_x = cx + math.cos(back_rad) * self.NEEDLE_TAIL_LEN
         tail_y = cy - math.sin(back_rad) * self.NEEDLE_TAIL_LEN
 
-        color = self._needle_active if active else self._needle_color
+        color = self._cooldown_color if cooldown else self._needle_active if active else self._needle_color
         pygame.draw.line(surface, (*color, self.NEEDLE_ALPHA), (cx, cy), (tip_x, tip_y), self.NEEDLE_WIDTH)
         pygame.draw.line(surface, (*color, self.NEEDLE_TAIL_ALPHA), (cx, cy), (tail_x, tail_y), self.NEEDLE_TAIL_WIDTH)
         pygame.draw.circle(surface, (*color, self.NEEDLE_TIP_ALPHA), (int(tip_x), int(tip_y)), self.NEEDLE_TIP_RADIUS)
 
-    def _draw_labels(self, surface, cx, cy, r, current, max_val, active):
+    def _draw_labels(self, surface, cx, cy, r, current, max_val, active, cooldown=False, dash_active=False):
         """Title, value, min/max, and BOOSTING indicator."""
         title_font = self._get_font(self.LABEL_TITLE_FONT_SIZE)
-        title = title_font.render("加速燃料", True, self._text_color)
+        label_color = self._cooldown_color if cooldown else self._text_color
+        title = title_font.render("加速燃料", True, label_color)
         surface.blit(title, title.get_rect(center=(cx, cy + self.LABEL_TITLE_Y_OFFSET)))
 
         val_font = self._get_font(self.LABEL_VALUE_FONT_SIZE)
-        val_color = self._text_bright if active else self._text_color
+        val_color = self._cooldown_color if cooldown else self._text_bright if active else self._text_color
         val = val_font.render(str(int(current)), True, val_color)
         surface.blit(val, val.get_rect(center=(cx, cy + self.LABEL_VALUE_Y_OFFSET)))
 
@@ -276,7 +305,16 @@ class BoostGauge:
         rx, ry = cx + math.cos(rad_end) * lr, cy - math.sin(rad_end) * lr
         surface.blit(full, full.get_rect(center=(rx, ry)))
 
-        if active:
+        if cooldown or dash_active or active:
             af = self._get_font(self.LABEL_ACTIVE_FONT_SIZE)
-            at = af.render("加速中", True, (*self._needle_active, self.LABEL_ACTIVE_ALPHA))
+            if cooldown:
+                text = "突进冷却"
+                color = self._cooldown_color
+            elif dash_active:
+                text = "相位突进"
+                color = self._cooldown_color
+            else:
+                text = "加速中"
+                color = self._needle_active
+            at = af.render(text, True, (*color, self.LABEL_ACTIVE_ALPHA))
             surface.blit(at, at.get_rect(center=(cx, cy + self.LABEL_ACTIVE_Y_OFFSET)))

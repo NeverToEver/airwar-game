@@ -5,7 +5,7 @@ import logging
 import time
 from typing import Optional
 from .interfaces import IPersistenceManager
-from .mother_ship_state import GameSaveData, SaveDataCorruptedError
+from .mother_ship_state import GameSaveData, SaveDataCorruptedError, normalize_save_data
 
 
 logger = logging.getLogger(__name__)
@@ -44,6 +44,7 @@ class PersistenceManager(IPersistenceManager):
 
             save_dict = data.to_dict()
             save_dict['timestamp'] = time.time()
+            save_dict = normalize_save_data(save_dict)
 
             self._validate_save_dict(save_dict)
 
@@ -75,6 +76,7 @@ class PersistenceManager(IPersistenceManager):
             return False
 
     def _validate_save_dict(self, data: dict) -> None:
+        data = normalize_save_data(data)
         required_keys = {'version', 'score', 'username'}
         type_checks = {
             'version': int,

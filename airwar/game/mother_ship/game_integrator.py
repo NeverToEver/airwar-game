@@ -91,6 +91,7 @@ class GameIntegrator:
         self._undocking_phase = 1
         self._undocking_eject_duration = 30
         self._undocking_flyaway_duration = 90
+        self._undocking_cooldown_multiplier = 1.0
 
         self._game_scene = None
         self._player_control_disabled = False
@@ -322,6 +323,7 @@ class GameIntegrator:
         elif state == MotherShipState.IDLE:
             self._mother_ship.hide_phantom()
             self._mother_ship.hide()
+            self._clear_undocking_cooldown_modifier()
             self._clear_ripple_effects()
             self._clear_mothership_bullets()
         elif state == MotherShipState.ENTERING:
@@ -329,6 +331,7 @@ class GameIntegrator:
             self._clear_ripple_effects()
         elif state == MotherShipState.COOLDOWN:
             self._mother_ship.hide()
+            self._clear_undocking_cooldown_modifier()
             self._clear_ripple_effects()
             self._clear_mothership_bullets()
         elif state == MotherShipState.UNDOCKING:
@@ -375,7 +378,17 @@ class GameIntegrator:
         """Read player's Mothership Recall buff and apply to cooldown."""
         if self._game_scene and self._game_scene.player:
             mult = getattr(self._game_scene.player, 'mothership_cooldown_mult', 1.0)
-            self._state_machine.cooldown.cooldown_multiplier = mult
+            self._state_machine.cooldown.cooldown_multiplier = mult * self._undocking_cooldown_multiplier
+
+    def _clear_undocking_cooldown_modifier(self) -> None:
+        self._undocking_cooldown_multiplier = 1.0
+
+    def _calculate_undocking_cooldown_multiplier(self) -> float:
+        stay_progress = 1.0
+        if self._state_machine and self._state_machine.stay_progress:
+            stay_progress = self._state_machine.stay_progress.stay_progress
+        remaining_ratio = max(0.0, min(1.0, 1.0 - stay_progress))
+        return max(0.6, 1.0 - remaining_ratio * 0.4)
 
     def _on_save_game_request(self, **kwargs) -> None:
         if not self._game_scene:
@@ -459,6 +472,7 @@ class GameIntegrator:
         self._undocking_animation_active = True
         self._undocking_animation_frame = 0
         self._undocking_phase = 1
+        self._undocking_cooldown_multiplier = self._calculate_undocking_cooldown_multiplier()
 
         dock_pos = self._mother_ship.get_docking_position()
         # Convert docking position (center) to topleft for player rect
@@ -560,6 +574,7 @@ class GameIntegrator:
                 self._mother_ship.deactivate_flyaway()
                 self._apply_cooldown_multiplier_from_player()
                 self._event_bus.publish(EVENT_UNDOCKING_ANIMATION_COMPLETE)
+                self._clear_undocking_cooldown_modifier()
 
     def _ease_in_out_cubic(self, t: float) -> float:
         if t < 0.5:

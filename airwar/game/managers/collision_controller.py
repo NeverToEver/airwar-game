@@ -292,7 +292,7 @@ class CollisionController:
                         self._handle_explosive_damage(bullet, enemies, explosive_level)
                     if not enemy.active:
                         enemies_killed += 1
-                        score_gained += enemy.data.score * score_multiplier
+                        score_gained += self._scaled_score(enemy.data.score, score_multiplier)
                     if bullet.data.owner == "player" and piercing_level <= 0:
                         bullet.active = False
             return score_gained, enemies_killed
@@ -324,13 +324,17 @@ class CollisionController:
 
                     if not enemy.active:
                         enemies_killed += 1
-                        score_gained += enemy.data.score * score_multiplier
+                        score_gained += self._scaled_score(enemy.data.score, score_multiplier)
 
                     if bullet.data.owner == "player" and piercing_level <= 0:
                         bullet.active = False
                     break
 
         return score_gained, enemies_killed
+
+    @staticmethod
+    def _scaled_score(base_score: int, multiplier: float) -> int:
+        return int(round(base_score * multiplier))
 
     def _handle_explosive_damage(
         self,
@@ -372,7 +376,7 @@ class CollisionController:
         boss_killed = False
 
         for bullet in player_bullets:
-            if bullet.active and bullet.get_rect().colliderect(boss.get_rect()):
+            if bullet.active and bullet.get_rect().colliderect(boss.get_hitbox()):
                 score_reward = boss.take_damage(bullet.data.damage)
                 if score_reward > 0:
                     score_gained += score_reward
@@ -390,7 +394,7 @@ class CollisionController:
         on_player_hit_func: Callable
     ) -> bool:
         for enemy in enemies:
-            if enemy.active and player_hitbox.colliderect(enemy.get_rect()) and not try_dodge_func():
+            if enemy.active and player_hitbox.colliderect(enemy.get_hitbox()) and not try_dodge_func():
                 on_player_hit_func(GAME_CONSTANTS.DAMAGE.ENEMY_COLLISION_DAMAGE)
                 return True
 
@@ -422,7 +426,7 @@ class CollisionController:
     ) -> bool:
         if boss and boss.active and not boss.is_entering():
             player_hitbox = player.get_hitbox()
-            if boss.get_rect().colliderect(player_hitbox):
+            if boss.get_hitbox().colliderect(player_hitbox):
                 damage = calculate_damage_func(GAME_CONSTANTS.DAMAGE.BOSS_COLLISION_DAMAGE)
                 on_player_hit_func(damage, player)
                 return True

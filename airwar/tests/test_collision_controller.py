@@ -88,6 +88,24 @@ def test_piercing_bullet_stays_active_after_enemy_hit():
     assert bullet.active is True
 
 
+def test_player_collision_uses_enemy_hitbox_not_visual_rect():
+    controller = CollisionController()
+    player = FakePlayer(Rect(0, 0, 10, 10))
+    enemy = FakeEnemy(Rect(100, 100, 20, 20))
+    enemy._hitbox = Rect(0, 0, 20, 20)
+    hits = []
+
+    did_hit = controller.check_player_vs_enemies(
+        player.get_hitbox(),
+        [enemy],
+        lambda: False,
+        lambda damage: hits.append(damage),
+    )
+
+    assert did_hit is True
+    assert hits == [GAME_CONSTANTS.DAMAGE.ENEMY_COLLISION_DAMAGE]
+
+
 def test_enemy_bullet_hits_player_once():
     controller = CollisionController()
     player = FakePlayer(Rect(0, 0, 20, 20))
@@ -148,3 +166,27 @@ def test_boss_collision_applies_configured_damage_after_entering():
 
     assert did_hit is True
     assert player.health == 100 - GAME_CONSTANTS.DAMAGE.BOSS_COLLISION_DAMAGE
+
+
+def test_boss_collision_uses_boss_hitbox():
+    controller = CollisionController()
+    player = FakePlayer(Rect(0, 0, 10, 10))
+
+    class Boss(FakeEnemy):
+        def __init__(self):
+            super().__init__(Rect(100, 100, 20, 20))
+            self._hitbox = Rect(0, 0, 20, 20)
+
+        def is_entering(self):
+            return False
+
+    boss = Boss()
+
+    did_hit = controller.check_boss_vs_player(
+        boss,
+        player,
+        lambda damage: damage,
+        lambda damage, target: target.take_damage(damage),
+    )
+
+    assert did_hit is True
