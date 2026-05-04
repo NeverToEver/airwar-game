@@ -100,7 +100,7 @@ def test_boss_enrage_triggers_once_at_thirty_percent_and_pulls_player_to_center(
     assert boss.is_enraged() is True
 
 
-def test_boss_enrage_transition_delays_snapshot_attacks_and_eases_to_orbit():
+def test_boss_enrage_transition_delays_snapshot_attacks_and_eases_to_release_anchor():
     set_screen_size(1000, 800)
     boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
     boss.entering = False
@@ -167,7 +167,30 @@ def test_boss_enrage_reports_player_movement_lock_until_release():
     assert boss.should_lock_player_movement() is False
 
 
-def test_boss_enrage_finishes_behind_player():
+def test_boss_enrage_release_hold_does_not_recenter_unlocked_player():
+    set_screen_size(1000, 800)
+    boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
+    boss.entering = False
+    boss.set_bullet_spawner(BulletCollector())
+
+    class Player:
+        def __init__(self):
+            self.rect = type("Rect", (), {"width": 68, "height": 82, "x": 120, "y": 640})()
+
+    player = Player()
+    boss.take_damage(700)
+    for _ in range(boss.ENRAGE_DURATION + 1):
+        boss.update(player=player, player_pos=(player.rect.x + 34, player.rect.y + 41))
+
+    player.rect.x = 220
+    player.rect.y = 620
+    boss.update(player=player, player_pos=(254, 661))
+
+    assert boss.should_lock_player_movement() is False
+    assert (player.rect.x, player.rect.y) == (220, 620)
+
+
+def test_boss_enrage_finishes_at_players_six_oclock_release_anchor():
     set_screen_size(1000, 800)
     boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
     boss.entering = False
@@ -180,7 +203,7 @@ def test_boss_enrage_finishes_behind_player():
 
     assert boss.is_enrage_active() is False
     assert boss.rect.centerx == pytest.approx(player_center[0])
-    assert boss.rect.centery > player_center[1]
+    assert boss.rect.centery == pytest.approx(player_center[1] + boss._enrage_path_radius(player_center))
 
 
 def test_boss_enrage_holds_snapshot_attacks_until_flow_finishes():
@@ -253,7 +276,7 @@ def test_boss_enrage_releases_held_bullets_gradually_after_flow_finishes():
     assert all(not getattr(bullet, "held", False) for bullet in collector.bullets)
 
 
-def test_boss_enrage_orbit_keeps_a_larger_powerful_radius():
+def test_boss_enrage_path_completes_one_square_and_one_circle():
     set_screen_size(1200, 900)
     boss = Boss(500, 120, BossData(health=1000, width=170, height=140))
     boss.entering = False
@@ -261,13 +284,59 @@ def test_boss_enrage_orbit_keeps_a_larger_powerful_radius():
     boss.take_damage(700)
 
     player_center = (600, 450)
-    distances = []
-    for _ in range(180):
-        boss.update(player_pos=player_center)
-        distances.append(math.hypot(boss.rect.centerx - player_center[0], boss.rect.centery - player_center[1]))
+    radius = boss._enrage_path_radius(player_center)
+    square = boss.ENRAGE_SQUARE_PATH_RATIO
 
-    assert min(distances[30:]) >= max(boss.rect.width, boss.rect.height) * 1.6
-    assert max(distances) >= max(boss.rect.width, boss.rect.height) * 2.2
+    assert boss._enrage_path_center(player_center, 0.0) == pytest.approx((600, 450 + radius))
+    assert boss._enrage_path_center(player_center, square * 0.25) == pytest.approx((600 + radius, 450))
+    assert boss._enrage_path_center(player_center, square * 0.50) == pytest.approx((600, 450 - radius))
+    assert boss._enrage_path_center(player_center, square * 0.75) == pytest.approx((600 - radius, 450))
+    assert boss._enrage_path_center(player_center, square) == pytest.approx((600, 450 + radius))
+    assert boss._enrage_path_center(player_center, 1.0) == pytest.approx((600, 450 + radius))
+
+
+def test_boss_enrage_uses_slower_snapshot_cadence_for_fewer_bullets():
+    set_screen_size(1200, 900)
+    boss = Boss(500, 120, BossData(health=1000, width=170, height=140))
+    boss.entering = False
+    collector = BulletCollector()
+    boss.set_bullet_spawner(collector)
+    boss.take_damage(700)
+
+    player_center = (600, 450)
+    for _ in range(boss.ENRAGE_DURATION + 1):
+        boss.update(player_pos=player_center)
+
+    assert 0 < len(collector.bullets) <= 110
+    assert boss.ENRAGE_ATTACK_INTERVAL >= 56
+    assert boss.ENRAGE_SNAPSHOT_LASER_COUNT <= 4
+    assert boss.ENRAGE_SNAPSHOT_RING_COUNT <= 8
+
+
+def test_boss_enrage_faces_player_and_aims_muzzles_during_all_direction_movement():
+    set_screen_size(1200, 900)
+    boss = Boss(500, 120, BossData(health=1000, width=170, height=140))
+    boss.entering = False
+    boss.set_bullet_spawner(BulletCollector())
+    boss.take_damage(700)
+
+    player_center = (600, 450)
+    for _ in range(boss.ENRAGE_TRANSITION_DURATION + boss.ENRAGE_ATTACK_WINDUP + 1):
+        boss.update(player_pos=player_center)
+
+    forward = boss._facing_vector()
+    target_vector = Vector2(player_center[0] - boss.rect.centerx, player_center[1] - boss.rect.centery).normalize()
+    assert forward.x * target_vector.x + forward.y * target_vector.y > 0.999
+
+    muzzles = boss._boss_muzzle_positions()
+    average_muzzle = (
+        sum(muzzle[0] for muzzle in muzzles) / len(muzzles),
+        sum(muzzle[1] for muzzle in muzzles) / len(muzzles),
+    )
+    muzzle_vector = Vector2(average_muzzle[0] - boss.rect.centerx, average_muzzle[1] - boss.rect.centery).normalize()
+    assert muzzle_vector.x * target_vector.x + muzzle_vector.y * target_vector.y > 0.999
+    assert boss._muzzle_flash_timer > 0
+    assert boss._muzzle_flash_positions
 
 
 def test_boss_enrage_trail_is_longer_and_half_resolution_blurred():
