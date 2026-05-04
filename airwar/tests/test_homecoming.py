@@ -75,6 +75,35 @@ def test_homecoming_sequence_runs_to_complete_and_locks_final_state() -> None:
     assert player.rect.centery < 1080
 
 
+def test_homecoming_handoff_moves_player_into_base_entry() -> None:
+    player = _make_player()
+    sequence = HomecomingSequence()
+    sequence.start(player, 1920, 1080)
+
+    for _ in range(
+        HomecomingSequence.FTL_FRAMES
+        + HomecomingSequence.BLACKOUT_FRAMES
+        + HomecomingSequence.CARRIER_REVEAL_FRAMES
+        + HomecomingSequence.APPROACH_FRAMES
+        + HomecomingSequence.LANDING_FRAMES
+        + 1
+    ):
+        sequence.update(player)
+
+    assert sequence.phase == HomecomingPhase.HANDOFF
+    start_x, start_y = sequence.get_player_center()
+    entry_x, entry_y = sequence.get_base_entry_center()
+
+    for _ in range(HomecomingSequence.HANDOFF_FRAMES):
+        sequence.update(player)
+
+    final_x, final_y = sequence.get_player_center()
+    assert abs(final_x - entry_x) < abs(start_x - entry_x)
+    assert abs(final_y - entry_y) < abs(start_y - entry_y)
+    assert abs(final_x - entry_x) < 1.0
+    assert abs(final_y - entry_y) < 1.0
+
+
 def test_game_scene_homecoming_request_sets_safe_interface_state() -> None:
     scene = GameScene()
     scene.player = _make_player()

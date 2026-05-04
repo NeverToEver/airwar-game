@@ -86,6 +86,8 @@ class HomecomingUI:
         self._render_space_carrier(surface, phase, progress)
 
         if phase in (HomecomingPhase.APPROACH, HomecomingPhase.LANDING, HomecomingPhase.HANDOFF):
+            if phase == HomecomingPhase.HANDOFF:
+                self._render_base_entry(surface, sequence, progress)
             self._render_landing_player(surface, sequence, player, progress)
 
         if phase == HomecomingPhase.HANDOFF:
@@ -203,11 +205,74 @@ class HomecomingUI:
         elif sequence.phase == HomecomingPhase.LANDING:
             scale = 0.96 - 0.12 * progress
         else:
-            scale = 0.84
+            scale = 0.84 * (1 - progress) + 0.16 * progress
+            entry_x, entry_y = sequence.get_base_entry_center()
+            trail_alpha = int(115 * (1 - progress))
+            if trail_alpha > 0:
+                pygame.draw.line(
+                    surface,
+                    (145, 238, 222, trail_alpha),
+                    (int(x), int(y)),
+                    (int(entry_x), int(entry_y)),
+                    max(2, int(8 * (1 - progress))),
+                )
+
+        if sequence.phase == HomecomingPhase.HANDOFF and progress >= 0.96:
+            return
 
         width = max(22, int(player.rect.width * scale))
         height = max(26, int(player.rect.height * scale))
         draw_player_ship(surface, x, y, width, height)
+
+    def _render_base_entry(
+        self,
+        surface: pygame.Surface,
+        sequence: HomecomingSequence,
+        progress: float,
+    ) -> None:
+        entry_x, entry_y = sequence.get_base_entry_center()
+        landing_x, landing_y = sequence.get_landing_center()
+        alpha = int(220 + 35 * math.sin(progress * math.pi * 5))
+
+        guide = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+        pygame.draw.line(
+            guide,
+            (72, 210, 190, 120),
+            (int(landing_x), int(landing_y)),
+            (int(entry_x), int(entry_y)),
+            3,
+        )
+        for i in range(6):
+            t = (i + 1) / 7
+            gx = int(landing_x + (entry_x - landing_x) * t)
+            gy = int(landing_y + (entry_y - landing_y) * t)
+            draw_glow_circle(guide, (gx, gy), 4, (90, 235, 210), 14)
+            pygame.draw.circle(guide, (190, 255, 245, 200), (gx, gy), 2)
+
+        bay_w = 190
+        bay_h = 88
+        bay_x = int(entry_x - bay_w / 2)
+        bay_y = int(entry_y - bay_h / 2)
+        outer = [
+            (bay_x - 34, bay_y + bay_h),
+            (bay_x + 18, bay_y - 22),
+            (bay_x + bay_w - 18, bay_y - 22),
+            (bay_x + bay_w + 34, bay_y + bay_h),
+        ]
+        pygame.draw.polygon(guide, (14, 22, 32, 235), outer)
+        pygame.draw.polygon(guide, (120, 156, 184, 210), outer, 3)
+
+        inner = pygame.Rect(bay_x + 24, bay_y + 8, bay_w - 48, bay_h - 18)
+        pygame.draw.rect(guide, (0, 4, 8, 245), inner, border_radius=5)
+        pygame.draw.rect(guide, (95, 236, 214, alpha), inner, 2, border_radius=5)
+
+        shutter_count = 6
+        for i in range(shutter_count):
+            sx = inner.x + int((i + 1) * inner.width / (shutter_count + 1))
+            pygame.draw.line(guide, (42, 72, 86, 150), (sx, inner.y + 6), (sx - 18, inner.bottom - 6), 2)
+
+        draw_glow_circle(guide, (int(entry_x), int(entry_y)), 20, (80, 230, 210), 54)
+        surface.blit(guide, (0, 0))
 
     def _render_handoff(self, surface: pygame.Surface, progress: float) -> None:
         sw, sh = surface.get_size()
@@ -220,7 +285,7 @@ class HomecomingUI:
         draw_chamfered_panel(panel, 0, 0, panel_w, panel_h, (12, 22, 34), (82, 210, 190), None, 7)
         panel.set_alpha(alpha)
         surface.blit(panel, (x, y))
-        text = self._font.render("基地交接中", True, (214, 242, 238))
+        text = self._font.render("基地接入中", True, (214, 242, 238))
         text.set_alpha(alpha)
         surface.blit(text, text.get_rect(center=(sw // 2, y + panel_h // 2)))
 

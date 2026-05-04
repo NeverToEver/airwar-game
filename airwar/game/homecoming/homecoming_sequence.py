@@ -35,6 +35,7 @@ class HomecomingSequence:
         self._start_center = (0.0, 0.0)
         self._current_center = (0.0, 0.0)
         self._landing_center = (0.0, 0.0)
+        self._base_entry_center = (0.0, 0.0)
         self._carrier_center = (0.0, 0.0)
         self._completed_callback_sent = False
 
@@ -57,6 +58,7 @@ class HomecomingSequence:
         self._current_center = self._start_center
         self._carrier_center = (screen_width / 2, screen_height * 0.42)
         self._landing_center = (screen_width / 2, screen_height * 0.67)
+        self._base_entry_center = (screen_width / 2 + screen_width * 0.18, screen_height * 0.41)
         self._completed_callback_sent = False
         self._set_phase(HomecomingPhase.FTL_ESCAPE)
         return True
@@ -77,10 +79,16 @@ class HomecomingSequence:
         elif self._phase == HomecomingPhase.LANDING:
             self._update_landing(player)
         elif self._phase == HomecomingPhase.HANDOFF:
-            self._update_handoff()
+            self._update_handoff(player)
 
     def get_player_center(self) -> tuple[float, float]:
         return self._current_center
+
+    def get_landing_center(self) -> tuple[float, float]:
+        return self._landing_center
+
+    def get_base_entry_center(self) -> tuple[float, float]:
+        return self._base_entry_center
 
     def get_phase_progress(self) -> float:
         duration = self._phase_duration()
@@ -136,7 +144,14 @@ class HomecomingSequence:
         if progress >= 1.0:
             self._set_phase(HomecomingPhase.HANDOFF)
 
-    def _update_handoff(self) -> None:
+    def _update_handoff(self, player) -> None:
+        progress = self.get_phase_progress()
+        eased = progress * progress * (3 - 2 * progress)
+        x = self._landing_center[0] + (self._base_entry_center[0] - self._landing_center[0]) * eased
+        y = self._landing_center[1] + (self._base_entry_center[1] - self._landing_center[1]) * eased
+        self._current_center = (x, y)
+        self._apply_player_position(player)
+
         if self.get_phase_progress() >= 1.0:
             self._set_phase(HomecomingPhase.COMPLETE)
             if self._on_complete_callback and not self._completed_callback_sent:
