@@ -9,6 +9,7 @@ from airwar.game.managers.game_controller import GameController
 from airwar.game.scene_director import SceneDirector
 from airwar.input.input_handler import MockInputHandler
 from airwar.scenes.game_scene import GameScene
+from airwar.ui.homecoming_ui import HomecomingUI
 
 
 class _PressedKeys:
@@ -102,6 +103,27 @@ def test_homecoming_handoff_moves_player_into_base_entry() -> None:
     assert abs(final_y - entry_y) < abs(start_y - entry_y)
     assert abs(final_x - entry_x) < 1.0
     assert abs(final_y - entry_y) < 1.0
+
+
+def test_homecoming_scene_renders_asteroid_belt_and_base_scale() -> None:
+    pygame.font.init()
+    surface = pygame.Surface((1920, 1080), pygame.SRCALPHA)
+    ui = HomecomingUI(1920, 1080)
+
+    ui._render_deep_space(surface, HomecomingPhase.APPROACH, 0.5)
+    background_pixel = surface.get_at((1540, 507))
+    empty_megastructure_pixel = surface.get_at((960, 281))
+    ui._render_asteroid_belt(surface, HomecomingPhase.APPROACH, 0.5)
+    asteroid_pixels = [
+        surface.get_at((x, y))
+        for x in range(1528, 1553, 4)
+        for y in range(495, 520, 4)
+    ]
+    ui._render_base_megastructure(surface, HomecomingPhase.APPROACH, 0.5)
+    megastructure_pixel = surface.get_at((960, 281))
+
+    assert any(pixel != background_pixel for pixel in asteroid_pixels)
+    assert megastructure_pixel != empty_megastructure_pixel
 
 
 def test_game_scene_homecoming_request_sets_safe_interface_state() -> None:

@@ -83,6 +83,8 @@ class HomecomingUI:
             return
 
         self._render_deep_space(surface, phase, progress)
+        self._render_asteroid_belt(surface, phase, progress)
+        self._render_base_megastructure(surface, phase, progress)
         self._render_space_carrier(surface, phase, progress)
 
         if phase in (HomecomingPhase.APPROACH, HomecomingPhase.LANDING, HomecomingPhase.HANDOFF):
@@ -133,6 +135,66 @@ class HomecomingUI:
             y = (index * 53 + int(progress * 26)) % sh
             alpha = int(35 + 105 * ((index % 7) / 6) * reveal)
             surface.set_at((x, y), (alpha, alpha, min(255, alpha + 35)))
+
+    def _render_asteroid_belt(self, surface: pygame.Surface, phase: HomecomingPhase, progress: float) -> None:
+        reveal = progress if phase == HomecomingPhase.CARRIER_REVEAL else 1.0
+        if phase == HomecomingPhase.BLACKOUT or reveal <= 0:
+            return
+
+        sw, sh = surface.get_size()
+        belt = pygame.Surface((sw, sh), pygame.SRCALPHA)
+        center_x = sw * 0.47
+        center_y = sh * 0.47
+        for index in range(34):
+            angle = math.radians(index * 17 + 12)
+            radius_x = sw * (0.34 + (index % 5) * 0.025)
+            radius_y = sh * (0.12 + (index % 7) * 0.012)
+            drift = progress * 16 if phase in (HomecomingPhase.APPROACH, HomecomingPhase.LANDING) else 0
+            x = int(center_x + math.cos(angle) * radius_x + drift)
+            y = int(center_y + math.sin(angle) * radius_y + (index % 4 - 1.5) * 18)
+            size = 5 + (index * 7) % 18
+            shade = 54 + (index * 13) % 58
+            alpha = int((70 + (index % 6) * 20) * reveal)
+            points = self._asteroid_points(x, y, size, index)
+            pygame.draw.polygon(belt, (shade, shade + 8, shade + 16, alpha), points)
+            pygame.draw.polygon(belt, (shade + 38, shade + 46, shade + 54, int(alpha * 0.7)), points, 1)
+
+        surface.blit(belt, (0, 0))
+
+    def _render_base_megastructure(self, surface: pygame.Surface, phase: HomecomingPhase, progress: float) -> None:
+        reveal = progress if phase == HomecomingPhase.CARRIER_REVEAL else 1.0
+        if phase == HomecomingPhase.BLACKOUT or reveal <= 0:
+            return
+
+        sw, sh = surface.get_size()
+        mega = pygame.Surface((sw, sh), pygame.SRCALPHA)
+        cx = sw // 2
+        cy = int(sh * 0.43)
+        alpha = int(180 * reveal)
+
+        ring_rect = pygame.Rect(0, 0, int(sw * 0.86), int(sh * 0.34))
+        ring_rect.center = (cx, cy + int(sh * 0.02))
+        pygame.draw.ellipse(mega, (52, 70, 88, int(alpha * 0.5)), ring_rect, 3)
+        inner = ring_rect.inflate(-int(sw * 0.12), -int(sh * 0.08))
+        pygame.draw.ellipse(mega, (74, 210, 196, int(alpha * 0.35)), inner, 2)
+
+        for offset in (-420, -270, -120, 120, 270, 420):
+            x = cx + int(offset * sw / 1920)
+            tower_top = cy - int(sh * (0.22 + abs(offset) / 4200))
+            tower_bottom = cy + int(sh * 0.12)
+            tower = [
+                (x - 22, tower_bottom),
+                (x + 22, tower_bottom),
+                (x + 12, tower_top),
+                (x - 12, tower_top),
+            ]
+            pygame.draw.polygon(mega, (28, 42, 58, int(alpha * 0.78)), tower)
+            pygame.draw.polygon(mega, (110, 134, 156, int(alpha * 0.66)), tower, 1)
+            draw_glow_circle(mega, (x, tower_top), 4, (96, 228, 210), 18)
+
+        beacon_y = cy - int(sh * 0.17)
+        pygame.draw.line(mega, (82, 230, 214, int(alpha * 0.45)), (cx - int(sw * 0.28), beacon_y), (cx + int(sw * 0.28), beacon_y), 2)
+        surface.blit(mega, (0, 0))
 
     def _render_space_carrier(self, surface: pygame.Surface, phase: HomecomingPhase, progress: float) -> None:
         sw, sh = surface.get_size()
@@ -188,6 +250,17 @@ class HomecomingUI:
 
         carrier.set_alpha(alpha)
         surface.blit(carrier, (0, 0))
+
+    def _asteroid_points(self, x: int, y: int, size: int, seed: int) -> list[tuple[int, int]]:
+        point_count = 7
+        points = []
+        for i in range(point_count):
+            angle = math.tau * i / point_count
+            wobble = 0.72 + ((seed * 19 + i * 11) % 40) / 100
+            px = int(x + math.cos(angle) * size * wobble)
+            py = int(y + math.sin(angle) * size * (0.7 + wobble * 0.25))
+            points.append((px, py))
+        return points
 
     def _render_landing_player(
         self,
