@@ -13,6 +13,7 @@ from airwar.game.mother_ship import (
     PersistenceManager,
     ProgressBarUI,
 )
+from airwar.game.mother_ship.event_bus import EVENT_START_UNDOCKING_ANIMATION
 
 
 class FakeTarget:
@@ -128,6 +129,25 @@ def test_mothership_cooldown_status_exposes_reduced_return_timer(monkeypatch):
     assert status["cooldown_reduction"] == 0.4
     assert status["cooldown_remaining"] == 30.0
     assert status["ammo_count"] == 6.0 / 36.0 * integrator.AMMO_CELL_COUNT
+
+
+def test_docked_mothership_requires_exit_hold_before_undocking():
+    event_bus = EventBus()
+    state_machine = MotherShipStateMachine(event_bus)
+    started = []
+    event_bus.subscribe(EVENT_START_UNDOCKING_ANIMATION, lambda **_: started.append(True))
+    state_machine.force_state(MotherShipState.DOCKED)
+
+    event_bus.publish("H_PRESSED")
+
+    assert state_machine.current_state == MotherShipState.DOCKED
+    assert state_machine.is_exit_in_progress() is True
+    assert started == []
+
+    event_bus.publish("EXIT_COMPLETE")
+
+    assert state_machine.current_state == MotherShipState.UNDOCKING
+    assert started == [True]
 
 
 def test_mothership_phantom_fades_in_instead_of_full_opacity_immediately():

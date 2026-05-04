@@ -3,6 +3,8 @@ import json
 import os
 import logging
 import time
+import re
+import hashlib
 from typing import Optional
 from .interfaces import IPersistenceManager
 from .mother_ship_state import GameSaveData, SaveDataCorruptedError, normalize_save_data
@@ -26,15 +28,25 @@ class PersistenceManager(IPersistenceManager):
     def __init__(
         self,
         save_dir: Optional[str] = None,
-        save_file: Optional[str] = None
+        save_file: Optional[str] = None,
+        username: Optional[str] = None,
     ):
         self.SAVE_DIRECTORY = save_dir or self.DEFAULT_SAVE_DIRECTORY
-        self.SAVE_FILE_NAME = save_file or self.DEFAULT_SAVE_FILE_NAME
+        self.SAVE_FILE_NAME = save_file or self._save_file_for_user(username)
         self._save_path = os.path.join(self.SAVE_DIRECTORY, self.SAVE_FILE_NAME)
 
     @property
     def save_path(self) -> str:
         return self._save_path
+
+    @classmethod
+    def _save_file_for_user(cls, username: Optional[str]) -> str:
+        if not username:
+            return cls.DEFAULT_SAVE_FILE_NAME
+        safe_username = re.sub(r"[^A-Za-z0-9_.-]+", "_", username.strip())
+        safe_username = safe_username.strip("._-") or "user"
+        digest = hashlib.sha256(username.encode("utf-8")).hexdigest()[:12]
+        return f"user_docking_save_{safe_username}_{digest}.json"
 
     def save_game(self, data: GameSaveData) -> bool:
         logger.info(f"Saving game for user: {data.username}")

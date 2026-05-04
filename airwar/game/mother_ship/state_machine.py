@@ -16,6 +16,8 @@ from .event_bus import (
     EVENT_UNDOCK_REQUESTED,
     EVENT_EXIT_COMPLETE,
     EVENT_EXIT_PROGRESS_UPDATE,
+    EVENT_EXIT_CANCELLED,
+    EVENT_EXIT_STARTED,
     EVENT_START_UNDOCKING_ANIMATION,
     EVENT_UNDOCK_CANCELLED,
     EVENT_START_ENTERING_ANIMATION,
@@ -64,6 +66,7 @@ class MotherShipStateMachine(IMotherShipStateMachine):
         self._event_bus.subscribe(EVENT_UNDOCK_REQUESTED, self._on_undock_requested)
         self._event_bus.subscribe(EVENT_EXIT_COMPLETE, self._on_exit_complete)
         self._event_bus.subscribe(EVENT_EXIT_PROGRESS_UPDATE, self._on_exit_progress_update)
+        self._event_bus.subscribe(EVENT_EXIT_CANCELLED, self._on_exit_cancelled)
 
     @property
     def current_state(self) -> MotherShipState:
@@ -79,11 +82,9 @@ class MotherShipStateMachine(IMotherShipStateMachine):
 
     def _on_h_pressed(self, **kwargs) -> None:
         if self._current_state == MotherShipState.DOCKED:
-            if self._can_transition_to(MotherShipState.UNDOCKING):
-                self._change_state(MotherShipState.UNDOCKING)
-                self._exit_in_progress = False
-                self._event_bus.publish(EVENT_STATE_CHANGED, state=self._current_state)
-                self._event_bus.publish(EVENT_START_UNDOCKING_ANIMATION)
+            if not self._exit_in_progress:
+                self._exit_in_progress = True
+                self._event_bus.publish(EVENT_EXIT_STARTED, timestamp=kwargs.get("timestamp"))
             return
 
         if self._current_state == MotherShipState.COOLDOWN:
@@ -158,6 +159,9 @@ class MotherShipStateMachine(IMotherShipStateMachine):
 
     def _on_exit_progress_update(self, **kwargs) -> None:
         pass
+
+    def _on_exit_cancelled(self, **kwargs) -> None:
+        self._exit_in_progress = False
 
     def _can_transition_to(self, target_state: MotherShipState) -> bool:
         return target_state in self.VALID_TRANSITIONS.get(self._current_state, [])

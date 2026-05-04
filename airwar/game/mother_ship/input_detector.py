@@ -5,10 +5,10 @@ from .mother_ship_state import DockingProgress
 from .event_bus import (
     EVENT_H_PRESSED,
     EVENT_H_RELEASED,
-    EVENT_H_RELEASED_EARLY,
     EVENT_PROGRESS_COMPLETE,
     EVENT_EXIT_PROGRESS_UPDATE,
     EVENT_EXIT_COMPLETE,
+    EVENT_EXIT_CANCELLED,
     EVENT_DOCKING_COMPLETE,
 )
 
@@ -47,6 +47,8 @@ class InputDetector(IInputDetector):
 
     def _on_h_pressed(self, current_time: float) -> None:
         self._event_bus.publish(EVENT_H_PRESSED, timestamp=current_time)
+        if self._is_exiting:
+            return
         self._progress.is_pressing = True
         self._progress.press_start_time = current_time
 
@@ -54,7 +56,7 @@ class InputDetector(IInputDetector):
         if self._is_exiting:
             self._is_exiting = False
             self._exit_progress = 0.0
-            self._event_bus.publish(EVENT_H_RELEASED_EARLY)
+            self._event_bus.publish(EVENT_EXIT_CANCELLED)
         else:
             was_complete = self._progress.current_progress >= 1.0
             self._progress.reset()
@@ -101,3 +103,9 @@ class InputDetector(IInputDetector):
 
     def is_exiting(self) -> bool:
         return self._is_exiting
+
+    def start_exit_hold(self, current_time: float | None = None) -> None:
+        self._progress.reset()
+        self._is_exiting = True
+        self._exit_progress = 0.0
+        self._exit_start_time = self._last_update_time if current_time is None else current_time

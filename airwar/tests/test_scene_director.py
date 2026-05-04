@@ -4,6 +4,8 @@ from unittest.mock import MagicMock
 import pygame
 
 from airwar.game.scene_director import SceneDirector
+from airwar.game.mother_ship.mother_ship_state import GameSaveData
+from airwar.game.mother_ship.persistence_manager import PersistenceManager
 from airwar.scenes.scene import PauseAction
 from airwar.utils.database import DatabaseError
 
@@ -61,3 +63,27 @@ def test_update_user_stats_handles_database_error_without_crashing():
     director._current_user = "pilot"
 
     assert director._update_user_stats(1200, 5) is None
+
+
+def test_saved_game_lookup_falls_back_to_legacy_global_save(tmp_path):
+    director = _director()
+    director._save_dir = str(tmp_path)
+    legacy = PersistenceManager(save_dir=str(tmp_path))
+    legacy.save_game(GameSaveData(username="pilot", score=3200))
+
+    save_data = director._check_and_get_saved_game("pilot")
+
+    assert save_data is not None
+    assert save_data.score == 3200
+
+
+def test_clear_saved_game_deletes_matching_legacy_global_save(tmp_path):
+    director = _director()
+    director._current_user = "pilot"
+    director._save_dir = str(tmp_path)
+    legacy = PersistenceManager(save_dir=str(tmp_path))
+    legacy.save_game(GameSaveData(username="pilot", score=3200))
+
+    director._clear_saved_game()
+
+    assert legacy.load_game() is None

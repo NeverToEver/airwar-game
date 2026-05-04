@@ -235,7 +235,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         event_bus = EventBus()
         input_detector = InputDetector(event_bus)
         state_machine = MotherShipStateMachine(event_bus)
-        persistence_manager = PersistenceManager()
+        persistence_manager = PersistenceManager(username=self.get_username())
         progress_bar_ui = ProgressBarUI(screen_width, screen_height)
         mother_ship = MotherShip(screen_width, screen_height)
 
@@ -407,7 +407,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         save_data = self._mother_ship_integrator.create_save_data()
         if save_data:
             save_data.is_in_mothership = False
-            PersistenceManager().save_game(save_data)
+            PersistenceManager(username=save_data.username).save_game(save_data)
 
     def _sync_player_phase_dash_invincibility(self) -> None:
         if not self.game_controller or not self.player:
