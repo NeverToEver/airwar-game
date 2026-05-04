@@ -124,14 +124,12 @@ class GameBalanceConstants:
     """Game balance-related constants.
 
     Attributes:
-        MAX_CYCLES: Maximum number of cycles.
         BASE_THRESHOLDS: Base milestone threshold list.
         CYCLE_MULTIPLIER: Cycle multiplier for scaling.
         DIFFICULTY_MULTIPLIERS: Difficulty multipliers tuple (easy, medium, hard).
         WAVE_SIZE: Number of enemies per wave.
         EXPLOSION_RADIUS: Explosion radius.
     """
-    MAX_CYCLES: int = 10
     BASE_THRESHOLDS: Tuple[int, ...] = (3000, 6000, 10000, 16000, 25000, 38000, 55000, 80000)
     CYCLE_MULTIPLIER: float = 1.35
     DIFFICULTY_MULTIPLIERS: Tuple[float, float, float] = (1.0, 2.0, 3.0)
@@ -252,7 +250,7 @@ class GameConstants:
             difficulty: Difficulty level ('easy', 'medium', 'hard').
 
         Returns:
-            Score multiplier (easy=1.0, medium=1.5, hard=2.0).
+            Score multiplier (easy=1.0, medium=2.0, hard=3.0).
         """
         multipliers = {
             'easy': self.BALANCE.DIFFICULTY_MULTIPLIERS[0],
@@ -271,12 +269,29 @@ class GameConstants:
         Returns:
             Next milestone score threshold.
         """
-        base_idx = milestone_index % len(self.BALANCE.BASE_THRESHOLDS)
-        cycle_bonus = milestone_index // len(self.BALANCE.BASE_THRESHOLDS)
-        base = self.BALANCE.BASE_THRESHOLDS[base_idx]
-        multiplier = self.BALANCE.CYCLE_MULTIPLIER ** cycle_bonus
+        base_thresholds = self.BALANCE.BASE_THRESHOLDS
+        milestone_index = max(0, int(milestone_index))
+        cycle_length = len(base_thresholds)
+        cycle_index = milestone_index // cycle_length
+        step_index = milestone_index % cycle_length
         difficulty_mult = self.get_difficulty_multiplier(difficulty)
-        return base * multiplier * difficulty_mult
+
+        threshold = 0.0
+        base_deltas = []
+        previous_base = 0
+        for base in base_thresholds:
+            base_deltas.append(base - previous_base)
+            previous_base = base
+
+        # BASE_THRESHOLDS describes the first cycle as absolute milestones.
+        # Later cycles scale the interval deltas so thresholds never reset.
+        for cycle in range(cycle_index + 1):
+            cycle_multiplier = self.BALANCE.CYCLE_MULTIPLIER ** cycle
+            last_step = step_index if cycle == cycle_index else cycle_length - 1
+            for delta in base_deltas[:last_step + 1]:
+                threshold += delta * cycle_multiplier
+
+        return threshold * difficulty_mult
 
 
 GAME_CONSTANTS = GameConstants()
