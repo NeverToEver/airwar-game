@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 from enum import Enum
 import logging
-from ...config import DIFFICULTY_SETTINGS, VALID_DIFFICULTIES, RIPPLE_FADE_SPEED
+from ...config import VALID_DIFFICULTIES, RIPPLE_FADE_SPEED
 from ..constants import GAME_CONSTANTS
 from ..death_animation import DeathAnimation
 from ..systems.health_system import HealthSystem
@@ -69,9 +69,6 @@ class GameController:
             difficulty_manager: DifficultyManager for progressive scaling.
             milestone_index: Current milestone level (0-based).
         """
-    INITIAL_DELTA = 2000
-    MAX_THRESHOLD = 100000
-
     # 1. Special methods
 
     def __init__(self, difficulty: str, username: str):
@@ -79,7 +76,6 @@ class GameController:
         if difficulty not in VALID_DIFFICULTIES:
             raise ValueError(f"Invalid difficulty: {difficulty}")
 
-        settings = DIFFICULTY_SETTINGS[difficulty]
         self.state = GameState()
         self.state.difficulty = difficulty
         self.state.username = username
@@ -92,11 +88,6 @@ class GameController:
 
         self.cycle_count = 0
         self.milestone_index = 0
-        self.max_cycles = GAME_CONSTANTS.BALANCE.MAX_CYCLES
-        self.initial_delta = self.INITIAL_DELTA
-        self.max_delta = settings['max_delta']
-        self.max_threshold = self.MAX_THRESHOLD
-        self.difficulty_multiplier = settings['difficulty_multiplier']
 
     # 3. Public lifecycle methods
 
@@ -271,13 +262,4 @@ class GameController:
     # 6. Private behavior methods
 
     def _get_threshold_for_index(self, index: int) -> float:
-        threshold = self._calculate_threshold(index)
-        return min(threshold, self.max_threshold * self.difficulty_multiplier)
-
-    def _calculate_threshold(self, milestone_index: int) -> float:
-        threshold = 0.0
-        for i in range(milestone_index + 1):
-            delta = min(self.initial_delta * (i + 1), self.max_delta)
-            threshold += delta
-        capped = threshold * self.difficulty_multiplier
-        return min(capped, self.max_threshold * self.difficulty_multiplier)
+        return GAME_CONSTANTS.get_next_threshold(index, self.state.difficulty)
