@@ -19,7 +19,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Default resolution: 1920x1080, FPS=60
 - Player speed: 7 (base), ~12 with boost
 - Player bullet speed: 14
-- Test suite: 53 tests, <2s runtime in the current checkout
+- Test suite: ~200 test cases across 25 files, <2s runtime
 
 ---
 
@@ -165,17 +165,19 @@ airwar-game/                  # Project root
 |??   |??   |-- controllers/     # Reserved for subsystem controllers (currently unused)
 |??   |??   |-- spawners/        # EnemyBulletSpawner
 |??   |??   |-- systems/         # HealthSystem, RewardSystem, NotificationManager, DifficultyManager,
-|??   |??   |??                    # MovementPatternGenerator
-|??   |??   |-- rendering/       # GameRenderer, HUDRenderer
-|??   |??   |-- buffs/           # 12 buff types (health, offense, defense, utility)
+|??   |??   |??                    # MovementPatternGenerator, TalentBalanceManager, DifficultyStrategies
+|??   |??   |-- rendering/       # GameRenderer, HUDRenderer, IntegratedHUD
+|??   |??   |-- buffs/           # 13 buff types (health, offense, defense, utility)
 |??   |??   |-- mother_ship/     # Dock/save: state machine, persistence (JSON), event bus, interfaces, GameIntegrator
 |??   |??   |-- give_up/         # Surrender system (hold-K detector)
+|??   |??   |-- homecoming/      # Return-to-base: detector, animated sequence (FTL->base->orbital strike)
 |??   |??   |-- explosion_animation/
 |??   |??   |-- death_animation/
 |??   |-- scenes/              # Scene base, 5 scenes: welcome, game, pause, death, exit_confirm
 |??   |-- ui/                  # GameHUD (integrated HUD), reward_selector, buff_stats, chamfered_panel,
 |??   |??                        # hex_icon, segmented_bar, game_over_screen, give_up_ui, effects, menu_background,
-|??   |??                        # discrete_battery, liquid_health_tank, ammo_magazine, warning_banner, boost_gauge
+|??   |??                        # discrete_battery, liquid_health_tank, ammo_magazine, warning_banner, boost_gauge,
+|??   |??                        # aim_crosshair, homecoming_ui, base_talent_console, difficulty_coefficient_panel
 |??   |-- input/               # PygameInputHandler
 |??   |-- utils/               # UserDB, mouse_interaction mixins, sprites, responsive
 |??   |-- window/              # Resizable window management
@@ -242,15 +244,26 @@ PLAYING -> DYING -> GAME_OVER
 
 Exact per-frame execution order in `GameScene.update()`:
 
-1. Mothership integrator update
-2. GiveUp detector update
-3. **GameLogic update** (`_update_core`): GameController -> death anim -> explosion -> player -> bullets -> enemy spawn -> entities -> boss -> **cleanup (enemies + boss + bullets)**
-4. Docking position lock (if docked)
-5. **Collision detection** (`check_collisions`): player bullets vs enemies/boss, enemy bullets vs player, boss vs player
-6. **Post-collision cleanup**: second cleanup after collision detection, ensuring entities killed during collision are removed before milestone check
-7. **Milestone check** (`check_and_trigger`): |??|??|??|??|??|?? -> |??|??|??|??|??|??|??|?? + |??|??
+1. Reward selector update, talent console update (if at base)
+2. Raw mouse position capture + aim assist + crosshair update
+3. **Homecoming system update** (detector + sequence)
+4. HUD scroll/health update
+5. **Early return if homecoming active** -- skips all gameplay logic
+6. Entrance animation (if playing) -- mothership update only
+7. Death animation (if dying) -- game loop update + mothership update only
+8. Warning banner scroll animation
+9. **Pause check** -- skip remaining if paused or reward selector visible
+10. Mothership integrator update + ammo warning
+11. GiveUp detector update
+12. **GameLogic update** (`_update_core`): GameController -> death anim -> explosion -> player (with boss-enrage control lock) -> bullets -> enemy spawn -> entities -> boss -> cleanup
+13. Docking position lock (if docked)
+14. Phase dash invincibility sync
+15. **Collision detection** (`check_collisions`): player bullets vs enemies/boss, enemy bullets vs player, boss vs player
+16. **Post-collision cleanup**: ensures entities killed during collision are removed before milestone check
+17. **Milestone check** (`check_and_trigger`)
+18. Auto-save (periodic, when not docked)
 
-**Key design:** The post-collision cleanup (step 6) prevents entities from persisting during pause -- if a boss is killed during collision and immediately triggers reward pause, the dead boss would linger until next frame's cleanup, causing it to "vanish" after unpausing.
+**Key design:** The post-collision cleanup (step 16) prevents entities from persisting during pause -- if a boss is killed during collision and immediately triggers reward pause, the dead boss would linger until next frame's cleanup, causing it to "vanish" after unpausing.
 
 ### Important Design Decisions
 
@@ -264,12 +277,14 @@ Exact per-frame execution order in `GameScene.update()`:
 
 | Key | Action |
 |-----|--------|
-| Arrow keys / WASD | Move ship (speed 7) |
-| Shift (hold) | Boost -- consumes energy, +70% speed, recovers after 1.5s delay with 2s ramp |
+| Arrow keys / WASD | Move ship (speed 7 base, ~12 with boost) |
+| Mouse | Aim control -- auto-aim assist snaps to nearest enemy; large mouse movements override |
+| Shift (hold) | Boost -- consumes energy, +70% speed; press-release activates Phase Dash (if unlocked) |
 | Auto-fire | Ship fires automatically (no manual fire key) |
 | ESC | Pause |
 | H (hold 3s) | Dock with mothership to save progress |
 | K (hold 3s) | Surrender (give up current run) |
+| B (hold 2.4s) | Homecoming -- FTL return to base for resupply and talent reconfiguration |
 | L | Toggle HUD expanded/collapsed |
 
 ### Coding Standards
@@ -332,6 +347,36 @@ The mothership docking/save system uses an interface-driven design with 6 ABCs i
 - `MotherShipStateMachine.force_state(state)` -- force-set state for save/restore (bypasses transition validation)
 - `InputDetector.reset_progress()` -- reset docking hold progress for save/restore
 
+### Homecoming System -- Return to Base
+
+**Location:** `game/homecoming/` (detector + sequence), `ui/homecoming_ui.py`, `ui/base_talent_console.py`.
+
+Hold B for 2.4s to trigger an animated FTL return to the home base. Only available when: playing, not paused, not docked, not in reward selection, not in entrance animation, and no active homecoming sequence.
+
+**Sequence phases** (`HomecomingSequence`):
+1. `FTL_ESCAPE` (54f) — player accelerates upward with particle trail
+2. `BLACKOUT` (34f) — screen fades to black
+3. `STATION_REVEAL` (70f) — base station fades in
+4. `APPROACH` (96f) — camera pans toward landing pad
+5. `LANDING` (72f) — player descends to landing position
+6. `HANDOFF` (64f) — transition to base interior
+7. **Base console** — `BaseTalentConsole` renders talent loadout, resupply button, and departure controls
+
+**Departure** (B key again or "Continue"):
+1. `BASE_LAUNCH` (76f) — player catapulted from base
+2. `RETURN_BLACKOUT` (34f) — screen fades
+3. `ORBITAL_STRIKE` (86f) — clears all enemies on screen (strike triggers at 56% progress)
+4. Player returns to battlefield at previous position
+
+**During homecoming:** Gameplay is locked — pause, reward selection, and all game logic are blocked. Player is invincible. All enemy bullets and player bullets are cleared. Auto-save triggers on base entry.
+
+**Base console actions:**
+- **Resupply** — restore health and boost to full, save loadout
+- **Talent route switching** — toggle between offense/support route options (see Talent/Loadout System)
+- **Continue** — depart base and return to combat
+
+`HomecomingDetector` mirrors the pattern of `InputDetector` (hold-H for mothership), using a 2.4s hold on B key.
+
 ### Health Indicator -- Discrete Battery
 
 **Location:** `ui/discrete_battery.py`, integrated via `IntegratedHUD` in `rendering/integrated_hud.py`.
@@ -360,6 +405,80 @@ Boost energy mechanic:
 **Boost Gauge UI:** 270 ? arc gauge (speedometer-style), 31 tick marks, pointer needle. Bottom-left position at `(108, screen_h - 98)`, radius 80px, panel 200x?180 (compact mini version). Military cockpit aesthetic: steel-blue arc, ACCENT_TEAL lit ticks, WARNING-red needle when active.
 
 **Boost Recovery Buff:** `BoostRecoveryBuff` in `game/buffs/buffs.py` -- multiplies `player.boost_recovery_rate` by 1.5. Registered in `buff_registry.py`, reward pool entry in `reward_system.py`.
+
+### Phase Dash
+
+**Location:** `entities/player.py` (state machine), unlocked via "Phase Dash" talent buff.
+
+Invincible dash triggered by pressing Shift (just-pressed, not hold):
+- **Cost:** 25% of max boost energy (`PHASE_DASH_COST_RATIO = 0.25`)
+- **Distance:** 250px in movement direction (minimum 120px), clamped to screen bounds
+- **Phases:** windup (5f) → active (14f) → recovery (8f)
+- **Cooldown:** 90 frames after activation
+- **Visual:** Alpha pulse between 75–165 during dash, color-cycled sprite
+- **Invincibility:** `is_phase_dash_invincible()` returns True during windup/active/recovery
+
+When phase dash is active, normal boost consumption is blocked for that frame. Phase dash uses `boost_current` for fuel. If Phase Dash talent is not unlocked (`player.phase_dash_enabled = False`), pressing Shift falls through to normal boost behavior.
+
+### Weapon Modes
+
+**Location:** `entities/player.py`.
+
+Two weapon modifiers that can be activated individually or combined:
+
+- **Spread Shot** (`_has_spread`): Fires 3 bullets in a fan pattern (-10?, 0?, +10?). Bullet type becomes `'spread'` (or `'spread_laser'` if combined with laser).
+- **Laser** (`_has_laser`): Upgrades bullet type to `'laser'` with higher damage (35 vs 10 base). When combined with spread, produces `'spread_laser'` bullets.
+
+Weapon modes are set via `player.set_weapon_modifiers(spread, laser, explosive)` and exposed via `player.get_weapon_status()`. Both modes are granted through the reward system as talent buffs and are subject to route exclusivity in the talent loadout system.
+
+### Talent / Loadout System
+
+**Location:** `game/systems/talent_balance_manager.py`, `ui/base_talent_console.py`.
+
+Two exclusive talent routes, each with two mutually-exclusive options:
+
+| Route | Options | Effect |
+|-------|---------|--------|
+| **Offense** (`weapon route`) | Spread Shot vs Laser | Bullet pattern vs damage upgrade |
+| **Support** (`mobility route`) | Phase Dash vs Mothership Recall | Invincible dash vs mothership cooldown -50% |
+
+**Mechanics:**
+- Player earns buff levels through the reward system (milestone pickups)
+- `TalentBalanceManager` calculates effective levels: total earned points in a route are assigned entirely to the selected option; the unselected option gets level 0 ("locked")
+- Route budget = sum of earned levels for both options in the route
+- If budget is 0 (neither option ever picked), the route is locked
+- Player switches selected option via the base talent console during homecoming
+- Loadout is persisted in save data via `reward_system.talent_loadout`
+
+**Mothership Recall** (`_apply_mothership_recall`): Sets `player.mothership_cooldown_mult = 0.5 ** level` — at level 1, cooldown is halved; at level 2, quartered.
+
+### Aim Assist & Crosshair
+
+**Location:** `entities/player.py` (aim logic), `ui/aim_crosshair.py` (visual).
+
+Mouse-driven aiming with two-layer target selection:
+1. **Auto-aim assist** — snaps aim toward the nearest enemy within range
+2. **Mouse override** — large mouse movements (>threshold) switch to the enemy nearest to cursor direction, giving manual control feel
+3. **Smoothing** — raw mouse input is delayed/smoothed to reduce jerkiness during assist transitions
+
+**Aim crosshair** (`AimCrosshair`): Renders a modern crosshair at the mouse position with:
+- Outer lines (14px) with center gap (8px), inner ring (radius 5px)
+- Pulsing glow ring via `sin` oscillation
+- Uses `ACCENT_BRIGHT` / `ACCENT_DIM` colors from design tokens
+
+### Difficulty Strategies
+
+**Location:** `game/systems/difficulty_strategies.py`.
+
+Strategy pattern for difficulty scaling — each difficulty level is a concrete strategy class:
+
+| Strategy | Growth Rate | Base Mult | Max Mult | Speed Bonus | Fire Rate Bonus |
+|----------|------------|-----------|----------|-------------|-----------------|
+| `EasyStrategy` | 0.5 | 0.8 | 3.0 | 0.1 | 0.15 |
+| `MediumStrategy` | 1.0 | 1.0 | 5.0 | 0.2 | 0.25 |
+| `HardStrategy` | 1.5 | 1.2 | 8.0 | 0.35 | 0.4 |
+
+These strategies control how enemy stats scale over time: `growth_rate` determines how fast stats increase, `base_multiplier` sets the starting scaling factor, and `max_multiplier` caps it. `speed_bonus` and `fire_rate_bonus` control enemy movement speed and firing frequency scaling respectively.
 
 ### Performance Optimizations
 
@@ -406,6 +525,12 @@ Boost energy mechanic:
 
 **Boss timer:** `_render_boss_timer()` in `hud_renderer.py` -- styled panel below health bar, 32px font, color transitions steel-blue->amber->red as time runs low, pulsing "ESCAPING!" warning when >70% elapsed.
 
+**Boss enrage:** When boss HP drops below 30%, enters enrage state:
+- Screen-distortion overlay (`_render_boss_enrage_overlay`) — horizontal scan-line bands with sine-wave displacement, intensity proportional to enrage progress
+- Player controls locked during enrage activation (`_should_lock_player_for_boss_enrage`)
+- Boss fires denser patterns with shorter intervals
+- Visual intensity computed via `boss.enrage_visual_intensity()`
+
 ### Hit Response
 
 **`_on_player_damaged()`** in `game_scene.py`:
@@ -429,9 +554,9 @@ Boost energy mechanic:
 ### Rendering Pipeline
 
 Pure pygame rendering (no GPU/ModernGL). The rendering pipeline draws in order:
-Parallax starfield background -> Entities -> Bullets -> HUD (with DiscreteBattery / LiquidHealthTank) -> Buff stats -> Pause button -> **BoostGauge (bottom-left)** -> **AmmoMagazine + WarningBanner (mothership)** -> MotherShip -> Explosions -> GiveUp UI -> **Reward Selector** -> **Notifications (topmost)**
+Parallax starfield background -> Entities -> Bullets -> HUD (DiscreteBattery / LiquidHealthTank) -> Buff stats -> Pause button -> **BoostGauge (bottom-left)** -> **AmmoMagazine + WarningBanner (mothership)** -> MotherShip -> **Boss enrage overlay** -> Explosions -> GiveUp UI -> **Homecoming progress** -> **Aim crosshair** -> **Homecoming sequence animation** -> **Base talent console** (if at base) -> **Reward Selector** -> **Notifications (topmost)**
 
-Notifications render above the reward selector so critical messages (boss escape, kill score) are never obscured.
+The aim crosshair renders above most elements for visibility. Notifications are topmost so critical messages (boss escape, kill score) are never obscured.
 
 ### Enemy Movement
 
@@ -451,7 +576,9 @@ Notifications render above the reward selector so critical messages (boss escape
 
 **Workflow:** `.github/workflows/ci.yml` — triggers on `push` and `pull_request`, single job on `ubuntu-latest`.
 
-**Steps (in order):** checkout → setup Python 3.12 → setup Rust stable → cache Cargo → install `libsdl2-dev` → pip install `requirements-dev.txt` → `maturin build --release` + pip install wheel → `ruff check .` → `python -m compileall` → `bash -n` build scripts → `pytest`
+**Steps (in order):** checkout → setup Python 3.12 (with pip cache) → setup Rust stable → cache Cargo → install `libsdl2-dev` + `shellcheck` → pip install `requirements-dev.txt` → `maturin build --release` + pip install wheel → `ruff check .` → `python -m compileall` → `shellcheck` build scripts → `pytest`
+
+**CI config:** `timeout-minutes: 15`, `concurrency` with `cancel-in-progress: true`.
 
 ### CI Validation (run locally before pushing)
 
@@ -474,16 +601,6 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy python3 -m pytest
 - **`SDL_VIDEODRIVER` env var:** CI uses `SDL_VIDEODRIVER` (VIDEO + DRIVER, no underscore). This is the SDL2 standard name — if CI tests fail with "no video device", verify this var is set to `dummy`.
 - **Rust extension is mandatory in CI:** Unlike local dev (which gracefully falls back to pure Python), CI builds and installs `airwar_core` wheel before running tests. If Rust build fails, CI fails.
 - **`libsdl2-dev` required:** Pygame needs SDL2 system headers for the dummy video driver to work in headless CI.
-- **pip cache:** Not currently configured — dependencies re-downloaded every CI run.
-
-### CI Improvement Backlog
-
-See review notes for prioritized list. Quick wins pending:
-1. Add `timeout-minutes: 15` to prevent hung-job billing
-2. Add `concurrency` group with `cancel-in-progress: true` to avoid redundant runs
-3. Add pip caching via `actions/setup-python` cache option
-4. Expand Ruff `select` rules beyond `E9, F401, F821, F822, F823`
-5. Add `shellcheck` for build scripts (not just `bash -n`)
 
 ---
 

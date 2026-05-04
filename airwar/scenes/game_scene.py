@@ -126,6 +126,13 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._phase_dash_previous_silent = False
         self._enrage_overlay_cache = None
         self._enrage_overlay_cache_key = None
+        self._enrage_distortion_buffer = None
+        self._enrage_ripple_surface = None
+        self._enrage_sin_a = None
+        self._enrage_cos_a = None
+        self._enrage_sin_b = None
+        self._enrage_cos_b = None
+        self._enrage_band_cache_key = None
 
     def enter(self, **kwargs) -> None:
         """Initialize the game scene.
@@ -796,48 +803,71 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if intensity <= 0:
             return
         sw, sh = surface.get_size()
-        ticks = pygame.time.get_ticks()
-        source = surface.copy()
-        band_height = max(7, min(18, sh // 48))
-        amplitude = max(1, int(4 * intensity))
-        phase = ticks * 0.0014
-        for y in range(0, sh, band_height):
-            band_rect = pygame.Rect(0, y, sw, min(band_height + 2, sh - y))
-            wave_a = math.sin(y * 0.023 + phase)
-            wave_b = math.sin(y * 0.061 - phase * 1.2)
-            offset = int((wave_a * 0.65 + wave_b * 0.35) * amplitude)
-            surface.blit(source, (offset, y), band_rect)
-            if offset > 0:
-                surface.blit(source, (offset - sw, y), band_rect)
-            elif offset < 0:
-                surface.blit(source, (offset + sw, y), band_rect)
 
-        ripple = pygame.Surface((sw, sh), pygame.SRCALPHA)
+        # Ensure persistent buffers are allocated (re-create on resize)
+        buf_key = (sw, sh)
+        if self._enrage_band_cache_key != buf_key:
+            self._enrage_distortion_buffer = pygame.Surface((sw, sh))
+            self._enrage_ripple_surface = pygame.Surface((sw, sh), pygame.SRCALPHA)
+            self._enrage_overlay_cache = pygame.Surface((sw, sh), pygame.SRCALPHA)
+            band_height = max(7, min(18, sh // 48))
+            band_count = (sh + band_height - 1) // band_height
+            self._enrage_sin_a = [math.sin(i * band_height * 0.023) for i in range(band_count)]
+            self._enrage_cos_a = [math.cos(i * band_height * 0.023) for i in range(band_count)]
+            self._enrage_sin_b = [math.sin(i * band_height * 0.061) for i in range(band_count)]
+            self._enrage_cos_b = [math.cos(i * band_height * 0.061) for i in range(band_count)]
+            self._enrage_band_cache_key = buf_key
+
+        ticks = pygame.time.get_ticks()
+        band_height = max(7, min(18, sh // 48))
+        phase = ticks * 0.0014
+        phase_sp = math.sin(phase)
+        phase_cp = math.cos(phase)
+        phase2 = -phase * 1.2
+        phase2_sp = math.sin(phase2)
+        phase2_cp = math.cos(phase2)
+
+        # Phase A: horizontal wave distortion using persistent buffer (avoids per-frame surface.copy())
+        self._enrage_distortion_buffer.blit(surface, (0, 0))
+        amplitude = max(1, int(4 * intensity))
+        for i, y in enumerate(range(0, sh, band_height)):
+            band_rect = pygame.Rect(0, y, sw, min(band_height + 2, sh - y))
+            wave_a = self._enrage_sin_a[i] * phase_cp + self._enrage_cos_a[i] * phase_sp
+            wave_b = self._enrage_sin_b[i] * phase2_cp + self._enrage_cos_b[i] * phase2_sp
+            offset = int((wave_a * 0.65 + wave_b * 0.35) * amplitude)
+            surface.blit(self._enrage_distortion_buffer, (offset, y), band_rect)
+            if offset > 0:
+                surface.blit(self._enrage_distortion_buffer, (offset - sw, y), band_rect)
+            elif offset < 0:
+                surface.blit(self._enrage_distortion_buffer, (offset + sw, y), band_rect)
+
+        # Phase B: ripple circles + scan lines on a pre-allocated surface
+        self._enrage_ripple_surface.fill((0, 0, 0, 0))
         center_x = getattr(boss.rect, "centerx", sw // 2)
         center_y = getattr(boss.rect, "centery", sh // 2)
         ring_phase = ticks * 0.0018
+        max_dim = max(sw, sh)
         for index in range(3):
-            radius = int((ring_phase * 76 + index * 116) % max(sw, sh))
+            radius = int((ring_phase * 76 + index * 116) % max_dim)
             if radius < 20:
                 continue
-            alpha = int(12 * intensity * (1.0 - radius / max(sw, sh)))
+            alpha = int(12 * intensity * (1.0 - radius / max_dim))
             if alpha <= 0:
                 continue
-            pygame.draw.circle(ripple, (160, 220, 255, alpha), (int(center_x), int(center_y)), radius, 2)
+            pygame.draw.circle(self._enrage_ripple_surface, (160, 220, 255, alpha),
+                               (int(center_x), int(center_y)), radius, 2)
+
         scan_gap = max(10, sh // 54)
         for y in range(0, sh, scan_gap):
             alpha = int(10 * intensity * (0.65 + 0.35 * math.sin(y * 0.05 + phase * 2.0)))
             if alpha > 0:
-                pygame.draw.line(ripple, (185, 232, 255, alpha), (0, y), (sw, y), 1)
-        surface.blit(ripple, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+                pygame.draw.line(self._enrage_ripple_surface, (185, 232, 255, alpha),
+                                 (0, y), (sw, y), 1)
+        surface.blit(self._enrage_ripple_surface, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
 
-        cache_key = (sw, sh)
-        if self._enrage_overlay_cache_key != cache_key:
-            self._enrage_overlay_cache = pygame.Surface((sw, sh), pygame.SRCALPHA)
-            self._enrage_overlay_cache_key = cache_key
-        overlay = self._enrage_overlay_cache
-        overlay.fill((34, 28, 42, int(12 * intensity)))
-        surface.blit(overlay, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+        # Phase C: dark vignette overlay (persistent cache, resize-aware)
+        self._enrage_overlay_cache.fill((34, 28, 42, int(12 * intensity)))
+        surface.blit(self._enrage_overlay_cache, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
 
     def _set_raw_aim_position(self, position: tuple[int, int]) -> None:
         x = max(0, min(float(position[0]), float(get_screen_width())))
