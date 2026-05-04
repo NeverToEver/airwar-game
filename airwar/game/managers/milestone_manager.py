@@ -82,6 +82,8 @@ class MilestoneManager:
         """
         if self._game_controller.state.gameplay_state != GameplayState.PLAYING:
             return False
+        if not self._game_controller.has_next_reward_milestone():
+            return False
 
         threshold = self._game_controller.get_next_threshold()
         if self._game_controller.state.score >= threshold:
