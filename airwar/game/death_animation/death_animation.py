@@ -220,9 +220,7 @@ class DeathAnimation:
 
     def _should_show_flicker(self) -> bool:
         """检查当前帧是否应该显示闪烁效果"""
-        if self._timer < self.FLICKER_START_FRAME or self._timer >= self.FLICKER_END_FRAME:
-            return False
-        return True
+        return self.FLICKER_START_FRAME <= self._timer < self.FLICKER_END_FRAME
 
     def _should_show_glow(self) -> bool:
         """检查当前帧是否应该显示光晕效果"""
