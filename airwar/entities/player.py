@@ -95,6 +95,7 @@ class Player(Entity):
         self._boost_pressed_last_frame = False
         self.mothership_cooldown_mult: float = 1.0
         self._fire_cooldown = 0
+        self._fire_interval = constants.PLAYER.FIRE_COOLDOWN
         self._has_spread = False
         self._has_laser = False
         self._has_explosive = False
@@ -126,6 +127,14 @@ class Player(Entity):
     @fire_cooldown.setter
     def fire_cooldown(self, value: int) -> None:
         self._fire_cooldown = value
+
+    @property
+    def fire_interval(self) -> int:
+        return self._fire_interval
+
+    @fire_interval.setter
+    def fire_interval(self, value: int) -> None:
+        self._fire_interval = max(1, int(value))
 
     @property
     def bullet_damage_value(self) -> int:
@@ -174,7 +183,7 @@ class Player(Entity):
             Bullet entity if cooldown allows, None otherwise.
         """
         if self._fire_cooldown <= 0:
-            self._fire_cooldown = self._constants.PLAYER.FIRE_COOLDOWN
+            self._fire_cooldown = self._fire_interval
             return self._create_bullets_for_shot_mode(return_first=True)
         return None
 
@@ -187,7 +196,7 @@ class Player(Entity):
         if self.controls_locked:
             return
         if self._fire_cooldown <= 0:
-            self._fire_cooldown = self._constants.PLAYER.FIRE_COOLDOWN
+            self._fire_cooldown = self._fire_interval
             self._create_bullets_for_shot_mode()
 
     def activate_shotgun(self) -> None:
@@ -205,6 +214,19 @@ class Player(Entity):
     def activate_explosive(self) -> None:
         """Enable explosive bullet modifier."""
         self._has_explosive = True
+
+    def set_weapon_modifiers(self, spread: bool, laser: bool, explosive: bool) -> None:
+        """Set weapon modifiers from the effective talent loadout."""
+        self._has_spread = spread
+        self._has_laser = laser
+        self._has_explosive = explosive
+
+    def get_weapon_status(self) -> dict:
+        return {
+            'spread': self._has_spread,
+            'laser': self._has_laser,
+            'explosive': self._has_explosive,
+        }
 
     def activate_phase_dash(self) -> None:
         """Enable boost-fueled invincible phase dash."""

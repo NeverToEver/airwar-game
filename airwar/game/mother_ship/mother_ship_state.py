@@ -6,7 +6,7 @@ import time
 import pygame
 
 
-CURRENT_SAVE_VERSION = 1
+CURRENT_SAVE_VERSION = 2
 
 
 class SaveDataCorruptedError(Exception):
@@ -154,6 +154,8 @@ class GameSaveData:
     boss_kill_count: int = 0
     unlocked_buffs: List[str] = field(default_factory=list)
     buff_levels: Dict[str, int] = field(default_factory=dict)
+    earned_buff_levels: Dict[str, int] = field(default_factory=dict)
+    talent_loadout: Dict[str, str] = field(default_factory=dict)
     player_health: int = 100
     player_max_health: int = 100
     difficulty: str = "medium"
@@ -172,6 +174,8 @@ class GameSaveData:
             'boss_kill_count': self.boss_kill_count,
             'unlocked_buffs': self.unlocked_buffs,
             'buff_levels': self.buff_levels,
+            'earned_buff_levels': self.earned_buff_levels,
+            'talent_loadout': self.talent_loadout,
             'player_health': self.player_health,
             'player_max_health': self.player_max_health,
             'difficulty': self.difficulty,

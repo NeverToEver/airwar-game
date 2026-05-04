@@ -13,6 +13,8 @@ def test_save_and_load_round_trip(tmp_path):
         boss_kill_count=1,
         unlocked_buffs=["Armor", "Laser"],
         buff_levels={"Armor": 2, "Laser": 1},
+        earned_buff_levels={"Armor": 2, "Spread Shot": 1},
+        talent_loadout={"offense": "Laser"},
         player_health=70,
         player_max_health=150,
         difficulty="hard",
@@ -30,6 +32,8 @@ def test_save_and_load_round_trip(tmp_path):
     assert loaded.username == "pilot"
     assert loaded.unlocked_buffs == ["Armor", "Laser"]
     assert loaded.buff_levels == {"Armor": 2, "Laser": 1}
+    assert loaded.earned_buff_levels == {"Armor": 2, "Spread Shot": 1}
+    assert loaded.talent_loadout == {"offense": "Laser"}
     assert loaded.player_x == 320.5
     assert loaded.is_in_mothership is True
 

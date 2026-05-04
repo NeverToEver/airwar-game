@@ -18,6 +18,7 @@ from airwar.ui.boost_gauge import BoostGauge
 from airwar.ui.ammo_magazine import AmmoMagazine
 from airwar.ui.warning_banner import WarningBanner
 from airwar.ui.aim_crosshair import AimCrosshair
+from airwar.ui.base_talent_console import BaseTalentConsole
 from airwar.ui.homecoming_ui import HomecomingUI
 from airwar.game.mother_ship import (
     EventBus,
@@ -33,6 +34,7 @@ from airwar.game.constants import PlayerConstants, GAME_CONSTANTS
 from airwar.ui.give_up_ui import GiveUpUI
 from airwar.game.give_up import GiveUpDetector
 from airwar.game.homecoming import HomecomingDetector, HomecomingSequence
+from airwar.game.systems.talent_balance_manager import TalentBalanceManager
 from airwar.game.managers import (
     BulletManager,
     BossManager,
@@ -101,6 +103,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._homecoming_sequence = None
         self._homecoming_ui = None
         self._homecoming_base_pending = False
+        self._base_talent_console = None
+        self._talent_balance_manager = None
         self._bullet_manager: BulletManager = None
         self._boss_manager: BossManager = None
         self._milestone_manager: MilestoneManager = None
@@ -176,6 +180,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self.player.boost_speed_mult = boost_cfg['speed_mult']
         self.player.boost_recovery_delay = boost_cfg['recovery_delay']
         self.player.boost_recovery_ramp = boost_cfg['recovery_ramp']
+        self.reward_system.capture_player_baselines(self.player)
         self._boost_gauge = BoostGauge()
         self._ammo_magazine = AmmoMagazine()
         self._warning_banner = WarningBanner()
@@ -251,6 +256,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._homecoming_detector = HomecomingDetector(self._on_homecoming_requested)
         self._homecoming_sequence = HomecomingSequence(self._on_homecoming_complete)
         self._homecoming_ui = HomecomingUI(screen_width, screen_height)
+        self._base_talent_console = BaseTalentConsole(screen_width, screen_height)
+        self._talent_balance_manager = None
         self._homecoming_base_pending = False
 
     def exit(self) -> None:
@@ -269,9 +276,13 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
                 self.game_renderer.integrated_hud.toggle()
         elif event.type == pygame.MOUSEMOTION:
             self._set_raw_aim_position(event.pos)
+            if self._homecoming_base_pending and self._base_talent_console:
+                self._base_talent_console.handle_mouse_motion(event.pos)
             self.handle_mouse_motion(event.pos)
         elif event.type == pygame.MOUSEBUTTONDOWN:
             self._set_raw_aim_position(event.pos)
+            if self._homecoming_base_pending and self._handle_base_console_click(event.pos):
+                return
             if event.button == 1 and self.handle_mouse_click(event.pos):
                 self._handle_button_click(self.get_hovered_button())
 
@@ -308,6 +319,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         4. Game logic update (if not paused).
         """
         self.reward_selector.update()
+        if self._homecoming_base_pending and self._base_talent_console:
+            self._base_talent_console.update()
         self._set_raw_aim_position(pygame.mouse.get_pos())
         self._update_aim_assist()
         self._aim_crosshair.update()
@@ -512,6 +525,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
     def _on_homecoming_complete(self) -> None:
         self._homecoming_base_pending = True
+        self._ensure_talent_balance_manager()
         if self.game_controller:
             self.game_controller.state.paused = True
             self.game_controller.state.player_invincible = True
@@ -519,6 +533,32 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             self.game_controller.state.silent_invincible = True
         if self.notification_manager:
             self.notification_manager.show("基地接口待接入")
+
+    def _ensure_talent_balance_manager(self) -> None:
+        if not self.reward_system:
+            return
+        self.reward_system.ensure_earned_levels()
+        self._talent_balance_manager = TalentBalanceManager(
+            self.reward_system.get_earned_buff_levels(),
+            self.reward_system.talent_loadout,
+        )
+        self._apply_base_talent_loadout(show_notification=False)
+
+    def _apply_base_talent_loadout(self, show_notification: bool = True) -> None:
+        if not self._talent_balance_manager or not self.reward_system or not self.player:
+            return
+        self._talent_balance_manager.apply_to_reward_system(self.reward_system, self.player)
+        if show_notification and self.notification_manager:
+            self.notification_manager.show("基地天赋配置已同步")
+
+    def _handle_base_console_click(self, pos: tuple[int, int]) -> bool:
+        if not self._base_talent_console or not self._talent_balance_manager:
+            return False
+        return self._base_talent_console.handle_mouse_click(
+            pos,
+            self._talent_balance_manager,
+            self._apply_base_talent_loadout,
+        )
 
     def _is_homecoming_active(self) -> bool:
         return bool(self._homecoming_sequence and self._homecoming_sequence.is_active())
@@ -597,6 +637,9 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
         if self._homecoming_ui and self._homecoming_sequence:
             self._homecoming_ui.render_sequence(surface, self._homecoming_sequence, self.player)
+
+        if self._homecoming_base_pending and self._base_talent_console and self._talent_balance_manager:
+            self._base_talent_console.render(surface, self._talent_balance_manager, self.reward_system)
 
         # Reward selector must render above game elements. Homecoming blocks
         # reward selection, but keep the normal layering contract intact.
@@ -938,12 +981,14 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self.game_controller.milestone_index = save_data.cycle_count
         self.game_controller.cycle_count = save_data.cycle_count
 
-        self.player.health = min(max(1, save_data.player_health), save_data.player_max_health)
-        self.player.max_health = save_data.player_max_health
-
         self.reward_system.unlocked_buffs = save_data.unlocked_buffs
         self._restore_buff_levels(save_data.buff_levels)
-        self._reapply_buff_effects()
+        self._restore_earned_buff_levels(getattr(save_data, "earned_buff_levels", {}))
+        if getattr(save_data, "talent_loadout", None):
+            self.reward_system.talent_loadout = dict(save_data.talent_loadout)
+        self.reward_system.capture_player_baselines(self.player)
+        self._restore_talent_loadout_effects()
+        self.player.health = min(max(1, save_data.player_health), self.player.max_health)
 
         self.game_controller.state.difficulty = save_data.difficulty if save_data.difficulty in VALID_DIFFICULTIES else 'medium'
         self.game_controller.state.username = save_data.username
@@ -982,14 +1027,33 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             if name in self.reward_system.buff_levels:
                 self.reward_system.buff_levels[name] = value
 
+    def _restore_earned_buff_levels(self, earned_buff_levels: dict) -> None:
+        if not self.reward_system:
+            return
+        if not earned_buff_levels:
+            self.reward_system.earned_buff_levels = dict(self.reward_system.buff_levels)
+            return
+        for key, value in earned_buff_levels.items():
+            if key in self.reward_system.earned_buff_levels:
+                self.reward_system.earned_buff_levels[key] = max(0, int(value))
+
     def _reapply_buff_effects(self) -> None:
         """Re-apply all buff effects after restoring levels from save."""
         if not self.reward_system or not self.player:
             return
-        handlers = self.reward_system._buff_apply_handlers
-        for buff_name, level in self.reward_system.buff_levels.items():
-            if level > 0 and buff_name in handlers:
-                handlers[buff_name](self.player)
+        self.reward_system.reapply_all_effects(self.player)
+
+    def _restore_talent_loadout_effects(self) -> None:
+        if not self.reward_system or not self.player:
+            return
+        if not self.reward_system.talent_loadout:
+            self.reward_system.reapply_all_effects(self.player)
+            return
+        manager = TalentBalanceManager(
+            self.reward_system.get_earned_buff_levels(),
+            self.reward_system.talent_loadout,
+        )
+        manager.apply_to_reward_system(self.reward_system, self.player)
 
     def _restore_to_mothership_state(self) -> None:
         """Restore mothership state with player docked inside."""
@@ -1106,6 +1170,16 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if not self.reward_system:
             return {}
         return dict(self.reward_system.buff_levels)
+
+    def get_earned_buff_levels(self) -> Dict[str, int]:
+        if not self.reward_system:
+            return {}
+        return self.reward_system.get_earned_buff_levels()
+
+    def get_talent_loadout(self) -> Dict[str, str]:
+        if not self.reward_system:
+            return {}
+        return dict(self.reward_system.talent_loadout)
 
     def get_player_health(self) -> int:
         """Get player current health."""

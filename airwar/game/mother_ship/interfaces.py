@@ -175,6 +175,14 @@ class IGameScene(ABC):
         """Get buff levels dictionary."""
         pass
 
+    def get_earned_buff_levels(self) -> Dict[str, int]:
+        """Get earned buff levels before base-side loadout redistribution."""
+        return self.get_buff_levels()
+
+    def get_talent_loadout(self) -> Dict[str, str]:
+        """Get current base-side talent loadout selections."""
+        return {}
+
     @abstractmethod
     def get_player_health(self) -> int:
         """Get player current health."""

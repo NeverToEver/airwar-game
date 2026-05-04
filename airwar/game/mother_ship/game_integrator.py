@@ -515,6 +515,8 @@ class GameIntegrator:
             boss_kill_count=self._game_scene.get_boss_kill_count(),
             unlocked_buffs=self._game_scene.get_unlocked_buffs(),
             buff_levels=self._get_buff_levels(),
+            earned_buff_levels=self._get_earned_buff_levels(),
+            talent_loadout=self._get_talent_loadout(),
             player_health=self._game_scene.get_player_health(),
             player_max_health=self._game_scene.get_player_max_health(),
             difficulty=self._game_scene.get_difficulty(),
@@ -727,6 +729,16 @@ class GameIntegrator:
         if not self._game_scene:
             return {}
         return self._game_scene.get_buff_levels()
+
+    def _get_earned_buff_levels(self) -> Dict[str, int]:
+        if not self._game_scene or not hasattr(self._game_scene, "get_earned_buff_levels"):
+            return self._get_buff_levels()
+        return self._game_scene.get_earned_buff_levels()
+
+    def _get_talent_loadout(self) -> Dict[str, str]:
+        if not self._game_scene or not hasattr(self._game_scene, "get_talent_loadout"):
+            return {}
+        return self._game_scene.get_talent_loadout()
 
     def get_status_data(self) -> dict:
         """Return mothership state data for the ammo magazine and warning UI."""
