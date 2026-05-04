@@ -337,6 +337,7 @@ def test_boss_enrage_faces_player_and_aims_muzzles_during_all_direction_movement
     assert muzzle_vector.x * target_vector.x + muzzle_vector.y * target_vector.y > 0.999
     assert boss._muzzle_flash_timer > 0
     assert boss._muzzle_flash_positions
+    assert boss.ENRAGE_MUZZLE_FLASH_PULSES >= 4
 
 
 def test_boss_enrage_trail_is_longer_and_half_resolution_blurred():
@@ -376,6 +377,33 @@ def test_boss_enrage_finish_clears_trail_artifacts():
 
     assert boss.is_enrage_active() is False
     assert boss._enrage_trail == []
+
+
+def test_boss_enrage_visuals_fade_through_release_hold_and_return_without_jump():
+    set_screen_size(1000, 800)
+    boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
+    boss.entering = False
+    boss.set_bullet_spawner(BulletCollector())
+    boss.take_damage(700)
+
+    player_center = (500, 400)
+    for _ in range(boss.ENRAGE_DURATION + 1):
+        boss.update(player_pos=player_center)
+
+    release_center = boss.rect.center
+    assert boss.is_enrage_active() is False
+    assert boss.enrage_visual_intensity() > 0
+
+    boss.update(player_pos=player_center)
+    assert math.hypot(boss.rect.centerx - release_center[0], boss.rect.centery - release_center[1]) < 1
+
+    for _ in range(boss.ENRAGE_RELEASE_HOLD_DURATION):
+        boss.update(player_pos=player_center)
+
+    return_start = boss.rect.center
+    boss.update(player_pos=player_center)
+    assert 0 < math.hypot(boss.rect.centerx - return_start[0], boss.rect.centery - return_start[1]) < 12
+    assert boss.enrage_visual_intensity() > 0
 
 
 def test_bullet_manager_keeps_held_enrage_bullets_stationary_on_rust_path():
@@ -423,7 +451,7 @@ def test_held_enemy_bullets_do_not_damage_player_until_released():
     assert hits == [(50, player)]
 
 
-def test_boss_enrage_overlay_no_longer_draws_orange_ring():
+def test_boss_enrage_overlay_no_longer_draws_orange_warning_ring():
     pygame = pytest.importorskip("pygame")
     surface = pygame.Surface((640, 480), pygame.SRCALPHA)
     scene = GameScene()
@@ -438,7 +466,27 @@ def test_boss_enrage_overlay_no_longer_draws_orange_ring():
     with patch("airwar.scenes.game_scene.pygame.draw.circle") as draw_circle:
         scene._render_boss_enrage_overlay(surface)
 
-    draw_circle.assert_not_called()
+    colors = [call.args[2] for call in draw_circle.call_args_list]
+    assert not any(color[:3] == (224, 106, 72) for color in colors)
+
+
+def test_boss_enrage_overlay_uses_visual_intensity_after_active_phase():
+    pygame = pytest.importorskip("pygame")
+    surface = pygame.Surface((160, 120), pygame.SRCALPHA)
+    surface.fill((20, 30, 40))
+    scene = GameScene()
+    scene.spawn_controller = SimpleNamespace(
+        boss=SimpleNamespace(
+            is_enrage_active=lambda: False,
+            enrage_visual_intensity=lambda: 0.5,
+            rect=SimpleNamespace(centerx=80, centery=60),
+        )
+    )
+
+    before = surface.copy()
+    scene._render_boss_enrage_overlay(surface)
+
+    assert pygame.image.tostring(surface, "RGBA") != pygame.image.tostring(before, "RGBA")
 
 
 def test_bullet_manager_clear_enemy_bullets_keeps_clear_immune_bullets():
