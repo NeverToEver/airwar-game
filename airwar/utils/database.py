@@ -80,7 +80,8 @@ class UserDB(SimpleDB):
             'salt': salt,
             'high_score': 0,
             'total_kills': 0,
-            'games_played': 0
+            'games_played': 0,
+            'last_login_order': 0
         }
         self._save(data)
         return True
@@ -98,6 +99,43 @@ class UserDB(SimpleDB):
     def user_exists(self, user_id: str) -> bool:
         data = self._load()
         return user_id in data
+
+    def list_usernames(self) -> list[str]:
+        data = self._load()
+        users = [
+            (user_id, record.get('last_login_order', 0))
+            for user_id, record in data.items()
+            if isinstance(record, dict) and record.get('password')
+        ]
+        users.sort(key=lambda item: (-item[1], item[0].lower()))
+        return [user_id for user_id, _ in users]
+
+    def get_last_login_user(self) -> Optional[str]:
+        data = self._load()
+        users = [
+            (user_id, record.get('last_login_order', 0))
+            for user_id, record in data.items()
+            if isinstance(record, dict) and record.get('password') and record.get('last_login_order', 0) > 0
+        ]
+        if not users:
+            return None
+        return max(users, key=lambda item: item[1])[0]
+
+    def record_login(self, user_id: str) -> bool:
+        data = self._load()
+        if user_id not in data:
+            return False
+        max_order = max(
+            (
+                record.get('last_login_order', 0)
+                for record in data.values()
+                if isinstance(record, dict)
+            ),
+            default=0,
+        )
+        data[user_id]['last_login_order'] = max_order + 1
+        self._save(data)
+        return True
 
     def get_user_data(self, user_id: str) -> dict:
         data = self._load()

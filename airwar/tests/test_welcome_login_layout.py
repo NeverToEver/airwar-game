@@ -35,11 +35,64 @@ def test_welcome_login_render_registers_new_button_regions() -> None:
 
     scene.render(surface)
 
-    for name in ["username_field", "password_field", "login", "register", "skip_login", "delete_user"]:
+    for name in [
+        "username_field",
+        "username_dropdown",
+        "password_field",
+        "login",
+        "register",
+        "skip_login",
+        "delete_user",
+    ]:
         rect = scene.get_button_rect(name)
         assert rect is not None
         assert rect.width >= 44
         assert rect.height >= 38
+
+
+def test_welcome_defaults_to_last_login_user_and_password_focus(tmp_path, monkeypatch) -> None:
+    db_path = tmp_path / "users.json"
+    db = UserDB(str(db_path))
+    assert db.create_user("alpha", "secret") is True
+    assert db.create_user("bravo", "secret") is True
+    assert db.record_login("alpha") is True
+    assert db.record_login("bravo") is True
+
+    monkeypatch.setattr("airwar.scenes.welcome_scene.UserDB", lambda: UserDB(str(db_path)))
+    scene = _make_scene()
+
+    assert scene.username == "bravo"
+    assert scene.password == ""
+    assert scene.focus == "password"
+    assert scene.known_usernames == ["bravo", "alpha"]
+
+
+def test_welcome_dropdown_selects_known_user_and_moves_focus_to_password() -> None:
+    scene = _make_scene()
+    scene.known_usernames = ["bravo", "alpha"]
+    scene.username = ""
+    scene.focus = "username"
+    scene.show_user_dropdown = True
+
+    scene._select_known_user(1)
+
+    assert scene.username == "alpha"
+    assert scene.password == ""
+    assert scene.focus == "password"
+    assert scene.show_user_dropdown is False
+
+
+def test_welcome_successful_login_records_last_user(tmp_path) -> None:
+    scene = _make_scene()
+    scene.db = UserDB(str(tmp_path / "users.json"))
+    assert scene.db.create_user("alpha", "secret") is True
+
+    scene.username = "alpha"
+    scene.password = "secret"
+    scene._do_login()
+
+    assert scene.running is False
+    assert scene.db.get_last_login_user() == "alpha"
 
 
 def test_delete_user_requires_current_password(tmp_path) -> None:
