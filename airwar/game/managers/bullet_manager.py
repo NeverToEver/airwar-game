@@ -17,7 +17,6 @@ Usage:
 """
 
 from typing import Protocol
-import pygame
 
 # Try to import Rust batch update function
 try:
@@ -125,6 +124,7 @@ class BulletManager:
             self._update_bullets_batch(self._player.get_bullets(), cleanup)
         else:
             for bullet in self._player.get_bullets():
+                self._update_release_delay(bullet)
                 bullet.update()
         if cleanup:
             self._player.cleanup_inactive_bullets()
@@ -139,6 +139,7 @@ class BulletManager:
             self._update_bullets_batch(self._spawn_controller.enemy_bullets, cleanup)
         else:
             for bullet in self._spawn_controller.enemy_bullets:
+                self._update_release_delay(bullet)
                 bullet.update()
         if cleanup:
             self._cleanup_enemy_bullets()
@@ -166,6 +167,9 @@ class BulletManager:
         bullet_map.clear()
         for _i, bullet in enumerate(bullets):
             if not bullet.active:
+                continue
+            self._update_release_delay(bullet)
+            if getattr(bullet, "held", False):
                 continue
             bullet_id = id(bullet)
             vx = bullet.velocity.x
@@ -201,9 +205,11 @@ class BulletManager:
 
             # Handle laser trail (still needs Python for pygame operations)
             if bullet.data.bullet_type == "laser" or bullet.data.is_laser:
-                bullet._trail.append(pygame.Rect(
-                    bullet.rect.x, bullet.rect.y,
-                    bullet.rect.width, bullet.rect.height
+                bullet._trail.append((
+                    bullet.rect.x,
+                    bullet.rect.y,
+                    bullet.rect.width,
+                    bullet.rect.height,
                 ))
                 if len(bullet._trail) > 8:
                     bullet._trail.pop(0)
@@ -215,6 +221,21 @@ class BulletManager:
         # Note: cleanup is handled by the caller
         # - Player bullets: cleaned by Player.cleanup_inactive_bullets()
         # - Enemy bullets: cleaned by _cleanup_enemy_bullets()
+
+    def _update_release_delay(self, bullet) -> None:
+        if not getattr(bullet, "enrage_release_pending", False):
+            return
+        delay = max(0, int(getattr(bullet, "enrage_release_delay", 0)))
+        if delay > 0:
+            bullet.enrage_release_delay = delay - 1
+            return
+        direction = getattr(bullet, "release_direction", None)
+        if direction is None or direction.length() <= 0:
+            direction = bullet.velocity.normalize() if bullet.velocity.length() > 0 else None
+        if direction is not None:
+            bullet.velocity = direction * getattr(bullet, "enrage_release_speed", bullet.data.speed)
+        bullet.held = False
+        bullet.enrage_release_pending = False
 
     def _is_bullet_outside_screen(self, bullet) -> bool:
         margin = getattr(bullet, "OFFSCREEN_MARGIN", 80)

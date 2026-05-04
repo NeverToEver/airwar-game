@@ -720,13 +720,6 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             self._enrage_overlay_cache_key = cache_key
         overlay = self._enrage_overlay_cache
         overlay.fill((112, 38, 30, int(42 * intensity)))
-        pygame.draw.circle(
-            overlay,
-            (214, 104, 76, int(38 * intensity)),
-            (int(boss.rect.centerx), int(boss.rect.centery)),
-            int(max(sw, sh) * 0.75 * intensity),
-            max(2, int(8 * intensity)),
-        )
         surface.blit(overlay, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
 
     def _set_raw_aim_position(self, position: tuple[int, int]) -> None:
@@ -1264,6 +1257,16 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         """Trigger explosion visual effect at given position."""
         if self._game_loop_manager:
             self._game_loop_manager._on_explosion(x, y, radius)
+
+    def trigger_boss_death_explosion(self, boss) -> None:
+        """Play a boss wreck explosion without keeping the boss entity alive."""
+        if self._game_loop_manager and boss:
+            self._game_loop_manager._explosion_manager.trigger_boss_death(
+                boss.rect.centerx,
+                boss.rect.centery,
+                boss.rect.width,
+                boss.rect.height,
+            )
 
     def add_score(self, amount: int) -> None:
         """Add to score."""

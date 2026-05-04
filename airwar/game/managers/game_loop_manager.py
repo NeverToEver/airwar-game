@@ -58,6 +58,7 @@ class BossManagerProtocol(Protocol):
     """Protocol for boss manager dependency injection."""
     def update(self, player) -> None: ...
     def on_boss_hit(self, score: int) -> None: ...
+    def on_boss_killed(self) -> None: ...
     @property
     def boss(self): ...
 
@@ -119,6 +120,17 @@ class GameLoopManager:
     def _on_explosion(self, x: float, y: float, radius: int) -> None:
         """Explosion callback handler"""
         self._explosion_manager.trigger(x, y, radius)
+
+    def _on_boss_destroyed(self) -> None:
+        boss = self._spawn_controller.boss
+        if boss:
+            self._explosion_manager.trigger_boss_death(
+                boss.rect.centerx,
+                boss.rect.centery,
+                boss.rect.width,
+                boss.rect.height,
+            )
+        self._boss_manager.on_boss_killed()
 
     def update_entrance(self, player: PlayerProtocol) -> bool:
         state = self._game_controller.state
@@ -257,7 +269,7 @@ class GameLoopManager:
                 score_multiplier=self._game_controller.state.score_multiplier,
                 on_enemy_killed=lambda score: self._game_controller.on_enemy_killed(score),
                 on_boss_killed=lambda score: (
-                    self._boss_manager.on_boss_killed(),
+                    self._on_boss_destroyed(),
                     self._game_controller.on_boss_killed(score),
                 ),
                 on_boss_hit=lambda score: self._boss_manager.on_boss_hit(score),

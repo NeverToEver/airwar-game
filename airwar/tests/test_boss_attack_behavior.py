@@ -1,10 +1,16 @@
 import math
+from types import SimpleNamespace
+from unittest.mock import patch
 
 import pytest
 
 from airwar.config.game_config import set_screen_size
+from airwar.entities.base import BulletData, Rect, Vector2
+from airwar.entities.bullet import Bullet
 from airwar.entities.enemy import Boss, BossData
 from airwar.game.managers.bullet_manager import BulletManager
+from airwar.game.managers.collision_controller import CollisionController
+from airwar.scenes.game_scene import GameScene
 
 
 class BulletCollector:
@@ -84,6 +90,7 @@ def test_boss_enrage_triggers_once_at_thirty_percent_and_pulls_player_to_center(
 
     assert boss.is_enraged() is True
     assert boss.is_enrage_active() is True
+    assert boss.is_enrage_transitioning() is True
     assert (player.rect.x, player.rect.y) == (466, 359)
     assert boss.enrage_visual_intensity() > 0
 
@@ -91,6 +98,33 @@ def test_boss_enrage_triggers_once_at_thirty_percent_and_pulls_player_to_center(
     boss.update(player=player, player_pos=(500, 400))
 
     assert boss.is_enraged() is True
+
+
+def test_boss_enrage_transition_delays_snapshot_attacks_and_eases_to_orbit():
+    set_screen_size(1000, 800)
+    boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
+    boss.entering = False
+    collector = BulletCollector()
+    boss.set_bullet_spawner(collector)
+
+    boss.take_damage(700)
+    boss.update(player_pos=(500, 400))
+
+    assert boss.is_enrage_transitioning() is True
+    assert collector.bullets == []
+    assert boss._enrage_trail == []
+
+    for _ in range(boss.ENRAGE_TRANSITION_DURATION - 1):
+        boss.update(player_pos=(500, 400))
+
+    assert boss.is_enrage_transitioning() is False
+    assert collector.bullets == []
+
+    for _ in range(boss.ENRAGE_ATTACK_WINDUP):
+        boss.update(player_pos=(500, 400))
+
+    assert collector.bullets
+    assert all(getattr(bullet, "held", False) for bullet in collector.bullets)
 
 
 def test_boss_enrage_locks_health_at_thirty_percent_until_bullets_release():
@@ -149,7 +183,7 @@ def test_boss_enrage_finishes_behind_player():
     assert boss.rect.centery > player_center[1]
 
 
-def test_boss_enrage_bullets_hold_then_release_slowly_toward_player():
+def test_boss_enrage_holds_snapshot_attacks_until_flow_finishes():
     set_screen_size(1000, 800)
     boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
     boss.entering = False
@@ -158,19 +192,184 @@ def test_boss_enrage_bullets_hold_then_release_slowly_toward_player():
     boss.take_damage(700)
 
     player_center = (500, 400)
-    for _ in range(boss.ENRAGE_DURATION - 1):
+    boss.update(player_pos=player_center)
+    initial_count = len(collector.bullets)
+
+    assert initial_count == 0
+
+    for _ in range(boss.ENRAGE_TRANSITION_DURATION + boss.ENRAGE_ATTACK_WINDUP):
         boss.update(player_pos=player_center)
 
     assert collector.bullets
     assert all(getattr(bullet, "clear_immune", False) for bullet in collector.bullets)
     assert all(getattr(bullet, "held", False) for bullet in collector.bullets)
-    assert all((bullet.velocity.x, bullet.velocity.y) == (0, 0) for bullet in collector.bullets)
+    assert all(bullet.velocity.length() == 0 for bullet in collector.bullets)
+    first_wave_count = len(collector.bullets)
 
-    boss.update(player_pos=player_center)
+    for _ in range(boss.ENRAGE_ATTACK_INTERVAL):
+        boss.update(player_pos=player_center)
+
+    assert len(collector.bullets) > first_wave_count
+    assert all(getattr(bullet, "held", False) for bullet in collector.bullets)
+    assert all(bullet.velocity.length() == 0 for bullet in collector.bullets)
+
+
+def test_boss_enrage_releases_held_bullets_gradually_after_flow_finishes():
+    set_screen_size(1000, 800)
+    boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
+    boss.entering = False
+    collector = BulletCollector()
+    boss.set_bullet_spawner(collector)
+    boss.take_damage(700)
+
+    player_center = (500, 400)
+    for _ in range(boss.ENRAGE_DURATION + 1):
+        boss.update(player_pos=player_center)
+
+    held_bullets = [bullet for bullet in collector.bullets if getattr(bullet, "held", False)]
+    assert held_bullets
+    assert any(getattr(bullet, "enrage_release_delay", 0) > 0 for bullet in held_bullets)
+    assert all(getattr(bullet, "enrage_release_pending", False) for bullet in held_bullets)
+
+    spawn_controller = SimpleNamespace(enemy_bullets=collector.bullets)
+    player = SimpleNamespace(get_bullets=lambda: [], cleanup_inactive_bullets=lambda: None)
+    manager = BulletManager(player, spawn_controller)
+    manager._use_rust = False
+
+    manager.update_all()
+    first_released = [bullet for bullet in collector.bullets if not getattr(bullet, "held", False)]
+    still_held = [bullet for bullet in collector.bullets if getattr(bullet, "held", False)]
+
+    assert first_released
+    assert still_held
+    assert all(
+        0 < bullet.velocity.length() <= getattr(bullet, "enrage_release_speed") + 1e-6
+        for bullet in first_released
+    )
+
+    for _ in range(boss.ENRAGE_RELEASE_INTERVAL * (boss._enrage_attack_index + 1)):
+        manager.update_all()
+
+    assert all(not getattr(bullet, "held", False) for bullet in collector.bullets)
+
+
+def test_boss_enrage_orbit_keeps_a_larger_powerful_radius():
+    set_screen_size(1200, 900)
+    boss = Boss(500, 120, BossData(health=1000, width=170, height=140))
+    boss.entering = False
+    boss.set_bullet_spawner(BulletCollector())
+    boss.take_damage(700)
+
+    player_center = (600, 450)
+    distances = []
+    for _ in range(180):
+        boss.update(player_pos=player_center)
+        distances.append(math.hypot(boss.rect.centerx - player_center[0], boss.rect.centery - player_center[1]))
+
+    assert min(distances[30:]) >= max(boss.rect.width, boss.rect.height) * 1.6
+    assert max(distances) >= max(boss.rect.width, boss.rect.height) * 2.2
+
+
+def test_boss_enrage_trail_is_longer_and_half_resolution_blurred():
+    boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
+    boss.entering = False
+    boss.set_bullet_spawner(BulletCollector())
+    boss.take_damage(700)
+
+    player_center = (500, 400)
+    for _ in range(boss.ENRAGE_TRANSITION_DURATION + boss.ENRAGE_TRAIL_LENGTH + 20):
+        boss.update(player_pos=player_center)
+
+    assert len(boss._enrage_trail) == boss.ENRAGE_TRAIL_LENGTH
+    assert boss.ENRAGE_TRAIL_LENGTH >= 32
+
+    ghost = boss._get_enrage_trail_ghost(0.5)
+    render_width, render_height = boss._enrage_trail_render_size()
+
+    assert render_width == int(boss.rect.width * boss.ENRAGE_TRAIL_FINAL_SCALE)
+    assert render_height == int(boss.rect.height * boss.ENRAGE_TRAIL_FINAL_SCALE)
+    assert ghost.get_width() == int(render_width * boss.ENRAGE_TRAIL_SCALE)
+    assert ghost.get_height() == int(render_height * boss.ENRAGE_TRAIL_SCALE)
+    assert boss.ENRAGE_TRAIL_BLUR_PASSES >= 2
+
+
+def test_boss_enrage_finish_clears_trail_artifacts():
+    set_screen_size(1000, 800)
+    boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
+    boss.entering = False
+    collector = BulletCollector()
+    boss.set_bullet_spawner(collector)
+    boss.take_damage(700)
+
+    player_center = (500, 400)
+    for _ in range(boss.ENRAGE_DURATION + 1):
+        boss.update(player_pos=player_center)
 
     assert boss.is_enrage_active() is False
-    assert all(not getattr(bullet, "held", False) for bullet in collector.bullets)
-    assert all(0 < bullet.velocity.length() <= boss.ENRAGE_BULLET_SPEED for bullet in collector.bullets)
+    assert boss._enrage_trail == []
+
+
+def test_bullet_manager_keeps_held_enrage_bullets_stationary_on_rust_path():
+    set_screen_size(1000, 800)
+    held = Bullet(100, 120, BulletData(damage=1, speed=5, owner="enemy", bullet_type="single"))
+    held.held = True
+    held.velocity = Vector2(9, 4)
+    moving = Bullet(40, 60, BulletData(damage=1, speed=5, owner="enemy", bullet_type="single"))
+    moving.velocity = Vector2(3, 2)
+    spawn_controller = SimpleNamespace(enemy_bullets=[held, moving])
+    player = SimpleNamespace(get_bullets=lambda: [], cleanup_inactive_bullets=lambda: None)
+    manager = BulletManager(player, spawn_controller)
+    manager._use_rust = True
+
+    with patch("airwar.game.managers.bullet_manager.batch_update_bullets") as batch_update:
+        batch_update.return_value = [(id(moving), moving.rect.x + 3, moving.rect.y + 2, True)]
+        manager.update_all()
+
+    assert batch_update.call_args.args[0] == [
+        (id(moving), 40, 60, 3, 2, 0, False, 800.0)
+    ]
+    assert (held.rect.x, held.rect.y) == (100, 120)
+    assert (moving.rect.x, moving.rect.y) == (43, 62)
+
+
+def test_held_enemy_bullets_do_not_damage_player_until_released():
+    controller = CollisionController()
+    player = SimpleNamespace(get_hitbox=lambda: Rect(0, 0, 30, 30))
+    held = SimpleNamespace(
+        active=True,
+        held=True,
+        rect=Rect(0, 0, 10, 10),
+        data=BulletData(damage=50, owner="enemy"),
+    )
+    hits = []
+
+    on_hit = lambda damage, target: hits.append((damage, target))
+
+    assert controller.check_enemy_bullets_vs_player([held], player, lambda damage: damage, on_hit) is False
+    assert hits == []
+
+    held.held = False
+
+    assert controller.check_enemy_bullets_vs_player([held], player, lambda damage: damage, on_hit) is True
+    assert hits == [(50, player)]
+
+
+def test_boss_enrage_overlay_no_longer_draws_orange_ring():
+    pygame = pytest.importorskip("pygame")
+    surface = pygame.Surface((640, 480), pygame.SRCALPHA)
+    scene = GameScene()
+    scene.spawn_controller = SimpleNamespace(
+        boss=SimpleNamespace(
+            is_enrage_active=lambda: True,
+            enrage_visual_intensity=lambda: 0.8,
+            rect=SimpleNamespace(centerx=320, centery=220),
+        )
+    )
+
+    with patch("airwar.scenes.game_scene.pygame.draw.circle") as draw_circle:
+        scene._render_boss_enrage_overlay(surface)
+
+    draw_circle.assert_not_called()
 
 
 def test_bullet_manager_clear_enemy_bullets_keeps_clear_immune_bullets():

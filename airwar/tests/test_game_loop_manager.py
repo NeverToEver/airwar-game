@@ -32,9 +32,14 @@ class _Player:
 class _Boss:
     def __init__(self):
         self.lock_player = False
+        self.active = True
+        self.rect = SimpleNamespace(centerx=300, centery=180, width=210, height=170)
 
     def should_lock_player_movement(self):
         return self.lock_player
+
+    def get_hitbox(self):
+        return self.rect
 
 
 class _Spawn:
@@ -71,7 +76,14 @@ def _make_loop(boss, spawn=None):
     spawn = spawn or _Spawn(boss)
     reward = SimpleNamespace(unlocked_buffs=[], slow_factor=1.0, base_bullet_damage=10)
     bullet = SimpleNamespace(update_all=lambda: None, cleanup=lambda: None, clear_enemy_bullets=lambda **kwargs: None)
-    boss_manager = SimpleNamespace(boss=boss, update=lambda player: None, on_boss_hit=lambda score: None)
+    boss_killed_calls = []
+    boss_manager = SimpleNamespace(
+        boss=boss,
+        update=lambda player: None,
+        on_boss_hit=lambda score: None,
+        on_boss_killed=lambda: boss_killed_calls.append(True),
+        boss_killed_calls=boss_killed_calls,
+    )
     collision = SimpleNamespace(set_explosion_callback=lambda callback: None)
     return GameLoopManager(controller, renderer, spawn, reward, bullet, boss_manager, collision)
 
@@ -128,3 +140,16 @@ def test_game_loop_counts_spread_shot_in_current_player_dps() -> None:
     loop.update_game(player)
 
     assert spawn.player_dps_seen[-1] == 2250
+
+
+def test_game_loop_queues_boss_death_explosion_before_cleanup() -> None:
+    boss = _Boss()
+    spawn = _Spawn(boss)
+    loop = _make_loop(boss, spawn)
+
+    loop._on_boss_destroyed()
+    stats = loop.get_explosion_stats()
+
+    assert stats["active_count"] > 0
+    assert stats["queued_count"] > 0
+    assert loop._boss_manager.boss_killed_calls == [True]

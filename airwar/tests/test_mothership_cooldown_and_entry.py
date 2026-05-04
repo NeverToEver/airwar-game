@@ -42,6 +42,7 @@ class FakeGameScene:
         self.score = 0
         self.kills = 0
         self.boss_kills = 0
+        self.boss_death_explosions = []
         self.notifications = []
 
     def get_enemies(self):
@@ -64,6 +65,9 @@ class FakeGameScene:
 
     def clear_boss(self):
         self.boss = None
+
+    def trigger_boss_death_explosion(self, boss):
+        self.boss_death_explosions.append(boss)
 
     def show_notification(self, message):
         self.notifications.append(message)
@@ -171,6 +175,19 @@ def test_mothership_phantom_first_render_is_not_abrupt(monkeypatch):
     assert surface.get_bounding_rect().width == 0
 
 
+def test_mothership_render_uses_wide_carrier_silhouette():
+    surface = pygame.Surface((1920, 1080), pygame.SRCALPHA)
+    mother_ship = MotherShip(1920, 1080)
+    mother_ship.show()
+
+    mother_ship.render(surface)
+    bounds = surface.get_bounding_rect()
+
+    assert bounds.width >= 480
+    assert bounds.height >= 220
+    assert bounds.width > bounds.height * 1.8
+
+
 def test_mothership_gatling_turrets_cover_120_degrees_with_overlap():
     integrator = _make_integrator()
     left, right = integrator.MOTHERSHIP_GATLING_TURRETS
@@ -238,3 +255,16 @@ def test_mothership_gatling_hit_does_not_trigger_missile_explosion():
     assert target.health == 80 - integrator.MOTHERSHIP_GATLING_DAMAGE
     assert scene.explosions == []
     assert integrator._mothership_bullets == []
+
+
+def test_mothership_boss_kill_triggers_wreck_explosion_before_clear():
+    boss = FakeTarget(x=500, y=500, width=120, height=120, health=1, score=1000)
+    scene = FakeGameScene(boss=boss)
+    integrator = _make_integrator()
+    integrator._game_scene = scene
+
+    integrator._on_mothership_kill_boss(boss)
+
+    assert scene.boss_death_explosions == [boss]
+    assert scene.boss is None
+    assert scene.boss_kills == 1

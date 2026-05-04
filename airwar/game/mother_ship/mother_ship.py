@@ -1,7 +1,7 @@
 """Mothership entity — visual representation and docking zone.
 
-Capital ship design: cold-steel-blue hull, swept-back wings, bridge tower,
-underside docking bay with guide lights. Shares faction colors with player ship.
+Capital carrier design: layered cold-steel armor, broad weapon sponsons,
+recessed underside docking bay, and cyan command lighting.
 """
 import pygame
 import math
@@ -11,8 +11,8 @@ from airwar.utils._sprites_common import draw_glow_circle
 class MotherShip:
     """Mothership entity — visual representation and docking zone.
 
-    Renders a large capital-class support vessel with swept-back wings,
-    bridge tower, and underside docking bay.
+    Renders a large capital-class support carrier with broad side sponsons,
+    command spine, and underside docking bay.
     """
     DOCKING_BAY_X_OFFSET = 0
     DOCKING_BAY_Y_OFFSET = 85
@@ -46,25 +46,28 @@ class MotherShip:
         self._flyaway_accel = 0.15
 
         self._colors = {
-            'hull_dark': (20, 24, 38),
-            'hull_mid': (35, 44, 62),
-            'hull_light': (52, 64, 88),
-            'hull_highlight': (110, 130, 160),
-            'wing_dark': (18, 22, 36),
-            'wing_mid': (32, 40, 56),
-            'wing_light': (50, 60, 82),
-            'glass_dark': (28, 148, 190),
-            'glass_mid': (55, 188, 225),
-            'glass_bright': (150, 225, 246),
+            'hull_dark': (18, 22, 32),
+            'hull_mid': (34, 42, 58),
+            'hull_light': (62, 72, 88),
+            'hull_highlight': (154, 164, 174),
+            'wing_dark': (16, 20, 30),
+            'wing_mid': (30, 38, 52),
+            'wing_light': (58, 68, 84),
+            'glass_dark': (18, 110, 142),
+            'glass_mid': (44, 184, 214),
+            'glass_bright': (170, 244, 252),
             'engine_core': (200, 230, 255),
             'engine_glow': (100, 180, 255),
             'engine_outer': (50, 120, 200),
-            'accent': (180, 150, 120),
-            'accent_dim': (140, 115, 90),
+            'accent': (216, 168, 104),
+            'accent_dim': (146, 112, 78),
             'dock_guide': (80, 220, 160),
             'dock_guide_dim': (40, 160, 110),
             'running_light': (140, 170, 210),
-            'panel_line': (55, 68, 95),
+            'panel_line': (78, 88, 106),
+            'armor_shadow': (8, 10, 18),
+            'weapon_dark': (12, 15, 24),
+            'warning_red': (218, 76, 64),
         }
 
     # ── Public API ─────────────────────────────────────────────────────────
@@ -161,8 +164,9 @@ class MotherShip:
         cx, cy = self._position
 
         self._render_engine_glow(surface, cx, cy)
-        self._render_wings(surface, cx, cy)
+        self._render_side_sponsons(surface, cx, cy)
         self._render_body(surface, cx, cy)
+        self._render_weapon_bays(surface, cx, cy)
         self._render_docking_bay(surface, cx, cy)
         self._render_bridge(surface, cx, cy)
         self._render_details(surface, cx, cy)
@@ -196,11 +200,11 @@ class MotherShip:
 
         glow_color = (*teal, glow_alpha)
         self._draw_phantom_hull(phantom, cx, cy, glow_color, 6)
-        self._draw_phantom_wings(phantom, cx, cy, glow_color, 6)
+        self._draw_phantom_sponsons(phantom, cx, cy, glow_color, 6)
 
         wire_color = (*teal, base_alpha)
         self._draw_phantom_hull(phantom, cx, cy, wire_color, 2)
-        self._draw_phantom_wings(phantom, cx, cy, wire_color, 2)
+        self._draw_phantom_sponsons(phantom, cx, cy, wire_color, 2)
         self._draw_phantom_docking_bay(phantom, cx, cy, wire_color)
         self._draw_phantom_engines(phantom, cx, cy, pulse)
 
@@ -217,39 +221,41 @@ class MotherShip:
 
     def _draw_phantom_hull(self, surface: pygame.Surface, cx: int, cy: int,
                            color: tuple, width: int) -> None:
-        """Hull outline matching the actual hull_outer polygon."""
+        """Hull outline matching the carrier hull_outer polygon."""
         hull = [
-            (cx, cy - 108),
-            (cx + 104, cy - 22),
-            (cx + 100, cy + 18),
-            (cx + 72, cy + 68),
-            (cx + 55, cy + 92),
-            (cx - 55, cy + 92),
-            (cx - 72, cy + 68),
-            (cx - 100, cy + 18),
-            (cx - 104, cy - 22),
+            (cx, cy - 124),
+            (cx + 78, cy - 82),
+            (cx + 108, cy - 20),
+            (cx + 92, cy + 56),
+            (cx + 54, cy + 108),
+            (cx - 54, cy + 108),
+            (cx - 92, cy + 56),
+            (cx - 108, cy - 20),
+            (cx - 78, cy - 82),
         ]
         pygame.draw.polygon(surface, color, hull, width)
 
-    def _draw_phantom_wings(self, surface: pygame.Surface, cx: int, cy: int,
-                            color: tuple, width: int) -> None:
-        """Wing outlines matching the actual wing_outer polygons."""
-        left_wing = [
-            (cx - 60, cy - 15),
-            (cx - 215, cy + 30),
-            (cx - 198, cy + 62),
-            (cx - 163, cy + 75),
-            (cx - 86, cy + 38),
+    def _draw_phantom_sponsons(self, surface: pygame.Surface, cx: int, cy: int,
+                               color: tuple, width: int) -> None:
+        """Side sponson outlines matching the actual carrier silhouette."""
+        left_sponson = [
+            (cx - 68, cy - 58),
+            (cx - 230, cy - 20),
+            (cx - 252, cy + 34),
+            (cx - 222, cy + 76),
+            (cx - 116, cy + 70),
+            (cx - 92, cy + 22),
         ]
-        right_wing = [
-            (cx + 60, cy - 15),
-            (cx + 215, cy + 30),
-            (cx + 198, cy + 62),
-            (cx + 163, cy + 75),
-            (cx + 86, cy + 38),
+        right_sponson = [
+            (cx + 68, cy - 58),
+            (cx + 230, cy - 20),
+            (cx + 252, cy + 34),
+            (cx + 222, cy + 76),
+            (cx + 116, cy + 70),
+            (cx + 92, cy + 22),
         ]
-        pygame.draw.polygon(surface, color, left_wing, width)
-        pygame.draw.polygon(surface, color, right_wing, width)
+        pygame.draw.polygon(surface, color, left_sponson, width)
+        pygame.draw.polygon(surface, color, right_sponson, width)
 
     def _draw_phantom_docking_bay(self, surface: pygame.Surface, cx: int, cy: int,
                                   color: tuple) -> None:
@@ -270,19 +276,20 @@ class MotherShip:
         """Engine glow indicators on the phantom."""
         engine_alpha = int(40 + 30 * pulse)
         engine_color = (55, 188, 225, engine_alpha)
-        for nx in [cx - 172, cx + 172]:
+        for nx in [cx - 198, cx - 132, cx + 132, cx + 198]:
             pygame.draw.ellipse(surface, engine_color,
-                                (nx - 10, cy + 22, 20, 10))
-            pygame.draw.ellipse(surface, engine_color,
-                                (nx - 6, cy + 48, 12, 6))
+                                (nx - 11, cy + 72, 22, 9))
+        pygame.draw.ellipse(surface, engine_color, (cx - 18, cy + 100, 36, 12))
 
     # ── Engine glow (back layer) ───────────────────────────────────────────
 
     def _render_engine_glow(self, surface: pygame.Surface, cx: int, cy: int) -> None:
         engine_spots = [
-            (cx - 160, cy + 35),   # left wing nacelle
-            (cx + 160, cy + 35),   # right wing nacelle
-            (cx, cy + 95),         # central thruster
+            (cx - 198, cy + 78),
+            (cx - 132, cy + 82),
+            (cx + 132, cy + 82),
+            (cx + 198, cy + 78),
+            (cx, cy + 106),
         ]
         for ex, ey in engine_spots:
             pulse = 1.0 + 0.3 * self._engine_pulse
@@ -291,140 +298,115 @@ class MotherShip:
             core_radius = int(7 + 3 * self._engine_pulse)
             draw_glow_circle(surface, (ex, ey), core_radius, self._colors['engine_core'], 7)
 
-    # ── Swept-back wings ───────────────────────────────────────────────────
+    # ── Side weapon sponsons ───────────────────────────────────────────────
 
-    def _render_wings(self, surface: pygame.Surface, cx: int, cy: int) -> None:
-        # ── Left wing ──
-        left_outer = [
-            (cx - 60, cy - 15),
-            (cx - 215, cy + 30),
-            (cx - 198, cy + 62),
-            (cx - 163, cy + 75),
-            (cx - 86, cy + 38),
-        ]
-        pygame.draw.polygon(surface, self._colors['wing_dark'], left_outer)
-        left_mid = [
-            (cx - 55, cy - 10),
-            (cx - 180, cy + 25),
-            (cx - 168, cy + 52),
-            (cx - 140, cy + 62),
-            (cx - 78, cy + 32),
-        ]
-        pygame.draw.polygon(surface, self._colors['wing_mid'], left_mid)
-        left_top = [
-            (cx - 48, cy - 5),
-            (cx - 138, cy + 20),
-            (cx - 128, cy + 39),
-            (cx - 104, cy + 45),
-            (cx - 72, cy + 25),
-        ]
-        pygame.draw.polygon(surface, self._colors['wing_light'], left_top)
-        pygame.draw.line(surface, self._colors['accent_dim'],
-                         (cx - 60, cy - 15), (cx - 215, cy + 30), 3)
-        pygame.draw.line(surface, self._colors['panel_line'],
-                         (cx - 100, cy + 8), (cx - 138, cy + 43), 1)
-
-        # ── Right wing ──
-        right_outer = [
-            (cx + 60, cy - 15),
-            (cx + 215, cy + 30),
-            (cx + 198, cy + 62),
-            (cx + 163, cy + 75),
-            (cx + 86, cy + 38),
-        ]
-        pygame.draw.polygon(surface, self._colors['wing_dark'], right_outer)
-        right_mid = [
-            (cx + 55, cy - 10),
-            (cx + 180, cy + 25),
-            (cx + 168, cy + 52),
-            (cx + 140, cy + 62),
-            (cx + 78, cy + 32),
-        ]
-        pygame.draw.polygon(surface, self._colors['wing_mid'], right_mid)
-        right_top = [
-            (cx + 48, cy - 5),
-            (cx + 138, cy + 20),
-            (cx + 128, cy + 39),
-            (cx + 104, cy + 45),
-            (cx + 72, cy + 25),
-        ]
-        pygame.draw.polygon(surface, self._colors['wing_light'], right_top)
-        pygame.draw.line(surface, self._colors['accent_dim'],
-                         (cx + 60, cy - 15), (cx + 215, cy + 30), 3)
-        pygame.draw.line(surface, self._colors['panel_line'],
-                         (cx + 100, cy + 8), (cx + 138, cy + 43), 1)
-
-        # ── Engine nacelles ──
-        for nx in [cx - 172, cx + 172]:
-            nacelle_points = [
-                (nx - 14, cy + 22),
-                (nx + 14, cy + 22),
-                (nx + 10, cy + 50),
-                (nx - 10, cy + 50),
+    def _render_side_sponsons(self, surface: pygame.Surface, cx: int, cy: int) -> None:
+        for side in [-1, 1]:
+            outer = [
+                (cx + side * 68, cy - 58),
+                (cx + side * 230, cy - 20),
+                (cx + side * 252, cy + 34),
+                (cx + side * 222, cy + 76),
+                (cx + side * 116, cy + 70),
+                (cx + side * 92, cy + 22),
             ]
-            pygame.draw.polygon(surface, self._colors['hull_mid'], nacelle_points)
-            pygame.draw.polygon(surface, self._colors['hull_light'], nacelle_points, 1)
-            pygame.draw.rect(surface, self._colors['hull_dark'],
-                             (nx - 10, cy + 18, 20, 6))
-            pygame.draw.ellipse(surface, self._colors['engine_outer'],
-                                (nx - 10, cy + 48, 20, 8))
-            pygame.draw.ellipse(surface, self._colors['engine_glow'],
-                                (nx - 5, cy + 50, 10, 5))
+            mid = [
+                (cx + side * 78, cy - 46),
+                (cx + side * 210, cy - 14),
+                (cx + side * 226, cy + 30),
+                (cx + side * 204, cy + 62),
+                (cx + side * 124, cy + 58),
+                (cx + side * 104, cy + 18),
+            ]
+            top = [
+                (cx + side * 94, cy - 30),
+                (cx + side * 182, cy - 8),
+                (cx + side * 194, cy + 22),
+                (cx + side * 174, cy + 44),
+                (cx + side * 128, cy + 42),
+                (cx + side * 112, cy + 10),
+            ]
+            pygame.draw.polygon(surface, self._colors['armor_shadow'], outer)
+            pygame.draw.polygon(surface, self._colors['wing_dark'], outer, 2)
+            pygame.draw.polygon(surface, self._colors['wing_mid'], mid)
+            pygame.draw.polygon(surface, self._colors['wing_light'], top)
+            pygame.draw.line(
+                surface,
+                self._colors['accent_dim'],
+                (cx + side * 92, cy - 36),
+                (cx + side * 218, cy + 4),
+                2,
+            )
+            pygame.draw.line(
+                surface,
+                self._colors['panel_line'],
+                (cx + side * 126, cy + 12),
+                (cx + side * 196, cy + 32),
+                1,
+            )
+
+            for offset in [132, 198]:
+                nx = cx + side * offset
+                nacelle = pygame.Rect(nx - 18, cy + 58, 36, 34)
+                pygame.draw.rect(surface, self._colors['weapon_dark'], nacelle, border_radius=3)
+                pygame.draw.rect(surface, self._colors['hull_highlight'], nacelle, 1, border_radius=3)
+                pygame.draw.rect(surface, self._colors['engine_outer'], (nx - 12, cy + 76, 24, 9))
+                pygame.draw.rect(surface, self._colors['engine_glow'], (nx - 7, cy + 80, 14, 5))
 
     # ── Main hull ──────────────────────────────────────────────────────────
 
     def _render_body(self, surface: pygame.Surface, cx: int, cy: int) -> None:
         # Layer 0: outer silhouette
         hull_outer = [
-            (cx, cy - 108),
-            (cx + 104, cy - 22),
-            (cx + 100, cy + 18),
-            (cx + 72, cy + 68),
-            (cx + 55, cy + 92),
-            (cx - 55, cy + 92),
-            (cx - 72, cy + 68),
-            (cx - 100, cy + 18),
-            (cx - 104, cy - 22),
+            (cx, cy - 124),
+            (cx + 78, cy - 82),
+            (cx + 108, cy - 20),
+            (cx + 92, cy + 56),
+            (cx + 54, cy + 108),
+            (cx - 54, cy + 108),
+            (cx - 92, cy + 56),
+            (cx - 108, cy - 20),
+            (cx - 78, cy - 82),
         ]
         pygame.draw.polygon(surface, self._colors['hull_dark'], hull_outer)
 
         # Layer 1
         hull_mid = [
-            (cx, cy - 94),
-            (cx + 82, cy - 16),
-            (cx + 78, cy + 16),
-            (cx + 58, cy + 60),
-            (cx + 42, cy + 84),
-            (cx - 42, cy + 84),
-            (cx - 58, cy + 60),
-            (cx - 78, cy + 16),
-            (cx - 82, cy - 16),
+            (cx, cy - 108),
+            (cx + 62, cy - 70),
+            (cx + 84, cy - 16),
+            (cx + 70, cy + 50),
+            (cx + 42, cy + 92),
+            (cx - 42, cy + 92),
+            (cx - 70, cy + 50),
+            (cx - 84, cy - 16),
+            (cx - 62, cy - 70),
         ]
         pygame.draw.polygon(surface, self._colors['hull_mid'], hull_mid)
 
         # Layer 2
         hull_light = [
-            (cx, cy - 80),
-            (cx + 66, cy - 10),
-            (cx + 62, cy + 22),
-            (cx + 46, cy + 56),
-            (cx + 28, cy + 78),
-            (cx - 28, cy + 78),
-            (cx - 46, cy + 56),
-            (cx - 62, cy + 22),
-            (cx - 66, cy - 10),
+            (cx, cy - 92),
+            (cx + 44, cy - 54),
+            (cx + 58, cy - 6),
+            (cx + 48, cy + 44),
+            (cx + 24, cy + 74),
+            (cx - 24, cy + 74),
+            (cx - 48, cy + 44),
+            (cx - 58, cy - 6),
+            (cx - 44, cy - 54),
         ]
         pygame.draw.polygon(surface, self._colors['hull_light'], hull_light)
 
         # Layer 3: spine highlight
         hull_highlight = [
-            (cx, cy - 66),
-            (cx + 32, cy - 6),
-            (cx + 28, cy + 26),
-            (cx + 14, cy + 52),
-            (cx - 14, cy + 52),
-            (cx - 28, cy + 26),
-            (cx - 32, cy - 6),
+            (cx, cy - 76),
+            (cx + 26, cy - 30),
+            (cx + 24, cy + 22),
+            (cx + 10, cy + 54),
+            (cx - 10, cy + 54),
+            (cx - 24, cy + 22),
+            (cx - 26, cy - 30),
         ]
         pygame.draw.polygon(surface, self._colors['hull_highlight'], hull_highlight)
 
@@ -433,29 +415,43 @@ class MotherShip:
 
         # Centerline
         pygame.draw.line(surface, self._colors['panel_line'],
-                         (cx, cy - 98), (cx, cy + 82), 1)
+                         (cx, cy - 108), (cx, cy + 94), 1)
+
+    def _render_weapon_bays(self, surface: pygame.Surface, cx: int, cy: int) -> None:
+        for side in [-1, 1]:
+            bay_rect = pygame.Rect(cx + side * 92 - 18, cy - 2, 36, 42)
+            pygame.draw.rect(surface, self._colors['weapon_dark'], bay_rect, border_radius=3)
+            pygame.draw.rect(surface, self._colors['hull_highlight'], bay_rect, 1, border_radius=3)
+            for barrel_y in [cy + 8, cy + 22]:
+                pygame.draw.line(
+                    surface,
+                    self._colors['panel_line'],
+                    (cx + side * 92, barrel_y),
+                    (cx + side * 132, barrel_y + side * 4),
+                    3,
+                )
+                pygame.draw.circle(surface, self._colors['warning_red'], (cx + side * 134, barrel_y + side * 4), 2)
 
     # ── Underside docking bay ──────────────────────────────────────────────
 
     def _render_docking_bay(self, surface: pygame.Surface, cx: int, cy: int) -> None:
         bay_points = [
-            (cx - 38, cy + 35),
-            (cx - 32, cy + 84),
-            (cx + 32, cy + 84),
-            (cx + 38, cy + 35),
+            (cx - 46, cy + 36),
+            (cx - 34, cy + 96),
+            (cx + 34, cy + 96),
+            (cx + 46, cy + 36),
         ]
         pygame.draw.polygon(surface, (10, 12, 22), bay_points)
         pygame.draw.polygon(surface, self._colors['hull_light'], bay_points, 1)
 
         pygame.draw.line(surface, self._colors['panel_line'],
-                         (cx - 24, cy + 40), (cx - 20, cy + 76), 1)
+                         (cx - 28, cy + 44), (cx - 20, cy + 86), 1)
         pygame.draw.line(surface, self._colors['panel_line'],
-                         (cx + 24, cy + 40), (cx + 20, cy + 76), 1)
+                         (cx + 28, cy + 44), (cx + 20, cy + 86), 1)
 
-        0.6 + 0.4 * self._engine_pulse
         for side in [-1, 1]:
-            for gy in [cy + 44, cy + 56, cy + 68]:
-                gx = cx + side * 22
+            for gy in [cy + 48, cy + 62, cy + 76]:
+                gx = cx + side * 26
                 draw_glow_circle(surface, (gx, gy), 3, self._colors['dock_guide'], 8)
                 pygame.draw.circle(surface, self._colors['dock_guide'], (gx, gy), 3)
                 alt_color = (
@@ -465,7 +461,7 @@ class MotherShip:
                 )
                 pygame.draw.circle(surface, alt_color, (gx, gy), 1)
 
-        beacon_y = cy + 60
+        beacon_y = cy + 66
         draw_glow_circle(surface, (cx, beacon_y), 5, self._colors['dock_guide_dim'], 14)
         pygame.draw.circle(surface, self._colors['dock_guide'], (cx, beacon_y), 5)
 
@@ -474,55 +470,55 @@ class MotherShip:
     def _render_bridge(self, surface: pygame.Surface, cx: int, cy: int) -> None:
         # Bridge base platform
         bridge_base = [
-            (cx - 28, cy - 38),
+            (cx - 36, cy - 54),
+            (cx + 36, cy - 54),
             (cx + 28, cy - 38),
-            (cx + 22, cy - 26),
-            (cx - 22, cy - 26),
+            (cx - 28, cy - 38),
         ]
         pygame.draw.polygon(surface, self._colors['hull_dark'], bridge_base)
         pygame.draw.polygon(surface, self._colors['hull_highlight'], bridge_base, 1)
 
         # Bridge superstructure
         bridge_body = [
-            (cx - 18, cy - 62),
-            (cx + 18, cy - 62),
-            (cx + 22, cy - 38),
-            (cx - 22, cy - 38),
+            (cx - 22, cy - 82),
+            (cx + 22, cy - 82),
+            (cx + 24, cy - 54),
+            (cx - 24, cy - 54),
         ]
         pygame.draw.polygon(surface, self._colors['hull_mid'], bridge_body)
         pygame.draw.polygon(surface, self._colors['hull_light'], bridge_body, 1)
 
         # Cyan canopy
         canopy = [
-            (cx - 10, cy - 58),
-            (cx + 10, cy - 58),
-            (cx + 14, cy - 44),
-            (cx - 14, cy - 44),
+            (cx - 12, cy - 76),
+            (cx + 12, cy - 76),
+            (cx + 15, cy - 60),
+            (cx - 15, cy - 60),
         ]
         pygame.draw.polygon(surface, self._colors['glass_dark'], canopy)
         pygame.draw.polygon(surface, self._colors['glass_mid'], canopy, 2)
 
         # Glass reflection
         reflection = [
-            (cx - 5, cy - 54),
-            (cx + 2, cy - 54),
-            (cx + 3, cy - 48),
-            (cx - 3, cy - 48),
+            (cx - 6, cy - 72),
+            (cx + 3, cy - 72),
+            (cx + 4, cy - 66),
+            (cx - 4, cy - 66),
         ]
         pygame.draw.polygon(surface, self._colors['glass_bright'], reflection)
 
         # Antenna spire
         pygame.draw.line(surface, self._colors['hull_highlight'],
-                         (cx, cy - 62), (cx, cy - 86), 2)
-        pygame.draw.circle(surface, self._colors['engine_glow'], (cx, cy - 86), 3)
-        draw_glow_circle(surface, (cx, cy - 86), 2, self._colors['running_light'], 7)
+                         (cx, cy - 82), (cx, cy - 108), 2)
+        pygame.draw.circle(surface, self._colors['engine_glow'], (cx, cy - 108), 3)
+        draw_glow_circle(surface, (cx, cy - 108), 2, self._colors['running_light'], 7)
 
     # ── Hull details ───────────────────────────────────────────────────────
 
     def _render_details(self, surface: pygame.Surface, cx: int, cy: int) -> None:
         # Upper hull chevron panel lines
-        for offset_y in [-54, -34, -12]:
-            line_w = 22 + offset_y + 54
+        for offset_y in [-62, -38, -14]:
+            line_w = 28 + offset_y + 62
             pygame.draw.line(surface, self._colors['panel_line'],
                              (cx - line_w, cy + offset_y),
                              (cx + line_w, cy + offset_y), 1)
@@ -530,32 +526,30 @@ class MotherShip:
         # Side panel seams
         for sx in [-60, 60]:
             pygame.draw.line(surface, self._colors['panel_line'],
-                             (sx + cx, cy - 16), (sx + cx, cy + 32), 1)
+                             (sx + cx, cy - 24), (sx + cx, cy + 42), 1)
         for sx in [-44, 44]:
             pygame.draw.line(surface, self._colors['panel_line'],
-                             (sx + cx, cy + 2), (sx + cx, cy + 68), 1)
+                             (sx + cx, cy + 4), (sx + cx, cy + 78), 1)
 
         # Amber running lights
-        for lx in [cx - 96, cx + 96]:
-            ly = cy - 12
+        for lx in [cx - 118, cx + 118, cx - 206, cx + 206]:
+            ly = cy - 10 if abs(lx - cx) < 160 else cy + 24
             draw_glow_circle(surface, (lx, ly), 3, self._colors['accent'], 9)
             pygame.draw.circle(surface, self._colors['accent'], (lx, ly), 3)
 
         # Stern lights
         for lx in [cx - 36, cx + 36]:
-            pygame.draw.circle(surface, self._colors['accent_dim'], (lx, cy + 88), 3)
+            pygame.draw.circle(surface, self._colors['accent_dim'], (lx, cy + 104), 3)
 
         # Bow accent chevron
         pygame.draw.line(surface, self._colors['accent_dim'],
-                         (cx - 14, cy - 74), (cx, cy - 88), 2)
+                         (cx - 16, cy - 92), (cx, cy - 112), 2)
         pygame.draw.line(surface, self._colors['accent_dim'],
-                         (cx + 14, cy - 74), (cx, cy - 88), 2)
+                         (cx + 16, cy - 92), (cx, cy - 112), 2)
 
         # Hull classification marks
-        for mx in [cx - 52, cx - 30, cx - 8]:
-            pygame.draw.circle(surface, self._colors['panel_line'], (mx, cy - 54), 1)
-        for mx in [cx + 8, cx + 30, cx + 52]:
-            pygame.draw.circle(surface, self._colors['panel_line'], (mx, cy - 54), 1)
+        for mx in [cx - 54, cx - 32, cx - 10, cx + 10, cx + 32, cx + 54]:
+            pygame.draw.circle(surface, self._colors['panel_line'], (mx, cy - 62), 1)
 
         # Docking bay approach light stripe — cached surface
         if not hasattr(self, '_stripe_cache') or self._stripe_cache is None:
@@ -569,9 +563,11 @@ class MotherShip:
 
     def _render_engines(self, surface: pygame.Surface, cx: int, cy: int) -> None:
         engine_defs = [
-            (cx - 160, cy + 35, 0.0),
-            (cx + 160, cy + 35, 1.2),
-            (cx, cy + 95, 2.4),
+            (cx - 198, cy + 78, 0.0),
+            (cx - 132, cy + 82, 0.7),
+            (cx + 132, cy + 82, 1.4),
+            (cx + 198, cy + 78, 2.1),
+            (cx, cy + 106, 2.8),
         ]
         for ex, ey, phase in engine_defs:
             pulse = 0.7 + 0.3 * math.sin(self._animation_time * 3 + phase)
