@@ -74,11 +74,62 @@ def test_base_talent_console_renders_visible_route_controls() -> None:
     reward_system.locked_buffs = {"Spread Shot"}
     manager = TalentBalanceManager({"Spread Shot": 1, "Phase Dash": 1}, {"offense": "Laser"})
 
+    console._active_module = "loadout"
     console.render(surface, manager, reward_system)
 
     assert surface.get_bounding_rect().width > 0
+    assert {"module:hangar", "module:loadout", "module:supply", "module:mission"}.issubset(console._button_rects)
     assert any(name.startswith("route:") for name in console._button_rects)
     assert "continue" in console._button_rects
+
+
+def test_base_talent_console_returns_module_action() -> None:
+    pygame.font.init()
+    surface = pygame.Surface((1280, 720), pygame.SRCALPHA)
+    console = BaseTalentConsole(1280, 720)
+    reward_system = RewardSystem("medium")
+    manager = TalentBalanceManager({"Spread Shot": 1}, {"offense": "Spread Shot"})
+
+    console.render(surface, manager, reward_system)
+    action = console.handle_mouse_click(console._button_rects["module:mission"].center)
+
+    assert action is not None
+    assert action.kind == BaseTalentConsoleAction.SELECT_MODULE
+    assert action.module == "mission"
+    assert console._active_module == "mission"
+
+
+def test_base_talent_console_supply_module_returns_resupply_action() -> None:
+    pygame.font.init()
+    surface = pygame.Surface((1280, 720), pygame.SRCALPHA)
+    console = BaseTalentConsole(1280, 720)
+    reward_system = RewardSystem("medium")
+    manager = TalentBalanceManager({"Spread Shot": 1}, {"offense": "Spread Shot"})
+
+    console.render(surface, manager, reward_system)
+    console.handle_mouse_click(console._button_rects["module:supply"].center)
+    console.render(surface, manager, reward_system)
+    action = console.handle_mouse_click(console._button_rects["supply:resupply"].center)
+
+    assert action is not None
+    assert action.kind == BaseTalentConsoleAction.RESUPPLY
+
+
+def test_base_talent_console_modules_render_on_compact_surface() -> None:
+    pygame.font.init()
+    reward_system = RewardSystem("medium")
+    manager = TalentBalanceManager({"Spread Shot": 1, "Phase Dash": 1}, {"offense": "Laser"})
+
+    for module in ("hangar", "loadout", "supply", "mission"):
+        surface = pygame.Surface((800, 600), pygame.SRCALPHA)
+        console = BaseTalentConsole(800, 600)
+        console._active_module = module
+        console.render(surface, manager, reward_system)
+
+        assert surface.get_bounding_rect().width > 0
+        assert "continue" in console._button_rects
+        assert console._button_rects["continue"].bottom <= 600
+        assert all(rect.right <= 800 and rect.bottom <= 600 for rect in console._button_rects.values())
 
 
 def test_base_talent_console_backdrop_draws_hangar_landing_pad() -> None:
@@ -120,6 +171,7 @@ def test_base_talent_console_returns_route_action() -> None:
     reward_system = RewardSystem("medium")
     manager = TalentBalanceManager({"Spread Shot": 1, "Phase Dash": 1}, {"offense": "Laser"})
 
+    console._active_module = "loadout"
     console.render(surface, manager, reward_system)
     action = console.handle_mouse_click(console._button_rects["route:offense"].center)
 

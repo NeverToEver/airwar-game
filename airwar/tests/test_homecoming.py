@@ -348,6 +348,46 @@ def test_game_scene_base_route_action_applies_loadout() -> None:
     scene.notification_manager.show.assert_called_with("基地天赋配置已同步")
 
 
+def test_game_scene_base_resupply_restores_ship_and_saves(monkeypatch) -> None:
+    scene = GameScene()
+    scene.player = _make_player()
+    scene.player.max_health = 140
+    scene.player.health = 35
+    scene.player.boost_max = 220
+    scene.player.boost_current = 40
+    scene.game_controller = GameController("medium", "pilot")
+    scene.reward_system = scene.game_controller.reward_system
+    scene.reward_system.talent_loadout = {"offense": "Laser"}
+    scene.notification_manager = SimpleNamespace(show=MagicMock())
+
+    def create_save_data():
+        return GameSaveData(username="pilot", talent_loadout=scene.get_talent_loadout())
+
+    scene._mother_ship_integrator = SimpleNamespace(
+        create_save_data=MagicMock(side_effect=create_save_data)
+    )
+    saved = _capture_base_saves(monkeypatch)
+
+    scene._handle_base_console_action(BaseTalentConsoleAction.resupply())
+
+    assert scene.player.health == scene.player.max_health
+    assert scene.player.boost_current == scene.player.boost_max
+    assert saved == [("pilot", {"offense": "Laser"}, False)]
+    scene.notification_manager.show.assert_called_with("基地补给已完成")
+
+
+def test_game_scene_base_module_action_does_not_change_loadout() -> None:
+    scene = GameScene()
+    scene.player = _make_player()
+    scene.game_controller = GameController("medium", "pilot")
+    scene.reward_system = scene.game_controller.reward_system
+    scene.reward_system.talent_loadout = {"offense": "Spread Shot"}
+
+    scene._handle_base_console_action(BaseTalentConsoleAction.select_module("mission"))
+
+    assert scene.reward_system.talent_loadout == {"offense": "Spread Shot"}
+
+
 def test_game_scene_homecoming_request_is_blocked_by_unsafe_states() -> None:
     scene = GameScene()
     scene.player = _make_player()
