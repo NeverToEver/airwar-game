@@ -178,6 +178,7 @@ def test_game_scene_homecoming_complete_keeps_scene_locked() -> None:
     scene = GameScene()
     scene.player = _make_player()
     scene.game_controller = GameController("medium", "pilot")
+    scene.reward_system = scene.game_controller.reward_system
     scene._homecoming_base_pending = True
     scene.game_controller.state.paused = True
 
@@ -186,6 +187,24 @@ def test_game_scene_homecoming_complete_keeps_scene_locked() -> None:
     assert scene.is_homecoming_locked() is True
     assert scene.game_controller.state.paused is True
     assert scene.consume_pause_request() is False
+
+
+def test_game_scene_homecoming_complete_opens_base_talent_console() -> None:
+    scene = GameScene()
+    scene.player = _make_player()
+    scene.game_controller = GameController("medium", "pilot")
+    scene.reward_system = scene.game_controller.reward_system
+    scene.reward_system.buff_levels["Spread Shot"] = 1
+    scene.reward_system.earned_buff_levels["Spread Shot"] = 1
+    scene._base_talent_console = SimpleNamespace(update=MagicMock())
+    scene.notification_manager = SimpleNamespace(show=MagicMock())
+
+    scene._on_homecoming_complete()
+
+    assert scene.is_homecoming_complete() is True
+    assert scene._talent_balance_manager is not None
+    assert scene.reward_system.locked_buffs == {"Laser"}
+    scene.notification_manager.show.assert_called_with("基地接口待接入")
 
 
 def test_game_scene_homecoming_request_is_blocked_by_unsafe_states() -> None:

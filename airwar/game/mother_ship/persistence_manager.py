@@ -86,6 +86,8 @@ class PersistenceManager(IPersistenceManager):
             'boss_kill_count': int,
             'unlocked_buffs': list,
             'buff_levels': dict,
+            'earned_buff_levels': dict,
+            'talent_loadout': dict,
             'player_health': int,
             'player_max_health': int,
             'difficulty': str,
