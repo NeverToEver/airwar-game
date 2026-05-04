@@ -1835,7 +1835,6 @@ class Boss(Entity):
             )
 
     def _render_enrage_core_lines(self, surface: pygame.Surface) -> None:
-        intensity = max(0.15, self.enrage_visual_intensity())
         pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() * 0.007)
         forward = self._facing_vector().normalize()
         if forward.length() <= 0:
