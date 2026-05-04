@@ -51,9 +51,7 @@ def test_aim_assist_sticks_while_mouse_stays_near_target() -> None:
     scene._update_aim_assist()
     assisted = scene._aim_position
 
-    assert assisted != scene._raw_aim_position
-    assert assisted[0] > 120
-    assert assisted[1] > 120
+    assert assisted == target.rect.center
 
     scene._set_raw_aim_position((165, 130))
     scene._update_aim_assist()
@@ -71,6 +69,18 @@ def test_aim_assist_defaults_to_nearest_enemy_when_cursor_is_not_on_target() -> 
     scene._update_aim_assist()
 
     assert scene._aim_assist_target is near
+
+
+def test_aim_assist_crosshair_overlaps_locked_enemy_center() -> None:
+    scene = GameScene()
+    target = SimpleNamespace(active=True, rect=pygame.Rect(200, 160, 80, 60))
+    scene.spawn_controller = SimpleNamespace(enemies=[target], boss=None)
+
+    scene._set_raw_aim_position((40, 40))
+    scene._update_aim_assist()
+
+    assert scene._aim_assist_target is target
+    assert scene._aim_position == target.rect.center
 
 
 def test_aim_assist_switches_to_enemy_in_mouse_movement_direction() -> None:
