@@ -895,14 +895,26 @@ class Boss(Entity):
     AIM_DASH_DURATION = 10
     ENRAGE_TRIGGER_RATIO = 0.30
     ENRAGE_DURATION = 600
+    ENRAGE_TRANSITION_DURATION = 54
     ENRAGE_SLOW_FACTOR = 0.35
-    ENRAGE_BULLET_SPEED = 2.4
-    ENRAGE_LASER_SPEED = 2.0
-    ENRAGE_POLYGON_GAP = 96
-    ENRAGE_RING_COUNT = 36
-    ENRAGE_RING_RADIUS_STEP = 52
-    ENRAGE_TRAIL_LENGTH = 18
-    ENRAGE_TRAIL_RENDER_MAX = 9
+    ENRAGE_BULLET_SPEED = 3.2
+    ENRAGE_LASER_SPEED = 3.7
+    ENRAGE_RELEASE_BULLET_SPEED = 1.55
+    ENRAGE_RELEASE_LASER_SPEED = 1.35
+    ENRAGE_ATTACK_INTERVAL = 34
+    ENRAGE_ATTACK_WINDUP = 18
+    ENRAGE_RELEASE_INTERVAL = 6
+    ENRAGE_SNAPSHOT_LASER_COUNT = 5
+    ENRAGE_SNAPSHOT_RING_COUNT = 10
+    ENRAGE_ORBIT_RADIUS_SCALE_X = 2.35
+    ENRAGE_ORBIT_RADIUS_SCALE_Y = 2.05
+    ENRAGE_ORBIT_PULSE_SCALE = 0.42
+    ENRAGE_ORBIT_TURNS = 3.35
+    ENRAGE_TRAIL_LENGTH = 42
+    ENRAGE_TRAIL_RENDER_MAX = 16
+    ENRAGE_TRAIL_FINAL_SCALE = 3.0
+    ENRAGE_TRAIL_SCALE = 0.5
+    ENRAGE_TRAIL_BLUR_PASSES = 2
     ENRAGE_EXIT_BACK_OFFSET = 118
 
     _warning_font = None
@@ -961,6 +973,10 @@ class Boss(Entity):
         self._enrage_trail_ghost_key = None
         self._enrage_health_lock_active = False
         self._enrage_health_lock_value = data.health * self.ENRAGE_TRIGGER_RATIO
+        self._enrage_attack_timer = 0
+        self._enrage_attack_index = 0
+        self._enrage_transition_timer = 0
+        self._enrage_transition_origin: Tuple[float, float] | None = None
         self.sync_hitbox()
 
     def sync_hitbox(self) -> None:
@@ -1017,6 +1033,9 @@ class Boss(Entity):
             return
 
         self._trigger_enrage_if_needed(player_pos, kwargs.get("player"))
+        if self._enrage_transition_timer > 0:
+            self._update_enrage_transition(player_pos, kwargs.get("player"))
+            return
         if self._enrage_timer > 0:
             self._update_enrage(player_pos, kwargs.get("player"))
             return
@@ -1162,7 +1181,12 @@ class Boss(Entity):
         self.health = max(self.health, self._enrage_health_lock_value)
         self._enrage_snapshot_target = target
         self._enrage_trail.clear()
-        self._spawn_bullets(self._create_enrage_bullet_field(target))
+        self._enrage_trail_ghost = None
+        self._enrage_trail_ghost_key = None
+        self._enrage_attack_timer = self.ENRAGE_ATTACK_WINDUP
+        self._enrage_attack_index = 0
+        self._enrage_transition_timer = self.ENRAGE_TRANSITION_DURATION
+        self._enrage_transition_origin = (self.rect.centerx, self.rect.centery)
 
     def _center_player_for_enrage(self, player=None, player_pos: Tuple[int, int] = None) -> Tuple[float, float]:
         target = (get_screen_width() / 2, get_screen_height() / 2)
@@ -1177,20 +1201,62 @@ class Boss(Entity):
         self._enrage_snapshot_target = target
         self._record_enrage_trail()
 
-        progress = 1.0 - self._enrage_timer / self.ENRAGE_DURATION
-        angle = progress * math.tau * 2.0
-        radius = max(self.rect.width, self.rect.height) * 1.35
-        target_center_x = target[0] + math.cos(angle) * radius
-        target_center_y = target[1] + math.sin(angle) * radius * 0.72
-        self.rect.x, self.rect.y = self._clamped_arena_position(
+        progress = self._enrage_progress()
+        target_center_x, target_center_y = self._enrage_orbit_center(target, progress)
+        self.rect.x, self.rect.y = self._clamped_enrage_position(
             target_center_x - self.rect.width / 2,
             target_center_y - self.rect.height / 2,
         )
+        self._update_enrage_snapshot_attacks(target, progress)
 
         self._enrage_timer -= 1
         if self._enrage_timer <= 0:
             self._release_enrage_bullets(target)
             self._move_behind_player_after_enrage(target)
+
+    def _update_enrage_transition(self, player_pos: Tuple[int, int] = None, player=None) -> None:
+        target = self._center_player_for_enrage(player, self._enrage_snapshot_target or player_pos)
+        self._enrage_snapshot_target = target
+
+        elapsed = self.ENRAGE_TRANSITION_DURATION - self._enrage_transition_timer
+        transition = max(0.0, min(1.0, elapsed / max(1, self.ENRAGE_TRANSITION_DURATION)))
+        eased = 1.0 - (1.0 - transition) ** 3
+
+        start = self._enrage_transition_origin or (self.rect.centerx, self.rect.centery)
+        orbit_progress = self._enrage_progress()
+        target_center_x, target_center_y = self._enrage_orbit_center(target, orbit_progress)
+        charge_shake = math.sin(transition * math.tau * 5.0) * (1.0 - transition) * 10.0
+        center_x = start[0] + (target_center_x - start[0]) * eased + charge_shake
+        center_y = start[1] + (target_center_y - start[1]) * eased
+        self.rect.x, self.rect.y = self._clamped_enrage_position(
+            center_x - self.rect.width / 2,
+            center_y - self.rect.height / 2,
+        )
+        self.sync_hitbox()
+
+        self._enrage_transition_timer -= 1
+        self._enrage_timer -= 1
+        if self._enrage_timer <= 0:
+            self._enrage_transition_timer = 0
+            self._release_enrage_bullets(target)
+            self._move_behind_player_after_enrage(target)
+        elif self._enrage_transition_timer <= 0:
+            self._enrage_transition_timer = 0
+            self._enrage_transition_origin = None
+
+    def _enrage_progress(self) -> float:
+        return max(0.0, min(1.0, 1.0 - self._enrage_timer / self.ENRAGE_DURATION))
+
+    def _enrage_orbit_center(self, target: Tuple[float, float], progress: float) -> Tuple[float, float]:
+        angle = progress * math.tau * self.ENRAGE_ORBIT_TURNS
+        base_radius = max(self.rect.width, self.rect.height)
+        pulse = 1.0 + self.ENRAGE_ORBIT_PULSE_SCALE * (0.5 + 0.5 * math.sin(progress * math.tau * 9.0))
+        radius_x = base_radius * self.ENRAGE_ORBIT_RADIUS_SCALE_X * pulse
+        radius_y = base_radius * self.ENRAGE_ORBIT_RADIUS_SCALE_Y * (0.95 + 0.12 * math.cos(progress * math.tau * 6.0))
+        return (
+            target[0] + math.cos(angle) * radius_x,
+            target[1] + math.sin(angle) * radius_y,
+        )
 
     def _record_enrage_trail(self) -> None:
         self._enrage_trail.append((self.rect.centerx, self.rect.centery))
@@ -1198,22 +1264,46 @@ class Boss(Entity):
         if len(self._enrage_trail) > max_trail:
             self._enrage_trail = self._enrage_trail[-max_trail:]
 
-    def _create_enrage_bullet_field(self, target: Tuple[float, float]) -> List[Bullet]:
+    def _clamped_enrage_position(self, x: float, y: float) -> Tuple[float, float]:
+        return (
+            max(0, min(x, get_screen_width() - self.rect.width)),
+            max(self.MIN_Y, min(y, get_screen_height() - self.rect.height)),
+        )
+
+    def _update_enrage_snapshot_attacks(self, target: Tuple[float, float], progress: float) -> None:
+        if not self._bullet_spawner or self._enrage_timer <= 1:
+            return
+        self._enrage_attack_timer -= 1
+        if self._enrage_attack_timer > 0:
+            return
+        self._spawn_bullets(self._create_enrage_snapshot_attack(target, progress))
+        self._enrage_attack_timer = self.ENRAGE_ATTACK_INTERVAL
+        self._enrage_attack_index += 1
+
+    def _create_enrage_snapshot_attack(self, target: Tuple[float, float], progress: float) -> List[Bullet]:
         bullets = []
-        bullets.extend(self._create_enrage_polygon_lasers(target))
-        bullets.extend(self._create_enrage_ring_bullets(target))
+        source = (self.rect.centerx, self.rect.centery)
+        bullets.extend(self._create_enrage_snapshot_lasers(source, target, progress))
+        bullets.extend(self._create_enrage_snapshot_ring_bullets(target, progress))
+        release_index = self._enrage_attack_index
+        for bullet in bullets:
+            bullet.held = True
+            bullet.clear_immune = True
+            bullet.enrage_release_delay = release_index * self.ENRAGE_RELEASE_INTERVAL
         return bullets
 
-    def _create_enrage_polygon_lasers(self, target: Tuple[float, float]) -> List[Bullet]:
-        cx, cy = target
-        radius_x = max(230, get_screen_width() * 0.25)
-        radius_y = max(170, get_screen_height() * 0.20)
-        corners = [
-            (cx, cy - radius_y),
-            (cx + radius_x, cy),
-            (cx, cy + radius_y),
-            (cx - radius_x, cy),
-        ]
+    def _create_enrage_snapshot_lasers(
+        self,
+        source: Tuple[float, float],
+        target: Tuple[float, float],
+        progress: float,
+    ) -> List[Bullet]:
+        aim = Vector2(target[0] - source[0], target[1] - source[1])
+        if aim.length() <= 0:
+            aim = Vector2(0, 1)
+        aim = aim.normalize()
+        side_axis = Vector2(-aim.y, aim.x)
+        burst_axis = 1 if self._enrage_attack_index % 2 == 0 else -1
         bullet_data = BulletData(
             damage=BOSS_AIM_BULLET_DAMAGE_BASE + self.phase * self.AIM_DAMAGE_INCREMENT,
             speed=self.ENRAGE_LASER_SPEED,
@@ -1221,29 +1311,22 @@ class Boss(Entity):
             bullet_type="laser",
         )
         bullets = []
-        for start, end in zip(corners, corners[1:] + corners[:1], strict=False):
-            dx = end[0] - start[0]
-            dy = end[1] - start[1]
-            length = math.hypot(dx, dy)
-            if length <= 0:
-                continue
-            steps = max(1, int(length // self.ENRAGE_POLYGON_GAP))
-            direction = Vector2(cx - start[0], cy - start[1]).normalize()
-            for index in range(steps):
-                if index % 3 == 1:
-                    continue
-                t = (index + 0.5) / steps
-                bullet = Bullet(start[0] + dx * t, start[1] + dy * t, bullet_data)
-                bullet.velocity = Vector2(0, 0)
-                bullet.held = True
-                bullet.clear_immune = True
-                bullet.enrage_target = target
-                bullet.enrage_speed = self.ENRAGE_LASER_SPEED
-                bullet.release_direction = direction
-                bullets.append(bullet)
+        spread = max(self.rect.width * 0.22, 34)
+        for index in range(self.ENRAGE_SNAPSHOT_LASER_COUNT):
+            offset = (index - (self.ENRAGE_SNAPSHOT_LASER_COUNT - 1) / 2) * spread
+            phase_bias = math.sin(progress * math.tau * 4 + index) * 0.22 * burst_axis
+            direction = Vector2(
+                aim.x + side_axis.x * phase_bias,
+                aim.y + side_axis.y * phase_bias,
+            ).normalize()
+            bullet = Bullet(source[0] + side_axis.x * offset, source[1] + side_axis.y * offset, bullet_data)
+            bullet.velocity = Vector2(0, 0)
+            bullet.release_direction = direction
+            bullet.enrage_release_speed = self.ENRAGE_RELEASE_LASER_SPEED
+            bullets.append(bullet)
         return bullets
 
-    def _create_enrage_ring_bullets(self, target: Tuple[float, float]) -> List[Bullet]:
+    def _create_enrage_snapshot_ring_bullets(self, target: Tuple[float, float], progress: float) -> List[Bullet]:
         cx, cy = target
         bullet_data = BulletData(
             damage=BOSS_WAVE_BULLET_DAMAGE,
@@ -1252,42 +1335,42 @@ class Boss(Entity):
             bullet_type="single",
         )
         bullets = []
-        for ring in (1, 2):
-            radius = 130 + ring * self.ENRAGE_RING_RADIUS_STEP
-            for index in range(self.ENRAGE_RING_COUNT):
-                if index % 4 == 0:
-                    continue
-                angle = math.tau * index / self.ENRAGE_RING_COUNT + ring * 0.18
-                bullet = Bullet(cx + math.cos(angle) * radius, cy + math.sin(angle) * radius, bullet_data)
-                bullet.velocity = Vector2(0, 0)
-                bullet.held = True
-                bullet.clear_immune = True
-                bullet.enrage_target = target
-                bullet.enrage_speed = self.ENRAGE_BULLET_SPEED
-                bullet.release_direction = Vector2(cx - bullet.rect.x, cy - bullet.rect.y).normalize()
-                bullets.append(bullet)
+        radius = max(self.rect.width, self.rect.height) * (1.65 + 0.25 * math.sin(progress * math.tau * 5))
+        base_angle = progress * math.tau * 2.8 + self._enrage_attack_index * 0.47
+        gap_index = self._enrage_attack_index % self.ENRAGE_SNAPSHOT_RING_COUNT
+        for index in range(self.ENRAGE_SNAPSHOT_RING_COUNT):
+            if index == gap_index:
+                continue
+            angle = base_angle + math.tau * index / self.ENRAGE_SNAPSHOT_RING_COUNT
+            bullet_x = cx + math.cos(angle) * radius
+            bullet_y = cy + math.sin(angle) * radius * 0.78
+            direction = Vector2(cx - bullet_x, cy - bullet_y).normalize()
+            if direction.length() <= 0:
+                direction = Vector2(0, 1)
+            bullet = Bullet(bullet_x, bullet_y, bullet_data)
+            bullet.velocity = Vector2(0, 0)
+            bullet.release_direction = direction
+            bullet.enrage_release_speed = self.ENRAGE_RELEASE_BULLET_SPEED
+            bullets.append(bullet)
         return bullets
 
     def _release_enrage_bullets(self, target: Tuple[float, float]) -> None:
-        if self._enrage_bullets_released or not self._bullet_spawner:
-            self._enrage_bullets_released = True
-            self._enrage_health_lock_active = False
-            self._enrage_timer = 0
-            return
         for bullet in self._enrage_spawned_bullets():
             if not getattr(bullet, "clear_immune", False) or not getattr(bullet, "held", False):
                 continue
             direction = getattr(bullet, "release_direction", None)
             if direction is None or direction.length() <= 0:
-                direction = Vector2(target[0] - bullet.rect.x, target[1] - bullet.rect.y).normalize()
-            if direction.length() <= 0:
-                direction = Vector2(0, -1)
-            speed = min(getattr(bullet, "enrage_speed", self.ENRAGE_BULLET_SPEED), self.ENRAGE_BULLET_SPEED) * 0.98
-            bullet.velocity = direction * speed
-            bullet.held = False
+                direction = Vector2(target[0] - bullet.rect.centerx, target[1] - bullet.rect.centery)
+                direction = direction.normalize() if direction.length() > 0 else Vector2(0, 1)
+            bullet.release_direction = direction
+            bullet.enrage_release_pending = True
+            bullet.enrage_release_delay = max(0, getattr(bullet, "enrage_release_delay", 0))
         self._enrage_bullets_released = True
         self._enrage_health_lock_active = False
         self._enrage_timer = 0
+        self._enrage_trail.clear()
+        self._enrage_trail_ghost = None
+        self._enrage_trail_ghost_key = None
 
     def _move_behind_player_after_enrage(self, target: Tuple[float, float]) -> None:
         behind_center_x = target[0]
@@ -1514,6 +1597,7 @@ class Boss(Entity):
             warning_surf.set_alpha(int(255 * pulse * max(0.35, intensity)))
             warning_rect = warning_surf.get_rect(center=(surface.get_width() // 2, warning_y))
             surface.blit(warning_surf, warning_rect)
+            self._render_enrage_transition_charge(surface, intensity)
 
         if self._show_escape_warning and not self.entering:
             warning_y = 50
@@ -1530,11 +1614,13 @@ class Boss(Entity):
         trail_len = len(trail)
         health_ratio = self.health / self.max_health if self.max_health > 0 else 1.0
         ghost = self._get_enrage_trail_ghost(health_ratio)
+        render_size = self._enrage_trail_render_size()
+        render_ghost = pygame.transform.smoothscale(ghost, render_size)
         for index, center in enumerate(trail):
-            alpha = int(20 + 62 * (index + 1) / trail_len)
-            ghost.set_alpha(alpha)
-            surface.blit(ghost, ghost.get_rect(center=center))
-        ghost.set_alpha(255)
+            alpha = int(24 + 96 * (index + 1) / trail_len)
+            render_ghost.set_alpha(alpha)
+            surface.blit(render_ghost, render_ghost.get_rect(center=center))
+        render_ghost.set_alpha(255)
 
     def _sample_enrage_trail_for_render(self) -> List[Tuple[float, float]]:
         trail_len = len(self._enrage_trail)
@@ -1546,21 +1632,64 @@ class Boss(Entity):
 
     def _get_enrage_trail_ghost(self, health_ratio: float) -> pygame.Surface:
         health_bucket = int(health_ratio * 10)
-        cache_key = (int(self.rect.width), int(self.rect.height), health_bucket)
+        final_width, final_height = self._enrage_trail_render_size()
+        scaled_width = max(1, int(final_width * self.ENRAGE_TRAIL_SCALE))
+        scaled_height = max(1, int(final_height * self.ENRAGE_TRAIL_SCALE))
+        cache_key = (scaled_width, scaled_height, health_bucket, self.ENRAGE_TRAIL_BLUR_PASSES)
         if self._enrage_trail_ghost_key != cache_key:
-            ghost = pygame.Surface((int(self.rect.width * 3), int(self.rect.height * 3)), pygame.SRCALPHA)
+            source = pygame.Surface((final_width, final_height), pygame.SRCALPHA)
             draw_boss_ship(
-                ghost,
-                ghost.get_width() / 2,
-                ghost.get_height() / 2,
+                source,
+                final_width / 2,
+                final_height / 2,
                 self.rect.width,
                 self.rect.height,
                 health_ratio,
             )
-            ghost.fill((215, 92, 64, 255), special_flags=pygame.BLEND_RGBA_MULT)
+            source.fill((215, 92, 64, 255), special_flags=pygame.BLEND_RGBA_MULT)
+            ghost = pygame.transform.smoothscale(source, (scaled_width, scaled_height))
+            ghost = self._blur_enrage_trail_ghost(ghost)
             self._enrage_trail_ghost = ghost
             self._enrage_trail_ghost_key = cache_key
         return self._enrage_trail_ghost
+
+    def _enrage_trail_render_size(self) -> Tuple[int, int]:
+        return (
+            max(1, int(self.rect.width * self.ENRAGE_TRAIL_FINAL_SCALE)),
+            max(1, int(self.rect.height * self.ENRAGE_TRAIL_FINAL_SCALE)),
+        )
+
+    def _blur_enrage_trail_ghost(self, ghost: pygame.Surface) -> pygame.Surface:
+        blurred = ghost
+        for _ in range(self.ENRAGE_TRAIL_BLUR_PASSES):
+            down_size = (max(1, blurred.get_width() // 2), max(1, blurred.get_height() // 2))
+            blurred = pygame.transform.smoothscale(blurred, down_size)
+            blurred = pygame.transform.smoothscale(blurred, ghost.get_size())
+        return blurred
+
+    def _render_enrage_transition_charge(self, surface: pygame.Surface, intensity: float) -> None:
+        if self._enrage_transition_timer <= 0:
+            return
+        transition = 1.0 - self._enrage_transition_timer / max(1, self.ENRAGE_TRANSITION_DURATION)
+        charge = transition * transition * (3 - 2 * transition)
+        alpha = int(155 * (1.0 - charge) + 70 * intensity)
+        if alpha <= 0:
+            return
+        glow_size = (
+            max(1, int(self.rect.width * (1.65 - 0.35 * charge))),
+            max(1, int(self.rect.height * (1.45 - 0.25 * charge))),
+        )
+        glow = pygame.Surface(glow_size, pygame.SRCALPHA)
+        color = (224, 106, 72, alpha)
+        pygame.draw.ellipse(glow, color, glow.get_rect(), max(2, int(5 * (1.0 - charge) + 2)))
+        pygame.draw.line(
+            glow,
+            (255, 184, 120, max(30, alpha // 2)),
+            (glow_size[0] // 2, 0),
+            (glow_size[0] // 2, glow_size[1]),
+            2,
+        )
+        surface.blit(glow, glow.get_rect(center=self.rect.center))
 
     def take_damage(self, damage: int) -> int:
 
@@ -1605,9 +1734,12 @@ class Boss(Entity):
     def enrage_visual_intensity(self) -> float:
         if self._enrage_timer <= 0:
             return 0.0
-        progress = 1.0 - self._enrage_timer / self.ENRAGE_DURATION
+        progress = self._enrage_progress()
         eased = progress * progress * (3 - 2 * progress)
         return max(0.0, min(0.8, eased))
+
+    def is_enrage_transitioning(self) -> bool:
+        return self._enrage_transition_timer > 0
 
     def is_entering(self) -> bool:
         return self.entering

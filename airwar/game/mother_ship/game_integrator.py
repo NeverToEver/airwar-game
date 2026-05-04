@@ -419,6 +419,8 @@ class GameIntegrator:
 
         self._game_scene.add_score(reduced_score)
         self._game_scene.add_boss_kill()
+        if hasattr(self._game_scene, 'trigger_boss_death_explosion'):
+            self._game_scene.trigger_boss_death_explosion(boss)
         self._game_scene.clear_boss()
         self._game_scene.show_notification(f"BOSS +{reduced_score} (母舰)")
 

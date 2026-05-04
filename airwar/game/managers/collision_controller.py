@@ -414,7 +414,7 @@ class CollisionController:
         player_hitbox = player.get_hitbox()
 
         for eb in enemy_bullets:
-            if eb.active and eb.rect.colliderect(player_hitbox):
+            if eb.active and not getattr(eb, "held", False) and eb.rect.colliderect(player_hitbox):
                 damage = calculate_damage_func(eb.data.damage)
                 on_player_hit_func(damage, player)
                 return True
