@@ -914,12 +914,15 @@ class Boss(Entity):
     ENRAGE_TRAIL_SCALE = 0.5
     ENRAGE_TRAIL_BLUR_PASSES = 2
     ENRAGE_EXIT_BACK_OFFSET = 118
-    ENRAGE_MUZZLE_FLASH_DURATION = 18
-    ENRAGE_MUZZLE_FLASH_PULSES = 6
+    ENRAGE_MUZZLE_FLASH_DURATION = 24
+    ENRAGE_MUZZLE_FLASH_PULSES = 1
     ENRAGE_MUZZLE_FORWARD_SCALE = 0.58
     ENRAGE_MUZZLE_SIDE_SCALE = 0.34
     ENRAGE_RELEASE_HOLD_DURATION = 42
     ENRAGE_RETURN_DURATION = 72
+    ENRAGE_CORE_COLOR = (126, 220, 255)
+    ENRAGE_DANGER_COLOR = (230, 72, 68)
+    ENRAGE_TRAIL_TINT = (96, 154, 220)
 
     _warning_font = None
     _escape_font = None
@@ -1753,39 +1756,115 @@ class Boss(Entity):
 
         if self.entering:
             warning_y = 20
-            pulse = abs(math.sin(pygame.time.get_ticks() * 0.01)) * 0.3 + 0.7
+            pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() * 0.002)
             warning_surf = self._get_warning_font().render("! 警告 !", True, Colors.ACCENT_DANGER)
-            warning_surf.set_alpha(int(255 * pulse))
+            warning_surf.set_alpha(int(150 + 35 * pulse))
             warning_rect = warning_surf.get_rect(center=(surface.get_width() // 2, warning_y))
             surface.blit(warning_surf, warning_rect)
 
         if self._enrage_timer > 0:
             intensity = self.enrage_visual_intensity()
             warning_y = 86
-            pulse = abs(math.sin(pygame.time.get_ticks() * 0.016)) * 0.22 + 0.58
-            warning_surf = self._get_escape_font().render("狂暴 EMP", True, (224, 106, 72))
-            warning_surf.set_alpha(int(255 * pulse * max(0.35, intensity)))
+            pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() * 0.0022)
+            warning_surf = self._get_escape_font().render("核心过载", True, (178, 226, 255))
+            warning_surf.set_alpha(int((105 + 42 * pulse) * max(0.42, intensity)))
             warning_rect = warning_surf.get_rect(center=(surface.get_width() // 2, warning_y))
             surface.blit(warning_surf, warning_rect)
             self._render_enrage_transition_charge(surface, intensity)
 
         if self._show_escape_warning and not self.entering:
             warning_y = 50
-            pulse = abs(math.sin(pygame.time.get_ticks() * 0.02)) * 0.3 + 0.7
+            pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() * 0.002)
             warning_surf = self._get_escape_font().render("逃跑中...", True, (255, 200, 50))
-            warning_surf.set_alpha(int(255 * pulse))
+            warning_surf.set_alpha(int(145 + 36 * pulse))
             warning_rect = warning_surf.get_rect(center=(surface.get_width() // 2, warning_y))
             surface.blit(warning_surf, warning_rect)
 
     def _render_boss_body(self, surface: pygame.Surface, health_ratio: float) -> None:
-        if self._enrage_timer <= 0:
+        if self.enrage_visual_intensity() <= 0:
             draw_boss_ship(surface, self.rect.centerx, self.rect.centery, self.rect.width, self.rect.height, health_ratio)
             return
 
+        self._render_enrage_body_aura(surface)
         sprite = get_boss_sprite(self.rect.width, self.rect.height, health_ratio)
         rotation = 90.0 - self._facing_angle
         rotated = pygame.transform.rotozoom(sprite, rotation, 1.0)
         surface.blit(rotated, rotated.get_rect(center=(round(self.rect.centerx), round(self.rect.centery))))
+        self._render_enrage_core_lines(surface)
+
+    def _render_enrage_body_aura(self, surface: pygame.Surface) -> None:
+        intensity = max(0.15, self.enrage_visual_intensity())
+        pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() * 0.005)
+        core_color = self.ENRAGE_CORE_COLOR
+        danger_color = self.ENRAGE_DANGER_COLOR
+        core_radius = max(10, int(min(self.rect.width, self.rect.height) * (0.19 + 0.05 * pulse)))
+        draw_glow_circle(
+            surface,
+            (int(self.rect.centerx), int(self.rect.centery)),
+            core_radius,
+            core_color,
+            int(core_radius * (3.3 + intensity)),
+        )
+        pygame.draw.circle(
+            surface,
+            (245, 248, 255),
+            (int(self.rect.centerx), int(self.rect.centery)),
+            max(2, core_radius // 5),
+        )
+        ring_size = (
+            max(1, int(self.rect.width * (1.26 + 0.05 * pulse))),
+            max(1, int(self.rect.height * (1.18 + 0.05 * pulse))),
+        )
+        ring = pygame.Surface(ring_size, pygame.SRCALPHA)
+        ring_rect = ring.get_rect()
+        pygame.draw.ellipse(ring, (*core_color, int(64 * intensity)), ring_rect, max(2, int(4 + 2 * pulse)))
+        inner = ring_rect.inflate(-max(4, ring_size[0] // 7), -max(4, ring_size[1] // 7))
+        pygame.draw.ellipse(ring, (*danger_color, int(42 * intensity)), inner, 2)
+        ring_rotation = 90.0 - self._facing_angle
+        rotated_ring = pygame.transform.rotozoom(ring, ring_rotation, 1.0)
+        surface.blit(rotated_ring, rotated_ring.get_rect(center=(round(self.rect.centerx), round(self.rect.centery))))
+
+        if self._enrage_snapshot_target:
+            target_x, target_y = self._enrage_snapshot_target
+            pygame.draw.line(
+                surface,
+                (48, 92, 122),
+                (int(self.rect.centerx), int(self.rect.centery)),
+                (int(target_x), int(target_y)),
+                max(1, int(1 + 2 * intensity)),
+            )
+
+    def _render_enrage_core_lines(self, surface: pygame.Surface) -> None:
+        intensity = max(0.15, self.enrage_visual_intensity())
+        pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() * 0.007)
+        forward = self._facing_vector().normalize()
+        if forward.length() <= 0:
+            forward = Vector2(0, 1)
+        side_axis = Vector2(-forward.y, forward.x)
+        center = Vector2(self.rect.centerx, self.rect.centery)
+        core_color = self.ENRAGE_CORE_COLOR
+        danger_color = self.ENRAGE_DANGER_COLOR
+        for side in (-1, 1):
+            flank = center + side_axis * (self.rect.width * 0.34 * side)
+            nose = flank + forward * (self.rect.height * 0.35)
+            tail = flank + forward * (-self.rect.height * 0.30)
+            pygame.draw.line(
+                surface,
+                (
+                    min(255, int(danger_color[0] * (0.55 + 0.25 * pulse))),
+                    min(255, int(danger_color[1] * (0.80 + 0.20 * pulse))),
+                    min(255, int(danger_color[2] * (0.85 + 0.15 * pulse))),
+                ),
+                (int(tail.x), int(tail.y)),
+                (int(nose.x), int(nose.y)),
+                max(2, int(self.rect.width * 0.018)),
+            )
+            pygame.draw.circle(
+                surface,
+                core_color,
+                (int(nose.x), int(nose.y)),
+                max(3, int(self.rect.width * 0.025)),
+            )
 
     def _render_muzzle_flash(self, surface: pygame.Surface) -> None:
         if self._muzzle_flash_timer <= 0 or not self._muzzle_flash_positions:
@@ -1793,20 +1872,20 @@ class Boss(Entity):
         remaining = self._muzzle_flash_timer / max(1, self.ENRAGE_MUZZLE_FLASH_DURATION)
         elapsed = 1.0 - remaining
         pulse = 0.5 + 0.5 * math.sin(elapsed * math.tau * self.ENRAGE_MUZZLE_FLASH_PULSES)
-        strobe = max(0.16, pulse) * remaining
-        radius = max(2, int(self.rect.width * 0.032 + 9 * strobe))
-        glow_radius = max(radius + 5, int(radius * (2.3 + 1.0 * pulse)))
+        strobe = (0.38 + 0.16 * pulse) * remaining
+        radius = max(2, int(self.rect.width * 0.03 + 8 * strobe))
+        glow_radius = max(radius + 5, int(radius * (1.75 + 0.35 * pulse)))
         forward = self._facing_vector().normalize()
         for muzzle_x, muzzle_y in self._muzzle_flash_positions:
             center = (int(muzzle_x), int(muzzle_y))
-            draw_glow_circle(surface, center, radius, (255, 216, 122), glow_radius)
+            draw_glow_circle(surface, center, radius, self.ENRAGE_CORE_COLOR, glow_radius)
             pygame.draw.line(
                 surface,
-                (255, 244, 196),
+                (232, 246, 255),
                 center,
                 (
-                    int(muzzle_x + forward.x * radius * (2.0 + 1.6 * pulse)),
-                    int(muzzle_y + forward.y * radius * (2.0 + 1.6 * pulse)),
+                    int(muzzle_x + forward.x * radius * (1.7 + 0.45 * pulse)),
+                    int(muzzle_y + forward.y * radius * (1.7 + 0.45 * pulse)),
                 ),
                 max(2, radius // 2),
             )
@@ -1850,7 +1929,7 @@ class Boss(Entity):
                 self.rect.height,
                 health_ratio,
             )
-            source.fill((215, 92, 64, 255), special_flags=pygame.BLEND_RGBA_MULT)
+            source.fill((*self.ENRAGE_TRAIL_TINT, 255), special_flags=pygame.BLEND_RGBA_MULT)
             ghost = pygame.transform.smoothscale(source, (scaled_width, scaled_height))
             ghost = self._blur_enrage_trail_ghost(ghost)
             self._enrage_trail_ghost = ghost
@@ -1876,8 +1955,8 @@ class Boss(Entity):
             return
         transition = 1.0 - self._enrage_transition_timer / max(1, self.ENRAGE_TRANSITION_DURATION)
         charge = transition * transition * (3 - 2 * transition)
-        pulse = 0.5 + 0.5 * math.sin(transition * math.tau * 8.0)
-        alpha = int(185 * (1.0 - charge) + 95 * intensity + 45 * pulse * (1.0 - transition))
+        pulse = 0.5 + 0.5 * math.sin(transition * math.tau * 2.0)
+        alpha = int(74 * (1.0 - charge) + 38 * intensity + 16 * pulse * (1.0 - transition))
         if alpha <= 0:
             return
         glow_size = (
@@ -1885,20 +1964,20 @@ class Boss(Entity):
             max(1, int(self.rect.height * (1.85 - 0.42 * charge))),
         )
         glow = pygame.Surface(glow_size, pygame.SRCALPHA)
-        color = (224, 106, 72, alpha)
+        color = (*self.ENRAGE_CORE_COLOR, alpha)
         pygame.draw.ellipse(glow, color, glow.get_rect(), max(2, int(8 * (1.0 - charge) + 2)))
         inner_rect = glow.get_rect().inflate(-max(4, glow_size[0] // 5), -max(4, glow_size[1] // 5))
-        pygame.draw.ellipse(glow, (255, 184, 120, max(20, alpha // 3)), inner_rect, 2)
+        pygame.draw.ellipse(glow, (*self.ENRAGE_DANGER_COLOR, max(14, alpha // 4)), inner_rect, 2)
         pygame.draw.line(
             glow,
-            (255, 184, 120, max(30, alpha // 2)),
+            (*self.ENRAGE_CORE_COLOR, max(18, alpha // 3)),
             (glow_size[0] // 2, 0),
             (glow_size[0] // 2, glow_size[1]),
             2,
         )
         pygame.draw.line(
             glow,
-            (255, 184, 120, max(26, alpha // 3)),
+            (*self.ENRAGE_DANGER_COLOR, max(16, alpha // 4)),
             (0, glow_size[1] // 2),
             (glow_size[0], glow_size[1] // 2),
             2,

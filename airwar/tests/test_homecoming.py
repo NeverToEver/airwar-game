@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 import pygame
 
 from airwar.entities.player import Player
-from airwar.game.constants import GAME_CONSTANTS
+from airwar.game.constants import GAME_CONSTANTS, PlayerConstants
 from airwar.game.homecoming import HomecomingDetector, HomecomingPhase, HomecomingSequence
 from airwar.game.managers.game_controller import GameController
 from airwar.game.mother_ship.mother_ship_state import GameSaveData
@@ -124,6 +124,39 @@ def test_homecoming_handoff_moves_player_into_base_entry() -> None:
     assert abs(final_y - entry_y) < 1.0
 
 
+def test_homecoming_departure_runs_orbital_strike_then_complete() -> None:
+    player = _make_player()
+    completed = []
+    strike = []
+    sequence = HomecomingSequence()
+
+    assert sequence.start_departure(
+        player,
+        1280,
+        720,
+        on_complete_callback=lambda: completed.append(True),
+        on_orbital_strike_callback=lambda: strike.append(True),
+    ) is True
+    assert sequence.phase == HomecomingPhase.BASE_LAUNCH
+
+    for _ in range(
+        HomecomingSequence.BASE_LAUNCH_FRAMES
+        + HomecomingSequence.RETURN_BLACKOUT_FRAMES
+        + int(HomecomingSequence.ORBITAL_STRIKE_FRAMES * HomecomingSequence.ORBITAL_STRIKE_IMPACT_PROGRESS)
+        + 1
+    ):
+        sequence.update(player)
+
+    assert strike == [True]
+    assert completed == []
+
+    for _ in range(HomecomingSequence.ORBITAL_STRIKE_FRAMES):
+        sequence.update(player)
+
+    assert sequence.is_complete() is True
+    assert completed == [True]
+
+
 def test_homecoming_scene_renders_asteroid_belt_and_space_station() -> None:
     pygame.font.init()
     surface = pygame.Surface((1920, 1080), pygame.SRCALPHA)
@@ -160,6 +193,17 @@ def test_homecoming_ftl_exit_fades_to_black_before_blackout() -> None:
     assert surface.get_at((160, 120))[:3] == (0, 0, 0)
 
 
+def test_homecoming_ftl_exit_transition_keeps_flash_muted() -> None:
+    surface = pygame.Surface((320, 240), pygame.SRCALPHA)
+    surface.fill((0, 0, 0))
+    ui = HomecomingUI(320, 240)
+    flash_peak_progress = 0.72 + 0.28 * 0.36
+
+    ui._render_ftl_exit_transition(surface, flash_peak_progress)
+
+    assert max(surface.get_at((5, 5))[:3]) <= HomecomingUI.FTL_EXIT_FLASH_ALPHA_MAX
+
+
 def test_homecoming_blackout_bridge_previews_station_reveal() -> None:
     surface = pygame.Surface((320, 240), pygame.SRCALPHA)
     ui = HomecomingUI(320, 240)
@@ -170,6 +214,69 @@ def test_homecoming_blackout_bridge_previews_station_reveal() -> None:
     ring_pixels = [surface.get_at((x, y)) for x in range(158, 163) for y in range(40, 45)]
     assert center_pixel[:3] != (0, 0, 0)
     assert any(pixel[:3] != (0, 0, 0) for pixel in ring_pixels)
+
+
+def test_homecoming_launch_corridor_uses_slow_low_contrast_pulse(monkeypatch) -> None:
+    pygame.font.init()
+    ui = HomecomingUI(320, 240)
+    player = _make_player()
+    sequence = HomecomingSequence()
+    sequence.start_departure(player, 320, 240)
+    original_line = pygame.draw.line
+    line_alphas = []
+
+    def capture_line(surface, color, start_pos, end_pos, width=1):
+        line_alphas.append(color[3])
+        return original_line(surface, color, start_pos, end_pos, width)
+
+    monkeypatch.setattr(pygame.draw, "line", capture_line)
+
+    for frame in range(HomecomingSequence.BASE_LAUNCH_FRAMES + 1):
+        surface = pygame.Surface((320, 240), pygame.SRCALPHA)
+        progress = frame / HomecomingSequence.BASE_LAUNCH_FRAMES
+        ui._render_launch_corridor(surface, sequence, progress)
+
+    deltas = [current - previous for previous, current in zip(line_alphas, line_alphas[1:], strict=False)]
+    sign_changes = 0
+    previous_sign = 0
+    for delta in deltas:
+        if delta == 0:
+            continue
+        sign = 1 if delta > 0 else -1
+        if previous_sign and sign != previous_sign:
+            sign_changes += 1
+        previous_sign = sign
+
+    assert max(line_alphas) <= HomecomingUI.LAUNCH_CORRIDOR_LINE_ALPHA_BASE + HomecomingUI.LAUNCH_CORRIDOR_LINE_ALPHA_RANGE
+    assert max(abs(delta) for delta in deltas) <= 3
+    assert sign_changes <= 4
+
+
+def test_homecoming_departure_renders_launch_and_orbital_strike_pixels() -> None:
+    pygame.font.init()
+    surface = pygame.Surface((320, 240), pygame.SRCALPHA)
+    ui = HomecomingUI(320, 240)
+    player = _make_player()
+    sequence = HomecomingSequence()
+    sequence.start_departure(player, 320, 240)
+
+    for _ in range(12):
+        sequence.update(player)
+    ui.render_sequence(surface, sequence, player)
+
+    launch_pixels = [
+        surface.get_at((x, y))
+        for x in range(150, 171, 5)
+        for y in range(110, 210, 12)
+    ]
+    assert any(pixel[:3] != (2, 4, 10) for pixel in launch_pixels)
+
+    for _ in range(HomecomingSequence.BASE_LAUNCH_FRAMES + HomecomingSequence.RETURN_BLACKOUT_FRAMES + 2):
+        sequence.update(player)
+    surface.fill((4, 8, 18))
+    ui.render_sequence(surface, sequence, player)
+
+    assert surface.get_at((160, 100))[:3] != (4, 8, 18)
 
 
 def test_game_scene_homecoming_request_sets_safe_interface_state() -> None:
@@ -227,7 +334,7 @@ def test_game_scene_homecoming_complete_opens_base_talent_console() -> None:
     scene.notification_manager.show.assert_called_with("已进入基地整备")
 
 
-def test_game_scene_leaving_base_restores_play_state() -> None:
+def test_game_scene_leaving_base_starts_departure_sequence() -> None:
     scene = GameScene()
     scene.player = _make_player()
     scene.game_controller = GameController("medium", "pilot")
@@ -239,24 +346,104 @@ def test_game_scene_leaving_base_restores_play_state() -> None:
     scene.game_controller.state.invincibility_timer = 999999
     scene.game_controller.state.silent_invincible = True
     scene._homecoming_sequence = HomecomingSequence()
-    scene._homecoming_sequence.start(scene.player, 1280, 720)
     scene._homecoming_detector = SimpleNamespace(reset=MagicMock())
     scene._homecoming_ui = SimpleNamespace(hide=MagicMock())
     scene.notification_manager = SimpleNamespace(show=MagicMock())
 
     scene._leave_homecoming_base()
 
-    assert scene.is_homecoming_locked() is False
+    assert scene.is_homecoming_locked() is True
+    assert scene._homecoming_base_pending is False
     assert scene._pause_requested is False
+    assert scene.player.controls_locked is True
+    assert scene.game_controller.state.paused is True
+    assert scene.game_controller.state.player_invincible is True
+    assert scene.game_controller.state.invincibility_timer == GameScene.HOMECOMING_LOCK_INVINCIBILITY_TIMER
+    assert scene.game_controller.state.silent_invincible is True
+    assert scene._homecoming_sequence.phase == HomecomingPhase.BASE_LAUNCH
+    scene._homecoming_detector.reset.assert_not_called()
+    scene._homecoming_ui.hide.assert_called_once()
+    scene.notification_manager.show.assert_called_with("基地弹射程序启动")
+
+
+def test_game_scene_homecoming_departure_complete_restores_play_state() -> None:
+    scene = GameScene()
+    scene.player = _make_player()
+    scene.game_controller = GameController("medium", "pilot")
+    scene._homecoming_sequence = HomecomingSequence()
+    scene._homecoming_detector = SimpleNamespace(reset=MagicMock())
+    scene._homecoming_ui = SimpleNamespace(hide=MagicMock())
+    scene.notification_manager = SimpleNamespace(show=MagicMock())
+    scene.player.controls_locked = True
+    scene.game_controller.state.paused = True
+    scene.game_controller.state.player_invincible = True
+    scene.game_controller.state.invincibility_timer = 999999
+    scene.game_controller.state.silent_invincible = True
+
+    scene._on_homecoming_departure_complete()
+
+    assert scene.is_homecoming_locked() is False
     assert scene.player.controls_locked is False
     assert scene.game_controller.state.paused is False
     assert scene.game_controller.state.player_invincible is True
     assert scene.game_controller.state.invincibility_timer == GAME_CONSTANTS.PLAYER.INVINCIBILITY_DURATION
     assert scene.game_controller.state.silent_invincible is False
-    assert scene._homecoming_sequence.phase == HomecomingPhase.INACTIVE
+    assert scene.game_controller.state.entrance_animation is True
+    assert scene.game_controller.state.entrance_timer == 0
+    assert scene.player.rect.y == PlayerConstants.INITIAL_Y
     scene._homecoming_detector.reset.assert_called_once()
     scene._homecoming_ui.hide.assert_called_once()
-    scene.notification_manager.show.assert_called_with("已离开基地")
+    scene.notification_manager.show.assert_called_with("已返回战场")
+
+
+def test_game_scene_homecoming_update_does_not_relock_after_departure_complete() -> None:
+    scene = GameScene()
+    scene.player = _make_player()
+    scene.game_controller = GameController("medium", "pilot")
+    scene._homecoming_detector = SimpleNamespace(reset=MagicMock())
+    scene._homecoming_ui = SimpleNamespace(hide=MagicMock())
+    scene._homecoming_sequence = HomecomingSequence(scene._on_homecoming_complete)
+    scene.notification_manager = SimpleNamespace(show=MagicMock())
+    scene._set_homecoming_protection(locked=True)
+    scene._homecoming_sequence.start_departure(
+        scene.player,
+        1280,
+        720,
+        on_complete_callback=scene._on_homecoming_departure_complete,
+    )
+    scene._homecoming_sequence._set_phase(HomecomingPhase.ORBITAL_STRIKE)
+    scene._homecoming_sequence._frame = HomecomingSequence.ORBITAL_STRIKE_FRAMES - 1
+
+    scene._update_homecoming()
+
+    assert scene._homecoming_sequence.phase == HomecomingPhase.INACTIVE
+    assert scene.player.controls_locked is False
+    assert scene.game_controller.state.paused is False
+
+
+def test_game_scene_homecoming_orbital_strike_clears_hostiles() -> None:
+    scene = GameScene()
+    scene.player = _make_player()
+    scene.player.get_bullets().append(SimpleNamespace(active=True))
+    enemy = SimpleNamespace(active=True, rect=SimpleNamespace(centerx=120, centery=80, width=40))
+    boss = SimpleNamespace(active=True, rect=SimpleNamespace(centerx=400, centery=140, width=210, height=170))
+    scene.spawn_controller = SimpleNamespace(
+        enemies=[enemy],
+        boss=boss,
+        enemy_bullets=[SimpleNamespace(active=True)],
+        reset_boss_timer=MagicMock(),
+    )
+    scene._bullet_manager = SimpleNamespace(clear_enemy_bullets=MagicMock())
+    scene.notification_manager = SimpleNamespace(show=MagicMock())
+
+    scene._on_homecoming_orbital_strike()
+
+    assert scene.spawn_controller.enemies == []
+    assert scene.spawn_controller.boss is None
+    assert scene.player.get_bullets() == []
+    scene.spawn_controller.reset_boss_timer.assert_called_once()
+    scene._bullet_manager.clear_enemy_bullets.assert_called_once_with(include_clear_immune=True)
+    scene.notification_manager.show.assert_called_with("轨道导弹清场完成")
 
 
 def test_game_scene_base_loadout_save_persists_current_route(monkeypatch) -> None:

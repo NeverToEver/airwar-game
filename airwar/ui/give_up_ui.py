@@ -56,7 +56,7 @@ class GiveUpUI:
         center_x = self._screen_width // 2
         center_y = 60
 
-        alpha = 180 + int(75 * math.sin(self._animation_time * 0.2))
+        alpha = 150 + int(22 * math.sin(self._animation_time * 0.04))
 
         if self._use_themed_style:
             self._render_glow_text(surface, center_x, center_y - 30, alpha)

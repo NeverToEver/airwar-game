@@ -31,7 +31,7 @@ class WarningBanner:
 
     # Timing constraints
     MAX_ELAPSED = 0.1
-    PULSE_MULT = 3.0
+    PULSE_MULT = 1.2
 
     # Animation exponents (cubic)
     EASE_OUT_EXP = 3
@@ -41,14 +41,14 @@ class WarningBanner:
     BANNER_Y_FRACTION = 0.12
 
     # Pulse overlay
-    PULSE_BASE = 0.8
-    PULSE_AMPLITUDE = 0.2
-    DIM_ALPHA_MAX = 60
+    PULSE_BASE = 0.9
+    PULSE_AMPLITUDE = 0.08
+    DIM_ALPHA_MAX = 28
 
     # Glow bar
-    GLOW_FREQUENCY = 1.5
-    GLOW_ALPHA_BASE = 60
-    GLOW_ALPHA_RANGE = 40
+    GLOW_FREQUENCY = 0.75
+    GLOW_ALPHA_BASE = 34
+    GLOW_ALPHA_RANGE = 16
     GLOW_BAR_COLOR = (255, 140, 20)
     GLOW_BAR_HEIGHT = 4
 
