@@ -154,6 +154,9 @@ class GameController:
     def get_next_threshold(self) -> float:
         return self._get_threshold_for_index(self.milestone_index)
 
+    def has_next_reward_milestone(self) -> bool:
+        return self.get_next_threshold() > self.get_previous_threshold()
+
     def on_player_hit(self, damage: int, player) -> None:
 
         """Handle player being hit by enemy fire.
