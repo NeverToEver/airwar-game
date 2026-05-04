@@ -52,6 +52,9 @@ class Bullet(Entity):
             )
 
     def update(self, *args, **kwargs) -> None:
+        if getattr(self, "held", False):
+            return
+
         if self.data.bullet_type == "laser" or self.data.is_laser:
             self._trail.append((self.rect.x, self.rect.y, self.rect.width, self.rect.height))
 

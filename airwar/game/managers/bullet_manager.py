@@ -100,15 +100,20 @@ class BulletManager:
         """
         self._cleanup_enemy_bullets()
 
-    def clear_enemy_bullets(self) -> None:
+    def clear_enemy_bullets(self, include_clear_immune: bool = False) -> None:
         """Clear all enemy bullets.
 
         Marks all enemy bullets as inactive and clears the list.
         Typically called after a boss is killed.
         """
         for bullet in self._spawn_controller.enemy_bullets[:]:
+            if getattr(bullet, "clear_immune", False) and not include_clear_immune:
+                continue
             bullet.active = False
-        self._spawn_controller.enemy_bullets.clear()
+        self._spawn_controller.enemy_bullets[:] = [
+            bullet for bullet in self._spawn_controller.enemy_bullets
+            if getattr(bullet, "clear_immune", False) and not include_clear_immune
+        ]
 
     def _update_player_bullets(self, cleanup: bool) -> None:
         """Update player bullets.

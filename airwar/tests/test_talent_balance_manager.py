@@ -81,6 +81,24 @@ def test_base_talent_console_renders_visible_route_controls() -> None:
     assert "continue" in console._button_rects
 
 
+def test_base_talent_console_backdrop_draws_hangar_landing_pad() -> None:
+    surface = pygame.Surface((1280, 720), pygame.SRCALPHA)
+    console = BaseTalentConsole(1280, 720)
+
+    console._render_backdrop(surface)
+
+    center_pad_pixel = surface.get_at((640, 490))[:3]
+    deck_pixel = surface.get_at((640, 360))[:3]
+    warning_pixels = [
+        surface.get_at((x, y))[:3]
+        for x in range(0, 1280, 24)
+        for y in range(598, 622, 6)
+    ]
+
+    assert center_pad_pixel != deck_pixel
+    assert any(pixel[0] > pixel[1] > pixel[2] for pixel in warning_pixels)
+
+
 def test_base_talent_console_returns_continue_action() -> None:
     pygame.font.init()
     surface = pygame.Surface((1280, 720), pygame.SRCALPHA)

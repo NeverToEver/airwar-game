@@ -1,160 +1,152 @@
-# Air War
+# 空战
 
-A 2D space shooter built with Python + Pygame, with optional Rust native acceleration.
+一款基于 Python + Pygame 的 2D 空战射击游戏，支持可选 Rust 原生扩展加速。当前版本重点强化了 Boss 战、基地整备、鼠标辅瞄手感，以及运行期生成素材的本地缓存。
 
-## Quick Start
+## 快速开始
 
 ```bash
-# Enter project directory
+# 进入项目目录
 cd airwar-game
 
-# Install dependencies
+# 安装依赖
 pip install -r requirements.txt
 
-# Run the game
+# 启动游戏
 python3 main.py
 ```
 
-## Game Controls
+## 操作方式
 
-| Key | Action |
-|-----|--------|
-| Arrow keys / WASD | Move ship |
-| Shift (hold) | Boost -- consumes energy, +70% speed |
-| Auto-fire | Ship fires automatically |
-| ESC | Pause game |
-| H (hold 3s) | Dock with mothership to save |
-| K (hold 3s) | Surrender (give up current run) |
-| L | Toggle HUD panel |
+| 按键 / 输入 | 功能 |
+|-------------|------|
+| 方向键 / WASD | 移动战机 |
+| 鼠标 | 控制瞄准方向，带目标辅瞄与平滑输入延迟 |
+| Shift 长按 | 加速闪避，消耗加速燃料，速度提升 70% |
+| 自动开火 | 战机会持续自动射击 |
+| ESC | 暂停游戏 |
+| H 长按 3 秒 | 呼叫母舰并对接保存进度 |
+| K 长按 3 秒 | 放弃当前出击 |
+| L | 展开 / 收起 HUD 面板 |
 
-## Features
+## 当前版本内容
 
-- **1920x1080 default resolution**, adaptive screen scaling
-- Three difficulty modes (Easy / Medium / Hard), dynamic difficulty scaling
-- **Boost system**: hold Shift to activate, energy bar with consumption/recovery, 270-degree arc gauge UI, difficulty-based capacity
-- **13 buff types** (including Boost Recovery), 4 categories: Health / Offense / Defense / Utility
-- **Mothership save system**: capital-class mothership, explosive missile AoE attack (5 targets), two-phase dock/undock animation, WASD movement
-- **Full save restore**: player position, health, buff levels and effects fully saved and restored
-- 8 enemy movement patterns (straight, sine, zigzag, dive, hover, spiral, noise, aggressive), Rust batch acceleration
-- **Boss battles**: 4-phase omni-directional movement (Patrol / Sweep / Hover / Chase), multi-phase attacks, forced enemy clear on spawn
-- **Boss escape timer**: panel-style countdown, color transitions over time (steel-blue -> amber -> red), pulse flash warning
-- **Hit bullet clear**: all enemy bullets cleared when player takes damage and triggers invincibility
-- Milestone reward system, periodic buff selection triggers
-- Integrated HUD panel (collapsible), discrete battery-style health indicator
-- Fullscreen mode (FULLSCREEN), cold-steel-blue military cockpit visual theme
+- 默认 1920x1080 分辨率，支持窗口自适应缩放。
+- 三种难度：简单 / 普通 / 困难，并带动态难度成长。
+- 自动射击 + 鼠标辅瞄：默认锁定敌人，鼠标大幅移动时优先切换到移动方向目标；原始输入加入短延迟平滑，降低辅瞄抢鼠标带来的顿挫。
+- 加速系统：长按 Shift 启动，带燃料消耗、恢复和 270 度环形仪表 UI。
+- 13 种增益，覆盖生命、攻击、防御、功能四类。
+- 里程碑奖励系统：达到分数阈值后选择强化。
+- 母舰系统：长按 H 对接保存，母舰可移动，并提供带弹匣限制的爆炸导弹支援。
+- 基地整备：回到基地后可在停机坪风格背景中重分配天赋。
+- Boss 战：多阶段移动和攻击；Boss 血量降至 30% 时触发暴走，包含橙红色 EMP 扭曲、强制拉近玩家、四边形与环绕弹幕布置、拖影提示和慢速弹幕释放。
+- 受击清弹：玩家受击进入短暂无敌时会清理普通敌弹；Boss 暴走布置弹幕不会被该清弹机制移除，但玩家无敌仍然生效。
+- 运行期绘制素材缓存：首次启动时生成飞船 / 光效等素材并缓存在本地，后续启动复用图片素材以降低重复绘制成本。
+- 可选 Rust 原生扩展：用于向量、碰撞、批量移动、粒子、子弹、光效等性能热点；未安装时自动回退到纯 Python。
 
-## Architecture
+## 技术栈
 
-### Core Patterns
-- **Scene Pattern**: scene-based architecture with lifecycle management (enter/exit/handle_events/update/render)
-- **Manager Pattern**: independent subsystem managers (spawn, collision, bullets, boss, etc.)
-- **Observer Pattern**: event bus for cross-system communication (mothership docking, etc.)
+- Python 3.x
+- Pygame
+- Pillow
+- Pytest / Ruff
+- Rust + PyO3 + maturin（可选加速模块）
 
-### Tech Stack
-- Python 3.x + Pygame + Pillow
-- Rust (PyO3 0.22 / maturin 1.0) -- `airwar_core` native extension module
+## 项目结构
 
-### Key Modules
-
-| Module | Location | Description |
-|--------|----------|-------------|
-| Scenes | `airwar/scenes/` | welcome, game, pause, death, exit_confirm (5 scenes) |
-| Entities | `airwar/entities/` | Player, Enemy, Boss, Bullet |
-| Managers | `airwar/game/managers/` | GameController, SpawnController, CollisionController, etc. |
-| Rendering | `airwar/game/rendering/` | GameRenderer, HUDRenderer |
-| Systems | `airwar/game/systems/` | HealthSystem, RewardSystem, DifficultyManager, etc. |
-| Buffs | `airwar/game/buffs/` | 13 buff types (including Boost Recovery) |
-| UI | `airwar/ui/` | IntegratedHUD, BoostGauge, DiscreteBattery, AmmoMagazine, WarningBanner, reward_selector, segmented_bar, etc. |
-| Save | `airwar/game/mother_ship/` | Mothership dock/save (state machine, interfaces, event bus, GameIntegrator) |
-| Surrender | `airwar/game/give_up/` | Hold-K surrender detector |
-| Rust Extension | `airwar_core/` | Native acceleration for performance hotspots (vectors, collision, batch movement, particles, sprite glow) |
-
-## Project Structure
-
-```
-airwar-game/                  # Project root
-|-- main.py                  # Entry point: python3 main.py
-|-- airwar/                  # Python source package
-|??   |-- config/              Config / design tokens / difficulty params
-|??   |-- entities/            Game entities (Player, Enemy, Boss, Bullet)
-|??   |-- game/
-|??   |??   |-- game.py          Game bootstrap
-|??   |??   |-- scene_director.py Scene orchestration (Welcome -> Game)
-|??   |??   |-- constants.py     Global constants (GameConstants dataclass)
-|??   |??   |-- managers/        Core managers
-|??   |??   |-- systems/         Game systems (difficulty, reward, notification, etc.)
-|??   |??   |-- rendering/       Renderers
-|??   |??   |-- buffs/           Buff system (13 types)
-|??   |??   |-- mother_ship/     Mothership save (state machine, interfaces, event bus, GameIntegrator)
-|??   |??   |-- give_up/         Surrender detector
-|??   |??   |-- explosion_animation/ Explosion effects
-|??   |??   |-- death_animation/     Death animation
-|??   |-- scenes/              Scene management (5 scenes: welcome, game, pause, death, exit_confirm)
-|??   |-- ui/                  UI components (IntegratedHUD, BoostGauge, DiscreteBattery, AmmoMagazine, WarningBanner, reward_selector, segmented_bar, etc.)
-|??   |-- input/               Input handling
-|??   |-- utils/               Utilities (database, sprite rendering, mouse interaction)
-|??   |-- window/              Window management
-|??   |-- data/                Runtime save files
-|??   |-- tests/               Core smoke tests
-|??   |-- core_bindings.py     Rust <-> Python bridge
-|-- airwar_core/              Rust native extension (maturin + PyO3)
-|??   |-- src/
-|??       |-- lib.rs            Module entry, exports all functions
-|??       |-- vector2.rs        Vector math (14 functions)
-|??       |-- collision.rs      Spatial hash collision + batch collision detection
-|??       |-- movement.rs       Enemy movement (8 patterns) + batch movement + Boss attack math
-|??       |-- particles.rs      Particle system
-|??       |-- bullets.rs        Batch bullet updates
-|??       |-- sprites.rs        Sprite glow surface creation
-|-- tests/                    Root-level Rust binding tests (test_bullet_bindings.py)
-|-- docs/                     Documentation (audit reports, refactoring guide, maintenance guide)
-|-- plans/                    Implementation plans
+```text
+airwar-game/
+|-- main.py                    # 游戏启动入口
+|-- airwar/                    # Python 游戏源码
+|   |-- config/                # 配置、设计令牌、难度参数
+|   |-- entities/              # 玩家、敌人、Boss、子弹等实体
+|   |-- game/                  # 游戏主流程、管理器、系统、渲染、母舰、动画
+|   |-- scenes/                # 欢迎、战斗、暂停、死亡、退出确认等场景
+|   |-- ui/                    # HUD、奖励选择、基地整备、准星、提示等 UI
+|   |-- input/                 # 输入处理
+|   |-- utils/                 # 数据库、字体、素材绘制与缓存等工具
+|   |-- window/                # 窗口创建与缩放
+|   |-- tests/                 # Python 测试
+|   `-- core_bindings.py       # Rust 扩展绑定与纯 Python 回退入口
+|-- airwar_core/               # Rust 原生扩展
+|   `-- src/
+|       |-- lib.rs             # 模块导出入口
+|       |-- vector2.rs         # 向量计算
+|       |-- collision.rs       # 空间哈希碰撞
+|       |-- movement.rs        # 敌人 / Boss 运动计算
+|       |-- particles.rs       # 粒子更新与生成
+|       |-- bullets.rs         # 子弹批量更新
+|       `-- sprites.rs         # 光效素材生成
+|-- scripts/                   # 开发辅助脚本
+|-- tests/                     # 根目录级测试
+|-- docs/                      # 文档与审计记录
+|-- build_linux.sh             # Linux 打包脚本
+|-- build_macos.sh             # macOS 打包脚本
+|-- build_windows.bat          # Windows 打包脚本
+|-- requirements.txt
+|-- requirements-dev.txt
+|-- pytest.ini
+`-- pyproject.toml
 ```
 
-## Rust Native Extension (Optional)
+## 架构概览
 
-`airwar_core/` uses PyO3 + maturin to provide Rust acceleration for performance hotspots like collision detection, movement computation, and boss attack math. **This is optional** -- when not installed, the game falls back to pure Python and runs normally.
+- 场景模式：`SceneManager` 管理欢迎、游戏、暂停、死亡、退出确认等场景生命周期。
+- 管理器拆分：生成、碰撞、子弹、Boss、里程碑、输入协调等逻辑由独立 manager 处理。
+- 系统拆分：生命、奖励、难度、通知、天赋平衡等玩法规则集中在 `airwar/game/systems/`。
+- UI 与渲染分层：HUD、准星、基地整备、奖励选择等组件独立于核心玩法逻辑。
+- Rust 可选加速：`airwar/core_bindings.py` 统一检测扩展是否可用，不可用时保留纯 Python 运行路径。
 
-### Accelerated Computations
+## Rust 原生扩展
 
-| Module | Functions | Description |
-|--------|-----------|-------------|
-| `vector2.rs` | 14 vector functions | length, normalize, add/sub, dot, cross, distance, angle, lerp |
-| `collision.rs` | spatial_hash_collide, spatial_hash_collide_single, batch_collide_bullets_vs_entities | Spatial hash collision, batch bullet-enemy collision |
-| `movement.rs` | update_movement, batch_update_movements, compute_boss_attack | Single/batch enemy movement, boss attack math |
-| `particles.rs` | update_particle, batch_update_particles, generate_explosion_particles | Particle update and generation |
-| `bullets.rs` | batch_update_bullets | Batch bullet position updates |
-| `sprites.rs` | 5 glow creation functions | Bullet glow surface pre-rendering |
+`airwar_core/` 使用 PyO3 + maturin 提供可选性能加速。它不是运行游戏的硬依赖；没有安装时，游戏会打印提示并使用纯 Python 实现。
 
-### Prerequisites
-
-- [Rust toolchain](https://rustup.rs/) (via `rustup`)
-- Python virtual environment (`.venv` recommended)
-
-### Installation
+### 安装
 
 ```bash
-# Method 1: Install directly in virtual env (recommended)
 python3 -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+source .venv/bin/activate
 pip install -r requirements.txt
-cd airwar_core && maturin develop --release
 
-# Method 2: Build wheel then install (no virtualenv needed)
 cd airwar_core
-maturin build --release
-pip install --force-reinstall target/wheels/airwar_core-*.whl
+maturin develop --release
 ```
 
-### Verification
+### 验证
 
 ```bash
-python3 -c "from airwar.core_bindings import RUST_AVAILABLE; print('Rust acceleration:', 'Enabled' if RUST_AVAILABLE else 'Not installed (pure Python fallback)')"
+python3 -c "from airwar.core_bindings import RUST_AVAILABLE; print('Rust 加速:', '已启用' if RUST_AVAILABLE else '未安装，使用纯 Python')"
 ```
 
-## Build Standalone Executable
+## 素材缓存与性能分析
 
-No Python or Rust installation required to play. One-command cross-platform build.
+游戏会把首次运行时生成的素材保存到本地缓存目录，避免每次启动都重复绘制同一批 Surface。可以使用脚本观察生成素材的缓存效果：
+
+```bash
+python3 scripts/profile_generated_assets.py
+```
+
+## 测试与代码检查
+
+请在项目根目录执行测试，不要在 `airwar/` 子目录内运行。
+
+```bash
+# 安装开发依赖
+pip install -r requirements-dev.txt
+
+# 全量测试
+python3 -m pytest
+
+# 代码检查
+python3 -m ruff check .
+
+# 指定测试文件
+python3 -m pytest airwar/tests/test_core.py
+
+# 指定测试用例
+python3 -m pytest airwar/tests/test_core.py::TestPlayer -v
+```
+
+## 打包
 
 ```bash
 # Linux
@@ -163,41 +155,8 @@ bash build_linux.sh
 # macOS
 bash build_macos.sh
 
-# Windows (in command prompt)
+# Windows
 build_windows.bat
 ```
 
-Output at `dist/AirWar` (~40MB standalone executable with Python runtime + Rust extension + all dependencies). Double-click to run, no environment setup needed.
-
-**Prerequisites (build-time only):**
-- Python 3.12+
-- Rust toolchain (for compiling the acceleration extension; falls back to pure Python on failure)
-- Platform C compiler (Linux: gcc, macOS: Xcode CLT, Windows: VS Build Tools)
-
-Build scripts create and use a local `.venv-build/` environment for PyInstaller and packaging tools.
-
-## Tests
-
-Tests must be run from the project root directory, not the `airwar/` subdirectory.
-Pytest configuration lives at the project root in `pytest.ini`.
-
-```bash
-# Run all tests
-pip install -r requirements-dev.txt
-python3 -m pytest
-
-# Lint
-python3 -m ruff check .
-
-# Smoke tests only (core functionality)
-python3 -m pytest -m smoke
-
-# Specific test file
-python3 -m pytest airwar/tests/test_core.py
-
-# Specific test class/method
-python3 -m pytest airwar/tests/test_core.py::TestPlayer -v
-
-# Rust binding tests
-python3 -m pytest tests/test_bullet_bindings.py
-```
+打包产物位于 `dist/AirWar`。构建阶段需要 Python 3.12+、Rust 工具链和对应平台编译器；运行打包产物时不需要用户手动安装 Python 或 Rust。
