@@ -21,40 +21,42 @@ def _make_player() -> Player:
     return player
 
 
-def _bullet_origin(player: Player) -> tuple[float, float]:
-    return (
-        player.rect.x + player.rect.width / 2,
-        player.rect.y - player.BULLET_SPAWN_Y_OFFSET,
-    )
+def _turn_player_to_target(player: Player, aim_target: tuple[float, float], frames: int = 60) -> None:
+    player.set_aim_target(*aim_target)
+    for _ in range(frames):
+        player.update()
 
 
-def _x_at_y(bullet: Bullet, target_y: float) -> float:
-    t = (target_y - bullet.rect.centery) / bullet.velocity.y
-    return bullet.rect.centerx + bullet.velocity.x * t
+def _local_side_offset(player: Player, bullet: Bullet) -> float:
+    facing = player.get_facing_direction()
+    right = (-facing.y, facing.x)
+    dx = bullet.rect.centerx - player.rect.centerx
+    dy = bullet.rect.centery - player.rect.centery
+    return dx * right[0] + dy * right[1]
 
 
 def test_player_single_bullet_aims_at_crosshair() -> None:
     player = _make_player()
-    origin_x, origin_y = _bullet_origin(player)
-    aim_target = (origin_x + 300, origin_y - 120)
-    player.set_aim_target(*aim_target)
+    aim_target = (player.rect.centerx + 300, player.rect.centery - 120)
+    _turn_player_to_target(player, aim_target)
 
     player.auto_fire()
 
     bullets = player.get_bullets()
+    facing = player.get_facing_direction()
     assert len(bullets) == 2
-    assert bullets[0].rect.x < origin_x < bullets[1].rect.x
+    assert _local_side_offset(player, bullets[0]) < 0 < _local_side_offset(player, bullets[1])
     assert all(bullet.velocity.x > 0 for bullet in bullets)
     assert all(bullet.velocity.y < 0 for bullet in bullets)
-    assert all(math.isclose(_x_at_y(bullet, aim_target[1]), aim_target[0], abs_tol=1e-6) for bullet in bullets)
+    assert all(math.isclose(bullet.velocity.x, facing.x * bullet.data.speed, rel_tol=1e-6) for bullet in bullets)
+    assert all(math.isclose(bullet.velocity.y, facing.y * bullet.data.speed, rel_tol=1e-6) for bullet in bullets)
     assert all(math.isclose(bullet.velocity.length(), bullet.data.speed, rel_tol=1e-6) for bullet in bullets)
 
 
 def test_player_spread_rotates_around_crosshair_direction() -> None:
     player = _make_player()
     player.activate_shotgun()
-    origin_x, origin_y = _bullet_origin(player)
-    player.set_aim_target(origin_x + 300, origin_y)
+    _turn_player_to_target(player, (player.rect.centerx + 300, player.rect.centery))
 
     player.auto_fire()
 
@@ -68,6 +70,42 @@ def test_player_spread_rotates_around_crosshair_direction() -> None:
     assert player.SPREAD_ANGLES == (-10, 0, 10)
 
 
+def test_player_turns_toward_new_aim_target_without_snapping() -> None:
+    player = _make_player()
+    center = (player.rect.centerx, player.rect.centery)
+    player.set_aim_target(center[0], center[1] - 400)
+    player.update()
+
+    player.set_aim_target(center[0] + 400, center[1])
+    player.update()
+
+    facing = player.get_facing_direction()
+    assert math.isclose(player.get_facing_angle_degrees(), player.AIM_TURN_RATE_DEGREES, abs_tol=0.1)
+    assert 0 < facing.x < 1
+    assert facing.y < 0
+
+    for _ in range(20):
+        player.update()
+
+    facing = player.get_facing_direction()
+    assert facing.x > 0.99
+    assert abs(facing.y) < 0.05
+
+
+def test_auto_fire_uses_current_fighter_facing_while_turning() -> None:
+    player = _make_player()
+    center = (player.rect.centerx, player.rect.centery)
+    player.set_aim_target(center[0] + 400, center[1])
+
+    player.update()
+    player.auto_fire()
+
+    bullets = player.get_bullets()
+    assert len(bullets) == 2
+    assert all(0 < bullet.velocity.x < bullet.data.speed * 0.5 for bullet in bullets)
+    assert all(bullet.velocity.y < 0 for bullet in bullets)
+
+
 @pytest.mark.parametrize("weapon_mode", ["laser", "explosive", "laser_explosive"])
 def test_player_special_weapon_modes_aim_at_crosshair(weapon_mode: str) -> None:
     player = _make_player()
@@ -75,15 +113,13 @@ def test_player_special_weapon_modes_aim_at_crosshair(weapon_mode: str) -> None:
         player.activate_laser(duration=120)
     if "explosive" in weapon_mode:
         player.activate_explosive()
-    origin_x, origin_y = _bullet_origin(player)
-    player.set_aim_target(origin_x, origin_y + 300)
+    _turn_player_to_target(player, (player.rect.centerx, player.rect.centery + 300))
 
     player.auto_fire()
 
     bullets = player.get_bullets()
     assert len(bullets) == 2
-    assert bullets[0].velocity.x > 0
-    assert bullets[1].velocity.x < 0
+    assert all(abs(bullet.velocity.x) < 1e-6 for bullet in bullets)
     assert all(bullet.velocity.y > 0 for bullet in bullets)
     assert all(math.isclose(bullet.velocity.length(), bullet.data.speed, rel_tol=1e-6) for bullet in bullets)
     assert {bullet.data.is_laser for bullet in bullets} == {"laser" in weapon_mode}
