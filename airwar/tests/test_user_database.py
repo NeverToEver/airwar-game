@@ -42,3 +42,17 @@ def test_user_db_requires_password_to_delete_user(tmp_path: Path) -> None:
 
     raw = json.loads((tmp_path / "users.json").read_text(encoding="utf-8"))
     assert raw == {}
+
+
+def test_user_db_remembers_last_successful_login_user(tmp_path: Path) -> None:
+    db = UserDB(str(tmp_path / "users.json"))
+
+    assert db.create_user("alpha", "secret") is True
+    assert db.create_user("bravo", "secret") is True
+    assert db.list_usernames() == ["alpha", "bravo"]
+
+    assert db.record_login("alpha") is True
+    assert db.record_login("bravo") is True
+
+    assert db.get_last_login_user() == "bravo"
+    assert db.list_usernames() == ["bravo", "alpha"]
