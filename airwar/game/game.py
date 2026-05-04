@@ -4,7 +4,7 @@ from ..utils.database import UserDB
 from ..window import create_window
 from .scene_director import SceneDirector
 from ..config import SCREEN_WIDTH, SCREEN_HEIGHT
-from ..utils.sprites import prewarm_glow_caches
+from ..utils.sprites import prewarm_glow_caches, prewarm_ship_sprite_caches
 
 
 class Game:
@@ -45,6 +45,7 @@ class Game:
         try:
             # Pre-warm sprite glow caches for optimal performance
             prewarm_glow_caches()
+            prewarm_ship_sprite_caches()
             self._director.run()
         finally:
             self._window.close()

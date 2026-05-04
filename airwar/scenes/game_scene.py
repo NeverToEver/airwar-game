@@ -1,4 +1,6 @@
 """Main game scene -- gameplay loop, entity coordination, and rendering."""
+import math
+
 import pygame
 from airwar.utils.fonts import get_cjk_font
 from typing import Dict
@@ -47,7 +49,7 @@ from airwar.config import DIFFICULTY_SETTINGS, BOOST_CONFIG, VALID_DIFFICULTIES,
 from airwar.input import PygameInputHandler
 from airwar.utils.mouse_interaction import MouseInteractiveMixin
 from airwar.config.design_tokens import get_design_tokens
-from airwar.utils.sprites import prewarm_glow_caches
+from airwar.utils.sprites import prewarm_glow_caches, prewarm_ship_sprite_caches
 
 
 class GameScene(Scene, MouseInteractiveMixin, IGameScene):
@@ -66,7 +68,12 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     PAUSE_BAR_HEIGHT = 14
     PAUSE_BAR_GAP = 4
     AIM_ASSIST_BREAK_DISTANCE = 38.0
-    AIM_ASSIST_BLEND = 0.45
+    AIM_ASSIST_SWITCH_DISTANCE = 90.0
+    AIM_ASSIST_RELEASE_DISTANCE = 230.0
+    AIM_ASSIST_DIRECTION_CONE_DOT = 0.42
+    AIM_ASSIST_BLEND = 0.82
+    AIM_INPUT_DELAY_BLEND = 0.28
+    AIM_INPUT_SNAP_DISTANCE = 10.0
     HOMECOMING_LOCK_INVINCIBILITY_TIMER = 999999
 
     AUTO_SAVE_INTERVAL = 1800  # 30 seconds at 60fps
@@ -97,6 +104,9 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._aim_crosshair = AimCrosshair()
         self._aim_position = (0.0, 0.0)
         self._raw_aim_position = (0.0, 0.0)
+        self._previous_raw_aim_position = (0.0, 0.0)
+        self._smoothed_raw_aim_position = (0.0, 0.0)
+        self._aim_input_initialized = False
         self._aim_assist_target = None
         self._give_up_detector = None
         self._give_up_ui = None
@@ -115,6 +125,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._phase_dash_invincibility_active = False
         self._phase_dash_previous_invincible = False
         self._phase_dash_previous_silent = False
+        self._enrage_overlay_cache = None
+        self._enrage_overlay_cache_key = None
 
     def enter(self, **kwargs) -> None:
         """Initialize the game scene.
@@ -140,6 +152,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         # Prewarm glow caches before gameplay starts
         self._loading_progress = 20
         prewarm_glow_caches()
+        prewarm_ship_sprite_caches()
         self._loading_progress = 100
         self._is_loading = False
 
@@ -508,7 +521,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             self._homecoming_ui.hide()
 
         if self._bullet_manager:
-            self._bullet_manager.clear_enemy_bullets()
+            self._bullet_manager.clear_enemy_bullets(include_clear_immune=True)
         if self.player:
             for bullet in self.player.get_bullets():
                 bullet.active = False
@@ -525,7 +538,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._ensure_talent_balance_manager()
         self._set_homecoming_protection(locked=True)
         if self.notification_manager:
-            self.notification_manager.show("基地接口待接入")
+            self.notification_manager.show("已进入基地整备")
 
     def _ensure_talent_balance_manager(self) -> None:
         if not self.reward_system:
@@ -541,6 +554,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if not self._talent_balance_manager or not self.reward_system or not self.player:
             return
         self._talent_balance_manager.apply_to_reward_system(self.reward_system, self.player)
+        self._save_base_loadout()
         if show_notification and self.notification_manager:
             self.notification_manager.show("基地天赋配置已同步")
 
@@ -562,6 +576,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
                 self._apply_base_talent_loadout()
 
     def _leave_homecoming_base(self) -> None:
+        self._save_base_loadout()
         self._homecoming_base_pending = False
         self._pause_requested = False
         if self._homecoming_sequence:
@@ -573,6 +588,15 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._set_homecoming_protection(locked=False)
         if self.notification_manager:
             self.notification_manager.show("已离开基地")
+
+    def _save_base_loadout(self) -> bool:
+        if not self._mother_ship_integrator:
+            return False
+        save_data = self._mother_ship_integrator.create_save_data()
+        if not save_data:
+            return False
+        save_data.is_in_mothership = False
+        return PersistenceManager(username=save_data.username).save_game(save_data)
 
     def _set_homecoming_protection(self, locked: bool) -> None:
         if self.player:
@@ -651,6 +675,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if self._mother_ship_integrator:
             self._mother_ship_integrator.render(surface)
 
+        self._render_boss_enrage_overlay(surface)
+
         self._game_loop_manager.render_explosions(surface)
         self._input_coordinator.render_give_up(surface)
         if self._homecoming_ui and self._homecoming_detector and self._homecoming_detector.is_active():
@@ -676,21 +702,59 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         # Render notifications above reward selector so critical messages are not obscured
         self._ui_manager.render_notification(surface)
 
+    def _render_boss_enrage_overlay(self, surface: pygame.Surface) -> None:
+        boss = self.spawn_controller.boss if self.spawn_controller else None
+        if not boss or not boss.is_enrage_active():
+            return
+
+        intensity = boss.enrage_visual_intensity()
+        sw, sh = surface.get_size()
+        scale = 1.0 + 0.035 * intensity
+        scaled = pygame.transform.scale(surface, (int(sw * scale), int(sh * scale)))
+        wobble_x = int(math.sin(pygame.time.get_ticks() * 0.018) * 16 * intensity)
+        wobble_y = int(math.cos(pygame.time.get_ticks() * 0.014) * 10 * intensity)
+        surface.blit(scaled, scaled.get_rect(center=(sw // 2 + wobble_x, sh // 2 + wobble_y)))
+
+        cache_key = (sw, sh)
+        if self._enrage_overlay_cache_key != cache_key:
+            self._enrage_overlay_cache = pygame.Surface((sw, sh), pygame.SRCALPHA)
+            self._enrage_overlay_cache_key = cache_key
+        overlay = self._enrage_overlay_cache
+        overlay.fill((190, 42, 12, int(105 * intensity)))
+        pygame.draw.circle(
+            overlay,
+            (255, 112, 30, int(70 * intensity)),
+            (int(boss.rect.centerx), int(boss.rect.centery)),
+            int(max(sw, sh) * 0.75 * intensity),
+            max(2, int(8 * intensity)),
+        )
+        surface.blit(overlay, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+
     def _set_raw_aim_position(self, position: tuple[int, int]) -> None:
         x = max(0, min(float(position[0]), float(get_screen_width())))
         y = max(0, min(float(position[1]), float(get_screen_height())))
+        if not self._aim_input_initialized:
+            self._aim_input_initialized = True
+            self._previous_raw_aim_position = (x, y)
+            self._raw_aim_position = (x, y)
+            self._smoothed_raw_aim_position = (x, y)
+            self._aim_position = (x, y)
+            self._sync_player_aim_target()
+            return
+        self._previous_raw_aim_position = self._raw_aim_position
         self._raw_aim_position = (x, y)
-        self._aim_position = (x, y)
+        self._aim_position = self._smoothed_raw_aim_position
         self._sync_player_aim_target()
 
     def _update_aim_assist(self) -> None:
+        self._update_smoothed_raw_aim_position()
         target = self._resolve_aim_assist_target()
         if target is None:
-            self._aim_position = self._raw_aim_position
+            self._aim_position = self._smoothed_raw_aim_position
             self._sync_player_aim_target()
             return
 
-        raw_x, raw_y = self._raw_aim_position
+        raw_x, raw_y = self._smoothed_raw_aim_position
         target_rect = self._target_rect(target)
         target_x, target_y = target_rect.centerx, target_rect.centery
         self._aim_position = (
@@ -700,17 +764,50 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._sync_player_aim_target()
 
     def _resolve_aim_assist_target(self):
-        raw_x, raw_y = self._raw_aim_position
+        raw_x, raw_y = self._smoothed_raw_aim_position
+        candidates = self._aim_assist_candidates()
+        if not candidates:
+            self._aim_assist_target = None
+            return None
+
+        movement = self._raw_aim_movement()
+        movement_len_sq = movement[0] * movement[0] + movement[1] * movement[1]
+
+        if movement_len_sq >= self.AIM_ASSIST_SWITCH_DISTANCE * self.AIM_ASSIST_SWITCH_DISTANCE:
+            directional_target = self._target_in_movement_direction(candidates, movement)
+            if directional_target is not None:
+                self._aim_assist_target = directional_target
+                return directional_target
+            if movement_len_sq >= self.AIM_ASSIST_RELEASE_DISTANCE * self.AIM_ASSIST_RELEASE_DISTANCE:
+                self._aim_assist_target = None
+                return None
+            if self._aim_assist_target and getattr(self._aim_assist_target, 'active', False):
+                return self._aim_assist_target
+
         if self._aim_assist_target and self._is_aim_assist_locked(self._aim_assist_target, raw_x, raw_y):
             return self._aim_assist_target
 
-        for target in self._aim_assist_candidates():
+        for target in candidates:
             if self._is_raw_aim_inside_target(target, raw_x, raw_y):
                 self._aim_assist_target = target
                 return target
 
-        self._aim_assist_target = None
-        return None
+        target = self._nearest_aim_assist_target(candidates, raw_x, raw_y)
+        self._aim_assist_target = target
+        return target
+
+    def _update_smoothed_raw_aim_position(self) -> None:
+        sx, sy = self._smoothed_raw_aim_position
+        rx, ry = self._raw_aim_position
+        dx = rx - sx
+        dy = ry - sy
+        if dx * dx + dy * dy <= self.AIM_INPUT_SNAP_DISTANCE * self.AIM_INPUT_SNAP_DISTANCE:
+            self._smoothed_raw_aim_position = self._raw_aim_position
+            return
+        self._smoothed_raw_aim_position = (
+            sx + dx * self.AIM_INPUT_DELAY_BLEND,
+            sy + dy * self.AIM_INPUT_DELAY_BLEND,
+        )
 
     def _aim_assist_candidates(self) -> list:
         if not self.spawn_controller:
@@ -732,7 +829,56 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             return True
         dx = raw_x - rect.centerx
         dy = raw_y - rect.centery
-        return (dx * dx + dy * dy) <= self.AIM_ASSIST_BREAK_DISTANCE * self.AIM_ASSIST_BREAK_DISTANCE
+        return (dx * dx + dy * dy) <= self.AIM_ASSIST_RELEASE_DISTANCE * self.AIM_ASSIST_RELEASE_DISTANCE
+
+    def _raw_aim_movement(self) -> tuple[float, float]:
+        return (
+            self._raw_aim_position[0] - self._previous_raw_aim_position[0],
+            self._raw_aim_position[1] - self._previous_raw_aim_position[1],
+        )
+
+    def _nearest_aim_assist_target(self, candidates: list, raw_x: float, raw_y: float):
+        return min(
+            candidates,
+            key=lambda target: self._distance_sq_to_target(target, raw_x, raw_y),
+            default=None,
+        )
+
+    def _target_in_movement_direction(self, candidates: list, movement: tuple[float, float]):
+        if self._aim_assist_target:
+            origin = self._target_rect(self._aim_assist_target).center
+        else:
+            origin = self._raw_aim_position
+
+        mx, my = movement
+        movement_len = math.hypot(mx, my)
+        if movement_len <= 0:
+            return None
+        move_x = mx / movement_len
+        move_y = my / movement_len
+
+        best_target = None
+        best_score = 0.0
+        for target in candidates:
+            if target is self._aim_assist_target:
+                continue
+            rect = self._target_rect(target)
+            tx = rect.centerx - origin[0]
+            ty = rect.centery - origin[1]
+            distance = math.hypot(tx, ty)
+            if distance <= 0:
+                continue
+            dot = (tx / distance) * move_x + (ty / distance) * move_y
+            if dot > best_score and dot >= self.AIM_ASSIST_DIRECTION_CONE_DOT:
+                best_score = dot
+                best_target = target
+        return best_target
+
+    def _distance_sq_to_target(self, target, raw_x: float, raw_y: float) -> float:
+        rect = self._target_rect(target)
+        dx = raw_x - rect.centerx
+        dy = raw_y - rect.centery
+        return dx * dx + dy * dy
 
     def _target_rect(self, target) -> pygame.Rect:
         rect = target.get_hitbox() if hasattr(target, 'get_hitbox') else target.rect

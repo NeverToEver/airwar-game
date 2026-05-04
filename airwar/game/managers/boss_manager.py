@@ -91,8 +91,8 @@ class BossManager:
         """
         player_pos = (player.rect.centerx, player.rect.centery)
         enemies = self._spawn_controller.enemies
-        slow_factor = self._reward_system.slow_factor
-        boss.update(enemies, slow_factor=slow_factor, player_pos=player_pos)
+        slow_factor = self._reward_system.slow_factor * boss.enrage_slow_factor()
+        boss.update(enemies, slow_factor=slow_factor, player_pos=player_pos, player=player)
 
     def _handle_boss_escape(self, boss) -> None:
         """Handle boss escape.
@@ -133,7 +133,7 @@ class BossManager:
         boss = self._spawn_controller.boss
         if boss and self._player:
             self._reward_system.apply_lifesteal(self._player, boss.data.score)
-        self._bullet_manager.clear_enemy_bullets()
+        self._bullet_manager.clear_enemy_bullets(include_clear_immune=True)
 
     @property
     def has_boss(self) -> bool:

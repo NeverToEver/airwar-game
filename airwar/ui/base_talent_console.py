@@ -87,18 +87,74 @@ class BaseTalentConsole:
 
     def _render_backdrop(self, surface: pygame.Surface) -> None:
         sw, sh = surface.get_size()
-        surface.fill((1, 5, 11))
-        pulse = 0.5 + 0.5 * math.sin(self._frame * 0.035)
-        for index in range(70):
-            x = (index * 137) % sw
-            y = (index * 61 + self._frame // 5) % sh
-            alpha = 45 + int(70 * ((index % 5) / 4) * (0.75 + pulse * 0.25))
-            surface.set_at((x, y), (alpha, alpha, min(255, alpha + 28)))
+        surface.fill((8, 11, 14))
+        deck = pygame.Surface((sw, sh), pygame.SRCALPHA)
 
-        glow = pygame.Surface((sw, sh), pygame.SRCALPHA)
-        pygame.draw.ellipse(glow, (50, 120, 150, 38), pygame.Rect(sw // 2 - 520, sh // 2 - 230, 1040, 460), 3)
-        pygame.draw.line(glow, (70, 230, 210, 58), (sw // 2 - 380, int(sh * 0.36)), (sw // 2 + 380, int(sh * 0.36)), 2)
-        surface.blit(glow, (0, 0))
+        horizon_y = int(sh * 0.34)
+        pygame.draw.rect(deck, (10, 15, 19), pygame.Rect(0, 0, sw, horizon_y))
+        pygame.draw.rect(deck, (21, 25, 28), pygame.Rect(0, horizon_y, sw, sh - horizon_y))
+
+        back_wall = pygame.Rect(int(sw * 0.08), int(sh * 0.08), int(sw * 0.84), int(sh * 0.25))
+        pygame.draw.rect(deck, (15, 22, 28, 230), back_wall)
+        pygame.draw.line(deck, (72, 88, 98, 160), back_wall.bottomleft, back_wall.bottomright, 2)
+        for index in range(9):
+            x = back_wall.x + index * back_wall.w // 8
+            pygame.draw.line(deck, (42, 54, 62, 130), (x, back_wall.y), (x, back_wall.bottom), 1)
+
+        ramp_top = (sw // 2, horizon_y + 18)
+        ramp_left = (int(sw * 0.16), sh)
+        ramp_right = (int(sw * 0.84), sh)
+        pygame.draw.polygon(deck, (31, 35, 37, 245), [ramp_top, ramp_right, ramp_left])
+
+        center_x = sw // 2
+        pad_center_y = int(sh * 0.68)
+        pad_outer = pygame.Rect(0, 0, int(sw * 0.46), int(sh * 0.22))
+        pad_outer.center = (center_x, pad_center_y)
+        pad_inner = pad_outer.inflate(-int(sw * 0.09), -int(sh * 0.055))
+        pygame.draw.ellipse(deck, (24, 30, 32, 255), pad_outer)
+        pygame.draw.ellipse(deck, (92, 104, 104, 190), pad_outer, 3)
+        pygame.draw.ellipse(deck, (12, 18, 21, 255), pad_inner)
+        pygame.draw.line(deck, (118, 132, 132, 150), (pad_outer.left, pad_center_y), (pad_outer.right, pad_center_y), 2)
+        pygame.draw.line(deck, (118, 132, 132, 120), (center_x, pad_outer.top), (center_x, pad_outer.bottom), 2)
+
+        for offset in (-0.34, -0.2, 0.2, 0.34):
+            start_x = int(center_x + sw * offset * 0.24)
+            end_x = int(center_x + sw * offset)
+            pygame.draw.line(deck, (58, 72, 76, 150), (start_x, horizon_y + 24), (end_x, sh), 2)
+
+        for index in range(8):
+            y = horizon_y + 42 + index * max(18, (sh - horizon_y) // 9)
+            width = max(1, int(1 + index * 0.45))
+            pygame.draw.line(deck, (44, 54, 57, 130), (0, y), (sw, y), width)
+
+        stripe_y = int(sh * 0.83)
+        stripe_h = max(26, int(sh * 0.035))
+        for index, x in enumerate(range(0, sw, stripe_h)):
+            color = (178, 142, 52, 205) if index % 2 == 0 else (18, 20, 22, 230)
+            points = [
+                (x, stripe_y),
+                (x + stripe_h, stripe_y),
+                (x + stripe_h - stripe_h // 2, stripe_y + stripe_h),
+                (x - stripe_h // 2, stripe_y + stripe_h),
+            ]
+            pygame.draw.polygon(deck, color, points)
+
+        pulse = 0.5 + 0.5 * math.sin(self._frame * 0.06)
+        for side in (-1, 1):
+            rail_x = int(center_x + side * sw * 0.28)
+            pygame.draw.line(deck, (70, 84, 88, 150), (rail_x, horizon_y + 18), (rail_x + side * int(sw * 0.17), sh), 3)
+            for index in range(7):
+                t = index / 6
+                x = int(rail_x + side * sw * 0.17 * t)
+                y = int(horizon_y + 30 + (sh - horizon_y - 80) * t)
+                alpha = 95 + int(80 * pulse)
+                pygame.draw.circle(deck, (94, 226, 210, alpha), (x, y), 4 + index // 3)
+
+        shadow = pygame.Surface((sw, sh), pygame.SRCALPHA)
+        shadow.fill((0, 0, 0, 84))
+        pygame.draw.ellipse(shadow, (0, 0, 0, 0), pad_outer.inflate(120, 70))
+        deck.blit(shadow, (0, 0), special_flags=pygame.BLEND_RGBA_SUB)
+        surface.blit(deck, (0, 0))
 
     def _draw_header(self, surface: pygame.Surface, x: int, y: int, panel_w: int, manager: TalentBalanceManager) -> None:
         title = self._font_title.render("基地整备: 天赋重分配", True, (226, 246, 244))

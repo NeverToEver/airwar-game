@@ -4,6 +4,7 @@ import hashlib
 import inspect
 import pygame
 from ._sprites_common import draw_glow_circle
+from .generated_asset_cache import load_or_build_generated_surface
 
 # Sprite surface caches
 _player_sprite_cache = {}
@@ -54,13 +55,21 @@ def get_player_sprite(width: float = 50, height: float = 60) -> pygame.Surface:
     if cache_key not in _player_sprite_cache:
         if len(_player_sprite_cache) >= PLAYER_SPRITE_CACHE_MAX:
             _player_sprite_cache.pop(next(iter(_player_sprite_cache)))
-        size = _player_sprite_canvas_size(width, height)
-        surf = pygame.Surface((size, size), pygame.SRCALPHA)
-        draw_x = (size - int(width)) // 2
-        draw_y = (size - int(height)) // 2
-        _draw_player_ship(surf, draw_x, draw_y, width, height)
-        _player_sprite_cache[cache_key] = surf
+        _player_sprite_cache[cache_key] = load_or_build_generated_surface(
+            "player_ship",
+            cache_key,
+            lambda: _build_player_sprite(width, height),
+        )
     return _player_sprite_cache[cache_key]
+
+
+def _build_player_sprite(width: float = 50, height: float = 60) -> pygame.Surface:
+    size = _player_sprite_canvas_size(width, height)
+    surf = pygame.Surface((size, size), pygame.SRCALPHA)
+    draw_x = (size - int(width)) // 2
+    draw_y = (size - int(height)) // 2
+    _draw_player_ship(surf, draw_x, draw_y, width, height)
+    return surf
 
 
 def draw_player_ship(surface: pygame.Surface, x: float, y: float, width: float = 50, height: float = 60) -> None:
@@ -365,13 +374,21 @@ def get_enemy_sprite(width: float = 50, height: float = 50, health_ratio: float 
     health_bucket = int(health_ratio * 10)
     cache_key = (int(width), int(height), health_bucket, ENEMY_SPRITE_STYLE_VERSION, _code_hash(_draw_enemy_ship))
     if cache_key not in _enemy_sprite_cache:
-        size = max(int(width) * 3, int(height) * 2) + 40
-        surf = pygame.Surface((size, size), pygame.SRCALPHA)
-        draw_x = (size - int(width)) // 2
-        draw_y = (size - int(height)) // 2
-        _draw_enemy_ship(surf, draw_x, draw_y, width, height, health_ratio)
-        _enemy_sprite_cache[cache_key] = surf
+        _enemy_sprite_cache[cache_key] = load_or_build_generated_surface(
+            "enemy_ship",
+            cache_key,
+            lambda: _build_enemy_sprite(width, height, health_ratio),
+        )
     return _enemy_sprite_cache[cache_key]
+
+
+def _build_enemy_sprite(width: float = 50, height: float = 50, health_ratio: float = 1.0) -> pygame.Surface:
+    size = max(int(width) * 3, int(height) * 2) + 40
+    surf = pygame.Surface((size, size), pygame.SRCALPHA)
+    draw_x = (size - int(width)) // 2
+    draw_y = (size - int(height)) // 2
+    _draw_enemy_ship(surf, draw_x, draw_y, width, height, health_ratio)
+    return surf
 
 
 def draw_enemy_ship(surface: pygame.Surface, x: float, y: float, width: float = 50, height: float = 50, health_ratio: float = 1.0) -> None:
@@ -574,13 +591,21 @@ def get_elite_enemy_sprite(width: float = 65, height: float = 65, health_ratio: 
     health_bucket = int(health_ratio * 10)
     cache_key = (int(width), int(height), health_bucket, ELITE_SPRITE_STYLE_VERSION, _code_hash(_draw_elite_enemy_ship))
     if cache_key not in _elite_sprite_cache:
-        size = max(int(width) * 3, int(height) * 2) + 50
-        surf = pygame.Surface((size, size), pygame.SRCALPHA)
-        draw_x = (size - int(width)) // 2
-        draw_y = (size - int(height)) // 2
-        _draw_elite_enemy_ship(surf, draw_x, draw_y, width, height, health_ratio)
-        _elite_sprite_cache[cache_key] = surf
+        _elite_sprite_cache[cache_key] = load_or_build_generated_surface(
+            "elite_enemy_ship",
+            cache_key,
+            lambda: _build_elite_enemy_sprite(width, height, health_ratio),
+        )
     return _elite_sprite_cache[cache_key]
+
+
+def _build_elite_enemy_sprite(width: float = 65, height: float = 65, health_ratio: float = 1.0) -> pygame.Surface:
+    size = max(int(width) * 3, int(height) * 2) + 50
+    surf = pygame.Surface((size, size), pygame.SRCALPHA)
+    draw_x = (size - int(width)) // 2
+    draw_y = (size - int(height)) // 2
+    _draw_elite_enemy_ship(surf, draw_x, draw_y, width, height, health_ratio)
+    return surf
 
 
 def draw_elite_enemy_ship(surface: pygame.Surface, x: float, y: float, width: float = 65, height: float = 65, health_ratio: float = 1.0) -> None:
@@ -822,13 +847,21 @@ def get_boss_sprite(width: float = 120, height: float = 100, health_ratio: float
     health_bucket = int(health_ratio * 10)
     cache_key = (int(width), int(height), health_bucket, BOSS_SPRITE_STYLE_VERSION, _code_hash(_draw_boss_ship))
     if cache_key not in _boss_sprite_cache:
-        size = max(int(width) * 3, int(height) * 2) + 50
-        surf = pygame.Surface((size, size), pygame.SRCALPHA)
-        draw_x = (size - int(width)) // 2
-        draw_y = (size - int(height)) // 2
-        _draw_boss_ship(surf, draw_x, draw_y, width, height, health_ratio)
-        _boss_sprite_cache[cache_key] = surf
+        _boss_sprite_cache[cache_key] = load_or_build_generated_surface(
+            "boss_ship",
+            cache_key,
+            lambda: _build_boss_sprite(width, height, health_ratio),
+        )
     return _boss_sprite_cache[cache_key]
+
+
+def _build_boss_sprite(width: float = 120, height: float = 100, health_ratio: float = 1.0) -> pygame.Surface:
+    size = max(int(width) * 3, int(height) * 2) + 50
+    surf = pygame.Surface((size, size), pygame.SRCALPHA)
+    draw_x = (size - int(width)) // 2
+    draw_y = (size - int(height)) // 2
+    _draw_boss_ship(surf, draw_x, draw_y, width, height, health_ratio)
+    return surf
 
 
 def draw_boss_ship(surface: pygame.Surface, x: float, y: float, width: float = 120, height: float = 100, health_ratio: float = 1.0) -> None:
@@ -1094,3 +1127,13 @@ def _draw_boss_ship(surface: pygame.Surface, x: float, y: float, width: float = 
         dot_y = int(line_y)
         for dot_x in [int(center_x - line_w * 0.7), int(center_x + line_w * 0.7)]:
             pygame.draw.circle(surface, (*bio_green, 80), (dot_x, dot_y), 1)
+
+
+def prewarm_ship_sprite_caches() -> None:
+    """Generate common ship sprites once so gameplay mostly hits memory cache."""
+    get_player_sprite(68, 82)
+
+    for health_ratio in (1.0, 0.5, 0.25):
+        get_enemy_sprite(50, 50, health_ratio)
+        get_elite_enemy_sprite(65, 65, health_ratio)
+        get_boss_sprite(120, 100, health_ratio)

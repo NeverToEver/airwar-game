@@ -7,6 +7,7 @@ from airwar.entities.player import Player
 from airwar.game.constants import GAME_CONSTANTS
 from airwar.game.homecoming import HomecomingDetector, HomecomingPhase, HomecomingSequence
 from airwar.game.managers.game_controller import GameController
+from airwar.game.mother_ship.mother_ship_state import GameSaveData
 from airwar.game.scene_director import SceneDirector
 from airwar.game.systems.talent_balance_manager import TalentBalanceManager
 from airwar.input.input_handler import MockInputHandler
@@ -25,6 +26,21 @@ class _PressedKeys:
 
 def _make_player() -> Player:
     return Player(420, 760, MockInputHandler())
+
+
+def _capture_base_saves(monkeypatch) -> list[tuple[str | None, dict, bool]]:
+    saved = []
+
+    class RecordingPersistenceManager:
+        def __init__(self, username=None):
+            self.username = username
+
+        def save_game(self, save_data):
+            saved.append((self.username, save_data.talent_loadout, save_data.is_in_mothership))
+            return True
+
+    monkeypatch.setattr("airwar.scenes.game_scene.PersistenceManager", RecordingPersistenceManager)
+    return saved
 
 
 def test_homecoming_detector_requires_full_hold(monkeypatch) -> None:
@@ -200,6 +216,7 @@ def test_game_scene_homecoming_complete_opens_base_talent_console() -> None:
     scene.reward_system.buff_levels["Spread Shot"] = 1
     scene.reward_system.earned_buff_levels["Spread Shot"] = 1
     scene._base_talent_console = SimpleNamespace(update=MagicMock())
+    scene._mother_ship_integrator = None
     scene.notification_manager = SimpleNamespace(show=MagicMock())
 
     scene._on_homecoming_complete()
@@ -207,7 +224,7 @@ def test_game_scene_homecoming_complete_opens_base_talent_console() -> None:
     assert scene.is_homecoming_complete() is True
     assert scene._talent_balance_manager is not None
     assert scene.reward_system.locked_buffs == {"Laser"}
-    scene.notification_manager.show.assert_called_with("基地接口待接入")
+    scene.notification_manager.show.assert_called_with("已进入基地整备")
 
 
 def test_game_scene_leaving_base_restores_play_state() -> None:
@@ -240,6 +257,78 @@ def test_game_scene_leaving_base_restores_play_state() -> None:
     scene._homecoming_detector.reset.assert_called_once()
     scene._homecoming_ui.hide.assert_called_once()
     scene.notification_manager.show.assert_called_with("已离开基地")
+
+
+def test_game_scene_base_loadout_save_persists_current_route(monkeypatch) -> None:
+    scene = GameScene()
+    scene.player = _make_player()
+    scene.game_controller = GameController("medium", "pilot")
+    scene.reward_system = scene.game_controller.reward_system
+    scene.reward_system.capture_player_baselines(scene.player)
+    scene._talent_balance_manager = TalentBalanceManager({"Spread Shot": 1}, {"offense": "Spread Shot"})
+    scene.notification_manager = SimpleNamespace(show=MagicMock())
+
+    def create_save_data():
+        return GameSaveData(username="pilot", talent_loadout=scene.get_talent_loadout())
+
+    scene._mother_ship_integrator = SimpleNamespace(
+        create_save_data=MagicMock(side_effect=create_save_data)
+    )
+    saved = _capture_base_saves(monkeypatch)
+
+    scene._handle_base_console_action(BaseTalentConsoleAction.select_route("offense"))
+
+    assert scene.reward_system.talent_loadout == {"offense": "Laser"}
+    assert saved == [("pilot", {"offense": "Laser"}, False)]
+
+
+def test_game_scene_homecoming_complete_saves_initial_base_loadout(monkeypatch) -> None:
+    scene = GameScene()
+    scene.player = _make_player()
+    scene.game_controller = GameController("medium", "pilot")
+    scene.reward_system = scene.game_controller.reward_system
+    scene.reward_system.buff_levels["Spread Shot"] = 1
+    scene.reward_system.earned_buff_levels["Spread Shot"] = 1
+    scene._base_talent_console = SimpleNamespace(update=MagicMock())
+    scene.notification_manager = SimpleNamespace(show=MagicMock())
+
+    def create_save_data():
+        return GameSaveData(username="pilot", talent_loadout=scene.get_talent_loadout())
+
+    scene._mother_ship_integrator = SimpleNamespace(
+        create_save_data=MagicMock(side_effect=create_save_data)
+    )
+    saved = _capture_base_saves(monkeypatch)
+
+    scene._on_homecoming_complete()
+
+    assert scene.reward_system.talent_loadout == {"offense": "Spread Shot"}
+    assert saved == [("pilot", {"offense": "Spread Shot"}, False)]
+
+
+def test_game_scene_leaving_base_saves_current_loadout(monkeypatch) -> None:
+    scene = GameScene()
+    scene.player = _make_player()
+    scene.game_controller = GameController("medium", "pilot")
+    scene.reward_system = scene.game_controller.reward_system
+    scene.reward_system.talent_loadout = {"offense": "Laser"}
+    scene._homecoming_base_pending = True
+    scene._homecoming_sequence = HomecomingSequence()
+    scene._homecoming_detector = SimpleNamespace(reset=MagicMock())
+    scene._homecoming_ui = SimpleNamespace(hide=MagicMock())
+    scene.notification_manager = SimpleNamespace(show=MagicMock())
+
+    def create_save_data():
+        return GameSaveData(username="pilot", talent_loadout=scene.get_talent_loadout())
+
+    scene._mother_ship_integrator = SimpleNamespace(
+        create_save_data=MagicMock(side_effect=create_save_data)
+    )
+    saved = _capture_base_saves(monkeypatch)
+
+    scene._leave_homecoming_base()
+
+    assert saved == [("pilot", {"offense": "Laser"}, False)]
 
 
 def test_game_scene_base_route_action_applies_loadout() -> None:

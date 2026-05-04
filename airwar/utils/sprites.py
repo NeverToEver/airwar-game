@@ -32,6 +32,7 @@ from ._sprites_ships import (
     draw_elite_enemy_ship,
     get_boss_sprite,
     draw_boss_ship,
+    prewarm_ship_sprite_caches,
 )
 from ._sprites_bullets import (
     draw_bullet,
@@ -63,6 +64,7 @@ __all__ = [
     'draw_enemy_ship',
     'get_boss_sprite',
     'draw_boss_ship',
+    'prewarm_ship_sprite_caches',
     'draw_bullet',
     'draw_single_bullet',
     'draw_spread_bullet',
