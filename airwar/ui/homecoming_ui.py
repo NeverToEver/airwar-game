@@ -82,6 +82,10 @@ class HomecomingUI:
             self._render_ftl_escape(surface, sequence, player, progress)
             return
 
+        if phase == HomecomingPhase.BLACKOUT:
+            self._render_blackout_bridge(surface, progress)
+            return
+
         self._render_deep_space(surface, phase, progress)
         self._render_asteroid_belt(surface, phase, progress)
         self._render_space_station(surface, phase, progress, sequence)
@@ -124,6 +128,101 @@ class HomecomingUI:
         surface.blit(trail, (int(x - 45), int(y + player.rect.height // 2)))
         draw_glow_circle(surface, (int(x), int(y + player.rect.height // 2)), 15, (230, 246, 255), 34)
         draw_player_ship(surface, x, y, player.rect.width, player.rect.height)
+        self._render_ftl_exit_transition(surface, progress)
+
+    def _render_ftl_exit_transition(self, surface: pygame.Surface, progress: float) -> None:
+        if progress < 0.72:
+            return
+
+        sw, sh = surface.get_size()
+        t = min(1.0, (progress - 0.72) / 0.28)
+        center_x = sw // 2
+
+        streak_alpha = int(118 * max(0.0, 1.0 - t))
+        if streak_alpha > 0:
+            streaks = pygame.Surface((sw, sh), pygame.SRCALPHA)
+            for index in range(17):
+                offset = int((index - 8) * (28 + 46 * t))
+                x = center_x + offset
+                y = int(sh * (0.14 + ((index * 23) % 70) / 100))
+                length = int(180 + 390 * t)
+                width = max(1, int(5 - 3 * t))
+                alpha = int(streak_alpha * (0.45 + 0.55 * (1 - abs(index - 8) / 8)))
+                pygame.draw.line(streaks, (210, 238, 255, alpha), (x, y + length), (x, y - length), width)
+            surface.blit(streaks, (0, 0))
+
+        flash_strength = max(0.0, 1.0 - abs(t - 0.36) / 0.36)
+        flash_alpha = int(150 * flash_strength)
+        if flash_alpha > 0:
+            flash = pygame.Surface((sw, sh), pygame.SRCALPHA)
+            flash.fill((232, 248, 255, flash_alpha))
+            surface.blit(flash, (0, 0))
+
+        black_t = max(0.0, (t - 0.50) / 0.50)
+        black_alpha = int(255 * black_t**0.75)
+        if black_alpha > 0:
+            blackout = pygame.Surface((sw, sh), pygame.SRCALPHA)
+            blackout.fill((0, 0, 0, black_alpha))
+            surface.blit(blackout, (0, 0))
+
+    def _render_blackout_bridge(self, surface: pygame.Surface, progress: float) -> None:
+        surface.fill((0, 0, 0))
+        sw, sh = surface.get_size()
+        center_x = sw // 2
+        center_y = int(sh * 0.47)
+
+        residue = max(0.0, 1.0 - progress / 0.42)
+        if residue > 0:
+            afterimage = pygame.Surface((sw, sh), pygame.SRCALPHA)
+            for index in range(11):
+                offset = int((index - 5) * (18 + 76 * progress))
+                alpha = int(92 * residue * (0.35 + 0.65 * (1 - abs(index - 5) / 5)))
+                width = max(1, int(5 * residue))
+                pygame.draw.line(
+                    afterimage,
+                    (216, 240, 255, alpha),
+                    (center_x + offset, sh),
+                    (center_x + int(offset * 0.18), int(sh * 0.08)),
+                    width,
+                )
+            bloom = pygame.Rect(0, 0, int(180 + 160 * residue), int(sh * 0.72))
+            bloom.center = (center_x, int(sh * 0.42))
+            pygame.draw.ellipse(afterimage, (190, 230, 255, int(34 * residue)), bloom)
+            surface.blit(afterimage, (0, 0))
+
+        preview = max(0.0, (progress - 0.46) / 0.54)
+        if preview <= 0:
+            return
+
+        reveal = preview * preview * (3 - 2 * preview)
+        ghost = pygame.Surface((sw, sh), pygame.SRCALPHA)
+        ghost_alpha = int(86 * reveal)
+
+        ring_outer = pygame.Rect(0, 0, 520, 210)
+        ring_outer.center = (center_x, center_y)
+        ring_inner = ring_outer.inflate(-112, -68)
+        pygame.draw.ellipse(ghost, (78, 104, 126, ghost_alpha), ring_outer, 2)
+        pygame.draw.ellipse(ghost, (70, 238, 218, int(ghost_alpha * 0.74)), ring_inner, 1)
+
+        for side in (-1, 1):
+            mast_start = (center_x + side * 190, center_y - 10)
+            mast_end = (center_x + side * 500, center_y - 78)
+            pygame.draw.line(ghost, (72, 214, 202, int(ghost_alpha * 0.56)), mast_start, mast_end, 2)
+
+        port_center = (center_x, center_y + 18)
+        pygame.draw.circle(ghost, (88, 238, 220, int(118 * reveal)), port_center, 50, 2)
+        pygame.draw.circle(ghost, (192, 255, 248, int(135 * reveal)), port_center, 4)
+
+        scan_y = int(center_y - 122 + 244 * reveal)
+        scan_alpha = int(122 * reveal)
+        pygame.draw.line(
+            ghost,
+            (126, 246, 232, scan_alpha),
+            (center_x - 340, scan_y),
+            (center_x + 340, scan_y),
+            2,
+        )
+        surface.blit(ghost, (0, 0))
 
     def _render_deep_space(self, surface: pygame.Surface, phase: HomecomingPhase, progress: float) -> None:
         surface.fill((2, 4, 10))
