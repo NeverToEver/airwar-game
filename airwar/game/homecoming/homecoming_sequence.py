@@ -10,7 +10,7 @@ class HomecomingPhase(Enum):
     INACTIVE = "inactive"
     FTL_ESCAPE = "ftl_escape"
     BLACKOUT = "blackout"
-    CARRIER_REVEAL = "carrier_reveal"
+    STATION_REVEAL = "station_reveal"
     APPROACH = "approach"
     LANDING = "landing"
     HANDOFF = "handoff"
@@ -22,7 +22,7 @@ class HomecomingSequence:
 
     FTL_FRAMES = 54
     BLACKOUT_FRAMES = 34
-    CARRIER_REVEAL_FRAMES = 70
+    STATION_REVEAL_FRAMES = 70
     APPROACH_FRAMES = 96
     LANDING_FRAMES = 72
     HANDOFF_FRAMES = 64
@@ -36,7 +36,6 @@ class HomecomingSequence:
         self._current_center = (0.0, 0.0)
         self._landing_center = (0.0, 0.0)
         self._base_entry_center = (0.0, 0.0)
-        self._carrier_center = (0.0, 0.0)
         self._completed_callback_sent = False
 
     @property
@@ -56,9 +55,8 @@ class HomecomingSequence:
         self._screen_size = (screen_width, screen_height)
         self._start_center = (float(player.rect.centerx), float(player.rect.centery))
         self._current_center = self._start_center
-        self._carrier_center = (screen_width / 2, screen_height * 0.42)
-        self._landing_center = (screen_width / 2, screen_height * 0.67)
-        self._base_entry_center = (screen_width / 2 + screen_width * 0.18, screen_height * 0.41)
+        self._landing_center = (screen_width / 2, screen_height * 0.72)
+        self._base_entry_center = (screen_width / 2, screen_height * 0.47)
         self._completed_callback_sent = False
         self._set_phase(HomecomingPhase.FTL_ESCAPE)
         return True
@@ -72,8 +70,8 @@ class HomecomingSequence:
             self._update_ftl_escape(player)
         elif self._phase == HomecomingPhase.BLACKOUT:
             self._update_blackout()
-        elif self._phase == HomecomingPhase.CARRIER_REVEAL:
-            self._update_carrier_reveal()
+        elif self._phase == HomecomingPhase.STATION_REVEAL:
+            self._update_station_reveal()
         elif self._phase == HomecomingPhase.APPROACH:
             self._update_approach(player)
         elif self._phase == HomecomingPhase.LANDING:
@@ -112,9 +110,9 @@ class HomecomingSequence:
 
     def _update_blackout(self) -> None:
         if self.get_phase_progress() >= 1.0:
-            self._set_phase(HomecomingPhase.CARRIER_REVEAL)
+            self._set_phase(HomecomingPhase.STATION_REVEAL)
 
-    def _update_carrier_reveal(self) -> None:
+    def _update_station_reveal(self) -> None:
         if self.get_phase_progress() >= 1.0:
             sw, sh = self._screen_size
             self._current_center = (sw / 2, sh + 110)
@@ -125,7 +123,7 @@ class HomecomingSequence:
         eased = 1 - (1 - progress) ** 3
         sw, sh = self._screen_size
         start = (sw / 2, sh + 110)
-        pre_landing = (self._landing_center[0], self._landing_center[1] + 125)
+        pre_landing = (self._landing_center[0], self._landing_center[1] + 130)
         x = start[0] + (pre_landing[0] - start[0]) * eased
         y = start[1] + (pre_landing[1] - start[1]) * eased
         self._current_center = (x, y)
@@ -166,7 +164,7 @@ class HomecomingSequence:
         durations = {
             HomecomingPhase.FTL_ESCAPE: self.FTL_FRAMES,
             HomecomingPhase.BLACKOUT: self.BLACKOUT_FRAMES,
-            HomecomingPhase.CARRIER_REVEAL: self.CARRIER_REVEAL_FRAMES,
+            HomecomingPhase.STATION_REVEAL: self.STATION_REVEAL_FRAMES,
             HomecomingPhase.APPROACH: self.APPROACH_FRAMES,
             HomecomingPhase.LANDING: self.LANDING_FRAMES,
             HomecomingPhase.HANDOFF: self.HANDOFF_FRAMES,

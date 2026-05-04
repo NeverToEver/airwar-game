@@ -63,7 +63,7 @@ def test_homecoming_sequence_runs_to_complete_and_locks_final_state() -> None:
     for _ in range(
         HomecomingSequence.FTL_FRAMES
         + HomecomingSequence.BLACKOUT_FRAMES
-        + HomecomingSequence.CARRIER_REVEAL_FRAMES
+        + HomecomingSequence.STATION_REVEAL_FRAMES
         + HomecomingSequence.APPROACH_FRAMES
         + HomecomingSequence.LANDING_FRAMES
         + HomecomingSequence.HANDOFF_FRAMES
@@ -84,7 +84,7 @@ def test_homecoming_handoff_moves_player_into_base_entry() -> None:
     for _ in range(
         HomecomingSequence.FTL_FRAMES
         + HomecomingSequence.BLACKOUT_FRAMES
-        + HomecomingSequence.CARRIER_REVEAL_FRAMES
+        + HomecomingSequence.STATION_REVEAL_FRAMES
         + HomecomingSequence.APPROACH_FRAMES
         + HomecomingSequence.LANDING_FRAMES
         + 1
@@ -99,31 +99,36 @@ def test_homecoming_handoff_moves_player_into_base_entry() -> None:
         sequence.update(player)
 
     final_x, final_y = sequence.get_player_center()
-    assert abs(final_x - entry_x) < abs(start_x - entry_x)
+    assert final_x == entry_x
     assert abs(final_y - entry_y) < abs(start_y - entry_y)
     assert abs(final_x - entry_x) < 1.0
     assert abs(final_y - entry_y) < 1.0
 
 
-def test_homecoming_scene_renders_asteroid_belt_and_base_scale() -> None:
+def test_homecoming_scene_renders_asteroid_belt_and_space_station() -> None:
     pygame.font.init()
     surface = pygame.Surface((1920, 1080), pygame.SRCALPHA)
     ui = HomecomingUI(1920, 1080)
+    player = _make_player()
+    sequence = HomecomingSequence()
+    sequence.start(player, 1920, 1080)
 
     ui._render_deep_space(surface, HomecomingPhase.APPROACH, 0.5)
     background_pixel = surface.get_at((1540, 507))
-    empty_megastructure_pixel = surface.get_at((960, 281))
+    empty_station_pixel = surface.get_at((960, 508))
     ui._render_asteroid_belt(surface, HomecomingPhase.APPROACH, 0.5)
     asteroid_pixels = [
         surface.get_at((x, y))
         for x in range(1528, 1553, 4)
         for y in range(495, 520, 4)
     ]
-    ui._render_base_megastructure(surface, HomecomingPhase.APPROACH, 0.5)
-    megastructure_pixel = surface.get_at((960, 281))
+    ui._render_space_station(surface, HomecomingPhase.APPROACH, 0.5, sequence)
+    station_hub_pixel = surface.get_at((960, 508))
+    solar_array_pixel = surface.get_at((1288, 383))
 
     assert any(pixel != background_pixel for pixel in asteroid_pixels)
-    assert megastructure_pixel != empty_megastructure_pixel
+    assert station_hub_pixel != empty_station_pixel
+    assert solar_array_pixel != background_pixel
 
 
 def test_game_scene_homecoming_request_sets_safe_interface_state() -> None:

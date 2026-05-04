@@ -84,12 +84,11 @@ class HomecomingUI:
 
         self._render_deep_space(surface, phase, progress)
         self._render_asteroid_belt(surface, phase, progress)
-        self._render_base_megastructure(surface, phase, progress)
-        self._render_space_carrier(surface, phase, progress)
+        self._render_space_station(surface, phase, progress, sequence)
 
         if phase in (HomecomingPhase.APPROACH, HomecomingPhase.LANDING, HomecomingPhase.HANDOFF):
             if phase == HomecomingPhase.HANDOFF:
-                self._render_base_entry(surface, sequence, progress)
+                self._render_docking_corridor(surface, sequence, progress)
             self._render_landing_player(surface, sequence, player, progress)
 
         if phase == HomecomingPhase.HANDOFF:
@@ -129,7 +128,7 @@ class HomecomingUI:
     def _render_deep_space(self, surface: pygame.Surface, phase: HomecomingPhase, progress: float) -> None:
         surface.fill((2, 4, 10))
         sw, sh = surface.get_size()
-        reveal = progress if phase == HomecomingPhase.CARRIER_REVEAL else 1.0
+        reveal = progress if phase == HomecomingPhase.STATION_REVEAL else 1.0
         for index in range(90):
             x = (index * 97) % sw
             y = (index * 53 + int(progress * 26)) % sh
@@ -137,7 +136,7 @@ class HomecomingUI:
             surface.set_at((x, y), (alpha, alpha, min(255, alpha + 35)))
 
     def _render_asteroid_belt(self, surface: pygame.Surface, phase: HomecomingPhase, progress: float) -> None:
-        reveal = progress if phase == HomecomingPhase.CARRIER_REVEAL else 1.0
+        reveal = progress if phase == HomecomingPhase.STATION_REVEAL else 1.0
         if phase == HomecomingPhase.BLACKOUT or reveal <= 0:
             return
 
@@ -161,95 +160,32 @@ class HomecomingUI:
 
         surface.blit(belt, (0, 0))
 
-    def _render_base_megastructure(self, surface: pygame.Surface, phase: HomecomingPhase, progress: float) -> None:
-        reveal = progress if phase == HomecomingPhase.CARRIER_REVEAL else 1.0
+    def _render_space_station(
+        self,
+        surface: pygame.Surface,
+        phase: HomecomingPhase,
+        progress: float,
+        sequence: HomecomingSequence,
+    ) -> None:
+        reveal = progress if phase == HomecomingPhase.STATION_REVEAL else 1.0
         if phase == HomecomingPhase.BLACKOUT or reveal <= 0:
             return
 
         sw, sh = surface.get_size()
-        mega = pygame.Surface((sw, sh), pygame.SRCALPHA)
-        cx = sw // 2
-        cy = int(sh * 0.43)
-        alpha = int(180 * reveal)
-
-        ring_rect = pygame.Rect(0, 0, int(sw * 0.86), int(sh * 0.34))
-        ring_rect.center = (cx, cy + int(sh * 0.02))
-        pygame.draw.ellipse(mega, (52, 70, 88, int(alpha * 0.5)), ring_rect, 3)
-        inner = ring_rect.inflate(-int(sw * 0.12), -int(sh * 0.08))
-        pygame.draw.ellipse(mega, (74, 210, 196, int(alpha * 0.35)), inner, 2)
-
-        for offset in (-420, -270, -120, 120, 270, 420):
-            x = cx + int(offset * sw / 1920)
-            tower_top = cy - int(sh * (0.22 + abs(offset) / 4200))
-            tower_bottom = cy + int(sh * 0.12)
-            tower = [
-                (x - 22, tower_bottom),
-                (x + 22, tower_bottom),
-                (x + 12, tower_top),
-                (x - 12, tower_top),
-            ]
-            pygame.draw.polygon(mega, (28, 42, 58, int(alpha * 0.78)), tower)
-            pygame.draw.polygon(mega, (110, 134, 156, int(alpha * 0.66)), tower, 1)
-            draw_glow_circle(mega, (x, tower_top), 4, (96, 228, 210), 18)
-
-        beacon_y = cy - int(sh * 0.17)
-        pygame.draw.line(mega, (82, 230, 214, int(alpha * 0.45)), (cx - int(sw * 0.28), beacon_y), (cx + int(sw * 0.28), beacon_y), 2)
-        surface.blit(mega, (0, 0))
-
-    def _render_space_carrier(self, surface: pygame.Surface, phase: HomecomingPhase, progress: float) -> None:
-        sw, sh = surface.get_size()
-        reveal = progress if phase == HomecomingPhase.CARRIER_REVEAL else 1.0
-        if phase == HomecomingPhase.BLACKOUT:
-            reveal = 0.0
-        if reveal <= 0:
-            return
-
-        cx = sw // 2
-        cy = int(sh * 0.43)
-        carrier = pygame.Surface((sw, sh), pygame.SRCALPHA)
+        station = pygame.Surface((sw, sh), pygame.SRCALPHA)
+        cx, cy = sequence.get_base_entry_center()
+        cx = int(cx)
+        cy = int(cy)
         alpha = int(255 * reveal)
 
-        deck = [
-            (cx - 520, cy - 18),
-            (cx + 430, cy - 92),
-            (cx + 575, cy - 26),
-            (cx + 438, cy + 84),
-            (cx - 470, cy + 104),
-            (cx - 610, cy + 38),
-        ]
-        pygame.draw.polygon(carrier, (36, 45, 61, alpha), deck)
-        pygame.draw.polygon(carrier, (102, 123, 148, alpha), deck, 3)
+        self._render_station_solar_arrays(station, cx, cy, reveal)
+        self._render_station_ring(station, cx, cy, reveal)
+        self._render_station_spokes(station, cx, cy, reveal)
+        self._render_station_hub(station, cx, cy, reveal)
+        self._render_station_docking_port(station, cx, cy, reveal, progress)
 
-        runway = [
-            (cx - 420, cy + 9),
-            (cx + 330, cy - 44),
-            (cx + 390, cy - 9),
-            (cx - 365, cy + 50),
-        ]
-        pygame.draw.polygon(carrier, (13, 20, 30, alpha), runway)
-        pygame.draw.polygon(carrier, (78, 220, 190, int(150 * reveal)), runway, 2)
-
-        for offset in range(-330, 360, 90):
-            light_x = int(cx + offset)
-            light_y = int(cy + 22 - offset * 0.065)
-            draw_glow_circle(carrier, (light_x, light_y), 4, (110, 238, 220), 13)
-            pygame.draw.circle(carrier, (180, 255, 245, alpha), (light_x, light_y), 2)
-
-        island = pygame.Rect(cx + 210, cy - 164, 110, 82)
-        pygame.draw.rect(carrier, (41, 54, 75, alpha), island, border_radius=4)
-        pygame.draw.rect(carrier, (130, 155, 182, alpha), island, 2, border_radius=4)
-        pygame.draw.polygon(
-            carrier,
-            (54, 70, 94, alpha),
-            [(cx + 236, cy - 164), (cx + 292, cy - 164), (cx + 274, cy - 220), (cx + 250, cy - 220)],
-        )
-
-        for engine_x in (cx - 430, cx - 250, cx + 455):
-            draw_glow_circle(carrier, (engine_x, cy + 116), 18, (82, 166, 255), 46)
-            pygame.draw.circle(carrier, (198, 228, 255, alpha), (engine_x, cy + 116), 7)
-
-        carrier.set_alpha(alpha)
-        surface.blit(carrier, (0, 0))
+        station.set_alpha(alpha)
+        surface.blit(station, (0, 0))
 
     def _asteroid_points(self, x: int, y: int, size: int, seed: int) -> list[tuple[int, int]]:
         point_count = 7
@@ -261,6 +197,87 @@ class HomecomingUI:
             py = int(y + math.sin(angle) * size * (0.7 + wobble * 0.25))
             points.append((px, py))
         return points
+
+    def _render_station_solar_arrays(self, surface: pygame.Surface, cx: int, cy: int, reveal: float) -> None:
+        alpha = int(210 * reveal)
+        for side in (-1, 1):
+            mast_start = (cx + side * 190, cy - 10)
+            mast_end = (cx + side * 520, cy - 84)
+            pygame.draw.line(surface, (118, 145, 170, alpha), mast_start, mast_end, 6)
+            pygame.draw.line(surface, (52, 234, 210, int(alpha * 0.42)), mast_start, mast_end, 2)
+
+            for i in range(4):
+                panel_x = cx + side * (250 + i * 78)
+                panel_y = cy - 144 + i * 5
+                panel = [
+                    (panel_x - side * 30, panel_y - 48),
+                    (panel_x + side * 48, panel_y - 62),
+                    (panel_x + side * 62, panel_y + 58),
+                    (panel_x - side * 18, panel_y + 70),
+                ]
+                pygame.draw.polygon(surface, (18, 56, 86, int(alpha * 0.86)), panel)
+                pygame.draw.polygon(surface, (82, 184, 220, int(alpha * 0.72)), panel, 2)
+                for stripe in range(1, 4):
+                    t = stripe / 4
+                    sx1 = int(panel[0][0] + (panel[1][0] - panel[0][0]) * t)
+                    sy1 = int(panel[0][1] + (panel[1][1] - panel[0][1]) * t)
+                    sx2 = int(panel[3][0] + (panel[2][0] - panel[3][0]) * t)
+                    sy2 = int(panel[3][1] + (panel[2][1] - panel[3][1]) * t)
+                    pygame.draw.line(surface, (108, 220, 246, int(alpha * 0.34)), (sx1, sy1), (sx2, sy2), 1)
+
+    def _render_station_ring(self, surface: pygame.Surface, cx: int, cy: int, reveal: float) -> None:
+        alpha = int(230 * reveal)
+        ring_outer = pygame.Rect(0, 0, 520, 210)
+        ring_outer.center = (cx, cy)
+        ring_inner = ring_outer.inflate(-108, -66)
+        pygame.draw.ellipse(surface, (30, 42, 58, int(alpha * 0.92)), ring_outer, 24)
+        pygame.draw.ellipse(surface, (108, 132, 154, int(alpha * 0.86)), ring_outer, 3)
+        pygame.draw.ellipse(surface, (74, 232, 214, int(alpha * 0.42)), ring_inner, 2)
+
+        for index in range(18):
+            angle = math.tau * index / 18
+            px = cx + int(math.cos(angle) * 250)
+            py = cy + int(math.sin(angle) * 98)
+            module = pygame.Rect(px - 18, py - 8, 36, 16)
+            pygame.draw.rect(surface, (48, 62, 80, int(alpha * 0.92)), module, border_radius=3)
+            pygame.draw.rect(surface, (124, 148, 168, int(alpha * 0.72)), module, 1, border_radius=3)
+            if index % 3 == 0:
+                draw_glow_circle(surface, (px, py), 3, (94, 234, 214), 14)
+
+    def _render_station_spokes(self, surface: pygame.Surface, cx: int, cy: int, reveal: float) -> None:
+        alpha = int(190 * reveal)
+        for angle_deg in (0, 45, 90, 135, 180, 225, 270, 315):
+            angle = math.radians(angle_deg)
+            inner = (cx + int(math.cos(angle) * 56), cy + int(math.sin(angle) * 28))
+            outer = (cx + int(math.cos(angle) * 230), cy + int(math.sin(angle) * 92))
+            pygame.draw.line(surface, (86, 108, 130, alpha), inner, outer, 5)
+            pygame.draw.line(surface, (64, 222, 204, int(alpha * 0.38)), inner, outer, 1)
+
+    def _render_station_hub(self, surface: pygame.Surface, cx: int, cy: int, reveal: float) -> None:
+        alpha = int(245 * reveal)
+        hub = pygame.Rect(cx - 92, cy - 54, 184, 108)
+        pygame.draw.ellipse(surface, (38, 52, 70, alpha), hub)
+        pygame.draw.ellipse(surface, (132, 154, 178, int(alpha * 0.9)), hub, 3)
+        pygame.draw.ellipse(surface, (8, 14, 22, int(alpha * 0.95)), hub.inflate(-58, -34))
+        pygame.draw.ellipse(surface, (78, 238, 214, int(alpha * 0.8)), hub.inflate(-58, -34), 2)
+        draw_glow_circle(surface, (cx, cy), 16, (82, 226, 210), 48)
+
+    def _render_station_docking_port(
+        self,
+        surface: pygame.Surface,
+        cx: int,
+        cy: int,
+        reveal: float,
+        progress: float,
+    ) -> None:
+        pulse = 0.5 + 0.5 * math.sin(progress * math.pi * 8)
+        alpha = int(230 * reveal)
+        port_y = cy + 18
+        for radius, width in ((74, 4), (52, 3), (30, 2)):
+            color_alpha = int((130 + 90 * pulse) * reveal)
+            pygame.draw.circle(surface, (82, 238, 218, color_alpha), (cx, port_y), radius, width)
+        pygame.draw.circle(surface, (2, 6, 10, int(alpha * 0.98)), (cx, port_y), 24)
+        pygame.draw.circle(surface, (190, 255, 246, int(alpha * 0.95)), (cx, port_y), 5)
 
     def _render_landing_player(
         self,
@@ -297,7 +314,7 @@ class HomecomingUI:
         height = max(26, int(player.rect.height * scale))
         draw_player_ship(surface, x, y, width, height)
 
-    def _render_base_entry(
+    def _render_docking_corridor(
         self,
         surface: pygame.Surface,
         sequence: HomecomingSequence,
@@ -322,29 +339,9 @@ class HomecomingUI:
             draw_glow_circle(guide, (gx, gy), 4, (90, 235, 210), 14)
             pygame.draw.circle(guide, (190, 255, 245, 200), (gx, gy), 2)
 
-        bay_w = 190
-        bay_h = 88
-        bay_x = int(entry_x - bay_w / 2)
-        bay_y = int(entry_y - bay_h / 2)
-        outer = [
-            (bay_x - 34, bay_y + bay_h),
-            (bay_x + 18, bay_y - 22),
-            (bay_x + bay_w - 18, bay_y - 22),
-            (bay_x + bay_w + 34, bay_y + bay_h),
-        ]
-        pygame.draw.polygon(guide, (14, 22, 32, 235), outer)
-        pygame.draw.polygon(guide, (120, 156, 184, 210), outer, 3)
-
-        inner = pygame.Rect(bay_x + 24, bay_y + 8, bay_w - 48, bay_h - 18)
-        pygame.draw.rect(guide, (0, 4, 8, 245), inner, border_radius=5)
-        pygame.draw.rect(guide, (95, 236, 214, alpha), inner, 2, border_radius=5)
-
-        shutter_count = 6
-        for i in range(shutter_count):
-            sx = inner.x + int((i + 1) * inner.width / (shutter_count + 1))
-            pygame.draw.line(guide, (42, 72, 86, 150), (sx, inner.y + 6), (sx - 18, inner.bottom - 6), 2)
-
-        draw_glow_circle(guide, (int(entry_x), int(entry_y)), 20, (80, 230, 210), 54)
+        for radius in (54, 34, 18):
+            pygame.draw.circle(guide, (90, 236, 214, max(55, alpha - radius * 2)), (int(entry_x), int(entry_y)), radius, 2)
+        draw_glow_circle(guide, (int(entry_x), int(entry_y)), 18, (80, 230, 210), 58)
         surface.blit(guide, (0, 0))
 
     def _render_handoff(self, surface: pygame.Surface, progress: float) -> None:
@@ -365,7 +362,7 @@ class HomecomingUI:
     def _render_fade_overlay(self, surface: pygame.Surface, phase: HomecomingPhase, progress: float) -> None:
         if phase == HomecomingPhase.BLACKOUT:
             alpha = 255
-        elif phase == HomecomingPhase.CARRIER_REVEAL:
+        elif phase == HomecomingPhase.STATION_REVEAL:
             alpha = int(255 * (1 - progress))
         elif phase == HomecomingPhase.HANDOFF:
             alpha = int(210 * progress)
