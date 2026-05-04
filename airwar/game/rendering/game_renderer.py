@@ -36,6 +36,8 @@ class GameRenderer:
         self._death_animation = None
         self._screen_diagonal = 0
         self._was_in_dying_state = False
+        self._invincibility_aura_cache = None
+        self._invincibility_aura_key = None
 
     def init_background(self, screen_width: int, screen_height: int) -> None:
         self.background_renderer = SpaceBackground(screen_width, screen_height)
@@ -66,9 +68,7 @@ class GameRenderer:
         progress = state.entrance_timer / state.entrance_duration
         zoom_scale = 1.0 + (1.5 - 1.0) * (1 - progress)
 
-        if not state.player_invincible or state.silent_invincible or (state.invincibility_timer // 5) % 2 == 0:
-            if entities.player:
-                entities.player.render(surface)
+        self._render_player(surface, state, entities.player)
 
         for enemy in entities.enemies:
             enemy.render(surface)
@@ -111,9 +111,7 @@ class GameRenderer:
 
             self._render_death_animation(surface, state, entities)
         else:
-            if not state.player_invincible or state.silent_invincible or (state.invincibility_timer // 5) % 2 == 0:
-                if entities.player:
-                    entities.player.render(surface)
+            self._render_player(surface, state, entities.player)
 
             for enemy in entities.enemies:
                 enemy.render(surface)
@@ -123,6 +121,26 @@ class GameRenderer:
                 self.hud_renderer.render_boss_health_bar(surface, entities.boss)
 
             self.hud_renderer.render_ripples(surface, state.ripple_effects)
+
+    def _render_player(self, surface, state, player) -> None:
+        if not player:
+            return
+        player.render(surface)
+        if state.player_invincible and not state.silent_invincible:
+            self._render_invincibility_aura(surface, player)
+
+    def _render_invincibility_aura(self, surface, player) -> None:
+        width = max(1, int(player.rect.width * 1.45))
+        height = max(1, int(player.rect.height * 1.35))
+        cache_key = (width, height)
+        if self._invincibility_aura_key != cache_key:
+            aura = pygame.Surface((width, height), pygame.SRCALPHA)
+            pygame.draw.ellipse(aura, (96, 214, 224, 38), aura.get_rect(), 2)
+            inner = aura.get_rect().inflate(-max(4, width // 4), -max(4, height // 4))
+            pygame.draw.ellipse(aura, (140, 232, 238, 24), inner, 1)
+            self._invincibility_aura_cache = aura
+            self._invincibility_aura_key = cache_key
+        surface.blit(self._invincibility_aura_cache, self._invincibility_aura_cache.get_rect(center=player.rect.center))
 
     def render_hud(
         self,

@@ -98,7 +98,7 @@ class DifficultyCoefficientPanel:
             surface.blit(delta_text, delta_rect)
 
         if self._pulse_timer > 0 or self._glow_intensity > 0:
-            pulse_alpha = int(150 * (self._pulse_timer / 30 + self._glow_intensity) / 2)
+            pulse_alpha = int(48 * (self._pulse_timer / 30 + self._glow_intensity) / 2)
             pulse_color = (*glow_color[:3], min(255, pulse_alpha))
             pulse_surface = pygame.Surface((self.PANEL_WIDTH + 8, self.PANEL_HEIGHT + 8), pygame.SRCALPHA)
             pulse_surface.fill(pulse_color)

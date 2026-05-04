@@ -15,7 +15,7 @@ class AimCrosshair:
     GAP = 8
     LINE_LENGTH = 14
     LINE_WIDTH = 2
-    PULSE_SPEED = 0.12
+    PULSE_SPEED = 0.04
 
     def __init__(self) -> None:
         self._tokens = get_design_tokens()
@@ -30,7 +30,7 @@ class AimCrosshair:
         colors = self._tokens.system
         accent = colors.ACCENT_BRIGHT
         dim = colors.ACCENT_DIM
-        glow_alpha = int(28 + 22 * pulse)
+        glow_alpha = int(14 + 8 * pulse)
 
         glow_size = self.RADIUS * 4
         glow = pygame.Surface((glow_size, glow_size), pygame.SRCALPHA)
@@ -47,11 +47,11 @@ class AimCrosshair:
         pygame.draw.arc(surface, accent, ring_rect, math.radians(198), math.radians(258), arc_width)
         pygame.draw.arc(surface, accent, ring_rect, math.radians(288), math.radians(348), arc_width)
 
-        line_color = (*dim, 230)
+        line_color = (*dim, 185)
         pygame.draw.line(surface, line_color, (x - self.GAP - self.LINE_LENGTH, y), (x - self.GAP, y), self.LINE_WIDTH)
         pygame.draw.line(surface, line_color, (x + self.GAP, y), (x + self.GAP + self.LINE_LENGTH, y), self.LINE_WIDTH)
         pygame.draw.line(surface, line_color, (x, y - self.GAP - self.LINE_LENGTH), (x, y - self.GAP), self.LINE_WIDTH)
         pygame.draw.line(surface, line_color, (x, y + self.GAP), (x, y + self.GAP + self.LINE_LENGTH), self.LINE_WIDTH)
 
         pygame.draw.circle(surface, accent, (x, y), self.INNER_RADIUS, width=1)
-        pygame.draw.circle(surface, (235, 245, 255), (x, y), 2)
+        pygame.draw.circle(surface, (180, 220, 228), (x, y), 2)

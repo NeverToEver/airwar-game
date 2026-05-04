@@ -40,10 +40,10 @@ class DeathAnimation:
 
     ANIMATION_DURATION = 200
     FLICKER_START_FRAME = 0
-    FLICKER_END_FRAME = 60
-    FLICKER_INTERVAL = 4
-    FLICKER_ALPHA_HIGH = 255
-    FLICKER_ALPHA_LOW = 80
+    FLICKER_END_FRAME = 42
+    FLICKER_INTERVAL = 18
+    FLICKER_ALPHA_HIGH = 96
+    FLICKER_ALPHA_LOW = 48
     SPARK_START_FRAME = 0
     SPARK_END_FRAME = 180
     SPARK_GENERATION_INTERVAL = 3
@@ -59,9 +59,12 @@ class DeathAnimation:
     SPARK_MAX_COUNT = 100
     GLOW_START_FRAME = 60
     GLOW_END_FRAME = 180
-    GLOW_MAX_ALPHA = 150
-    GLOW_COLOR = (255, 255, 255)
+    GLOW_MAX_ALPHA = 42
+    GLOW_COLOR = (255, 126, 82)
     FLICKER_COLOR = Colors.ACCENT_DANGER
+
+    MAX_SPARK_ALPHA = 150
+    SPARK_GLOW_ALPHA_RATIO = 0.18
 
     # Cache for flicker surfaces
     _flicker_cache = {}
@@ -131,23 +134,20 @@ class DeathAnimation:
         self._render_sparks(surface)
 
     def _render_flicker(self, surface) -> None:
-        """渲染闪烁效果（战机位置的红白交替闪烁）"""
+        """Render a low-intensity damage flare at the wreck center."""
         if not self._should_show_flicker():
             return
 
         flicker_step = (self._timer - self.FLICKER_START_FRAME) // self.FLICKER_INTERVAL
-        is_visible = flicker_step % 2 == 0
-
-        if is_visible:
-            alpha = self.FLICKER_ALPHA_HIGH if flicker_step % 4 == 0 else self.FLICKER_ALPHA_LOW
-            color = self.FLICKER_COLOR if flicker_step % 4 == 0 else (255, 255, 255)
-            cache_key = (alpha, color)
-            if cache_key not in DeathAnimation._flicker_cache:
-                flicker_surf = pygame.Surface((60, 60), pygame.SRCALPHA)
-                flicker_surf.set_alpha(alpha)
-                pygame.draw.circle(flicker_surf, color, (30, 30), 25)
-                DeathAnimation._flicker_cache[cache_key] = flicker_surf
-            surface.blit(DeathAnimation._flicker_cache[cache_key], (int(self._center_x - 30), int(self._center_y - 30)))
+        alpha = self.FLICKER_ALPHA_HIGH if flicker_step == 0 else self.FLICKER_ALPHA_LOW
+        color = self.FLICKER_COLOR
+        cache_key = (alpha, color)
+        if cache_key not in DeathAnimation._flicker_cache:
+            flicker_surf = pygame.Surface((60, 60), pygame.SRCALPHA)
+            pygame.draw.circle(flicker_surf, (*color, alpha), (30, 30), 25)
+            pygame.draw.circle(flicker_surf, (255, 164, 104, alpha // 2), (30, 30), 14)
+            DeathAnimation._flicker_cache[cache_key] = flicker_surf
+        surface.blit(DeathAnimation._flicker_cache[cache_key], (int(self._center_x - 30), int(self._center_y - 30)))
 
     def is_active(self) -> bool:
         """检查动画是否处于活跃状态"""
@@ -189,7 +189,7 @@ class DeathAnimation:
         """渲染火花粒子效果"""
         for spark in self._sparks:
             life_ratio = spark.life / spark.max_life
-            alpha = int(255 * life_ratio)
+            alpha = int(self.MAX_SPARK_ALPHA * life_ratio)
 
             if alpha < 10:
                 continue
@@ -201,7 +201,7 @@ class DeathAnimation:
                 cache_key = (glow_radius, alpha)
                 if cache_key not in DeathAnimation._spark_glow_cache:
                     glow_surf = pygame.Surface((glow_radius * 2, glow_radius * 2), pygame.SRCALPHA)
-                    glow_alpha = int(alpha * 0.3)
+                    glow_alpha = int(alpha * self.SPARK_GLOW_ALPHA_RATIO)
                     pygame.draw.circle(
                         glow_surf,
                         (*color_base, glow_alpha),
@@ -222,8 +222,7 @@ class DeathAnimation:
         """检查当前帧是否应该显示闪烁效果"""
         if self._timer < self.FLICKER_START_FRAME or self._timer >= self.FLICKER_END_FRAME:
             return False
-        flicker_step = (self._timer - self.FLICKER_START_FRAME) // self.FLICKER_INTERVAL
-        return flicker_step % 2 == 0
+        return True
 
     def _should_show_glow(self) -> bool:
         """检查当前帧是否应该显示光晕效果"""

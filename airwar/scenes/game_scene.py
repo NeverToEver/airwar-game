@@ -483,7 +483,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
         if self._homecoming_sequence.is_active():
             self._homecoming_sequence.update(self.player)
-            if self.player:
+            if self.player and self._homecoming_sequence.is_active():
                 self.player.controls_locked = True
             return
 
@@ -593,6 +593,30 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._save_base_loadout()
         self._homecoming_base_pending = False
         self._pause_requested = False
+        if self._homecoming_ui:
+            self._homecoming_ui.hide()
+        self._set_homecoming_protection(locked=True)
+        started = False
+        if self._homecoming_sequence:
+            started = self._homecoming_sequence.start_departure(
+                self.player,
+                get_screen_width(),
+                get_screen_height(),
+                on_complete_callback=self._on_homecoming_departure_complete,
+                on_orbital_strike_callback=self._on_homecoming_orbital_strike,
+            )
+        if not started:
+            self._on_homecoming_departure_complete()
+            return
+        if self.notification_manager:
+            self.notification_manager.show("基地弹射程序启动")
+
+    def _on_homecoming_orbital_strike(self) -> None:
+        self._clear_hostiles_for_homecoming_return()
+        if self.notification_manager:
+            self.notification_manager.show("轨道导弹清场完成")
+
+    def _on_homecoming_departure_complete(self) -> None:
         if self._homecoming_sequence:
             self._homecoming_sequence.reset()
         if self._homecoming_detector:
@@ -600,8 +624,47 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if self._homecoming_ui:
             self._homecoming_ui.hide()
         self._set_homecoming_protection(locked=False)
+        self._start_homecoming_return_entrance()
         if self.notification_manager:
-            self.notification_manager.show("已离开基地")
+            self.notification_manager.show("已返回战场")
+
+    def _clear_hostiles_for_homecoming_return(self) -> None:
+        if not self.spawn_controller:
+            return
+
+        for enemy in self.spawn_controller.enemies:
+            if getattr(enemy, "active", False):
+                self.trigger_explosion(enemy.rect.centerx, enemy.rect.centery, max(28, int(enemy.rect.width * 0.7)))
+            enemy.active = False
+        self.spawn_controller.enemies.clear()
+
+        boss = self.spawn_controller.boss
+        if boss:
+            self.trigger_boss_death_explosion(boss)
+            boss.active = False
+            self.spawn_controller.boss = None
+            if hasattr(self.spawn_controller, "reset_boss_timer"):
+                self.spawn_controller.reset_boss_timer()
+
+        if self._bullet_manager:
+            self._bullet_manager.clear_enemy_bullets(include_clear_immune=True)
+        else:
+            self.spawn_controller.enemy_bullets.clear()
+
+        if self.player:
+            for bullet in self.player.get_bullets():
+                bullet.active = False
+            self.player.cleanup_inactive_bullets()
+
+    def _start_homecoming_return_entrance(self) -> None:
+        if not self.game_controller or not self.player:
+            return
+        state = self.game_controller.state
+        state.entrance_animation = True
+        state.entrance_timer = 0
+        state.paused = False
+        self.player.rect.x = get_screen_width() // 2 - PlayerConstants.INITIAL_X_OFFSET
+        self.player.rect.y = PlayerConstants.INITIAL_Y
 
     def _save_base_loadout(self) -> bool:
         if not self._mother_ship_integrator:
@@ -735,14 +798,14 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         sw, sh = surface.get_size()
         ticks = pygame.time.get_ticks()
         source = surface.copy()
-        band_height = max(6, min(16, sh // 42))
-        amplitude = max(1, int(18 * intensity))
-        phase = ticks * 0.006
+        band_height = max(7, min(18, sh // 48))
+        amplitude = max(1, int(4 * intensity))
+        phase = ticks * 0.0014
         for y in range(0, sh, band_height):
             band_rect = pygame.Rect(0, y, sw, min(band_height + 2, sh - y))
-            wave_a = math.sin(y * 0.035 + phase)
-            wave_b = math.sin(y * 0.083 - phase * 1.45)
-            offset = int((wave_a * 0.72 + wave_b * 0.28) * amplitude)
+            wave_a = math.sin(y * 0.023 + phase)
+            wave_b = math.sin(y * 0.061 - phase * 1.2)
+            offset = int((wave_a * 0.65 + wave_b * 0.35) * amplitude)
             surface.blit(source, (offset, y), band_rect)
             if offset > 0:
                 surface.blit(source, (offset - sw, y), band_rect)
@@ -752,15 +815,20 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         ripple = pygame.Surface((sw, sh), pygame.SRCALPHA)
         center_x = getattr(boss.rect, "centerx", sw // 2)
         center_y = getattr(boss.rect, "centery", sh // 2)
-        ring_phase = ticks * 0.003
-        for index in range(4):
-            radius = int((ring_phase * 90 + index * 92) % max(sw, sh))
+        ring_phase = ticks * 0.0018
+        for index in range(3):
+            radius = int((ring_phase * 76 + index * 116) % max(sw, sh))
             if radius < 20:
                 continue
-            alpha = int(34 * intensity * (1.0 - radius / max(sw, sh)))
+            alpha = int(12 * intensity * (1.0 - radius / max(sw, sh)))
             if alpha <= 0:
                 continue
             pygame.draw.circle(ripple, (160, 220, 255, alpha), (int(center_x), int(center_y)), radius, 2)
+        scan_gap = max(10, sh // 54)
+        for y in range(0, sh, scan_gap):
+            alpha = int(10 * intensity * (0.65 + 0.35 * math.sin(y * 0.05 + phase * 2.0)))
+            if alpha > 0:
+                pygame.draw.line(ripple, (185, 232, 255, alpha), (0, y), (sw, y), 1)
         surface.blit(ripple, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
 
         cache_key = (sw, sh)
@@ -768,7 +836,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             self._enrage_overlay_cache = pygame.Surface((sw, sh), pygame.SRCALPHA)
             self._enrage_overlay_cache_key = cache_key
         overlay = self._enrage_overlay_cache
-        overlay.fill((112, 38, 30, int(36 * intensity)))
+        overlay.fill((34, 28, 42, int(12 * intensity)))
         surface.blit(overlay, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
 
     def _set_raw_aim_position(self, position: tuple[int, int]) -> None:

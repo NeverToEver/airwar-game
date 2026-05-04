@@ -13,6 +13,13 @@ from airwar.utils.sprites import draw_glow_circle, draw_player_ship
 class HomecomingUI:
     """Renders hold progress and the return-to-base cinematic."""
 
+    FTL_EXIT_FLASH_ALPHA_MAX = 42
+    LAUNCH_CORRIDOR_PULSE_CYCLES = 1.5
+    LAUNCH_CORRIDOR_LINE_ALPHA_BASE = 92
+    LAUNCH_CORRIDOR_LINE_ALPHA_RANGE = 24
+    LAUNCH_CORRIDOR_RING_ALPHA_RATIO_BASE = 0.72
+    LAUNCH_CORRIDOR_RING_ALPHA_RATIO_RANGE = 0.18
+
     def __init__(self, screen_width: int, screen_height: int):
         self._screen_width = screen_width
         self._screen_height = screen_height
@@ -86,9 +93,21 @@ class HomecomingUI:
             self._render_blackout_bridge(surface, progress)
             return
 
+        if phase == HomecomingPhase.RETURN_BLACKOUT:
+            self._render_return_blackout(surface, progress)
+            return
+
+        if phase == HomecomingPhase.ORBITAL_STRIKE:
+            self._render_orbital_strike(surface, sequence, progress)
+            return
+
         self._render_deep_space(surface, phase, progress)
         self._render_asteroid_belt(surface, phase, progress)
         self._render_space_station(surface, phase, progress, sequence)
+
+        if phase == HomecomingPhase.BASE_LAUNCH:
+            self._render_launch_corridor(surface, sequence, progress)
+            self._render_launch_player(surface, sequence, player, progress)
 
         if phase in (HomecomingPhase.APPROACH, HomecomingPhase.LANDING, HomecomingPhase.HANDOFF):
             if phase == HomecomingPhase.HANDOFF:
@@ -152,10 +171,10 @@ class HomecomingUI:
             surface.blit(streaks, (0, 0))
 
         flash_strength = max(0.0, 1.0 - abs(t - 0.36) / 0.36)
-        flash_alpha = int(150 * flash_strength)
+        flash_alpha = int(self.FTL_EXIT_FLASH_ALPHA_MAX * flash_strength)
         if flash_alpha > 0:
             flash = pygame.Surface((sw, sh), pygame.SRCALPHA)
-            flash.fill((232, 248, 255, flash_alpha))
+            flash.fill((126, 188, 214, flash_alpha))
             surface.blit(flash, (0, 0))
 
         black_t = max(0.0, (t - 0.50) / 0.50)
@@ -223,6 +242,104 @@ class HomecomingUI:
             2,
         )
         surface.blit(ghost, (0, 0))
+
+    def _render_return_blackout(self, surface: pygame.Surface, progress: float) -> None:
+        surface.fill((0, 0, 0))
+        sw, sh = surface.get_size()
+        center_x = sw // 2
+        streaks = pygame.Surface((sw, sh), pygame.SRCALPHA)
+        fade = max(0.0, 1.0 - progress)
+
+        for index in range(19):
+            lane = index - 9
+            x = center_x + int(lane * (22 + 86 * progress))
+            length = int(sh * (0.38 + 0.56 * progress))
+            y = int((index * 73 + progress * sh * 1.8) % (sh + length) - length)
+            alpha = int(132 * fade * (0.42 + 0.58 * (1 - abs(lane) / 9)))
+            width = max(1, int(5 - 3 * progress))
+            pygame.draw.line(streaks, (218, 240, 255, alpha), (x, y), (center_x + lane * 5, y + length), width)
+
+        aperture = max(0.0, (progress - 0.58) / 0.42)
+        if aperture > 0:
+            radius = int(36 + 520 * aperture)
+            pygame.draw.circle(streaks, (206, 238, 255, int(66 * aperture)), (center_x, int(sh * 0.45)), radius, 2)
+            pygame.draw.circle(streaks, (88, 218, 230, int(80 * aperture)), (center_x, int(sh * 0.45)), max(8, radius // 8), 2)
+
+        surface.blit(streaks, (0, 0))
+
+    def _render_orbital_strike(
+        self,
+        surface: pygame.Surface,
+        sequence: HomecomingSequence,
+        progress: float,
+    ) -> None:
+        sw, sh = surface.get_size()
+        impact_progress = sequence.ORBITAL_STRIKE_IMPACT_PROGRESS
+        impact_x = sw // 2
+        impact_y = int(sh * 0.42)
+
+        reveal = min(1.0, progress / 0.30)
+        if reveal < 1.0:
+            overlay = pygame.Surface((sw, sh), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, int(210 * (1.0 - reveal))))
+            surface.blit(overlay, (0, 0))
+
+        targeting = pygame.Surface((sw, sh), pygame.SRCALPHA)
+        pulse = 0.5 + 0.5 * math.sin(progress * math.tau * 1.5)
+        for radius in (52, 88, 128):
+            alpha = int(36 + 22 * pulse)
+            pygame.draw.circle(targeting, (82, 236, 218, alpha), (impact_x, impact_y), radius, 2)
+        pygame.draw.line(targeting, (82, 236, 218, 52), (impact_x - 170, impact_y), (impact_x + 170, impact_y), 1)
+        pygame.draw.line(targeting, (82, 236, 218, 52), (impact_x, impact_y - 150), (impact_x, impact_y + 150), 1)
+
+        if progress < impact_progress:
+            t = progress / max(0.001, impact_progress)
+            eased = t * t
+            missile_y = int(-140 + (impact_y + 120) * eased)
+            trail_len = int(160 + 420 * t)
+            pygame.draw.line(
+                targeting,
+                (188, 230, 236, 148),
+                (impact_x, missile_y - trail_len),
+                (impact_x, missile_y + 18),
+                max(4, int(12 - 5 * t)),
+            )
+            draw_glow_circle(targeting, (impact_x, missile_y), 10, (180, 230, 236), 30)
+            pygame.draw.polygon(
+                targeting,
+                (214, 236, 238, 170),
+                [(impact_x, missile_y + 28), (impact_x - 9, missile_y - 12), (impact_x + 9, missile_y - 12)],
+            )
+            surface.blit(targeting, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+            return
+
+        t = (progress - impact_progress) / max(0.001, 1.0 - impact_progress)
+        flash_alpha = int(48 * max(0.0, 1.0 - t * 2.2))
+        if flash_alpha > 0:
+            flash = pygame.Surface((sw, sh), pygame.SRCALPHA)
+            flash.fill((140, 210, 220, flash_alpha))
+            surface.blit(flash, (0, 0))
+
+        beam_alpha = int(92 * max(0.0, 1.0 - t))
+        if beam_alpha > 0:
+            beam_w = max(14, int(42 * (1.0 - t) + 14))
+            pygame.draw.line(targeting, (162, 226, 232, beam_alpha), (impact_x, -40), (impact_x, sh + 40), beam_w)
+
+        ring_radius = int(max(sw, sh) * (0.08 + 1.08 * t))
+        ring_alpha = int(82 * max(0.0, 1.0 - t))
+        if ring_alpha > 0:
+            pygame.draw.circle(targeting, (168, 246, 236, ring_alpha), (impact_x, impact_y), ring_radius, 5)
+            pygame.draw.circle(targeting, (184, 236, 232, int(ring_alpha * 0.55)), (impact_x, impact_y), max(12, ring_radius // 5), 3)
+            for side in (-1, 1):
+                pygame.draw.line(
+                    targeting,
+                    (164, 226, 232, int(ring_alpha * 0.48)),
+                    (impact_x, impact_y),
+                    (impact_x + side * sw, int(impact_y + sh * 0.32 * t)),
+                    3,
+                )
+
+        surface.blit(targeting, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
 
     def _render_deep_space(self, surface: pygame.Surface, phase: HomecomingPhase, progress: float) -> None:
         surface.fill((2, 4, 10))
@@ -413,6 +530,64 @@ class HomecomingUI:
         height = max(26, int(player.rect.height * scale))
         draw_player_ship(surface, x, y, width, height)
 
+    def _render_launch_corridor(
+        self,
+        surface: pygame.Surface,
+        sequence: HomecomingSequence,
+        progress: float,
+    ) -> None:
+        entry_x, entry_y = sequence.get_base_entry_center()
+        sw, sh = surface.get_size()
+        guide = pygame.Surface((sw, sh), pygame.SRCALPHA)
+        pulse = 0.5 + 0.5 * math.sin(progress * math.tau * self.LAUNCH_CORRIDOR_PULSE_CYCLES)
+
+        pygame.draw.line(
+            guide,
+            (72, 222, 210, self.LAUNCH_CORRIDOR_LINE_ALPHA_BASE + int(self.LAUNCH_CORRIDOR_LINE_ALPHA_RANGE * pulse)),
+            (int(entry_x), int(entry_y)),
+            (int(entry_x), sh + 80),
+            5,
+        )
+        for index in range(9):
+            t = index / 8
+            ring_y = int(entry_y + (sh - entry_y) * t + progress * 42) % max(1, sh + 60)
+            ring_y = max(int(entry_y), ring_y)
+            ring_w = int(80 + 280 * t)
+            ring_h = max(12, int(24 + 58 * t))
+            alpha = int(
+                (88 - 46 * t)
+                * (self.LAUNCH_CORRIDOR_RING_ALPHA_RATIO_BASE + self.LAUNCH_CORRIDOR_RING_ALPHA_RATIO_RANGE * pulse)
+            )
+            rect = pygame.Rect(0, 0, ring_w, ring_h)
+            rect.center = (int(entry_x), ring_y)
+            pygame.draw.ellipse(guide, (90, 238, 220, alpha), rect, 2)
+
+        draw_glow_circle(guide, (int(entry_x), int(entry_y + 18)), 24, (82, 238, 218), 78)
+        surface.blit(guide, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+
+    def _render_launch_player(
+        self,
+        surface: pygame.Surface,
+        sequence: HomecomingSequence,
+        player,
+        progress: float,
+    ) -> None:
+        x, y = sequence.get_player_center()
+        entry_x, entry_y = sequence.get_base_entry_center()
+        trail_alpha = int(190 * max(0.0, 1.0 - progress * 0.9))
+        if trail_alpha > 0:
+            width = max(4, int(24 * (1.0 - progress) + 5))
+            pygame.draw.line(surface, (226, 248, 255, trail_alpha), (int(entry_x), int(entry_y)), (int(x), int(y)), width)
+            draw_glow_circle(surface, (int(entry_x), int(entry_y)), 18, (236, 250, 255), 64)
+
+        scale = 0.58 + 0.64 * progress
+        width = max(22, int(player.rect.width * scale))
+        height = max(26, int(player.rect.height * scale))
+        sprite = pygame.Surface((width * 3, height * 3), pygame.SRCALPHA)
+        draw_player_ship(sprite, sprite.get_width() / 2, sprite.get_height() / 2, width, height)
+        sprite = pygame.transform.rotate(sprite, 180)
+        surface.blit(sprite, sprite.get_rect(center=(int(x), int(y))))
+
     def _render_docking_corridor(
         self,
         surface: pygame.Surface,
@@ -465,6 +640,8 @@ class HomecomingUI:
             alpha = int(255 * (1 - progress))
         elif phase == HomecomingPhase.HANDOFF:
             alpha = int(210 * progress)
+        elif phase == HomecomingPhase.BASE_LAUNCH:
+            alpha = int(230 * max(0.0, (progress - 0.76) / 0.24))
         else:
             alpha = 0
 

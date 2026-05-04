@@ -54,7 +54,7 @@ def _get_spark_core(size: int) -> pygame.Surface:
             _spark_core_cache.pop(next(iter(_spark_core_cache)))
         s = size * 2 + 2
         surf = pygame.Surface((s, s), pygame.SRCALPHA)
-        pygame.draw.circle(surf, (255, 255, 255, 255), (size + 1, size + 1), size)
+        pygame.draw.circle(surf, (255, 202, 132, 210), (size + 1, size + 1), size)
         _spark_core_cache[size] = surf
     return _spark_core_cache[size]
 
@@ -72,13 +72,13 @@ def _get_flash_surface(radius: int) -> pygame.Surface:
         surf.fill((0, 0, 0, 0))
         pygame.draw.circle(
             surf,
-            (255, 255, 255, 255),
+            (255, 188, 96, 180),
             (radius * 2 + 1, radius * 2 + 1),
             radius
         )
         pygame.draw.circle(
             surf,
-            (255, 240, 200, int(255 * 0.8)),
+            (255, 154, 72, 115),
             (radius * 2 + 1, radius * 2 + 1),
             int(radius * 0.6)
         )
@@ -110,6 +110,11 @@ class ExplosionEffect:
     SPARK_SIZE_MAX = 2.0
     DEBRIS_SIZE_MIN = 1.5
     DEBRIS_SIZE_MAX = 3.0
+    CENTRAL_GLOW_ALPHA_MAX = 92
+    CORE_FLASH_ALPHA_MAX = 82
+    SHOCKWAVE_ALPHA_MAX = 58
+    PARTICLE_ALPHA_MAX = 170
+    INNER_CORE_ALPHA_BONUS = 22
 
     def __init__(self) -> None:
         self._particles: List[ExplosionParticle] = []
@@ -290,7 +295,7 @@ class ExplosionEffect:
                     self._particle_pool.append(self._debris.pop(i))
 
         self._shockwave_radius += 4.0 * dt
-        self._core_flash = max(0.0, self._core_flash - 0.15 * dt)
+        self._core_flash = max(0.0, self._core_flash - 0.22 * dt)
         decay_rate = 0.03 if not self._particles else 0.015
         self._central_glow = max(0.0, self._central_glow - decay_rate * dt)
 
@@ -325,8 +330,8 @@ class ExplosionEffect:
         if glow_radius < 2:
             return
 
-        alpha = int(180 * self._central_glow)
-        glow_surf = _get_glow_texture(glow_radius, (255, 120, 20), 0.25)
+        alpha = int(self.CENTRAL_GLOW_ALPHA_MAX * self._central_glow)
+        glow_surf = _get_glow_texture(glow_radius, (255, 120, 20), 0.14)
         glow_surf.set_alpha(alpha)
         surface.blit(glow_surf, (int(self._x) - glow_radius - 1, int(self._y) - glow_radius - 1))
 
@@ -340,7 +345,7 @@ class ExplosionEffect:
             return
 
         center = (int(self._x), int(self._y))
-        alpha = int(255 * self._core_flash)
+        alpha = int(self.CORE_FLASH_ALPHA_MAX * self._core_flash)
 
         flash_surf = _get_flash_surface(flash_radius)
         cached_flash = flash_surf.copy()
@@ -360,7 +365,7 @@ class ExplosionEffect:
         if progress > 1.0:
             return
 
-        alpha = int(120 * (1.0 - progress))
+        alpha = int(self.SHOCKWAVE_ALPHA_MAX * (1.0 - progress))
         if alpha < 5:
             return
 
@@ -374,7 +379,7 @@ class ExplosionEffect:
             thickness
         )
 
-        inner_alpha = int(60 * (1.0 - progress))
+        inner_alpha = int(28 * (1.0 - progress))
         if inner_alpha > 10:
             pygame.draw.circle(
                 surface,
@@ -395,7 +400,7 @@ class ExplosionEffect:
         particle: ExplosionParticle
     ) -> None:
         """Render a debris particle with trail effect."""
-        alpha = particle.get_alpha()
+        alpha = min(self.PARTICLE_ALPHA_MAX, particle.get_alpha())
         if alpha < GAME_CONSTANTS.ANIMATION.PARTICLE_ALPHA_VISIBILITY_THRESHOLD:
             return
 
@@ -431,7 +436,7 @@ class ExplosionEffect:
         particle: ExplosionParticle
     ) -> None:
         """Render a main particle with soft glow — uses cached textures."""
-        alpha = particle.get_alpha()
+        alpha = min(self.PARTICLE_ALPHA_MAX, particle.get_alpha())
         if alpha < GAME_CONSTANTS.ANIMATION.PARTICLE_ALPHA_VISIBILITY_THRESHOLD:
             return
 
@@ -442,7 +447,7 @@ class ExplosionEffect:
         # Soft glow from cached texture — avoids per-frame draw.circle loops
         glow_radius = size * 3
         if glow_radius > 1:
-            glow_surf = _get_glow_texture(glow_radius, color, 0.15)
+            glow_surf = _get_glow_texture(glow_radius, color, 0.08)
             glow_surf.set_alpha(alpha)
             surface.blit(glow_surf, (px - glow_radius - 1, py - glow_radius - 1))
 
@@ -454,7 +459,7 @@ class ExplosionEffect:
         # Bright inner core
         inner_size = max(1, size // 2)
         inner_surf = _get_spark_core(inner_size)
-        bright_alpha = min(255, alpha + 50)
+        bright_alpha = min(self.PARTICLE_ALPHA_MAX, alpha + self.INNER_CORE_ALPHA_BONUS)
         inner_surf.set_alpha(bright_alpha)
         surface.blit(inner_surf, (px - inner_size - 1, py - inner_size - 1))
 
@@ -469,7 +474,7 @@ class ExplosionEffect:
         particle: ExplosionParticle
     ) -> None:
         """Render a spark particle — uses cached core texture, skips line draw."""
-        alpha = particle.get_alpha()
+        alpha = min(self.PARTICLE_ALPHA_MAX, particle.get_alpha())
         if alpha < GAME_CONSTANTS.ANIMATION.PARTICLE_ALPHA_VISIBILITY_THRESHOLD:
             return
 

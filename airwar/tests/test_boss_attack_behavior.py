@@ -337,7 +337,7 @@ def test_boss_enrage_faces_player_and_aims_muzzles_during_all_direction_movement
     assert muzzle_vector.x * target_vector.x + muzzle_vector.y * target_vector.y > 0.999
     assert boss._muzzle_flash_timer > 0
     assert boss._muzzle_flash_positions
-    assert boss.ENRAGE_MUZZLE_FLASH_PULSES >= 4
+    assert boss.ENRAGE_MUZZLE_FLASH_PULSES == 1
 
 
 def test_boss_enrage_trail_is_longer_and_half_resolution_blurred():
@@ -451,7 +451,7 @@ def test_held_enemy_bullets_do_not_damage_player_until_released():
     assert hits == [(50, player)]
 
 
-def test_boss_enrage_overlay_no_longer_draws_orange_warning_ring():
+def test_boss_enrage_overlay_keeps_ripples_cool_toned_and_subtle():
     pygame = pytest.importorskip("pygame")
     surface = pygame.Surface((640, 480), pygame.SRCALPHA)
     scene = GameScene()
@@ -466,8 +466,10 @@ def test_boss_enrage_overlay_no_longer_draws_orange_warning_ring():
     with patch("airwar.scenes.game_scene.pygame.draw.circle") as draw_circle:
         scene._render_boss_enrage_overlay(surface)
 
-    colors = [call.args[2] for call in draw_circle.call_args_list]
-    assert not any(color[:3] == (224, 106, 72) for color in colors)
+    colors = [call.args[1] for call in draw_circle.call_args_list]
+    assert colors
+    assert all(color[2] >= color[0] for color in colors)
+    assert all(color[3] <= 12 for color in colors)
 
 
 def test_boss_enrage_overlay_uses_visual_intensity_after_active_phase():
