@@ -18,6 +18,7 @@ from airwar.ui.boost_gauge import BoostGauge
 from airwar.ui.ammo_magazine import AmmoMagazine
 from airwar.ui.warning_banner import WarningBanner
 from airwar.ui.aim_crosshair import AimCrosshair
+from airwar.ui.homecoming_ui import HomecomingUI
 from airwar.game.mother_ship import (
     EventBus,
     InputDetector,
@@ -31,6 +32,7 @@ from airwar.game.mother_ship.interfaces import IGameScene
 from airwar.game.constants import PlayerConstants, GAME_CONSTANTS
 from airwar.ui.give_up_ui import GiveUpUI
 from airwar.game.give_up import GiveUpDetector
+from airwar.game.homecoming import HomecomingDetector, HomecomingSequence
 from airwar.game.managers import (
     BulletManager,
     BossManager,
@@ -95,6 +97,10 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._aim_assist_target = None
         self._give_up_detector = None
         self._give_up_ui = None
+        self._homecoming_detector = None
+        self._homecoming_sequence = None
+        self._homecoming_ui = None
+        self._homecoming_base_pending = False
         self._bullet_manager: BulletManager = None
         self._boss_manager: BossManager = None
         self._milestone_manager: MilestoneManager = None
@@ -178,6 +184,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._setup_reward_selector()
         self._init_mother_ship_system(screen_width, screen_height)
         self._init_give_up_system(screen_width, screen_height)
+        self._init_homecoming_system(screen_width, screen_height)
         self._bullet_manager = BulletManager(self.player, self.spawn_controller)
         self._boss_manager = BossManager(
             self.spawn_controller,
@@ -240,6 +247,12 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._give_up_detector = GiveUpDetector(self._on_give_up_complete)
         self._give_up_ui = GiveUpUI(screen_width, screen_height)
 
+    def _init_homecoming_system(self, screen_width: int, screen_height: int) -> None:
+        self._homecoming_detector = HomecomingDetector(self._on_homecoming_requested)
+        self._homecoming_sequence = HomecomingSequence(self._on_homecoming_complete)
+        self._homecoming_ui = HomecomingUI(screen_width, screen_height)
+        self._homecoming_base_pending = False
+
     def exit(self) -> None:
         pass
 
@@ -277,6 +290,9 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         Returns:
             True if there was a pause request (and resets the flag), False otherwise.
         """
+        if self.is_homecoming_locked():
+            self._pause_requested = False
+            return False
         if self._pause_requested:
             self._pause_requested = False
             return True
@@ -295,6 +311,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._set_raw_aim_position(pygame.mouse.get_pos())
         self._update_aim_assist()
         self._aim_crosshair.update()
+        self._update_homecoming()
 
         if self.game_renderer and self.game_renderer.integrated_hud:
             unlocked_buffs = getattr(self.reward_system, 'unlocked_buffs', [])
@@ -303,6 +320,10 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
                 self.game_renderer.integrated_hud.update_health_tank(
                     self.player.health, self.player.max_health)
             self.game_renderer.integrated_hud.update()
+
+        if self._is_homecoming_active():
+            return
+
         if self._game_loop_manager.is_entrance_playing():
             self._game_loop_manager.update_entrance(self.player)
             if self._mother_ship_integrator:
@@ -430,6 +451,87 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     def _on_give_up_complete(self) -> None:
         self.game_controller.on_player_hit(GAME_CONSTANTS.DAMAGE.INSTANT_KILL, self.player)
 
+    def _update_homecoming(self) -> None:
+        if not self._homecoming_detector or not self._homecoming_sequence:
+            return
+
+        if self._homecoming_sequence.is_active():
+            self._homecoming_sequence.update(self.player)
+            if self.player:
+                self.player.controls_locked = True
+            return
+
+        can_use = self._can_request_homecoming()
+        self._homecoming_detector.update(GAME_CONSTANTS.TIMING.FIXED_DELTA_TIME, enabled=can_use)
+
+        if self._homecoming_ui:
+            if self._homecoming_detector.is_active():
+                self._homecoming_ui.show()
+                self._homecoming_ui.update_progress(self._homecoming_detector.get_progress())
+            else:
+                self._homecoming_ui.hide()
+
+    def _can_request_homecoming(self) -> bool:
+        if not self.game_controller or not self.player:
+            return False
+        if not self._homecoming_sequence or self._homecoming_base_pending:
+            return False
+        if not self.game_controller.is_playing():
+            return False
+        if self.game_controller.state.paused or self.reward_selector.visible:
+            return False
+        if self._game_loop_manager and self._game_loop_manager.is_entrance_playing():
+            return False
+        if self._mother_ship_integrator and self._mother_ship_integrator.is_docked():
+            return False
+        return not (self._homecoming_sequence and self._homecoming_sequence.is_active())
+
+    def _on_homecoming_requested(self) -> None:
+        if not self._can_request_homecoming():
+            return
+
+        if self._homecoming_ui:
+            self._homecoming_ui.hide()
+
+        if self._bullet_manager:
+            self._bullet_manager.clear_enemy_bullets()
+        if self.player:
+            self.player.controls_locked = True
+            for bullet in self.player.get_bullets():
+                bullet.active = False
+            self.player.cleanup_inactive_bullets()
+
+        self.game_controller.state.paused = True
+        self.game_controller.state.player_invincible = True
+        self.game_controller.state.invincibility_timer = 999999
+        self.game_controller.state.silent_invincible = True
+
+        started = self._homecoming_sequence.start(self.player, get_screen_width(), get_screen_height())
+        if started and self.notification_manager:
+            self.notification_manager.show("返航航线已锁定")
+
+    def _on_homecoming_complete(self) -> None:
+        self._homecoming_base_pending = True
+        if self.game_controller:
+            self.game_controller.state.paused = True
+            self.game_controller.state.player_invincible = True
+            self.game_controller.state.invincibility_timer = 999999
+            self.game_controller.state.silent_invincible = True
+        if self.notification_manager:
+            self.notification_manager.show("基地接口待接入")
+
+    def _is_homecoming_active(self) -> bool:
+        return bool(self._homecoming_sequence and self._homecoming_sequence.is_active())
+
+    def is_homecoming_active(self) -> bool:
+        return self._is_homecoming_active()
+
+    def is_homecoming_locked(self) -> bool:
+        return self._is_homecoming_active() or self._homecoming_base_pending
+
+    def is_homecoming_complete(self) -> bool:
+        return bool(self._homecoming_base_pending)
+
     def render(self, surface: pygame.Surface) -> None:
         """Render the game scene.
 
@@ -484,6 +586,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
         self._game_loop_manager.render_explosions(surface)
         self._input_coordinator.render_give_up(surface)
+        if self._homecoming_ui and self._homecoming_detector and self._homecoming_detector.is_active():
+            self._homecoming_ui.render_progress(surface)
 
         # Warning banner -- top-of-screen scrolling ammo depletion alert
         if self._warning_banner:
@@ -491,7 +595,11 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
         self._render_aim_crosshair(surface)
 
-        # Reward selector must render last to cover all game elements
+        if self._homecoming_ui and self._homecoming_sequence:
+            self._homecoming_ui.render_sequence(surface, self._homecoming_sequence, self.player)
+
+        # Reward selector must render above game elements. Homecoming blocks
+        # reward selection, but keep the normal layering contract intact.
         if self.reward_selector.visible:
             self.reward_selector.render(surface)
 
@@ -746,11 +854,15 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
         Does not pause if reward selector is visible.
         """
+        if self.is_homecoming_locked():
+            return
         if self.game_controller and not self.reward_selector.visible:
             self.game_controller.state.paused = True
 
     def resume(self) -> None:
         """Resume the game."""
+        if self.is_homecoming_locked():
+            return
         if self.game_controller:
             self.game_controller.state.paused = False
 
