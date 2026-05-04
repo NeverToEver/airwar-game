@@ -131,6 +131,28 @@ def test_homecoming_scene_renders_asteroid_belt_and_space_station() -> None:
     assert solar_array_pixel != background_pixel
 
 
+def test_homecoming_ftl_exit_fades_to_black_before_blackout() -> None:
+    surface = pygame.Surface((320, 240), pygame.SRCALPHA)
+    surface.fill((240, 248, 255))
+    ui = HomecomingUI(320, 240)
+
+    ui._render_ftl_exit_transition(surface, 1.0)
+
+    assert surface.get_at((160, 120))[:3] == (0, 0, 0)
+
+
+def test_homecoming_blackout_bridge_previews_station_reveal() -> None:
+    surface = pygame.Surface((320, 240), pygame.SRCALPHA)
+    ui = HomecomingUI(320, 240)
+
+    ui._render_blackout_bridge(surface, 0.88)
+
+    center_pixel = surface.get_at((160, 132))
+    ring_pixels = [surface.get_at((x, y)) for x in range(158, 163) for y in range(40, 45)]
+    assert center_pixel[:3] != (0, 0, 0)
+    assert any(pixel[:3] != (0, 0, 0) for pixel in ring_pixels)
+
+
 def test_game_scene_homecoming_request_sets_safe_interface_state() -> None:
     scene = GameScene()
     scene.player = _make_player()
