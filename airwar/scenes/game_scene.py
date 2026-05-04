@@ -703,23 +703,49 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
     def _render_boss_enrage_overlay(self, surface: pygame.Surface) -> None:
         boss = self.spawn_controller.boss if self.spawn_controller else None
-        if not boss or not boss.is_enrage_active():
+        if not boss:
             return
 
         intensity = boss.enrage_visual_intensity()
+        if intensity <= 0:
+            return
         sw, sh = surface.get_size()
-        scale = 1.0 + 0.018 * intensity
-        scaled = pygame.transform.scale(surface, (int(sw * scale), int(sh * scale)))
-        wobble_x = int(math.sin(pygame.time.get_ticks() * 0.012) * 7 * intensity)
-        wobble_y = int(math.cos(pygame.time.get_ticks() * 0.010) * 4 * intensity)
-        surface.blit(scaled, scaled.get_rect(center=(sw // 2 + wobble_x, sh // 2 + wobble_y)))
+        ticks = pygame.time.get_ticks()
+        source = surface.copy()
+        band_height = max(6, min(16, sh // 42))
+        amplitude = max(1, int(18 * intensity))
+        phase = ticks * 0.006
+        for y in range(0, sh, band_height):
+            band_rect = pygame.Rect(0, y, sw, min(band_height + 2, sh - y))
+            wave_a = math.sin(y * 0.035 + phase)
+            wave_b = math.sin(y * 0.083 - phase * 1.45)
+            offset = int((wave_a * 0.72 + wave_b * 0.28) * amplitude)
+            surface.blit(source, (offset, y), band_rect)
+            if offset > 0:
+                surface.blit(source, (offset - sw, y), band_rect)
+            elif offset < 0:
+                surface.blit(source, (offset + sw, y), band_rect)
+
+        ripple = pygame.Surface((sw, sh), pygame.SRCALPHA)
+        center_x = getattr(boss.rect, "centerx", sw // 2)
+        center_y = getattr(boss.rect, "centery", sh // 2)
+        ring_phase = ticks * 0.003
+        for index in range(4):
+            radius = int((ring_phase * 90 + index * 92) % max(sw, sh))
+            if radius < 20:
+                continue
+            alpha = int(34 * intensity * (1.0 - radius / max(sw, sh)))
+            if alpha <= 0:
+                continue
+            pygame.draw.circle(ripple, (160, 220, 255, alpha), (int(center_x), int(center_y)), radius, 2)
+        surface.blit(ripple, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
 
         cache_key = (sw, sh)
         if self._enrage_overlay_cache_key != cache_key:
             self._enrage_overlay_cache = pygame.Surface((sw, sh), pygame.SRCALPHA)
             self._enrage_overlay_cache_key = cache_key
         overlay = self._enrage_overlay_cache
-        overlay.fill((112, 38, 30, int(42 * intensity)))
+        overlay.fill((112, 38, 30, int(36 * intensity)))
         surface.blit(overlay, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
 
     def _set_raw_aim_position(self, position: tuple[int, int]) -> None:

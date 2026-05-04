@@ -914,10 +914,12 @@ class Boss(Entity):
     ENRAGE_TRAIL_SCALE = 0.5
     ENRAGE_TRAIL_BLUR_PASSES = 2
     ENRAGE_EXIT_BACK_OFFSET = 118
-    ENRAGE_MUZZLE_FLASH_DURATION = 10
+    ENRAGE_MUZZLE_FLASH_DURATION = 18
+    ENRAGE_MUZZLE_FLASH_PULSES = 6
     ENRAGE_MUZZLE_FORWARD_SCALE = 0.58
     ENRAGE_MUZZLE_SIDE_SCALE = 0.34
     ENRAGE_RELEASE_HOLD_DURATION = 42
+    ENRAGE_RETURN_DURATION = 72
 
     _warning_font = None
     _escape_font = None
@@ -984,6 +986,9 @@ class Boss(Entity):
         self._muzzle_flash_positions: List[Tuple[float, float]] = []
         self._enrage_release_hold_timer = 0
         self._enrage_release_anchor: Tuple[float, float] | None = None
+        self._enrage_return_timer = 0
+        self._enrage_return_origin: Tuple[float, float] | None = None
+        self._enrage_return_target: Tuple[float, float] | None = None
         self.sync_hitbox()
 
     def sync_hitbox(self) -> None:
@@ -1048,6 +1053,9 @@ class Boss(Entity):
             return
         if self._enrage_release_hold_timer > 0:
             self._update_enrage_release_hold(player_pos, kwargs.get("player"))
+            return
+        if self._enrage_return_timer > 0:
+            self._update_enrage_return(player_pos, kwargs.get("player"))
             return
 
         self.survival_timer += 1
@@ -1199,6 +1207,9 @@ class Boss(Entity):
         self._enrage_transition_origin = (self.rect.centerx, self.rect.centery)
         self._enrage_release_hold_timer = 0
         self._enrage_release_anchor = None
+        self._enrage_return_timer = 0
+        self._enrage_return_origin = None
+        self._enrage_return_target = None
         self._face_target(target)
         self._muzzle_flash_timer = 0
         self._muzzle_flash_positions = []
@@ -1284,6 +1295,34 @@ class Boss(Entity):
         self._enrage_release_hold_timer -= 1
         if self._enrage_release_hold_timer <= 0:
             self._enrage_release_anchor = None
+            self._start_enrage_return()
+
+    def _start_enrage_return(self) -> None:
+        self._enrage_return_timer = self.ENRAGE_RETURN_DURATION
+        self._enrage_return_origin = (self.rect.x, self.rect.y)
+        target_x, target_y = self._clamped_arena_position(self.rect.x, self.rect.y)
+        self._enrage_return_target = (target_x, target_y)
+
+    def _update_enrage_return(self, player_pos: Tuple[int, int] = None, player=None) -> None:
+        target = self._current_player_target(player, player_pos) or self._enrage_snapshot_target
+        elapsed = self.ENRAGE_RETURN_DURATION - self._enrage_return_timer
+        progress = max(0.0, min(1.0, elapsed / max(1, self.ENRAGE_RETURN_DURATION)))
+        eased = progress * progress * (3 - 2 * progress)
+        origin = self._enrage_return_origin or (self.rect.x, self.rect.y)
+        destination = self._enrage_return_target or self._clamped_arena_position(self.rect.x, self.rect.y)
+        self.rect.x = origin[0] + (destination[0] - origin[0]) * eased
+        self.rect.y = origin[1] + (destination[1] - origin[1]) * eased
+        self._target_x = destination[0]
+        self._target_y = destination[1]
+        self.sync_hitbox()
+        if target:
+            self._face_target(target)
+        self._update_muzzle_flash()
+        self._enrage_return_timer -= 1
+        if self._enrage_return_timer <= 0:
+            self.rect.x, self.rect.y = destination
+            self._enrage_return_origin = None
+            self._enrage_return_target = None
 
     def _current_player_target(self, player=None, player_pos: Tuple[int, int] = None) -> Tuple[float, float] | None:
         if player is not None:
@@ -1751,9 +1790,12 @@ class Boss(Entity):
     def _render_muzzle_flash(self, surface: pygame.Surface) -> None:
         if self._muzzle_flash_timer <= 0 or not self._muzzle_flash_positions:
             return
-        progress = self._muzzle_flash_timer / max(1, self.ENRAGE_MUZZLE_FLASH_DURATION)
-        radius = max(2, int(self.rect.width * 0.035 + 7 * progress))
-        glow_radius = max(radius + 4, int(radius * 2.4))
+        remaining = self._muzzle_flash_timer / max(1, self.ENRAGE_MUZZLE_FLASH_DURATION)
+        elapsed = 1.0 - remaining
+        pulse = 0.5 + 0.5 * math.sin(elapsed * math.tau * self.ENRAGE_MUZZLE_FLASH_PULSES)
+        strobe = max(0.16, pulse) * remaining
+        radius = max(2, int(self.rect.width * 0.032 + 9 * strobe))
+        glow_radius = max(radius + 5, int(radius * (2.3 + 1.0 * pulse)))
         forward = self._facing_vector().normalize()
         for muzzle_x, muzzle_y in self._muzzle_flash_positions:
             center = (int(muzzle_x), int(muzzle_y))
@@ -1763,8 +1805,8 @@ class Boss(Entity):
                 (255, 244, 196),
                 center,
                 (
-                    int(muzzle_x + forward.x * radius * 2.2),
-                    int(muzzle_y + forward.y * radius * 2.2),
+                    int(muzzle_x + forward.x * radius * (2.0 + 1.6 * pulse)),
+                    int(muzzle_y + forward.y * radius * (2.0 + 1.6 * pulse)),
                 ),
                 max(2, radius // 2),
             )
@@ -1904,11 +1946,23 @@ class Boss(Entity):
         return self.ENRAGE_SLOW_FACTOR if self._enrage_timer > 0 else 1.0
 
     def enrage_visual_intensity(self) -> float:
-        if self._enrage_timer <= 0:
-            return 0.0
-        progress = self._enrage_progress()
-        eased = progress * progress * (3 - 2 * progress)
-        return max(0.0, min(0.8, eased))
+        if self._enrage_timer > 0:
+            progress = self._enrage_progress()
+            eased = progress * progress * (3 - 2 * progress)
+            transition_ramp = 1.0
+            if self._enrage_transition_timer > 0:
+                elapsed = self.ENRAGE_TRANSITION_DURATION - self._enrage_transition_timer
+                transition = max(0.0, min(1.0, elapsed / max(1, self.ENRAGE_TRANSITION_DURATION)))
+                transition_ramp = transition * transition * (3 - 2 * transition)
+            return max(0.0, min(0.88, (0.18 + 0.70 * eased) * transition_ramp))
+        if self._enrage_release_hold_timer > 0:
+            hold = self._enrage_release_hold_timer / max(1, self.ENRAGE_RELEASE_HOLD_DURATION)
+            return max(0.0, min(0.74, 0.52 + 0.22 * hold))
+        if self._enrage_return_timer > 0:
+            fade = self._enrage_return_timer / max(1, self.ENRAGE_RETURN_DURATION)
+            eased = fade * fade * (3 - 2 * fade)
+            return max(0.0, min(0.52, 0.52 * eased))
+        return 0.0
 
     def is_enrage_transitioning(self) -> bool:
         return self._enrage_transition_timer > 0
