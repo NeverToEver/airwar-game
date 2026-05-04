@@ -7,6 +7,7 @@ import pygame
 
 from airwar.game.systems.talent_balance_manager import BUFF_LABELS, TalentBalanceManager
 from airwar.ui.chamfered_panel import draw_chamfered_panel
+from airwar.ui.scene_rendering_utils import fit_text_to_width
 from airwar.utils.fonts import get_cjk_font
 
 
@@ -34,10 +35,15 @@ class BaseTalentConsole:
         pos: tuple[int, int],
         manager: TalentBalanceManager,
         on_apply: Callable[[], None],
+        on_exit: Callable[[], None] | None = None,
     ) -> bool:
         button = self._button_at(pos)
         if not button:
             return False
+        if button == "continue":
+            if on_exit:
+                on_exit()
+            return True
         if button.startswith("route:"):
             if manager.next_option(button.split(":", 1)[1]) is None:
                 return True
@@ -144,14 +150,31 @@ class BaseTalentConsole:
     def _draw_summary(self, surface: pygame.Surface, x: int, y: int, width: int, reward_system) -> None:
         rect = pygame.Rect(x, y, width, 92)
         draw_chamfered_panel(surface, rect.x, rect.y, rect.w, rect.h, (9, 18, 28), (64, 98, 118, 170), None, 7)
+        button_rect = pygame.Rect(rect.right - 190, rect.y + 20, 166, 52)
+        self._button_rects["continue"] = button_rect
         locked = sorted(getattr(reward_system, "locked_buffs", set()))
         if locked:
             locked_text = "已关闭: " + " / ".join(BUFF_LABELS.get(name, name) for name in locked)
         else:
             locked_text = "当前没有互斥关闭项"
-        hint = "点击右侧模块切换路线；完成后当前配置立即生效。"
-        surface.blit(self._font_small.render(locked_text, True, (210, 178, 138)), (rect.x + 20, rect.y + 20))
-        surface.blit(self._font_small.render(hint, True, (132, 154, 172)), (rect.x + 20, rect.y + 52))
+        hint = "点击右侧模块切换路线；当前配置立即生效。"
+        text_width = max(0, button_rect.x - rect.x - 38)
+        surface.blit(
+            fit_text_to_width(self._font_small, locked_text, (210, 178, 138), text_width),
+            (rect.x + 20, rect.y + 20),
+        )
+        surface.blit(
+            fit_text_to_width(self._font_small, hint, (132, 154, 172), text_width),
+            (rect.x + 20, rect.y + 52),
+        )
+        self._draw_continue_button(surface, button_rect, self._hovered_button == "continue")
+
+    def _draw_continue_button(self, surface: pygame.Surface, rect: pygame.Rect, hovered: bool) -> None:
+        bg = (24, 62, 70) if hovered else (18, 44, 54)
+        border = (126, 255, 233, 235) if hovered else (82, 224, 204, 180)
+        draw_chamfered_panel(surface, rect.x, rect.y, rect.w, rect.h, bg, border, None, 8)
+        label = fit_text_to_width(self._font, "继续出击", (232, 252, 248), rect.w - 28)
+        surface.blit(label, label.get_rect(center=rect.center))
 
     def _route_detail(self, selected: str | None, locked_buffs: tuple[str, ...]) -> str:
         if not selected:

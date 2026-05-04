@@ -78,6 +78,27 @@ def test_base_talent_console_renders_visible_route_controls() -> None:
 
     assert surface.get_bounding_rect().width > 0
     assert any(name.startswith("route:") for name in console._button_rects)
+    assert "continue" in console._button_rects
+
+
+def test_base_talent_console_continue_button_exits_base() -> None:
+    pygame.font.init()
+    surface = pygame.Surface((1280, 720), pygame.SRCALPHA)
+    console = BaseTalentConsole(1280, 720)
+    reward_system = RewardSystem("medium")
+    manager = TalentBalanceManager({"Spread Shot": 1, "Phase Dash": 1}, {"offense": "Laser"})
+    exits = []
+
+    console.render(surface, manager, reward_system)
+    handled = console.handle_mouse_click(
+        console._button_rects["continue"].center,
+        manager,
+        lambda: None,
+        lambda: exits.append(True),
+    )
+
+    assert handled is True
+    assert exits == [True]
 
 
 def test_restore_from_save_rehydrates_base_talent_loadout_locks() -> None:
