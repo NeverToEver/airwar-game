@@ -26,9 +26,13 @@ class SpawnController:
     ESCAPE_PENALTY_MULT = 1.5
     ENEMY_EXIT_X_OFFSETS = [-300, 300, 0, -150, 150]
     ENEMY_EXIT_END_Y = -100
-    BOSS_BASE_HEALTH = 2000
+    BOSS_HEALTH_TO_ELITE_RATIO = 4
+    ELITE_HEALTH_MULTIPLIER = 2.5
     BOSS_HEALTH_SCALING = 0.5
-    ESCAPE_TIME_DIVISOR = 45
+    ESCAPE_TIME_SAFETY_MULTIPLIER = 2.0
+    PLAYER_BULLETS_PER_SHOT = 2
+    PLAYER_FIRE_INTERVAL = 8
+    NORMAL_ENEMY_KILL_SECONDS = 1.2
     MIN_ESCAPE_TIME = 1200
     MAX_ESCAPE_TIME = 3600
     BOSS_BASE_SPEED = 1.5
@@ -42,6 +46,7 @@ class SpawnController:
     BOSS_SPAWN_Y = -100
     def __init__(self, settings: dict):
         self.enemy_spawner = EnemySpawner()
+        self._base_enemy_health = settings['enemy_health']
         self.enemy_spawner.set_params(
             health=settings['enemy_health'],
             speed=settings['enemy_speed'],
@@ -96,7 +101,13 @@ class SpawnController:
             return True
         return False
 
-    def spawn_boss(self, boss_kill_count: int, bullet_damage: int) -> Boss:
+    def balance_for_player_dps(self, player_dps: float) -> None:
+        target_health = int(max(self._base_enemy_health, round(player_dps * self.NORMAL_ENEMY_KILL_SECONDS)))
+        if target_health == self.enemy_spawner.health:
+            return
+        self.enemy_spawner.health = target_health
+
+    def spawn_boss(self, boss_kill_count: int, bullet_damage: int, player_dps: float = None) -> Boss:
         # Force all existing enemies to exit when boss appears
         for enemy in self.enemies:
             if enemy.active and getattr(enemy, '_state', None) == 'active':
@@ -106,8 +117,8 @@ class SpawnController:
                 )
 
         screen_width = get_screen_width()
-        base_health = self.BOSS_BASE_HEALTH * (1 + boss_kill_count * self.BOSS_HEALTH_SCALING)
-        escape_time = round(base_health / bullet_damage * self.ESCAPE_TIME_DIVISOR)
+        base_health = self._calculate_boss_health(boss_kill_count)
+        escape_time = self._calculate_escape_time(base_health, bullet_damage, player_dps)
         escape_time = max(self.MIN_ESCAPE_TIME, min(escape_time, self.MAX_ESCAPE_TIME))
 
         boss_data = BossData(
@@ -127,6 +138,20 @@ class SpawnController:
         self.boss = boss
         self.boss_spawn_interval = self._base_boss_spawn_interval
         return boss
+
+    def _calculate_boss_health(self, boss_kill_count: int) -> int:
+        elite_health = int(self.enemy_spawner.health * self.ELITE_HEALTH_MULTIPLIER)
+        base_health = elite_health * self.BOSS_HEALTH_TO_ELITE_RATIO
+        return int(base_health * (1 + boss_kill_count * self.BOSS_HEALTH_SCALING))
+
+    def _calculate_escape_time(self, boss_health: int, bullet_damage: int, player_dps: float = None) -> int:
+        damage_per_frame = (
+            max(1.0, float(player_dps)) / 60
+            if player_dps is not None
+            else max(1, bullet_damage) * self.PLAYER_BULLETS_PER_SHOT / self.PLAYER_FIRE_INTERVAL
+        )
+        kill_frames = boss_health / damage_per_frame
+        return round(kill_frames * self.ESCAPE_TIME_SAFETY_MULTIPLIER + Boss.ENRAGE_DURATION)
 
     def reset_boss_timer(self, penalty: bool = False) -> None:
         self.boss_spawn_timer = 0

@@ -30,7 +30,8 @@ class GameRendererProtocol(Protocol):
 class SpawnControllerProtocol(Protocol):
     """Protocol for spawn controller dependency injection."""
     def update(self, score: int, slow_factor: float) -> bool: ...
-    def spawn_boss(self, cycle_count: int, bullet_damage: float): ...
+    def balance_for_player_dps(self, player_dps: float) -> None: ...
+    def spawn_boss(self, cycle_count: int, bullet_damage: float, player_dps: float = None): ...
     def cleanup(self) -> None: ...
     @property
     def enemies(self) -> List: ...
@@ -43,8 +44,6 @@ class RewardSystemProtocol(Protocol):
     """Protocol for reward system dependency injection."""
     @property
     def slow_factor(self) -> float: ...
-    @property
-    def base_bullet_damage(self) -> float: ...
     def apply_lifesteal(self, player, score: int) -> None: ...
 
 
@@ -59,6 +58,8 @@ class BossManagerProtocol(Protocol):
     """Protocol for boss manager dependency injection."""
     def update(self, player) -> None: ...
     def on_boss_hit(self, score: int) -> None: ...
+    @property
+    def boss(self): ...
 
 
 class PlayerProtocol(Protocol):
@@ -66,6 +67,10 @@ class PlayerProtocol(Protocol):
     def update(self) -> None: ...
     def auto_fire(self) -> None: ...
     def cleanup_inactive_bullets(self) -> None: ...
+    bullet_damage: float
+    fire_interval: int
+    controls_locked: bool
+    def get_weapon_status(self) -> dict: ...
     @property
     def active(self) -> bool: ...
 
@@ -157,8 +162,12 @@ class GameLoopManager:
 
         self._game_renderer.update_death_animation()
         self._explosion_manager.update()
+        restore_controls_locked = player.controls_locked
+        if self._should_lock_player_for_boss_enrage():
+            player.controls_locked = True
         player.update()
         player.auto_fire()
+        player.controls_locked = restore_controls_locked
 
         self._bullet_manager.update_all()
         self._update_enemy_spawning(player)
@@ -170,8 +179,14 @@ class GameLoopManager:
         if not player.active:
             self._game_controller.state.running = False
 
+    def _should_lock_player_for_boss_enrage(self) -> bool:
+        boss = self._boss_manager.boss
+        return bool(boss and getattr(boss, "should_lock_player_movement", lambda: False)())
+
     def _update_enemy_spawning(self, player: PlayerProtocol) -> None:
         player_pos = (player.rect.centerx, player.rect.centery)
+        player_dps = self._estimate_player_dps(player)
+        self._spawn_controller.balance_for_player_dps(player_dps)
         spawn_needed = self._spawn_controller.update(
             self._game_controller.state.score,
             self._reward_system.slow_factor,
@@ -181,11 +196,18 @@ class GameLoopManager:
         if spawn_needed:
             boss = self._spawn_controller.spawn_boss(
                 self._game_controller.state.boss_kill_count,
-                self._reward_system.base_bullet_damage
+                player.bullet_damage,
+                player_dps
             )
             self._game_controller.show_notification(
                 f"! BOSS 来袭 ({int(boss.data.escape_time/60)}秒) !"
             )
+
+    def _estimate_player_dps(self, player: PlayerProtocol) -> float:
+        weapon_status = player.get_weapon_status() if hasattr(player, "get_weapon_status") else {}
+        bullets_per_shot = 6 if weapon_status.get("spread") else 2
+        fire_interval = max(1, int(getattr(player, "fire_interval", PlayerConstants.FIRE_COOLDOWN)))
+        return float(getattr(player, "bullet_damage", PlayerConstants.BULLET_DAMAGE)) * bullets_per_shot / fire_interval * 60
 
     def _update_entities(self) -> None:
         enemies = self._spawn_controller.enemies

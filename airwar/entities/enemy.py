@@ -894,8 +894,8 @@ class Boss(Entity):
     AIM_DASH_MAX_DISTANCE_RATIO = 0.58
     AIM_DASH_DURATION = 10
     ENRAGE_TRIGGER_RATIO = 0.30
-    ENRAGE_DURATION = 150
-    ENRAGE_SLOW_FACTOR = 0.22
+    ENRAGE_DURATION = 600
+    ENRAGE_SLOW_FACTOR = 0.35
     ENRAGE_BULLET_SPEED = 2.4
     ENRAGE_LASER_SPEED = 2.0
     ENRAGE_POLYGON_GAP = 96
@@ -903,6 +903,7 @@ class Boss(Entity):
     ENRAGE_RING_RADIUS_STEP = 52
     ENRAGE_TRAIL_LENGTH = 18
     ENRAGE_TRAIL_RENDER_MAX = 9
+    ENRAGE_EXIT_BACK_OFFSET = 118
 
     _warning_font = None
     _escape_font = None
@@ -958,6 +959,8 @@ class Boss(Entity):
         self._enrage_trail: List[Tuple[float, float]] = []
         self._enrage_trail_ghost = None
         self._enrage_trail_ghost_key = None
+        self._enrage_health_lock_active = False
+        self._enrage_health_lock_value = data.health * self.ENRAGE_TRIGGER_RATIO
         self.sync_hitbox()
 
     def sync_hitbox(self) -> None:
@@ -1155,6 +1158,8 @@ class Boss(Entity):
         self._enraged = True
         self._enrage_timer = self.ENRAGE_DURATION
         self._enrage_bullets_released = False
+        self._enrage_health_lock_active = True
+        self.health = max(self.health, self._enrage_health_lock_value)
         self._enrage_snapshot_target = target
         self._enrage_trail.clear()
         self._spawn_bullets(self._create_enrage_bullet_field(target))
@@ -1185,6 +1190,7 @@ class Boss(Entity):
         self._enrage_timer -= 1
         if self._enrage_timer <= 0:
             self._release_enrage_bullets(target)
+            self._move_behind_player_after_enrage(target)
 
     def _record_enrage_trail(self) -> None:
         self._enrage_trail.append((self.rect.centerx, self.rect.centery))
@@ -1264,6 +1270,8 @@ class Boss(Entity):
 
     def _release_enrage_bullets(self, target: Tuple[float, float]) -> None:
         if self._enrage_bullets_released or not self._bullet_spawner:
+            self._enrage_bullets_released = True
+            self._enrage_health_lock_active = False
             self._enrage_timer = 0
             return
         for bullet in self._enrage_spawned_bullets():
@@ -1278,7 +1286,19 @@ class Boss(Entity):
             bullet.velocity = direction * speed
             bullet.held = False
         self._enrage_bullets_released = True
+        self._enrage_health_lock_active = False
         self._enrage_timer = 0
+
+    def _move_behind_player_after_enrage(self, target: Tuple[float, float]) -> None:
+        behind_center_x = target[0]
+        behind_center_y = target[1] + self.rect.height / 2 + self.ENRAGE_EXIT_BACK_OFFSET
+        max_center_y = get_screen_height() - self.rect.height / 2
+        behind_center_y = min(behind_center_y, max_center_y)
+        self.rect.x = behind_center_x - self.rect.width / 2
+        self.rect.y = behind_center_y - self.rect.height / 2
+        self._target_x = self.rect.x
+        self._target_y = self.rect.y
+        self.sync_hitbox()
 
     def _enrage_spawned_bullets(self) -> List[Bullet]:
         if hasattr(self._bullet_spawner, "get_bullets"):
@@ -1487,10 +1507,11 @@ class Boss(Entity):
             surface.blit(warning_surf, warning_rect)
 
         if self._enrage_timer > 0:
+            intensity = self.enrage_visual_intensity()
             warning_y = 86
-            pulse = abs(math.sin(pygame.time.get_ticks() * 0.025)) * 0.35 + 0.65
-            warning_surf = self._get_escape_font().render("狂暴 EMP", True, (255, 112, 42))
-            warning_surf.set_alpha(int(255 * pulse))
+            pulse = abs(math.sin(pygame.time.get_ticks() * 0.016)) * 0.22 + 0.58
+            warning_surf = self._get_escape_font().render("狂暴 EMP", True, (224, 106, 72))
+            warning_surf.set_alpha(int(255 * pulse * max(0.35, intensity)))
             warning_rect = warning_surf.get_rect(center=(surface.get_width() // 2, warning_y))
             surface.blit(warning_surf, warning_rect)
 
@@ -1510,7 +1531,7 @@ class Boss(Entity):
         health_ratio = self.health / self.max_health if self.max_health > 0 else 1.0
         ghost = self._get_enrage_trail_ghost(health_ratio)
         for index, center in enumerate(trail):
-            alpha = int(32 + 100 * (index + 1) / trail_len)
+            alpha = int(20 + 62 * (index + 1) / trail_len)
             ghost.set_alpha(alpha)
             surface.blit(ghost, ghost.get_rect(center=center))
         ghost.set_alpha(255)
@@ -1536,7 +1557,7 @@ class Boss(Entity):
                 self.rect.height,
                 health_ratio,
             )
-            ghost.fill((255, 74, 22, 255), special_flags=pygame.BLEND_RGBA_MULT)
+            ghost.fill((215, 92, 64, 255), special_flags=pygame.BLEND_RGBA_MULT)
             self._enrage_trail_ghost = ghost
             self._enrage_trail_ghost_key = cache_key
         return self._enrage_trail_ghost
@@ -1555,6 +1576,14 @@ class Boss(Entity):
         """
         if damage is None or damage < 0:
             return 0
+        if not self._enraged and self.max_health > 0:
+            projected_health = self.health - damage
+            if projected_health <= self._enrage_health_lock_value:
+                self.health = self._enrage_health_lock_value
+                return 0
+        if self._enrage_health_lock_active:
+            self.health = max(self.health, self._enrage_health_lock_value)
+            return 0
         self.health -= damage
         if self.health <= 0:
             self.active = False
@@ -1567,14 +1596,18 @@ class Boss(Entity):
     def is_enrage_active(self) -> bool:
         return self._enrage_timer > 0
 
+    def should_lock_player_movement(self) -> bool:
+        return self._enrage_timer > 0 and not self._enrage_bullets_released
+
     def enrage_slow_factor(self) -> float:
         return self.ENRAGE_SLOW_FACTOR if self._enrage_timer > 0 else 1.0
 
     def enrage_visual_intensity(self) -> float:
         if self._enrage_timer <= 0:
             return 0.0
-        progress = self._enrage_timer / self.ENRAGE_DURATION
-        return max(0.0, min(1.0, progress))
+        progress = 1.0 - self._enrage_timer / self.ENRAGE_DURATION
+        eased = progress * progress * (3 - 2 * progress)
+        return max(0.0, min(0.8, eased))
 
     def is_entering(self) -> bool:
         return self.entering

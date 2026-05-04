@@ -93,6 +93,62 @@ def test_boss_enrage_triggers_once_at_thirty_percent_and_pulls_player_to_center(
     assert boss.is_enraged() is True
 
 
+def test_boss_enrage_locks_health_at_thirty_percent_until_bullets_release():
+    boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
+    boss.entering = False
+    collector = BulletCollector()
+    boss.set_bullet_spawner(collector)
+
+    boss.take_damage(800)
+    boss.update(player_pos=(500, 400))
+
+    assert boss.health == 300
+    assert boss.is_enrage_active() is True
+
+    boss.take_damage(500)
+
+    assert boss.health == 300
+    assert boss.active is True
+
+    for _ in range(boss.ENRAGE_DURATION):
+        boss.update(player_pos=(500, 400))
+
+    assert boss.is_enrage_active() is False
+    assert boss.take_damage(500) == boss.data.score
+    assert boss.active is False
+
+
+def test_boss_enrage_reports_player_movement_lock_until_release():
+    boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
+    boss.entering = False
+    boss.set_bullet_spawner(BulletCollector())
+    boss.take_damage(700)
+    boss.update(player_pos=(500, 400))
+
+    assert boss.should_lock_player_movement() is True
+
+    for _ in range(boss.ENRAGE_DURATION):
+        boss.update(player_pos=(500, 400))
+
+    assert boss.should_lock_player_movement() is False
+
+
+def test_boss_enrage_finishes_behind_player():
+    set_screen_size(1000, 800)
+    boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
+    boss.entering = False
+    boss.set_bullet_spawner(BulletCollector())
+    boss.take_damage(700)
+
+    player_center = (500, 400)
+    for _ in range(boss.ENRAGE_DURATION + 1):
+        boss.update(player_pos=player_center)
+
+    assert boss.is_enrage_active() is False
+    assert boss.rect.centerx == pytest.approx(player_center[0])
+    assert boss.rect.centery > player_center[1]
+
+
 def test_boss_enrage_bullets_hold_then_release_slowly_toward_player():
     set_screen_size(1000, 800)
     boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
