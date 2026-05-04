@@ -13,8 +13,6 @@ from ..utils.sprites import draw_enemy_ship, draw_boss_ship, draw_glow_circle, g
 from ..config import (
     ENEMY_HITBOX_SIZE, ENEMY_HITBOX_PADDING, ENEMY_VISUAL_SCALE, ENEMY_COLLISION_SCALE,
     get_screen_width, get_screen_height,
-    BOSS_AIM_BULLET_DAMAGE_BASE, BOSS_AIM_SPEED, BOSS_ATTACK_DISTANCE, BOSS_BULLET_OFFSET_X,
-    BOSS_WAVE_BULLET_DAMAGE, BOSS_WAVE_SPEED, BOSS_WAVE_ANGLE_INTERVAL,
 )
 
 from ..config.constants_access import get_game_constants
@@ -1435,7 +1433,7 @@ class Boss(Entity):
         side_axis = Vector2(-aim.y, aim.x)
         burst_axis = 1 if self._enrage_attack_index % 2 == 0 else -1
         bullet_data = BulletData(
-            damage=BOSS_AIM_BULLET_DAMAGE_BASE + self.phase * self.AIM_DAMAGE_INCREMENT,
+            damage=get_game_constants().BOSS.AIM_BULLET_DAMAGE_BASE + self.phase * self.AIM_DAMAGE_INCREMENT,
             speed=self.ENRAGE_LASER_SPEED,
             owner="enemy",
             bullet_type="laser",
@@ -1459,7 +1457,7 @@ class Boss(Entity):
     def _create_enrage_snapshot_ring_bullets(self, target: Tuple[float, float], progress: float) -> List[Bullet]:
         cx, cy = target
         bullet_data = BulletData(
-            damage=BOSS_WAVE_BULLET_DAMAGE,
+            damage=get_game_constants().BOSS.WAVE_BULLET_DAMAGE,
             speed=self.ENRAGE_BULLET_SPEED,
             owner="enemy",
             bullet_type="single",
@@ -1674,23 +1672,23 @@ class Boss(Entity):
             aim_dy = player_pos[1] - source_y
         else:
             target_offsets = self._get_target_offsets()
-            aim_dx, aim_dy = target_offsets.get(self.attack_direction, (0, BOSS_ATTACK_DISTANCE))
+            aim_dx, aim_dy = target_offsets.get(self.attack_direction, (0, get_game_constants().BOSS.ATTACK_DISTANCE))
 
         aim_vector = Vector2(aim_dx, aim_dy)
         if aim_vector.length() <= 0:
-            aim_vector = Vector2(0, BOSS_ATTACK_DISTANCE)
+            aim_vector = Vector2(0, get_game_constants().BOSS.ATTACK_DISTANCE)
         aim_vector = aim_vector.normalize()
         spread_axis = Vector2(-aim_vector.y, aim_vector.x)
 
         bullet_data = BulletData(
-            damage=BOSS_AIM_BULLET_DAMAGE_BASE + self.phase * self.AIM_DAMAGE_INCREMENT,
-            speed=BOSS_AIM_SPEED,
+            damage=get_game_constants().BOSS.AIM_BULLET_DAMAGE_BASE + self.phase * self.AIM_DAMAGE_INCREMENT,
+            speed=get_game_constants().BOSS.AIM_SPEED,
             owner="enemy",
             bullet_type="laser"
         )
 
         for i in range(self.AIM_BULLET_COUNT):
-            offset = (i - (self.AIM_BULLET_COUNT - 1) / 2) * BOSS_BULLET_OFFSET_X
+            offset = (i - (self.AIM_BULLET_COUNT - 1) / 2) * get_game_constants().BOSS.BULLET_OFFSET_X
             bullet_x = source_x + spread_axis.x * offset
             bullet_y = source_y + spread_axis.y * offset
             bullet = Bullet(bullet_x, bullet_y, bullet_data)
@@ -1699,7 +1697,7 @@ class Boss(Entity):
                 velocity = aim_vector if velocity.length() <= 0 else velocity.normalize()
             else:
                 velocity = aim_vector
-            bullet.velocity = velocity * BOSS_AIM_SPEED
+            bullet.velocity = velocity * get_game_constants().BOSS.AIM_SPEED
             bullets.append(bullet)
 
         return bullets
@@ -1713,19 +1711,19 @@ class Boss(Entity):
 
         for i in range(self.WAVE_BULLET_COUNT):
             if self.attack_direction == 'left':
-                angle = 180 + BOSS_WAVE_ANGLE_INTERVAL * i
+                angle = 180 + get_game_constants().BOSS.WAVE_ANGLE_INTERVAL * i
             elif self.attack_direction == 'right':
-                angle = 0 + BOSS_WAVE_ANGLE_INTERVAL * i
+                angle = 0 + get_game_constants().BOSS.WAVE_ANGLE_INTERVAL * i
             elif self.attack_direction == 'up':
-                angle = 90 + BOSS_WAVE_ANGLE_INTERVAL * i
+                angle = 90 + get_game_constants().BOSS.WAVE_ANGLE_INTERVAL * i
             else:
-                angle = -90 + BOSS_WAVE_ANGLE_INTERVAL * i
+                angle = -90 + get_game_constants().BOSS.WAVE_ANGLE_INTERVAL * i
 
             rad = math.radians(angle)
-            speed = BOSS_WAVE_SPEED
+            speed = get_game_constants().BOSS.WAVE_SPEED
 
             bullet_data = BulletData(
-                damage=BOSS_WAVE_BULLET_DAMAGE,
+                damage=get_game_constants().BOSS.WAVE_BULLET_DAMAGE,
                 speed=speed,
                 owner="enemy",
                 bullet_type="single"

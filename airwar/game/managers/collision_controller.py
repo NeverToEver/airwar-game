@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from typing import List, Tuple, Callable, Optional, TYPE_CHECKING
 
 from ..constants import GAME_CONSTANTS
-from ...config import EXPLOSION_RADIUS
 
 if TYPE_CHECKING:
     from ...entities.player import Player
@@ -348,8 +347,8 @@ class CollisionController:
     ) -> None:
         bullet_x = bullet.rect.centerx
         bullet_y = bullet.rect.centery
-        explosion_radius_sq = (EXPLOSION_RADIUS * explosive_level) ** 2
-        explosion_radius = EXPLOSION_RADIUS * explosive_level
+        explosion_radius_sq = (GAME_CONSTANTS.BALANCE.EXPLOSION_RADIUS * explosive_level) ** 2
+        explosion_radius = GAME_CONSTANTS.BALANCE.EXPLOSION_RADIUS * explosive_level
 
         explosion_triggered = False
 
