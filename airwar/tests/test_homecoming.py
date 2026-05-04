@@ -8,8 +8,10 @@ from airwar.game.constants import GAME_CONSTANTS
 from airwar.game.homecoming import HomecomingDetector, HomecomingPhase, HomecomingSequence
 from airwar.game.managers.game_controller import GameController
 from airwar.game.scene_director import SceneDirector
+from airwar.game.systems.talent_balance_manager import TalentBalanceManager
 from airwar.input.input_handler import MockInputHandler
 from airwar.scenes.game_scene import GameScene
+from airwar.ui.base_talent_console import BaseTalentConsoleAction
 from airwar.ui.homecoming_ui import HomecomingUI
 
 
@@ -238,6 +240,23 @@ def test_game_scene_leaving_base_restores_play_state() -> None:
     scene._homecoming_detector.reset.assert_called_once()
     scene._homecoming_ui.hide.assert_called_once()
     scene.notification_manager.show.assert_called_with("已离开基地")
+
+
+def test_game_scene_base_route_action_applies_loadout() -> None:
+    scene = GameScene()
+    scene.player = _make_player()
+    scene.game_controller = GameController("medium", "pilot")
+    scene.reward_system = scene.game_controller.reward_system
+    scene.reward_system.capture_player_baselines(scene.player)
+    scene._talent_balance_manager = TalentBalanceManager({"Spread Shot": 1}, {"offense": "Spread Shot"})
+    scene.notification_manager = SimpleNamespace(show=MagicMock())
+
+    scene._handle_base_console_action(BaseTalentConsoleAction.select_route("offense"))
+
+    assert scene.reward_system.talent_loadout["offense"] == "Laser"
+    assert scene.reward_system.locked_buffs == {"Spread Shot"}
+    assert scene.player.get_weapon_status()["laser"] is True
+    scene.notification_manager.show.assert_called_with("基地天赋配置已同步")
 
 
 def test_game_scene_homecoming_request_is_blocked_by_unsafe_states() -> None:

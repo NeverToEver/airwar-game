@@ -4,7 +4,7 @@ from airwar.game.systems.talent_balance_manager import TalentBalanceManager
 from airwar.game.mother_ship.mother_ship_state import GameSaveData
 from airwar.input.input_handler import MockInputHandler
 from airwar.scenes.game_scene import GameScene
-from airwar.ui.base_talent_console import BaseTalentConsole
+from airwar.ui.base_talent_console import BaseTalentConsole, BaseTalentConsoleAction
 
 import pygame
 
@@ -81,24 +81,33 @@ def test_base_talent_console_renders_visible_route_controls() -> None:
     assert "continue" in console._button_rects
 
 
-def test_base_talent_console_continue_button_exits_base() -> None:
+def test_base_talent_console_returns_continue_action() -> None:
     pygame.font.init()
     surface = pygame.Surface((1280, 720), pygame.SRCALPHA)
     console = BaseTalentConsole(1280, 720)
     reward_system = RewardSystem("medium")
     manager = TalentBalanceManager({"Spread Shot": 1, "Phase Dash": 1}, {"offense": "Laser"})
-    exits = []
 
     console.render(surface, manager, reward_system)
-    handled = console.handle_mouse_click(
-        console._button_rects["continue"].center,
-        manager,
-        lambda: None,
-        lambda: exits.append(True),
-    )
+    action = console.handle_mouse_click(console._button_rects["continue"].center)
 
-    assert handled is True
-    assert exits == [True]
+    assert action is not None
+    assert action.kind == BaseTalentConsoleAction.CONTINUE
+
+
+def test_base_talent_console_returns_route_action() -> None:
+    pygame.font.init()
+    surface = pygame.Surface((1280, 720), pygame.SRCALPHA)
+    console = BaseTalentConsole(1280, 720)
+    reward_system = RewardSystem("medium")
+    manager = TalentBalanceManager({"Spread Shot": 1, "Phase Dash": 1}, {"offense": "Laser"})
+
+    console.render(surface, manager, reward_system)
+    action = console.handle_mouse_click(console._button_rects["route:offense"].center)
+
+    assert action is not None
+    assert action.kind == BaseTalentConsoleAction.SELECT_ROUTE
+    assert action.route == "offense"
 
 
 def test_restore_from_save_rehydrates_base_talent_loadout_locks() -> None:
