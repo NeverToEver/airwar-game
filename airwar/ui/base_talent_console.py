@@ -1,7 +1,7 @@
 """Base-side talent loadout console."""
 
+from dataclasses import dataclass
 import math
-from typing import Callable
 
 import pygame
 
@@ -9,6 +9,25 @@ from airwar.game.systems.talent_balance_manager import BUFF_LABELS, TalentBalanc
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.ui.scene_rendering_utils import fit_text_to_width
 from airwar.utils.fonts import get_cjk_font
+
+
+@dataclass(frozen=True)
+class BaseTalentConsoleAction:
+    """Semantic action requested by the base console."""
+
+    CONTINUE = "continue"
+    SELECT_ROUTE = "select_route"
+
+    kind: str
+    route: str | None = None
+
+    @classmethod
+    def continue_sortie(cls) -> "BaseTalentConsoleAction":
+        return cls(cls.CONTINUE)
+
+    @classmethod
+    def select_route(cls, route: str) -> "BaseTalentConsoleAction":
+        return cls(cls.SELECT_ROUTE, route)
 
 
 class BaseTalentConsole:
@@ -30,26 +49,16 @@ class BaseTalentConsole:
     def handle_mouse_motion(self, pos: tuple[int, int]) -> None:
         self._hovered_button = self._button_at(pos)
 
-    def handle_mouse_click(
-        self,
-        pos: tuple[int, int],
-        manager: TalentBalanceManager,
-        on_apply: Callable[[], None],
-        on_exit: Callable[[], None] | None = None,
-    ) -> bool:
+    def handle_mouse_click(self, pos: tuple[int, int]) -> BaseTalentConsoleAction | None:
         button = self._button_at(pos)
         if not button:
-            return False
+            return None
         if button == "continue":
-            if on_exit:
-                on_exit()
-            return True
-        if button.startswith("route:"):
-            if manager.next_option(button.split(":", 1)[1]) is None:
-                return True
-            on_apply()
-            return True
-        return True
+            return BaseTalentConsoleAction.continue_sortie()
+        route = self._route_from_button(button)
+        if route:
+            return BaseTalentConsoleAction.select_route(route)
+        return None
 
     def render(self, surface: pygame.Surface, manager: TalentBalanceManager, reward_system) -> None:
         self._button_rects.clear()
@@ -188,4 +197,9 @@ class BaseTalentConsole:
         for name, rect in self._button_rects.items():
             if rect.collidepoint(pos):
                 return name
+        return None
+
+    def _route_from_button(self, button: str) -> str | None:
+        if button.startswith("route:"):
+            return button.split(":", 1)[1]
         return None

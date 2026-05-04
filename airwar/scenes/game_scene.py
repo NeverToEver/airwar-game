@@ -18,7 +18,7 @@ from airwar.ui.boost_gauge import BoostGauge
 from airwar.ui.ammo_magazine import AmmoMagazine
 from airwar.ui.warning_banner import WarningBanner
 from airwar.ui.aim_crosshair import AimCrosshair
-from airwar.ui.base_talent_console import BaseTalentConsole
+from airwar.ui.base_talent_console import BaseTalentConsole, BaseTalentConsoleAction
 from airwar.ui.homecoming_ui import HomecomingUI
 from airwar.game.mother_ship import (
     EventBus,
@@ -67,6 +67,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     PAUSE_BAR_GAP = 4
     AIM_ASSIST_BREAK_DISTANCE = 38.0
     AIM_ASSIST_BLEND = 0.45
+    HOMECOMING_LOCK_INVINCIBILITY_TIMER = 999999
 
     AUTO_SAVE_INTERVAL = 1800  # 30 seconds at 60fps
 
@@ -509,15 +510,11 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if self._bullet_manager:
             self._bullet_manager.clear_enemy_bullets()
         if self.player:
-            self.player.controls_locked = True
             for bullet in self.player.get_bullets():
                 bullet.active = False
             self.player.cleanup_inactive_bullets()
 
-        self.game_controller.state.paused = True
-        self.game_controller.state.player_invincible = True
-        self.game_controller.state.invincibility_timer = 999999
-        self.game_controller.state.silent_invincible = True
+        self._set_homecoming_protection(locked=True)
 
         started = self._homecoming_sequence.start(self.player, get_screen_width(), get_screen_height())
         if started and self.notification_manager:
@@ -526,11 +523,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     def _on_homecoming_complete(self) -> None:
         self._homecoming_base_pending = True
         self._ensure_talent_balance_manager()
-        if self.game_controller:
-            self.game_controller.state.paused = True
-            self.game_controller.state.player_invincible = True
-            self.game_controller.state.invincibility_timer = 999999
-            self.game_controller.state.silent_invincible = True
+        self._set_homecoming_protection(locked=True)
         if self.notification_manager:
             self.notification_manager.show("基地接口待接入")
 
@@ -554,12 +547,19 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     def _handle_base_console_click(self, pos: tuple[int, int]) -> bool:
         if not self._base_talent_console or not self._talent_balance_manager:
             return False
-        return self._base_talent_console.handle_mouse_click(
-            pos,
-            self._talent_balance_manager,
-            self._apply_base_talent_loadout,
-            self._leave_homecoming_base,
-        )
+        action = self._base_talent_console.handle_mouse_click(pos)
+        if action is None:
+            return False
+        self._handle_base_console_action(action)
+        return True
+
+    def _handle_base_console_action(self, action: BaseTalentConsoleAction) -> None:
+        if action.kind == BaseTalentConsoleAction.CONTINUE:
+            self._leave_homecoming_base()
+            return
+        if action.kind == BaseTalentConsoleAction.SELECT_ROUTE and action.route:
+            if self._talent_balance_manager.next_option(action.route) is not None:
+                self._apply_base_talent_loadout()
 
     def _leave_homecoming_base(self) -> None:
         self._homecoming_base_pending = False
@@ -570,15 +570,22 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             self._homecoming_detector.reset()
         if self._homecoming_ui:
             self._homecoming_ui.hide()
-        if self.player:
-            self.player.controls_locked = False
-        if self.game_controller:
-            self.game_controller.state.paused = False
-            self.game_controller.state.player_invincible = True
-            self.game_controller.state.invincibility_timer = GAME_CONSTANTS.PLAYER.INVINCIBILITY_DURATION
-            self.game_controller.state.silent_invincible = False
+        self._set_homecoming_protection(locked=False)
         if self.notification_manager:
             self.notification_manager.show("已离开基地")
+
+    def _set_homecoming_protection(self, locked: bool) -> None:
+        if self.player:
+            self.player.controls_locked = locked
+        if self.game_controller:
+            self.game_controller.state.paused = locked
+            self.game_controller.state.player_invincible = True
+            self.game_controller.state.invincibility_timer = (
+                self.HOMECOMING_LOCK_INVINCIBILITY_TIMER
+                if locked
+                else GAME_CONSTANTS.PLAYER.INVINCIBILITY_DURATION
+            )
+            self.game_controller.state.silent_invincible = locked
 
     def _is_homecoming_active(self) -> bool:
         return bool(self._homecoming_sequence and self._homecoming_sequence.is_active())
