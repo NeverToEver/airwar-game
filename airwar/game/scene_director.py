@@ -123,7 +123,7 @@ class SceneDirector:
 
             # Check for pause requests triggered by mouse click
             if isinstance(current_scene, GameScene) and not escape_handled:
-                if current_scene.consume_pause_request():
+                if not current_scene.is_homecoming_locked() and current_scene.consume_pause_request():
                     current_scene.pause()
                     action = self._show_pause_menu(current_scene)
                     if action == PauseAction.RESUME:
@@ -178,6 +178,9 @@ class SceneDirector:
                 self._handle_resize(event.w, event.h)
 
     def _handle_pause_toggle(self, events: List[pygame.event.Event], game_scene: GameScene) -> str:
+        if getattr(game_scene, "is_homecoming_locked", lambda: False)():
+            return "none"
+
         for event in events:
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 if game_scene.paused:
