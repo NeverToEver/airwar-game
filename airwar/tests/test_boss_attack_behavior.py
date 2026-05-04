@@ -243,7 +243,7 @@ def test_boss_enrage_releases_held_bullets_gradually_after_flow_finishes():
     assert first_released
     assert still_held
     assert all(
-        0 < bullet.velocity.length() <= getattr(bullet, "enrage_release_speed") + 1e-6
+        0 < bullet.velocity.length() <= bullet.enrage_release_speed + 1e-6
         for bullet in first_released
     )
 
