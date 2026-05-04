@@ -9,6 +9,7 @@ class ProgressBarUI(IMotherShipUI):
     BAR_TYPE_HOLD = "hold"
     BAR_TYPE_COOLDOWN = "cooldown"
     BAR_TYPE_STAY = "stay"
+    BAR_TYPE_EXIT = "exit"
 
     def __init__(self, screen_width: int, screen_height: int):
         self._visible = False
@@ -122,6 +123,9 @@ class ProgressBarUI(IMotherShipUI):
         elif self._bar_type == self.BAR_TYPE_STAY:
             remaining = int((1.0 - self._progress) * self._max_value)
             text = self._font.render(f"停靠 {remaining}秒", True, (120, 180, 140))
+        elif self._bar_type == self.BAR_TYPE_EXIT:
+            remaining = int((1.0 - self._progress) * self._max_value)
+            text = self._font.render(f"离舰 {remaining}秒", True, (180, 160, 120))
         else:
             text = self._font.render(f"{self._progress:.1%}", True, (180, 200, 220))
 
@@ -186,6 +190,10 @@ class ProgressBarUI(IMotherShipUI):
                 t = (self._progress - 0.8) / 0.2
                 return self._lerp_color(self._progress_color_stay, self._progress_color_complete, t)
             return self._progress_color_stay
+        elif self._bar_type == self.BAR_TYPE_EXIT:
+            if self._progress >= 1.0:
+                return self._progress_color_complete
+            return self._progress_color_cooldown
         else:
             if self._progress >= 1.0:
                 return self._progress_color_complete

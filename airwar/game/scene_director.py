@@ -29,6 +29,7 @@ class SceneDirector:
         self._current_user: Optional[str] = None
         self._selected_difficulty: str = 'medium'
         self._pending_save_data = None
+        self._save_dir = None
 
     @property
     def current_user(self) -> Optional[str]:
@@ -335,10 +336,10 @@ class SceneDirector:
     def _check_and_get_saved_game(self, username: str) -> Optional[GameSaveData]:
         if not username:
             return None
-        persistence_manager = PersistenceManager()
-        save_data = persistence_manager.load_game()
-        if save_data and save_data.username == username:
-            return save_data
+        for persistence_manager in self._candidate_persistence_managers(username):
+            save_data = persistence_manager.load_game()
+            if save_data and save_data.username == username:
+                return save_data
         return None
 
     def _perform_save(self, game_scene: GameScene) -> bool:
@@ -349,15 +350,23 @@ class SceneDirector:
             return False
         if not game_scene.is_mothership_docked():
             save_data.is_in_mothership = False
-        persistence_manager = PersistenceManager()
+        persistence_manager = PersistenceManager(save_dir=self._save_dir, username=save_data.username)
         return persistence_manager.save_game(save_data)
 
     def _save_game_on_quit(self, game_scene: GameScene) -> None:
         self._perform_save(game_scene)
 
     def _clear_saved_game(self) -> None:
-        persistence_manager = PersistenceManager()
-        persistence_manager.delete_save()
+        for persistence_manager in self._candidate_persistence_managers(self._current_user):
+            save_data = persistence_manager.load_game()
+            if save_data and save_data.username == self._current_user:
+                persistence_manager.delete_save()
+
+    def _candidate_persistence_managers(self, username: str) -> list[PersistenceManager]:
+        return [
+            PersistenceManager(save_dir=self._save_dir, username=username),
+            PersistenceManager(save_dir=self._save_dir),
+        ]
 
     def _save_and_quit(self, game_scene: GameScene) -> None:
         self._perform_save(game_scene)

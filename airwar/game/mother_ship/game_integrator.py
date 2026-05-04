@@ -21,6 +21,7 @@ from .event_bus import (
     EVENT_SAVE_GAME_REQUEST,
     EVENT_EXIT_STARTED,
     EVENT_EXIT_PROGRESS_UPDATE,
+    EVENT_EXIT_CANCELLED,
 )
 from airwar.entities.bullet import Bullet
 from airwar.entities.base import BulletData
@@ -82,6 +83,7 @@ class GameIntegrator:
     BAR_TYPE_HOLD = "hold"
     BAR_TYPE_COOLDOWN = "cooldown"
     BAR_TYPE_STAY = "stay"
+    BAR_TYPE_EXIT = "exit"
 
     def __init__(
         self,
@@ -151,6 +153,7 @@ class GameIntegrator:
         self._event_bus.subscribe(EVENT_H_RELEASED_EARLY, self._on_h_released_early)
         self._event_bus.subscribe(EVENT_EXIT_STARTED, self._on_exit_started)
         self._event_bus.subscribe(EVENT_EXIT_PROGRESS_UPDATE, self._on_exit_progress_update)
+        self._event_bus.subscribe(EVENT_EXIT_CANCELLED, self._on_exit_cancelled)
 
     def _update_mothership_input(self) -> None:
         # Mothership movement is only allowed while docked
@@ -465,11 +468,15 @@ class GameIntegrator:
     def _on_h_released_early(self, **kwargs) -> None:
         pass
 
-    def _on_exit_started(self, **kwargs) -> None:
-        pass
+    def _on_exit_started(self, timestamp=None, **kwargs) -> None:
+        self._input_detector.start_exit_hold(timestamp)
+        self._progress_bar_ui.show(self.BAR_TYPE_EXIT, getattr(self._input_detector, "_exit_required_duration", 2.0))
 
     def _on_exit_progress_update(self, progress=None, **kwargs) -> None:
-        pass
+        self._progress_bar_ui.update_progress(progress or 0.0)
+
+    def _on_exit_cancelled(self, **kwargs) -> None:
+        self._progress_bar_ui.hide()
 
     def _deactivate_invincibility(self) -> None:
         if self._game_scene:
@@ -578,6 +585,7 @@ class GameIntegrator:
         self._undocking_animation_frame = 0
         self._undocking_phase = 1
         self._undocking_cooldown_multiplier = self._calculate_undocking_cooldown_multiplier()
+        self._progress_bar_ui.hide()
 
         dock_pos = self._mother_ship.get_docking_position()
         # Convert docking position (center) to topleft for player rect

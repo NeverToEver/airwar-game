@@ -181,9 +181,13 @@ class CollisionController:
             piercing_level,
         )
         
-        if enemies_killed > 0 and on_enemy_killed:
+        if enemies_killed > 0:
             self._events.append(CollisionEvent(type='enemy_killed', score=score_gained))
-            on_enemy_killed(score_gained)
+            if on_enemy_killed:
+                on_enemy_killed(score_gained)
+            if on_lifesteal:
+                for _ in range(enemies_killed):
+                    on_lifesteal(player, score_gained)
         
         if not player_invincible and self.check_enemy_bullets_vs_player(
             enemy_bullets,
