@@ -71,7 +71,6 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     AIM_ASSIST_SWITCH_DISTANCE = 90.0
     AIM_ASSIST_RELEASE_DISTANCE = 230.0
     AIM_ASSIST_DIRECTION_CONE_DOT = 0.42
-    AIM_ASSIST_BLEND = 0.82
     AIM_INPUT_DELAY_BLEND = 0.28
     AIM_INPUT_SNAP_DISTANCE = 10.0
     HOMECOMING_LOCK_INVINCIBILITY_TIMER = 999999
@@ -754,13 +753,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             self._sync_player_aim_target()
             return
 
-        raw_x, raw_y = self._smoothed_raw_aim_position
         target_rect = self._target_rect(target)
-        target_x, target_y = target_rect.centerx, target_rect.centery
-        self._aim_position = (
-            raw_x + (target_x - raw_x) * self.AIM_ASSIST_BLEND,
-            raw_y + (target_y - raw_y) * self.AIM_ASSIST_BLEND,
-        )
+        self._aim_position = target_rect.center
         self._sync_player_aim_target()
 
     def _resolve_aim_assist_target(self):
