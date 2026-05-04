@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 import pygame
 
 from airwar.entities.player import Player
+from airwar.game.constants import GAME_CONSTANTS
 from airwar.game.homecoming import HomecomingDetector, HomecomingPhase, HomecomingSequence
 from airwar.game.managers.game_controller import GameController
 from airwar.game.scene_director import SceneDirector
@@ -205,6 +206,38 @@ def test_game_scene_homecoming_complete_opens_base_talent_console() -> None:
     assert scene._talent_balance_manager is not None
     assert scene.reward_system.locked_buffs == {"Laser"}
     scene.notification_manager.show.assert_called_with("基地接口待接入")
+
+
+def test_game_scene_leaving_base_restores_play_state() -> None:
+    scene = GameScene()
+    scene.player = _make_player()
+    scene.game_controller = GameController("medium", "pilot")
+    scene._homecoming_base_pending = True
+    scene._pause_requested = True
+    scene.player.controls_locked = True
+    scene.game_controller.state.paused = True
+    scene.game_controller.state.player_invincible = True
+    scene.game_controller.state.invincibility_timer = 999999
+    scene.game_controller.state.silent_invincible = True
+    scene._homecoming_sequence = HomecomingSequence()
+    scene._homecoming_sequence.start(scene.player, 1280, 720)
+    scene._homecoming_detector = SimpleNamespace(reset=MagicMock())
+    scene._homecoming_ui = SimpleNamespace(hide=MagicMock())
+    scene.notification_manager = SimpleNamespace(show=MagicMock())
+
+    scene._leave_homecoming_base()
+
+    assert scene.is_homecoming_locked() is False
+    assert scene._pause_requested is False
+    assert scene.player.controls_locked is False
+    assert scene.game_controller.state.paused is False
+    assert scene.game_controller.state.player_invincible is True
+    assert scene.game_controller.state.invincibility_timer == GAME_CONSTANTS.PLAYER.INVINCIBILITY_DURATION
+    assert scene.game_controller.state.silent_invincible is False
+    assert scene._homecoming_sequence.phase == HomecomingPhase.INACTIVE
+    scene._homecoming_detector.reset.assert_called_once()
+    scene._homecoming_ui.hide.assert_called_once()
+    scene.notification_manager.show.assert_called_with("已离开基地")
 
 
 def test_game_scene_homecoming_request_is_blocked_by_unsafe_states() -> None:

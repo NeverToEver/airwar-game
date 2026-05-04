@@ -281,7 +281,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             self.handle_mouse_motion(event.pos)
         elif event.type == pygame.MOUSEBUTTONDOWN:
             self._set_raw_aim_position(event.pos)
-            if self._homecoming_base_pending and self._handle_base_console_click(event.pos):
+            if event.button == 1 and self._homecoming_base_pending and self._handle_base_console_click(event.pos):
                 return
             if event.button == 1 and self.handle_mouse_click(event.pos):
                 self._handle_button_click(self.get_hovered_button())
@@ -558,7 +558,27 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             pos,
             self._talent_balance_manager,
             self._apply_base_talent_loadout,
+            self._leave_homecoming_base,
         )
+
+    def _leave_homecoming_base(self) -> None:
+        self._homecoming_base_pending = False
+        self._pause_requested = False
+        if self._homecoming_sequence:
+            self._homecoming_sequence.reset()
+        if self._homecoming_detector:
+            self._homecoming_detector.reset()
+        if self._homecoming_ui:
+            self._homecoming_ui.hide()
+        if self.player:
+            self.player.controls_locked = False
+        if self.game_controller:
+            self.game_controller.state.paused = False
+            self.game_controller.state.player_invincible = True
+            self.game_controller.state.invincibility_timer = GAME_CONSTANTS.PLAYER.INVINCIBILITY_DURATION
+            self.game_controller.state.silent_invincible = False
+        if self.notification_manager:
+            self.notification_manager.show("已离开基地")
 
     def _is_homecoming_active(self) -> bool:
         return bool(self._homecoming_sequence and self._homecoming_sequence.is_active())
