@@ -708,10 +708,10 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
         intensity = boss.enrage_visual_intensity()
         sw, sh = surface.get_size()
-        scale = 1.0 + 0.035 * intensity
+        scale = 1.0 + 0.018 * intensity
         scaled = pygame.transform.scale(surface, (int(sw * scale), int(sh * scale)))
-        wobble_x = int(math.sin(pygame.time.get_ticks() * 0.018) * 16 * intensity)
-        wobble_y = int(math.cos(pygame.time.get_ticks() * 0.014) * 10 * intensity)
+        wobble_x = int(math.sin(pygame.time.get_ticks() * 0.012) * 7 * intensity)
+        wobble_y = int(math.cos(pygame.time.get_ticks() * 0.010) * 4 * intensity)
         surface.blit(scaled, scaled.get_rect(center=(sw // 2 + wobble_x, sh // 2 + wobble_y)))
 
         cache_key = (sw, sh)
@@ -719,10 +719,10 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             self._enrage_overlay_cache = pygame.Surface((sw, sh), pygame.SRCALPHA)
             self._enrage_overlay_cache_key = cache_key
         overlay = self._enrage_overlay_cache
-        overlay.fill((190, 42, 12, int(105 * intensity)))
+        overlay.fill((112, 38, 30, int(42 * intensity)))
         pygame.draw.circle(
             overlay,
-            (255, 112, 30, int(70 * intensity)),
+            (214, 104, 76, int(38 * intensity)),
             (int(boss.rect.centerx), int(boss.rect.centery)),
             int(max(sw, sh) * 0.75 * intensity),
             max(2, int(8 * intensity)),

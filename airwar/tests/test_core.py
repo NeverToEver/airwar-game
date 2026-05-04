@@ -103,7 +103,11 @@ class TestBoss:
         score = b.take_damage(100)
         assert score == 0  # not dead yet
         score = b.take_damage(b.health)
-        assert score == 500  # score returned on kill
+        assert score == 0  # locks at enrage threshold first
+        b._enrage_health_lock_active = False
+        b._enraged = True
+        score = b.take_damage(b.health)
+        assert score == 500  # score returned after enrage lock is released
         assert b.active is False
 
     def test_boss_enter_animation(self):
