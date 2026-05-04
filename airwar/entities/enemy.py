@@ -9,7 +9,7 @@ from airwar.config.design_tokens import Colors
 from .base import Entity, EnemyData, Vector2
 from .bullet import Bullet, BulletData
 from .interfaces import IBulletSpawner
-from ..utils.sprites import draw_enemy_ship, draw_boss_ship
+from ..utils.sprites import draw_enemy_ship, draw_boss_ship, draw_glow_circle, get_boss_sprite
 from ..config import (
     ENEMY_HITBOX_SIZE, ENEMY_HITBOX_PADDING, ENEMY_VISUAL_SCALE, ENEMY_COLLISION_SCALE,
     get_screen_width, get_screen_height,
@@ -896,26 +896,28 @@ class Boss(Entity):
     ENRAGE_TRIGGER_RATIO = 0.30
     ENRAGE_DURATION = 600
     ENRAGE_TRANSITION_DURATION = 54
-    ENRAGE_SLOW_FACTOR = 0.35
+    ENRAGE_SLOW_FACTOR = 0.24
     ENRAGE_BULLET_SPEED = 3.2
     ENRAGE_LASER_SPEED = 3.7
     ENRAGE_RELEASE_BULLET_SPEED = 1.55
     ENRAGE_RELEASE_LASER_SPEED = 1.35
-    ENRAGE_ATTACK_INTERVAL = 34
-    ENRAGE_ATTACK_WINDUP = 18
+    ENRAGE_ATTACK_INTERVAL = 58
+    ENRAGE_ATTACK_WINDUP = 24
     ENRAGE_RELEASE_INTERVAL = 6
-    ENRAGE_SNAPSHOT_LASER_COUNT = 5
-    ENRAGE_SNAPSHOT_RING_COUNT = 10
-    ENRAGE_ORBIT_RADIUS_SCALE_X = 2.35
-    ENRAGE_ORBIT_RADIUS_SCALE_Y = 2.05
-    ENRAGE_ORBIT_PULSE_SCALE = 0.42
-    ENRAGE_ORBIT_TURNS = 3.35
+    ENRAGE_SNAPSHOT_LASER_COUNT = 4
+    ENRAGE_SNAPSHOT_RING_COUNT = 8
+    ENRAGE_PATH_RADIUS_SCALE = 1.50
+    ENRAGE_SQUARE_PATH_RATIO = 0.48
     ENRAGE_TRAIL_LENGTH = 42
     ENRAGE_TRAIL_RENDER_MAX = 16
     ENRAGE_TRAIL_FINAL_SCALE = 3.0
     ENRAGE_TRAIL_SCALE = 0.5
     ENRAGE_TRAIL_BLUR_PASSES = 2
     ENRAGE_EXIT_BACK_OFFSET = 118
+    ENRAGE_MUZZLE_FLASH_DURATION = 10
+    ENRAGE_MUZZLE_FORWARD_SCALE = 0.58
+    ENRAGE_MUZZLE_SIDE_SCALE = 0.34
+    ENRAGE_RELEASE_HOLD_DURATION = 42
 
     _warning_font = None
     _escape_font = None
@@ -977,6 +979,11 @@ class Boss(Entity):
         self._enrage_attack_index = 0
         self._enrage_transition_timer = 0
         self._enrage_transition_origin: Tuple[float, float] | None = None
+        self._facing_angle = 90.0
+        self._muzzle_flash_timer = 0
+        self._muzzle_flash_positions: List[Tuple[float, float]] = []
+        self._enrage_release_hold_timer = 0
+        self._enrage_release_anchor: Tuple[float, float] | None = None
         self.sync_hitbox()
 
     def sync_hitbox(self) -> None:
@@ -1038,6 +1045,9 @@ class Boss(Entity):
             return
         if self._enrage_timer > 0:
             self._update_enrage(player_pos, kwargs.get("player"))
+            return
+        if self._enrage_release_hold_timer > 0:
+            self._update_enrage_release_hold(player_pos, kwargs.get("player"))
             return
 
         self.survival_timer += 1
@@ -1187,6 +1197,11 @@ class Boss(Entity):
         self._enrage_attack_index = 0
         self._enrage_transition_timer = self.ENRAGE_TRANSITION_DURATION
         self._enrage_transition_origin = (self.rect.centerx, self.rect.centery)
+        self._enrage_release_hold_timer = 0
+        self._enrage_release_anchor = None
+        self._face_target(target)
+        self._muzzle_flash_timer = 0
+        self._muzzle_flash_positions = []
 
     def _center_player_for_enrage(self, player=None, player_pos: Tuple[int, int] = None) -> Tuple[float, float]:
         target = (get_screen_width() / 2, get_screen_height() / 2)
@@ -1202,17 +1217,20 @@ class Boss(Entity):
         self._record_enrage_trail()
 
         progress = self._enrage_progress()
-        target_center_x, target_center_y = self._enrage_orbit_center(target, progress)
+        target_center_x, target_center_y = self._enrage_path_center(target, progress)
         self.rect.x, self.rect.y = self._clamped_enrage_position(
             target_center_x - self.rect.width / 2,
             target_center_y - self.rect.height / 2,
         )
+        self.sync_hitbox()
+        self._face_target(target)
+        self._update_muzzle_flash()
         self._update_enrage_snapshot_attacks(target, progress)
 
         self._enrage_timer -= 1
         if self._enrage_timer <= 0:
-            self._release_enrage_bullets(target)
             self._move_behind_player_after_enrage(target)
+            self._release_enrage_bullets(target)
 
     def _update_enrage_transition(self, player_pos: Tuple[int, int] = None, player=None) -> None:
         target = self._center_player_for_enrage(player, self._enrage_snapshot_target or player_pos)
@@ -1224,22 +1242,25 @@ class Boss(Entity):
 
         start = self._enrage_transition_origin or (self.rect.centerx, self.rect.centery)
         orbit_progress = self._enrage_progress()
-        target_center_x, target_center_y = self._enrage_orbit_center(target, orbit_progress)
-        charge_shake = math.sin(transition * math.tau * 5.0) * (1.0 - transition) * 10.0
-        center_x = start[0] + (target_center_x - start[0]) * eased + charge_shake
-        center_y = start[1] + (target_center_y - start[1]) * eased
+        target_center_x, target_center_y = self._enrage_path_center(target, orbit_progress)
+        charge_shake_x = math.sin(transition * math.tau * 7.0) * (1.0 - transition) * 13.0
+        charge_shake_y = math.cos(transition * math.tau * 5.0) * (1.0 - transition) * 8.0
+        center_x = start[0] + (target_center_x - start[0]) * eased + charge_shake_x
+        center_y = start[1] + (target_center_y - start[1]) * eased + charge_shake_y
         self.rect.x, self.rect.y = self._clamped_enrage_position(
             center_x - self.rect.width / 2,
             center_y - self.rect.height / 2,
         )
         self.sync_hitbox()
+        self._face_target(target)
+        self._update_muzzle_flash()
 
         self._enrage_transition_timer -= 1
         self._enrage_timer -= 1
         if self._enrage_timer <= 0:
             self._enrage_transition_timer = 0
-            self._release_enrage_bullets(target)
             self._move_behind_player_after_enrage(target)
+            self._release_enrage_bullets(target)
         elif self._enrage_transition_timer <= 0:
             self._enrage_transition_timer = 0
             self._enrage_transition_origin = None
@@ -1247,15 +1268,81 @@ class Boss(Entity):
     def _enrage_progress(self) -> float:
         return max(0.0, min(1.0, 1.0 - self._enrage_timer / self.ENRAGE_DURATION))
 
-    def _enrage_orbit_center(self, target: Tuple[float, float], progress: float) -> Tuple[float, float]:
-        angle = progress * math.tau * self.ENRAGE_ORBIT_TURNS
-        base_radius = max(self.rect.width, self.rect.height)
-        pulse = 1.0 + self.ENRAGE_ORBIT_PULSE_SCALE * (0.5 + 0.5 * math.sin(progress * math.tau * 9.0))
-        radius_x = base_radius * self.ENRAGE_ORBIT_RADIUS_SCALE_X * pulse
-        radius_y = base_radius * self.ENRAGE_ORBIT_RADIUS_SCALE_Y * (0.95 + 0.12 * math.cos(progress * math.tau * 6.0))
+    def _update_enrage_release_hold(self, player_pos: Tuple[int, int] = None, player=None) -> None:
+        target = self._current_player_target(player, player_pos) or self._enrage_snapshot_target or (
+            get_screen_width() / 2,
+            get_screen_height() / 2,
+        )
+        anchor = self._enrage_release_anchor or self._enrage_path_center(target, 1.0)
+        self.rect.x = anchor[0] - self.rect.width / 2
+        self.rect.y = anchor[1] - self.rect.height / 2
+        self._target_x = self.rect.x
+        self._target_y = self.rect.y
+        self.sync_hitbox()
+        self._face_target(target)
+        self._update_muzzle_flash()
+        self._enrage_release_hold_timer -= 1
+        if self._enrage_release_hold_timer <= 0:
+            self._enrage_release_anchor = None
+
+    def _current_player_target(self, player=None, player_pos: Tuple[int, int] = None) -> Tuple[float, float] | None:
+        if player is not None:
+            rect = player.rect
+            if hasattr(rect, "centerx") and hasattr(rect, "centery"):
+                return (float(rect.centerx), float(rect.centery))
+            if all(hasattr(rect, attr) for attr in ("x", "y", "width", "height")):
+                return (float(rect.x + rect.width / 2), float(rect.y + rect.height / 2))
+        if player_pos:
+            return (float(player_pos[0]), float(player_pos[1]))
+        return None
+
+    def _enrage_path_radius(self, target: Tuple[float, float]) -> float:
+        base_radius = max(self.rect.width, self.rect.height) * self.ENRAGE_PATH_RADIUS_SCALE
+        max_radius = max(
+            24.0,
+            min(
+                target[0] - self.rect.width / 2,
+                get_screen_width() - target[0] - self.rect.width / 2,
+                target[1] - self.MIN_Y - self.rect.height / 2,
+                get_screen_height() - target[1] - self.rect.height / 2,
+            ),
+        )
+        return min(base_radius, max_radius)
+
+    def _enrage_path_center(self, target: Tuple[float, float], progress: float) -> Tuple[float, float]:
+        progress = max(0.0, min(1.0, progress))
+        radius = self._enrage_path_radius(target)
+        if progress <= self.ENRAGE_SQUARE_PATH_RATIO:
+            square_progress = progress / max(0.0001, self.ENRAGE_SQUARE_PATH_RATIO)
+            return self._enrage_square_path_center(target, radius, square_progress)
+        circle_progress = (progress - self.ENRAGE_SQUARE_PATH_RATIO) / max(0.0001, 1.0 - self.ENRAGE_SQUARE_PATH_RATIO)
+        angle = math.pi / 2 + circle_progress * math.tau
         return (
-            target[0] + math.cos(angle) * radius_x,
-            target[1] + math.sin(angle) * radius_y,
+            target[0] + math.cos(angle) * radius,
+            target[1] + math.sin(angle) * radius,
+        )
+
+    def _enrage_square_path_center(
+        self,
+        target: Tuple[float, float],
+        radius: float,
+        progress: float,
+    ) -> Tuple[float, float]:
+        progress = max(0.0, min(1.0, progress))
+        segment = min(3, int(progress * 4))
+        local = progress * 4 - segment
+        points = (
+            (target[0], target[1] + radius),
+            (target[0] + radius, target[1]),
+            (target[0], target[1] - radius),
+            (target[0] - radius, target[1]),
+            (target[0], target[1] + radius),
+        )
+        start = points[segment]
+        end = points[segment + 1]
+        return (
+            start[0] + (end[0] - start[0]) * local,
+            start[1] + (end[1] - start[1]) * local,
         )
 
     def _record_enrage_trail(self) -> None:
@@ -1277,12 +1364,13 @@ class Boss(Entity):
         if self._enrage_attack_timer > 0:
             return
         self._spawn_bullets(self._create_enrage_snapshot_attack(target, progress))
+        self._trigger_muzzle_flash()
         self._enrage_attack_timer = self.ENRAGE_ATTACK_INTERVAL
         self._enrage_attack_index += 1
 
     def _create_enrage_snapshot_attack(self, target: Tuple[float, float], progress: float) -> List[Bullet]:
         bullets = []
-        source = (self.rect.centerx, self.rect.centery)
+        source = self._primary_boss_muzzle_position()
         bullets.extend(self._create_enrage_snapshot_lasers(source, target, progress))
         bullets.extend(self._create_enrage_snapshot_ring_bullets(target, progress))
         release_index = self._enrage_attack_index
@@ -1368,20 +1456,62 @@ class Boss(Entity):
         self._enrage_bullets_released = True
         self._enrage_health_lock_active = False
         self._enrage_timer = 0
+        self._enrage_release_hold_timer = self.ENRAGE_RELEASE_HOLD_DURATION
         self._enrage_trail.clear()
         self._enrage_trail_ghost = None
         self._enrage_trail_ghost_key = None
 
     def _move_behind_player_after_enrage(self, target: Tuple[float, float]) -> None:
-        behind_center_x = target[0]
-        behind_center_y = target[1] + self.rect.height / 2 + self.ENRAGE_EXIT_BACK_OFFSET
-        max_center_y = get_screen_height() - self.rect.height / 2
-        behind_center_y = min(behind_center_y, max_center_y)
+        behind_center_x, behind_center_y = self._enrage_path_center(target, 1.0)
+        self._enrage_release_anchor = (behind_center_x, behind_center_y)
         self.rect.x = behind_center_x - self.rect.width / 2
         self.rect.y = behind_center_y - self.rect.height / 2
         self._target_x = self.rect.x
         self._target_y = self.rect.y
         self.sync_hitbox()
+        self._face_target(target)
+
+    def _face_target(self, target: Tuple[float, float]) -> None:
+        dx = target[0] - self.rect.centerx
+        dy = target[1] - self.rect.centery
+        if dx == 0 and dy == 0:
+            return
+        self._facing_angle = math.degrees(math.atan2(dy, dx))
+
+    def _facing_vector(self) -> Vector2:
+        radians = math.radians(self._facing_angle)
+        return Vector2(math.cos(radians), math.sin(radians))
+
+    def _boss_muzzle_positions(self) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+        forward = self._facing_vector().normalize()
+        if forward.length() <= 0:
+            forward = Vector2(0, 1)
+        side_axis = Vector2(-forward.y, forward.x)
+        muzzle_center_x = self.rect.centerx + forward.x * self.rect.height * self.ENRAGE_MUZZLE_FORWARD_SCALE
+        muzzle_center_y = self.rect.centery + forward.y * self.rect.height * self.ENRAGE_MUZZLE_FORWARD_SCALE
+        side_offset = self.rect.width * self.ENRAGE_MUZZLE_SIDE_SCALE
+        return (
+            (muzzle_center_x + side_axis.x * side_offset, muzzle_center_y + side_axis.y * side_offset),
+            (muzzle_center_x - side_axis.x * side_offset, muzzle_center_y - side_axis.y * side_offset),
+        )
+
+    def _primary_boss_muzzle_position(self) -> Tuple[float, float]:
+        muzzles = self._boss_muzzle_positions()
+        return (
+            (muzzles[0][0] + muzzles[1][0]) / 2,
+            (muzzles[0][1] + muzzles[1][1]) / 2,
+        )
+
+    def _trigger_muzzle_flash(self) -> None:
+        self._muzzle_flash_timer = self.ENRAGE_MUZZLE_FLASH_DURATION
+        self._muzzle_flash_positions = list(self._boss_muzzle_positions())
+
+    def _update_muzzle_flash(self) -> None:
+        if self._muzzle_flash_timer <= 0:
+            return
+        self._muzzle_flash_timer -= 1
+        if self._muzzle_flash_timer <= 0:
+            self._muzzle_flash_positions = []
 
     def _enrage_spawned_bullets(self) -> List[Bullet]:
         if hasattr(self._bullet_spawner, "get_bullets"):
@@ -1579,7 +1709,8 @@ class Boss(Entity):
         """
         health_ratio = self.health / self.max_health if self.max_health > 0 else 1.0
         self._render_enrage_trail(surface)
-        draw_boss_ship(surface, self.rect.centerx, self.rect.centery, self.rect.width, self.rect.height, health_ratio)
+        self._render_boss_body(surface, health_ratio)
+        self._render_muzzle_flash(surface)
 
         if self.entering:
             warning_y = 20
@@ -1606,6 +1737,37 @@ class Boss(Entity):
             warning_surf.set_alpha(int(255 * pulse))
             warning_rect = warning_surf.get_rect(center=(surface.get_width() // 2, warning_y))
             surface.blit(warning_surf, warning_rect)
+
+    def _render_boss_body(self, surface: pygame.Surface, health_ratio: float) -> None:
+        if self._enrage_timer <= 0:
+            draw_boss_ship(surface, self.rect.centerx, self.rect.centery, self.rect.width, self.rect.height, health_ratio)
+            return
+
+        sprite = get_boss_sprite(self.rect.width, self.rect.height, health_ratio)
+        rotation = 90.0 - self._facing_angle
+        rotated = pygame.transform.rotozoom(sprite, rotation, 1.0)
+        surface.blit(rotated, rotated.get_rect(center=(round(self.rect.centerx), round(self.rect.centery))))
+
+    def _render_muzzle_flash(self, surface: pygame.Surface) -> None:
+        if self._muzzle_flash_timer <= 0 or not self._muzzle_flash_positions:
+            return
+        progress = self._muzzle_flash_timer / max(1, self.ENRAGE_MUZZLE_FLASH_DURATION)
+        radius = max(2, int(self.rect.width * 0.035 + 7 * progress))
+        glow_radius = max(radius + 4, int(radius * 2.4))
+        forward = self._facing_vector().normalize()
+        for muzzle_x, muzzle_y in self._muzzle_flash_positions:
+            center = (int(muzzle_x), int(muzzle_y))
+            draw_glow_circle(surface, center, radius, (255, 216, 122), glow_radius)
+            pygame.draw.line(
+                surface,
+                (255, 244, 196),
+                center,
+                (
+                    int(muzzle_x + forward.x * radius * 2.2),
+                    int(muzzle_y + forward.y * radius * 2.2),
+                ),
+                max(2, radius // 2),
+            )
 
     def _render_enrage_trail(self, surface: pygame.Surface) -> None:
         if not self._enrage_trail:
@@ -1672,21 +1834,31 @@ class Boss(Entity):
             return
         transition = 1.0 - self._enrage_transition_timer / max(1, self.ENRAGE_TRANSITION_DURATION)
         charge = transition * transition * (3 - 2 * transition)
-        alpha = int(155 * (1.0 - charge) + 70 * intensity)
+        pulse = 0.5 + 0.5 * math.sin(transition * math.tau * 8.0)
+        alpha = int(185 * (1.0 - charge) + 95 * intensity + 45 * pulse * (1.0 - transition))
         if alpha <= 0:
             return
         glow_size = (
-            max(1, int(self.rect.width * (1.65 - 0.35 * charge))),
-            max(1, int(self.rect.height * (1.45 - 0.25 * charge))),
+            max(1, int(self.rect.width * (2.05 - 0.55 * charge))),
+            max(1, int(self.rect.height * (1.85 - 0.42 * charge))),
         )
         glow = pygame.Surface(glow_size, pygame.SRCALPHA)
         color = (224, 106, 72, alpha)
-        pygame.draw.ellipse(glow, color, glow.get_rect(), max(2, int(5 * (1.0 - charge) + 2)))
+        pygame.draw.ellipse(glow, color, glow.get_rect(), max(2, int(8 * (1.0 - charge) + 2)))
+        inner_rect = glow.get_rect().inflate(-max(4, glow_size[0] // 5), -max(4, glow_size[1] // 5))
+        pygame.draw.ellipse(glow, (255, 184, 120, max(20, alpha // 3)), inner_rect, 2)
         pygame.draw.line(
             glow,
             (255, 184, 120, max(30, alpha // 2)),
             (glow_size[0] // 2, 0),
             (glow_size[0] // 2, glow_size[1]),
+            2,
+        )
+        pygame.draw.line(
+            glow,
+            (255, 184, 120, max(26, alpha // 3)),
+            (0, glow_size[1] // 2),
+            (glow_size[0], glow_size[1] // 2),
             2,
         )
         surface.blit(glow, glow.get_rect(center=self.rect.center))
