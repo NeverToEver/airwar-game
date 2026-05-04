@@ -570,9 +570,24 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if action.kind == BaseTalentConsoleAction.CONTINUE:
             self._leave_homecoming_base()
             return
+        if action.kind == BaseTalentConsoleAction.RESUPPLY:
+            self._resupply_at_base()
+            return
+        if action.kind == BaseTalentConsoleAction.SELECT_MODULE:
+            return
         if action.kind == BaseTalentConsoleAction.SELECT_ROUTE and action.route:
             if self._talent_balance_manager.next_option(action.route) is not None:
                 self._apply_base_talent_loadout()
+
+    def _resupply_at_base(self) -> None:
+        if not self.player:
+            return
+        self.player.health = self.player.max_health
+        if hasattr(self.player, "boost_current") and hasattr(self.player, "boost_max"):
+            self.player.boost_current = self.player.boost_max
+        self._save_base_loadout()
+        if self.notification_manager:
+            self.notification_manager.show("基地补给已完成")
 
     def _leave_homecoming_base(self) -> None:
         self._save_base_loadout()
@@ -691,7 +706,15 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             self._homecoming_ui.render_sequence(surface, self._homecoming_sequence, self.player)
 
         if self._homecoming_base_pending and self._base_talent_console and self._talent_balance_manager:
-            self._base_talent_console.render(surface, self._talent_balance_manager, self.reward_system)
+            mothership_status = self._mother_ship_integrator.get_status_data() if self._mother_ship_integrator else None
+            self._base_talent_console.render(
+                surface,
+                self._talent_balance_manager,
+                self.reward_system,
+                player=self.player,
+                game_controller=self.game_controller,
+                mothership_status=mothership_status,
+            )
 
         # Reward selector must render above game elements. Homecoming blocks
         # reward selection, but keep the normal layering contract intact.
