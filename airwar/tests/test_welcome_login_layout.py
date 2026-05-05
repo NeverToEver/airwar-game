@@ -115,3 +115,24 @@ def test_delete_user_requires_current_password(tmp_path) -> None:
 
     assert scene.db.user_exists("pilot") is False
     assert scene.message == "用户 pilot 已删除"
+
+
+def test_delete_confirm_buttons_delete_or_cancel_user(tmp_path) -> None:
+    scene = _make_scene()
+    scene.db = UserDB(str(tmp_path / "users.json"))
+    assert scene.db.create_user("pilot", "secret") is True
+
+    scene.username = "pilot"
+    scene.password = "secret"
+    scene._handle_button_click("delete_user")
+    scene._handle_button_click("delete_confirm_no")
+
+    assert scene.show_delete_confirm is False
+    assert scene.db.user_exists("pilot") is True
+
+    scene._handle_button_click("delete_user")
+    scene._handle_button_click("delete_confirm_yes")
+
+    assert scene.show_delete_confirm is False
+    assert scene.db.user_exists("pilot") is False
+    assert scene.message == "用户 pilot 已删除"

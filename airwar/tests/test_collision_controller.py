@@ -12,8 +12,17 @@ class FakeBullet:
     data: BulletData
     active: bool = True
 
+    def __post_init__(self):
+        self._hit_enemies = []
+
     def get_rect(self):
         return self.rect
+
+    def has_hit_enemy(self, enemy_id: int) -> bool:
+        return enemy_id in self._hit_enemies
+
+    def add_hit_enemy(self, enemy_id: int) -> None:
+        self._hit_enemies.append(enemy_id)
 
 
 class FakeEnemy:
@@ -138,6 +147,34 @@ def test_rust_collision_path_skips_python_spatial_grid(monkeypatch):
     assert enemy.active is False
 
 
+def test_rust_collision_data_uses_rect_dimensions_not_square_radius(monkeypatch):
+    controller = CollisionController()
+    controller._use_rust = True
+    bullet = FakeBullet(Rect(0, 0, 80, 4), BulletData(damage=20, owner="player"))
+    enemy = FakeEnemy(Rect(30, 30, 4, 4), health=10, score=30)
+    captured = {}
+
+    def fake_batch_collide(bullets, enemies, grid_cell_size):
+        captured["bullets"] = bullets
+        captured["enemies"] = enemies
+        return []
+
+    monkeypatch.setattr(collision_module, "batch_collide_bullets_vs_entities", fake_batch_collide)
+
+    score, kills = controller.check_player_bullets_vs_enemies(
+        [bullet],
+        [enemy],
+        score_multiplier=1,
+        explosive_level=0,
+        piercing_level=0,
+    )
+
+    assert score == 0
+    assert kills == 0
+    assert captured["bullets"] == [(0, 0.0, 0.0, 80.0, 4.0)]
+    assert captured["enemies"] == [(-1, 30.0, 30.0, 4.0, 4.0)]
+
+
 def test_piercing_bullet_stays_active_after_enemy_hit():
     controller = CollisionController()
     controller._use_rust = False
@@ -155,6 +192,33 @@ def test_piercing_bullet_stays_active_after_enemy_hit():
     assert score == 0
     assert kills == 0
     assert enemy.health == 5
+    assert bullet.active is True
+
+
+def test_piercing_bullet_does_not_damage_same_enemy_twice():
+    controller = CollisionController()
+    controller._use_rust = False
+    bullet = FakeBullet(Rect(0, 0, 10, 10), BulletData(damage=5, owner="player"))
+    enemy = FakeEnemy(Rect(0, 0, 20, 20), health=15, score=30)
+
+    controller.check_player_bullets_vs_enemies(
+        [bullet],
+        [enemy],
+        score_multiplier=1,
+        explosive_level=0,
+        piercing_level=1,
+    )
+    score, kills = controller.check_player_bullets_vs_enemies(
+        [bullet],
+        [enemy],
+        score_multiplier=1,
+        explosive_level=0,
+        piercing_level=1,
+    )
+
+    assert score == 0
+    assert kills == 0
+    assert enemy.health == 10
     assert bullet.active is True
 
 

@@ -6,6 +6,7 @@ import pygame
 from airwar.utils.fonts import get_cjk_font
 import logging
 
+from airwar.game.buffs.buff_registry import create_buff
 from airwar.config.design_tokens import Colors, SystemColors, SystemUI, get_design_tokens
 from airwar.ui.buff_display import get_buff_display_name
 from airwar.ui.chamfered_panel import draw_chamfered_panel
@@ -65,7 +66,6 @@ class BuffStatsAggregator:
 
     def _get_buff_color(self, name: str, reward_system) -> Tuple[int, int, int]:
         try:
-            from airwar.game.buffs.buff_registry import create_buff
             return create_buff(name).get_color()
         except (ValueError, AttributeError):
             return SystemColors.STATS_TEXT
@@ -167,7 +167,6 @@ class BuffStatsAggregator:
             logger.debug(f"Failed to calculate summary stats: {e}")
         except Exception as e:
             logger.warning(f"Unexpected error calculating summary stats: {e}", exc_info=True)
-            logger.warning(f"Unexpected error calculating summary stats: {e}")
 
         return summary
 

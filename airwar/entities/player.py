@@ -17,8 +17,8 @@ from .base import Vector2
 from .bullet import Bullet, BulletData
 
 # === Local: different package in airwar ===
-from ..input.input_handler import InputHandler
-from ..config import (
+from airwar.input.input_handler import InputHandler
+from airwar.config import (
     get_screen_width,
     get_screen_height,
     HITBOX_INDICATOR_PADDING,
@@ -26,8 +26,8 @@ from ..config import (
     HITBOX_INDICATOR_ALPHA_MIN,
     HITBOX_INDICATOR_ALPHA_MAX,
 )
-from ..utils.sprites import get_player_sprite
-from ..config.constants_access import get_game_constants
+from airwar.utils.sprites import get_player_sprite
+from airwar.config.constants_access import get_game_constants
 
 
 class Player(Entity):

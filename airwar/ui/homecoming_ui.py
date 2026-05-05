@@ -4,10 +4,20 @@ import math
 
 import pygame
 
-from airwar.game.homecoming import HomecomingPhase, HomecomingSequence
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.utils.fonts import get_cjk_font
 from airwar.utils.sprites import draw_glow_circle, draw_player_ship
+
+
+PHASE_FTL_ESCAPE = "ftl_escape"
+PHASE_BLACKOUT = "blackout"
+PHASE_STATION_REVEAL = "station_reveal"
+PHASE_APPROACH = "approach"
+PHASE_LANDING = "landing"
+PHASE_HANDOFF = "handoff"
+PHASE_BASE_LAUNCH = "base_launch"
+PHASE_RETURN_BLACKOUT = "return_blackout"
+PHASE_ORBITAL_STRIKE = "orbital_strike"
 
 
 class HomecomingUI:
@@ -78,26 +88,26 @@ class HomecomingUI:
         pygame.draw.rect(fill, color, fill.get_rect(), border_radius=4)
         surface.blit(fill, (bar_x + 2, bar_y + 2))
 
-    def render_sequence(self, surface: pygame.Surface, sequence: HomecomingSequence, player) -> None:
+    def render_sequence(self, surface: pygame.Surface, sequence, player) -> None:
         if not sequence.is_active() and not sequence.is_complete():
             return
 
-        phase = sequence.phase
+        phase = self._phase_key(sequence.phase)
         progress = sequence.get_phase_progress()
 
-        if phase == HomecomingPhase.FTL_ESCAPE:
+        if phase == PHASE_FTL_ESCAPE:
             self._render_ftl_escape(surface, sequence, player, progress)
             return
 
-        if phase == HomecomingPhase.BLACKOUT:
+        if phase == PHASE_BLACKOUT:
             self._render_blackout_bridge(surface, progress)
             return
 
-        if phase == HomecomingPhase.RETURN_BLACKOUT:
+        if phase == PHASE_RETURN_BLACKOUT:
             self._render_return_blackout(surface, progress)
             return
 
-        if phase == HomecomingPhase.ORBITAL_STRIKE:
+        if phase == PHASE_ORBITAL_STRIKE:
             self._render_orbital_strike(surface, sequence, progress)
             return
 
@@ -105,16 +115,16 @@ class HomecomingUI:
         self._render_asteroid_belt(surface, phase, progress)
         self._render_space_station(surface, phase, progress, sequence)
 
-        if phase == HomecomingPhase.BASE_LAUNCH:
+        if phase == PHASE_BASE_LAUNCH:
             self._render_launch_corridor(surface, sequence, progress)
             self._render_launch_player(surface, sequence, player, progress)
 
-        if phase in (HomecomingPhase.APPROACH, HomecomingPhase.LANDING, HomecomingPhase.HANDOFF):
-            if phase == HomecomingPhase.HANDOFF:
+        if phase in (PHASE_APPROACH, PHASE_LANDING, PHASE_HANDOFF):
+            if phase == PHASE_HANDOFF:
                 self._render_docking_corridor(surface, sequence, progress)
             self._render_landing_player(surface, sequence, player, progress)
 
-        if phase == HomecomingPhase.HANDOFF:
+        if phase == PHASE_HANDOFF:
             self._render_handoff(surface, progress)
 
         self._render_fade_overlay(surface, phase, progress)
@@ -122,7 +132,7 @@ class HomecomingUI:
     def _render_ftl_escape(
         self,
         surface: pygame.Surface,
-        sequence: HomecomingSequence,
+        sequence,
         player,
         progress: float,
     ) -> None:
@@ -270,7 +280,7 @@ class HomecomingUI:
     def _render_orbital_strike(
         self,
         surface: pygame.Surface,
-        sequence: HomecomingSequence,
+        sequence,
         progress: float,
     ) -> None:
         sw, sh = surface.get_size()
@@ -341,19 +351,23 @@ class HomecomingUI:
 
         surface.blit(targeting, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
 
-    def _render_deep_space(self, surface: pygame.Surface, phase: HomecomingPhase, progress: float) -> None:
+    @staticmethod
+    def _phase_key(phase) -> str:
+        return getattr(phase, "value", str(phase))
+
+    def _render_deep_space(self, surface: pygame.Surface, phase: str, progress: float) -> None:
         surface.fill((2, 4, 10))
         sw, sh = surface.get_size()
-        reveal = progress if phase == HomecomingPhase.STATION_REVEAL else 1.0
+        reveal = progress if phase == PHASE_STATION_REVEAL else 1.0
         for index in range(90):
             x = (index * 97) % sw
             y = (index * 53 + int(progress * 26)) % sh
             alpha = int(35 + 105 * ((index % 7) / 6) * reveal)
             surface.set_at((x, y), (alpha, alpha, min(255, alpha + 35)))
 
-    def _render_asteroid_belt(self, surface: pygame.Surface, phase: HomecomingPhase, progress: float) -> None:
-        reveal = progress if phase == HomecomingPhase.STATION_REVEAL else 1.0
-        if phase == HomecomingPhase.BLACKOUT or reveal <= 0:
+    def _render_asteroid_belt(self, surface: pygame.Surface, phase: str, progress: float) -> None:
+        reveal = progress if phase == PHASE_STATION_REVEAL else 1.0
+        if phase == PHASE_BLACKOUT or reveal <= 0:
             return
 
         sw, sh = surface.get_size()
@@ -364,7 +378,7 @@ class HomecomingUI:
             angle = math.radians(index * 17 + 12)
             radius_x = sw * (0.34 + (index % 5) * 0.025)
             radius_y = sh * (0.12 + (index % 7) * 0.012)
-            drift = progress * 16 if phase in (HomecomingPhase.APPROACH, HomecomingPhase.LANDING) else 0
+            drift = progress * 16 if phase in (PHASE_APPROACH, PHASE_LANDING) else 0
             x = int(center_x + math.cos(angle) * radius_x + drift)
             y = int(center_y + math.sin(angle) * radius_y + (index % 4 - 1.5) * 18)
             size = 5 + (index * 7) % 18
@@ -379,12 +393,12 @@ class HomecomingUI:
     def _render_space_station(
         self,
         surface: pygame.Surface,
-        phase: HomecomingPhase,
+        phase: str,
         progress: float,
-        sequence: HomecomingSequence,
+        sequence,
     ) -> None:
-        reveal = progress if phase == HomecomingPhase.STATION_REVEAL else 1.0
-        if phase == HomecomingPhase.BLACKOUT or reveal <= 0:
+        reveal = progress if phase == PHASE_STATION_REVEAL else 1.0
+        if phase == PHASE_BLACKOUT or reveal <= 0:
             return
 
         sw, sh = surface.get_size()
@@ -498,17 +512,18 @@ class HomecomingUI:
     def _render_landing_player(
         self,
         surface: pygame.Surface,
-        sequence: HomecomingSequence,
+        sequence,
         player,
         progress: float,
     ) -> None:
         x, y = sequence.get_player_center()
-        if sequence.phase == HomecomingPhase.APPROACH:
+        phase = self._phase_key(sequence.phase)
+        if phase == PHASE_APPROACH:
             scale = 0.58 + 0.38 * progress
             trail_alpha = int(140 * (1 - progress))
             if trail_alpha > 0:
                 pygame.draw.line(surface, (225, 245, 255, trail_alpha), (int(x), int(y + 70)), (int(x), int(y + 170)), 10)
-        elif sequence.phase == HomecomingPhase.LANDING:
+        elif phase == PHASE_LANDING:
             scale = 0.96 - 0.12 * progress
         else:
             scale = 0.84 * (1 - progress) + 0.16 * progress
@@ -523,7 +538,7 @@ class HomecomingUI:
                     max(2, int(8 * (1 - progress))),
                 )
 
-        if sequence.phase == HomecomingPhase.HANDOFF and progress >= 0.96:
+        if phase == PHASE_HANDOFF and progress >= 0.96:
             return
 
         width = max(22, int(player.rect.width * scale))
@@ -533,7 +548,7 @@ class HomecomingUI:
     def _render_launch_corridor(
         self,
         surface: pygame.Surface,
-        sequence: HomecomingSequence,
+        sequence,
         progress: float,
     ) -> None:
         entry_x, entry_y = sequence.get_base_entry_center()
@@ -568,7 +583,7 @@ class HomecomingUI:
     def _render_launch_player(
         self,
         surface: pygame.Surface,
-        sequence: HomecomingSequence,
+        sequence,
         player,
         progress: float,
     ) -> None:
@@ -591,7 +606,7 @@ class HomecomingUI:
     def _render_docking_corridor(
         self,
         surface: pygame.Surface,
-        sequence: HomecomingSequence,
+        sequence,
         progress: float,
     ) -> None:
         entry_x, entry_y = sequence.get_base_entry_center()
@@ -633,14 +648,14 @@ class HomecomingUI:
         text.set_alpha(alpha)
         surface.blit(text, text.get_rect(center=(sw // 2, y + panel_h // 2)))
 
-    def _render_fade_overlay(self, surface: pygame.Surface, phase: HomecomingPhase, progress: float) -> None:
-        if phase == HomecomingPhase.BLACKOUT:
+    def _render_fade_overlay(self, surface: pygame.Surface, phase: str, progress: float) -> None:
+        if phase == PHASE_BLACKOUT:
             alpha = 255
-        elif phase == HomecomingPhase.STATION_REVEAL:
+        elif phase == PHASE_STATION_REVEAL:
             alpha = int(255 * (1 - progress))
-        elif phase == HomecomingPhase.HANDOFF:
+        elif phase == PHASE_HANDOFF:
             alpha = int(210 * progress)
-        elif phase == HomecomingPhase.BASE_LAUNCH:
+        elif phase == PHASE_BASE_LAUNCH:
             alpha = int(230 * max(0.0, (progress - 0.76) / 0.24))
         else:
             alpha = 0

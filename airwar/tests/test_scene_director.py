@@ -6,7 +6,7 @@ import pygame
 from airwar.game.scene_director import SceneDirector
 from airwar.game.mother_ship.mother_ship_state import GameSaveData
 from airwar.game.mother_ship.persistence_manager import PersistenceManager
-from airwar.scenes.scene import PauseAction
+from airwar.scenes.scene import ExitConfirmAction, PauseAction
 from airwar.utils.database import DatabaseError
 
 
@@ -87,3 +87,42 @@ def test_clear_saved_game_deletes_matching_legacy_global_save(tmp_path):
     director._clear_saved_game()
 
     assert legacy.load_game() is None
+
+
+class FakeExitConfirmScene:
+    def __init__(self, result):
+        self.result = result
+        self.enter = MagicMock()
+        self.exit = MagicMock()
+
+    def is_running(self):
+        return False
+
+    def get_result(self):
+        return self.result
+
+
+def test_exit_confirm_return_to_menu_keeps_successful_save():
+    scene_manager = MagicMock()
+    exit_scene = FakeExitConfirmScene(ExitConfirmAction.RETURN_TO_MENU)
+    scene_manager.get_scene.return_value = exit_scene
+    director = SceneDirector(SimpleNamespace(), scene_manager)
+    director._clear_saved_game = MagicMock()
+
+    result = director._show_exit_confirm(saved=True)
+
+    assert result == "main_menu"
+    director._clear_saved_game.assert_not_called()
+
+
+def test_exit_confirm_return_to_menu_clears_unsaved_exit():
+    scene_manager = MagicMock()
+    exit_scene = FakeExitConfirmScene(ExitConfirmAction.RETURN_TO_MENU)
+    scene_manager.get_scene.return_value = exit_scene
+    director = SceneDirector(SimpleNamespace(), scene_manager)
+    director._clear_saved_game = MagicMock()
+
+    result = director._show_exit_confirm(saved=False)
+
+    assert result == "main_menu"
+    director._clear_saved_game.assert_called_once()

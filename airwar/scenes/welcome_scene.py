@@ -1,7 +1,9 @@
 """Welcome scene -- single-page beginner interface combining login, difficulty, and quick tips."""
+import logging
+import math
+
 import pygame
 from airwar.utils.fonts import get_cjk_font
-import math
 from .scene import Scene
 from airwar.utils.database import DatabaseError, UserDB
 from airwar.utils.responsive import ResponsiveHelper
@@ -12,6 +14,9 @@ from airwar.ui.scene_rendering_utils import fit_text_to_width, wrap_text
 from airwar.config.design_tokens import get_design_tokens, SceneColors
 from airwar.window.window import get_window
 from airwar.utils.mouse_interaction import MouseInteractiveMixin
+
+
+logger = logging.getLogger(__name__)
 
 
 class WelcomeScene(Scene, MouseInteractiveMixin):
@@ -117,6 +122,8 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             self.handle_mouse_motion(event.pos)
         elif event.type == pygame.MOUSEBUTTONDOWN and self._handle_user_dropdown_click(event.pos):
             return
+        elif event.type == pygame.MOUSEBUTTONDOWN and self.show_delete_confirm:
+            self._handle_modal_mouse_click(event.pos, {'delete_confirm_yes', 'delete_confirm_no'})
         elif event.type == pygame.MOUSEBUTTONDOWN and self.handle_mouse_click(event.pos):
             btn = self.get_hovered_button()
             if btn:
@@ -129,6 +136,13 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
                     self.focus = 'password'
         elif event.type == pygame.MOUSEBUTTONDOWN:
             self.show_user_dropdown = False
+
+    def _handle_modal_mouse_click(self, pos: tuple[int, int], allowed_buttons: set[str]) -> None:
+        for name in allowed_buttons:
+            rect = self.get_button_rect(name)
+            if rect and rect.collidepoint(pos):
+                self._handle_button_click(name)
+                return
 
     def _handle_keydown(self, event: pygame.event.Event) -> None:
         if event.key == pygame.K_ESCAPE:
@@ -218,60 +232,76 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             self.selected_difficulty = self.difficulty_options[self.difficulty_index]
 
     def _handle_button_click(self, button_name: str) -> None:
-        if button_name == 'login':
-            self._do_login()
-        elif button_name == 'register':
-            self._do_register()
-        elif button_name == 'skip_login':
-            self.username = 'Guest'
-            self.running = False
-        elif button_name == 'fullscreen':
-            get_window().toggle_fullscreen()
-        elif button_name == 'quit':
-            self.want_to_quit = True
-            self.running = False
-        elif button_name == 'username_field':
-            self.focus = 'username'
-            self.show_user_dropdown = bool(self.known_usernames)
-        elif button_name == 'username_dropdown':
-            self.focus = 'username'
-            self.show_user_dropdown = bool(self.known_usernames) and not self.show_user_dropdown
+        handlers = {
+            'login': self._do_login,
+            'register': self._do_register,
+            'skip_login': self._start_guest_session,
+            'fullscreen': self._toggle_fullscreen,
+            'quit': self._request_quit,
+            'username_field': self._focus_username_field,
+            'username_dropdown': self._toggle_user_dropdown,
+            'password_field': self._focus_password_field,
+            'diff_easy': lambda: self._select_difficulty('easy'),
+            'diff_medium': lambda: self._select_difficulty('medium'),
+            'diff_hard': lambda: self._select_difficulty('hard'),
+            'guest_confirm_yes': self._start_guest_session,
+            'guest_confirm_no': self._dismiss_guest_confirm,
+            'delete_user': self._request_delete_user,
+            'delete_confirm_yes': self._do_delete_user,
+            'delete_confirm_no': self._dismiss_delete_confirm,
+        }
+        handler = handlers.get(button_name)
+        if handler:
+            handler()
         elif button_name.startswith('known_user_'):
             index_text = button_name.rsplit('_', 1)[-1]
             if index_text.isdigit():
                 self._select_known_user(int(index_text))
-        elif button_name == 'password_field':
-            self.focus = 'password'
-            self.show_user_dropdown = False
-        elif button_name == 'diff_easy':
-            self.difficulty_index = 0
-            self.selected_difficulty = 'easy'
-            self.focus = 'difficulty'
-            self.show_user_dropdown = False
-        elif button_name == 'diff_medium':
-            self.difficulty_index = 1
-            self.selected_difficulty = 'medium'
-            self.focus = 'difficulty'
-            self.show_user_dropdown = False
-        elif button_name == 'diff_hard':
-            self.difficulty_index = 2
-            self.selected_difficulty = 'hard'
-            self.focus = 'difficulty'
-            self.show_user_dropdown = False
-        elif button_name == 'guest_confirm_yes':
-            self.username = 'Guest'
-            self.running = False
-        elif button_name == 'guest_confirm_no':
-            self.show_guest_confirm = False
-        elif button_name == 'delete_user':
-            if self.username:
-                self.delete_username = self.username
-                self.show_delete_confirm = True
-                self.delete_confirm_focus = 'no'
-            else:
-                self.message = "请先输入用户名"
-                self._is_error = True
-                self.message_timer = 120
+
+    def _start_guest_session(self) -> None:
+        self.username = 'Guest'
+        self.running = False
+
+    def _toggle_fullscreen(self) -> None:
+        get_window().toggle_fullscreen()
+
+    def _request_quit(self) -> None:
+        self.want_to_quit = True
+        self.running = False
+
+    def _focus_username_field(self) -> None:
+        self.focus = 'username'
+        self.show_user_dropdown = bool(self.known_usernames)
+
+    def _toggle_user_dropdown(self) -> None:
+        self.focus = 'username'
+        self.show_user_dropdown = bool(self.known_usernames) and not self.show_user_dropdown
+
+    def _focus_password_field(self) -> None:
+        self.focus = 'password'
+        self.show_user_dropdown = False
+
+    def _select_difficulty(self, difficulty: str) -> None:
+        self.difficulty_index = self.difficulty_options.index(difficulty)
+        self.selected_difficulty = difficulty
+        self.focus = 'difficulty'
+        self.show_user_dropdown = False
+
+    def _dismiss_guest_confirm(self) -> None:
+        self.show_guest_confirm = False
+
+    def _dismiss_delete_confirm(self) -> None:
+        self.show_delete_confirm = False
+
+    def _request_delete_user(self) -> None:
+        if self.username:
+            self.delete_username = self.username
+            self.show_delete_confirm = True
+            self.delete_confirm_focus = 'no'
+        else:
+            self.message = "请先输入用户名"
+            self._is_error = True
+            self.message_timer = 120
 
     def _do_delete_user(self) -> None:
         if not self.delete_username:
@@ -290,6 +320,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         try:
             deleted = self.db.delete_user(self.delete_username, self.password)
         except DatabaseError:
+            logger.warning("Failed to delete user account data", exc_info=True)
             self.message = "账户数据保存失败"
             self._is_error = True
             self.message_timer = 120
@@ -317,6 +348,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         try:
             verified = self.db.verify_user(self.username, self.password)
         except DatabaseError:
+            logger.warning("Failed to verify user credentials", exc_info=True)
             self.message = "账户数据读取失败"
             self._is_error = True
             self.message_timer = 120
@@ -325,6 +357,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             try:
                 self.db.record_login(self.username)
             except DatabaseError:
+                logger.warning("Failed to record user login", exc_info=True)
                 self.message = "账户数据保存失败"
                 self._is_error = True
                 self.message_timer = 120
@@ -356,6 +389,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         try:
             created = self.db.create_user(self.username, self.password)
         except DatabaseError:
+            logger.warning("Failed to create user account", exc_info=True)
             self.message = "账户数据保存失败"
             self._is_error = True
             self.message_timer = 120
@@ -377,6 +411,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             self.known_usernames = self.db.list_usernames()
             last_user = self.db.get_last_login_user()
         except DatabaseError:
+            logger.warning("Failed to load known user names", exc_info=True)
             self.known_usernames = []
             last_user = None
         if last_user:

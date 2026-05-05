@@ -7,7 +7,7 @@ use std::collections::HashMap;
 pub struct SpatialHashGrid {
     cell_size: i32,
     cells: HashMap<i64, Vec<i32>>,
-    entity_positions: HashMap<i32, (f32, f32, f32)>, // id -> (x, y, half_size)
+    entity_positions: HashMap<i32, AABB>,
 }
 
 impl SpatialHashGrid {
@@ -28,13 +28,16 @@ impl SpatialHashGrid {
         ((x as i64) << 32) | (y as i64 & 0xFFFFFFFF)
     }
 
-    pub fn insert(&mut self, id: i32, x: f32, y: f32, half_size: f32) {
-        let half_s = half_size;
+    pub fn insert(&mut self, id: i32, x: f32, y: f32, width: f32, height: f32) {
+        let bounds = AABB::from_xy_size(x, y, width, height);
+        self.insert_aabb(id, bounds);
+    }
 
-        let min_x = (x - half_s) as i32 / self.cell_size;
-        let max_x = (x + half_s) as i32 / self.cell_size;
-        let min_y = (y - half_s) as i32 / self.cell_size;
-        let max_y = (y + half_s) as i32 / self.cell_size;
+    fn insert_aabb(&mut self, id: i32, bounds: AABB) {
+        let min_x = bounds.min_x as i32 / self.cell_size;
+        let max_x = bounds.max_x as i32 / self.cell_size;
+        let min_y = bounds.min_y as i32 / self.cell_size;
+        let max_y = bounds.max_y as i32 / self.cell_size;
 
         for gx in min_x..=max_x {
             for gy in min_y..=max_y {
@@ -43,14 +46,25 @@ impl SpatialHashGrid {
             }
         }
 
-        self.entity_positions.insert(id, (x, y, half_size));
+        self.entity_positions.insert(id, bounds);
     }
 
-    pub fn get_potential_collisions(&self, x: f32, y: f32, half_size: f32) -> Vec<i32> {
-        let min_x = (x - half_size) as i32 / self.cell_size;
-        let max_x = (x + half_size) as i32 / self.cell_size;
-        let min_y = (y - half_size) as i32 / self.cell_size;
-        let max_y = (y + half_size) as i32 / self.cell_size;
+    pub fn get_potential_collisions(
+        &self,
+        x: f32,
+        y: f32,
+        width: f32,
+        height: f32,
+    ) -> Vec<i32> {
+        let bounds = AABB::from_xy_size(x, y, width, height);
+        self.get_potential_collisions_for_aabb(bounds)
+    }
+
+    fn get_potential_collisions_for_aabb(&self, bounds: AABB) -> Vec<i32> {
+        let min_x = bounds.min_x as i32 / self.cell_size;
+        let max_x = bounds.max_x as i32 / self.cell_size;
+        let min_y = bounds.min_y as i32 / self.cell_size;
+        let max_y = bounds.max_y as i32 / self.cell_size;
 
         let mut seen = std::collections::HashSet::new();
         let mut result = Vec::new();
@@ -71,7 +85,7 @@ impl SpatialHashGrid {
         result
     }
 
-    pub fn get_position(&self, id: i32) -> Option<(f32, f32, f32)> {
+    pub fn get_position(&self, id: i32) -> Option<AABB> {
         self.entity_positions.get(&id).copied()
     }
 }
@@ -86,6 +100,15 @@ pub struct AABB {
 }
 
 impl AABB {
+    pub fn from_xy_size(x: f32, y: f32, width: f32, height: f32) -> Self {
+        Self {
+            min_x: x,
+            min_y: y,
+            max_x: x + width,
+            max_y: y + height,
+        }
+    }
+
     pub fn from_xy_half_size(x: f32, y: f32, half_size: f32) -> Self {
         Self {
             min_x: x - half_size,
@@ -135,6 +158,8 @@ unsafe fn simd_collide_rects_sse(_a: &AABB, _b: &AABB) -> bool {
 
 pub fn check_collision(a: &AABB, b: &AABB) -> bool {
     // Use SIMD if available, otherwise scalar
+    // SAFETY: simd_collide_rects_sse only reads four f32 fields from valid
+    // AABB references and falls back to scalar on targets without SSE2.
     unsafe { simd_collide_rects_sse(a, b) }
 }
 
@@ -176,11 +201,12 @@ impl PersistentSpatialHash {
     /// Insert or update an entity's position
     pub fn update_entity(&mut self, id: i32, x: f32, y: f32, half_size: f32) {
         // Remove from old cells first if entity exists
-        if let Some((old_x, old_y, old_half)) = self.inner.entity_positions.get(&id).copied() {
-            Self::remove_from_cells(&mut self.inner, id, old_x, old_y, old_half);
+        if let Some(old_bounds) = self.inner.entity_positions.get(&id).copied() {
+            Self::remove_from_cells(&mut self.inner, id, old_bounds);
         }
         // Insert at new position
-        self.inner.insert(id, x, y, half_size);
+        let bounds = AABB::from_xy_half_size(x, y, half_size);
+        self.inner.insert_aabb(id, bounds);
     }
 
     /// Batch update multiple entities
@@ -192,8 +218,8 @@ impl PersistentSpatialHash {
 
     /// Remove an entity from the hash
     pub fn remove_entity(&mut self, id: i32) {
-        if let Some((x, y, half_size)) = self.inner.entity_positions.get(&id).copied() {
-            Self::remove_from_cells(&mut self.inner, id, x, y, half_size);
+        if let Some(bounds) = self.inner.entity_positions.get(&id).copied() {
+            Self::remove_from_cells(&mut self.inner, id, bounds);
             self.inner.entity_positions.remove(&id);
         }
     }
@@ -203,8 +229,8 @@ impl PersistentSpatialHash {
         let mut collision_pairs = Vec::new();
         let mut checked = std::collections::HashSet::new();
 
-        for (&id, &(x, y, half_size)) in &self.inner.entity_positions {
-            let potential = self.inner.get_potential_collisions(x, y, half_size);
+        for (&id, &bounds) in &self.inner.entity_positions {
+            let potential = self.inner.get_potential_collisions_for_aabb(bounds);
 
             for &other_id in &potential {
                 if other_id == id {
@@ -223,11 +249,8 @@ impl PersistentSpatialHash {
                 }
                 checked.insert(pair_key);
 
-                if let (Some((ox, oy, o_half)), Some((_, _, _))) = (
-                    self.inner.get_position(other_id),
-                    self.inner.get_position(id),
-                ) {
-                    if check_entity_collision(x, y, half_size, ox, oy, o_half) {
+                if let Some(other_bounds) = self.inner.get_position(other_id) {
+                    if check_collision(&bounds, &other_bounds) {
                         collision_pairs.push((id, other_id));
                     }
                 }
@@ -239,16 +262,17 @@ impl PersistentSpatialHash {
 
     /// Query entities that might collide with a given position
     pub fn query(&self, x: f32, y: f32, half_size: f32) -> Vec<i32> {
-        self.inner.get_potential_collisions(x, y, half_size)
+        let bounds = AABB::from_xy_half_size(x, y, half_size);
+        self.inner.get_potential_collisions_for_aabb(bounds)
     }
 }
 
 impl PersistentSpatialHash {
-    fn remove_from_cells(grid: &mut SpatialHashGrid, id: i32, x: f32, y: f32, half_size: f32) {
-        let min_x = (x - half_size) as i32 / grid.cell_size;
-        let max_x = (x + half_size) as i32 / grid.cell_size;
-        let min_y = (y - half_size) as i32 / grid.cell_size;
-        let max_y = (y + half_size) as i32 / grid.cell_size;
+    fn remove_from_cells(grid: &mut SpatialHashGrid, id: i32, bounds: AABB) {
+        let min_x = bounds.min_x as i32 / grid.cell_size;
+        let max_x = bounds.max_x as i32 / grid.cell_size;
+        let min_y = bounds.min_y as i32 / grid.cell_size;
+        let max_y = bounds.max_y as i32 / grid.cell_size;
 
         for gx in min_x..=max_x {
             for gy in min_y..=max_y {
@@ -264,12 +288,12 @@ impl PersistentSpatialHash {
 /// Batch collision check: player bullets vs enemies.
 /// Returns (bullet_id, enemy_id) pairs for every bullet-enemy collision.
 ///
-/// bullets: Vec<(i64 bullet_id, f32 cx, f32 cy, f32 half_size)>
-/// enemies: Vec<(i32 enemy_id, f32 cx, f32 cy, f32 half_size)>
+/// bullets: Vec<(i64 bullet_id, f32 x, f32 y, f32 width, f32 height)>
+/// enemies: Vec<(i32 enemy_id, f32 x, f32 y, f32 width, f32 height)>
 #[pyfunction]
 pub fn batch_collide_bullets_vs_entities(
-    bullets: Vec<(i64, f32, f32, f32)>,
-    enemies: Vec<(i32, f32, f32, f32)>,
+    bullets: Vec<(i64, f32, f32, f32, f32)>,
+    enemies: Vec<(i32, f32, f32, f32, f32)>,
     cell_size: i32,
 ) -> Vec<(i64, i32)> {
     if bullets.is_empty() || enemies.is_empty() {
@@ -277,16 +301,17 @@ pub fn batch_collide_bullets_vs_entities(
     }
 
     let mut grid = SpatialHashGrid::new(cell_size);
-    for (id, x, y, half_size) in &enemies {
-        grid.insert(*id, *x, *y, *half_size);
+    for (id, x, y, width, height) in &enemies {
+        grid.insert(*id, *x, *y, *width, *height);
     }
 
     let mut results = Vec::new();
-    for (bid, bx, by, bhalf) in &bullets {
-        let potential = grid.get_potential_collisions(*bx, *by, *bhalf);
+    for (bid, bx, by, bwidth, bheight) in &bullets {
+        let bullet_bounds = AABB::from_xy_size(*bx, *by, *bwidth, *bheight);
+        let potential = grid.get_potential_collisions_for_aabb(bullet_bounds);
         for &eid in &potential {
-            if let Some((ex, ey, ehalf)) = grid.get_position(eid) {
-                if check_entity_collision(*bx, *by, *bhalf, ex, ey, ehalf) {
+            if let Some(enemy_bounds) = grid.get_position(eid) {
+                if check_collision(&bullet_bounds, &enemy_bounds) {
                     results.push((*bid, eid));
                 }
             }
@@ -304,10 +329,10 @@ mod tests {
         let mut grid = SpatialHashGrid::new(100);
 
         // Two entities in same cell
-        grid.insert(1, 50.0, 50.0, 10.0);
-        grid.insert(2, 80.0, 80.0, 10.0);
+        grid.insert(1, 50.0, 50.0, 10.0, 10.0);
+        grid.insert(2, 80.0, 80.0, 10.0, 10.0);
 
-        let potential = grid.get_potential_collisions(50.0, 50.0, 10.0);
+        let potential = grid.get_potential_collisions(50.0, 50.0, 10.0, 10.0);
         assert!(potential.contains(&1));
         assert!(potential.contains(&2));
     }
@@ -317,10 +342,10 @@ mod tests {
         let mut grid = SpatialHashGrid::new(100);
 
         // Two entities in different cells (200 apart)
-        grid.insert(1, 50.0, 50.0, 10.0);
-        grid.insert(2, 250.0, 250.0, 10.0);
+        grid.insert(1, 50.0, 50.0, 10.0, 10.0);
+        grid.insert(2, 250.0, 250.0, 10.0, 10.0);
 
-        let potential = grid.get_potential_collisions(50.0, 50.0, 10.0);
+        let potential = grid.get_potential_collisions(50.0, 50.0, 10.0, 10.0);
         assert!(potential.contains(&1));
         // Entity 2 is not in any cell that overlaps with entity 1's cell
     }
@@ -345,9 +370,25 @@ mod tests {
 
     #[test]
     fn test_batch_collide_bullets_vs_entities() {
-        let bullets = vec![(1i64, 0.0, 0.0, 5.0), (2i64, 100.0, 100.0, 5.0)];
-        let enemies = vec![(1i32, 0.0, 0.0, 10.0), (2i32, 100.0, 100.0, 10.0)];
+        let bullets = vec![
+            (1i64, 0.0, 0.0, 10.0, 10.0),
+            (2i64, 100.0, 100.0, 10.0, 10.0),
+        ];
+        let enemies = vec![
+            (1i32, 0.0, 0.0, 20.0, 20.0),
+            (2i32, 100.0, 100.0, 20.0, 20.0),
+        ];
         let hits = batch_collide_bullets_vs_entities(bullets, enemies, 50);
         assert_eq!(hits.len(), 2);
+    }
+
+    #[test]
+    fn test_batch_collision_uses_rect_bounds_not_square_radius() {
+        let bullets = vec![(1i64, 0.0, 0.0, 80.0, 4.0)];
+        let enemies = vec![(1i32, 30.0, 30.0, 4.0, 4.0)];
+
+        let hits = batch_collide_bullets_vs_entities(bullets, enemies, 50);
+
+        assert!(hits.is_empty());
     }
 }

@@ -3,14 +3,14 @@ import logging
 import math
 from typing import List
 import pygame
+from airwar.config.design_tokens import get_design_tokens, SystemColors, SystemUI
 from airwar.utils.fonts import get_cjk_font
-from ...ui.buff_stats_panel import BuffStatsPanel, AttackModePanel
-from ...ui.chamfered_panel import draw_chamfered_panel
-from ...ui.scene_rendering_utils import render_cached_text
-from ...ui.segmented_bar import BossHealthBar
-from ...config.design_tokens import get_design_tokens, SystemColors, SystemUI
+from airwar.ui.buff_stats_panel import BuffStatsPanel, AttackModePanel
+from airwar.ui.chamfered_panel import draw_chamfered_panel
+from airwar.ui.scene_rendering_utils import render_cached_text
+from airwar.ui.segmented_bar import BossHealthBar
+from airwar.utils.sprites import draw_ripple
 from ..constants import GAME_CONSTANTS
-from ...utils.sprites import draw_ripple
 
 logger = logging.getLogger(__name__)
 

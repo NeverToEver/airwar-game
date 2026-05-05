@@ -10,6 +10,7 @@ from airwar.entities.bullet import Bullet
 from airwar.entities.enemy import Boss, BossData
 from airwar.game.managers.bullet_manager import BulletManager
 from airwar.game.managers.collision_controller import CollisionController
+from airwar.game.rendering.entity_renderer import EntityRenderer
 from airwar.scenes.game_scene import GameScene
 
 
@@ -353,8 +354,9 @@ def test_boss_enrage_trail_is_longer_and_half_resolution_blurred():
     assert len(boss._enrage_trail) == boss.ENRAGE_TRAIL_LENGTH
     assert boss.ENRAGE_TRAIL_LENGTH >= 32
 
-    ghost = boss._get_enrage_trail_ghost(0.5)
-    render_width, render_height = boss._enrage_trail_render_size()
+    renderer = EntityRenderer()
+    ghost = renderer._get_enrage_trail_ghost(boss, 0.5)
+    render_width, render_height = renderer._enrage_trail_render_size(boss)
 
     assert render_width == int(boss.rect.width * boss.ENRAGE_TRAIL_FINAL_SCALE)
     assert render_height == int(boss.rect.height * boss.ENRAGE_TRAIL_FINAL_SCALE)

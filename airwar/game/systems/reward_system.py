@@ -1,10 +1,14 @@
 """Reward generation and application — buffs unlocked at score milestones."""
+import logging
 import random
 from typing import List, Dict, Callable
 from ..buffs.buff_registry import create_buff
 from ..buffs.base_buff import Buff
 from ..constants import GAME_CONSTANTS
-from ...config import DIFFICULTY_SETTINGS
+from airwar.config import DIFFICULTY_SETTINGS
+
+
+logger = logging.getLogger(__name__)
 
 
 REWARD_POOL = {
@@ -312,6 +316,7 @@ class RewardSystem:
             try:
                 self.active_buffs[name] = create_buff(name)
             except ValueError:
+                logger.warning("Unknown buff in effective levels: %s", name, exc_info=True)
                 continue
         self.locked_buffs = set(locked_buffs or set())
         if talent_loadout is not None:
@@ -353,6 +358,7 @@ class RewardSystem:
         name = reward['name']
 
         if name not in self.buff_levels:
+            logger.warning("Unknown reward selected: %s", name)
             return f"获得: {name}"
 
         self.ensure_earned_levels()
@@ -362,6 +368,7 @@ class RewardSystem:
         try:
             buff = create_buff(name)
         except ValueError:
+            logger.warning("Unknown reward selected: %s", name, exc_info=True)
             return f"获得: {name}"
 
         if name not in self.unlocked_buffs:
@@ -405,6 +412,7 @@ class RewardSystem:
             buff = create_buff(name)
             return buff.get_color()
         except ValueError:
+            logger.debug("Using fallback color for unknown buff: %s", name, exc_info=True)
             return (255, 255, 255)
 
     def reset(self) -> None:

@@ -2,6 +2,7 @@
 from typing import Protocol, List
 import pygame
 from ..buffs.buff_registry import get_buff_color
+from ..rendering.entity_renderer import EntityRenderer
 
 
 class GameRendererProtocol(Protocol):
@@ -73,6 +74,7 @@ class UIManager:
         self._game_renderer = game_renderer
         self._game_controller = game_controller
         self._reward_system = reward_system
+        self._entity_renderer = EntityRenderer()
 
     def render_game(
         self,
@@ -86,9 +88,9 @@ class UIManager:
 
     def render_bullets(self, surface: pygame.Surface, player, enemy_bullets) -> None:
         for bullet in player.get_bullets():
-            bullet.render(surface)
+            self._entity_renderer.render_bullet(surface, bullet)
         for bullet in enemy_bullets:
-            bullet.render(surface)
+            self._entity_renderer.render_bullet(surface, bullet)
 
     def render_hud(self, surface: pygame.Surface, player) -> None:
         state = self._game_controller.state

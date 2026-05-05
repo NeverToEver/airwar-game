@@ -19,9 +19,9 @@ Usage:
 from typing import TYPE_CHECKING, Optional, Callable
 
 if TYPE_CHECKING:
-    from airwar.game.managers.game_controller import GameController
-    from airwar.game.systems.reward_system import RewardSystem
-    from airwar.ui.reward_selector import RewardSelector
+    from .game_controller import GameController
+    from ..systems.reward_system import RewardSystem
+    from ...ui.reward_selector import RewardSelector
 
 from .game_controller import GameplayState
 

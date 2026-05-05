@@ -40,25 +40,58 @@ class EventBus(IEventBus):
         """
     def __init__(self):
         self._subscribers: Dict[str, List[Callable]] = {}
+        self._failure_counts: Dict[tuple[str, int], int] = {}
+        self._max_callback_failures: int | None = 3
 
     def subscribe(self, event: str, callback: Callable) -> None:
         if event not in self._subscribers:
             self._subscribers[event] = []
         if callback not in self._subscribers[event]:
             self._subscribers[event].append(callback)
+        self._failure_counts.pop(self._failure_key(event, callback), None)
 
     def unsubscribe(self, event: str, callback: Callable) -> None:
         if event in self._subscribers:
             self._subscribers[event] = [
                 cb for cb in self._subscribers[event] if cb != callback
             ]
+        self._failure_counts.pop(self._failure_key(event, callback), None)
 
     def publish(self, event: str, **kwargs) -> None:
         if event in self._subscribers:
-            for callback in self._subscribers[event]:
+            for callback in self._subscribers[event][:]:
                 try:
                     callback(**kwargs)
                 except (KeyboardInterrupt, SystemExit):
                     raise
                 except Exception:
-                    logger.error(f"Event callback error [{event}]", exc_info=True)
+                    self._handle_callback_failure(event, callback)
+                else:
+                    self._failure_counts.pop(self._failure_key(event, callback), None)
+
+    @staticmethod
+    def _failure_key(event: str, callback: Callable) -> tuple[str, int]:
+        return (event, id(callback))
+
+    def _handle_callback_failure(self, event: str, callback: Callable) -> None:
+        key = self._failure_key(event, callback)
+        failures = self._failure_counts.get(key, 0) + 1
+        self._failure_counts[key] = failures
+
+        logger.error(
+            "Event callback error [%s] from %r (%d/%s)",
+            event,
+            callback,
+            failures,
+            self._max_callback_failures or "unlimited",
+            exc_info=True,
+        )
+
+        if self._max_callback_failures is not None and failures >= self._max_callback_failures:
+            self.unsubscribe(event, callback)
+            logger.error(
+                "Unsubscribed failing event callback [%s] from %r after %d failures",
+                event,
+                callback,
+                failures,
+            )

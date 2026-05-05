@@ -1,4 +1,5 @@
 """Game loop orchestration — coordinates all per-frame update logic."""
+import logging
 from typing import Protocol, Callable, List
 from ..constants import PlayerConstants
 from ...config import get_screen_width, get_screen_height
@@ -11,6 +12,9 @@ try:
 except ImportError:
     _HAS_BATCH_MOVE = False
     rust_batch_move = None
+
+
+logger = logging.getLogger(__name__)
 
 
 class GameControllerProtocol(Protocol):
@@ -157,7 +161,6 @@ class GameLoopManager:
             self._update_core(player)
             return True
         except Exception as e:
-            import logging
             logging.error(f"Game update error: {e}", exc_info=True)
             self._game_controller.show_notification("游戏错误 - 请查看日志")
             self._game_controller.state.running = False
@@ -236,6 +239,11 @@ class GameLoopManager:
                     try:
                         base, extra = enemy.get_rust_batch_params()
                     except (ValueError, TypeError):
+                        logger.warning(
+                            "Skipping enemy with invalid Rust batch movement params: %r",
+                            enemy,
+                            exc_info=True,
+                        )
                         continue
                     if base is not None:
                         base_list.append(base)
@@ -278,7 +286,6 @@ class GameLoopManager:
                 on_clear_bullets=lambda: self._bullet_manager.clear_enemy_bullets(),
             )
         except Exception as e:
-            import logging
             logging.critical(f"Collision detection error: {e}", exc_info=True)
             self._game_controller.state.running = False
 

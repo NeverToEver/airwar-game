@@ -8,6 +8,21 @@ from airwar.config.design_tokens import SystemUI
 _panel_surface_cache = {}
 _bg_cache = {}
 _border_cache = {}
+_glow_cache = {}
+
+
+def create_chamfered_points(width: int, height: int, chamfer_depth: int) -> list[tuple[int, int]]:
+    """Create chamfered polygon points for a rectangle."""
+    return [
+        (chamfer_depth, 0),
+        (width - chamfer_depth, 0),
+        (width, chamfer_depth),
+        (width, height - chamfer_depth),
+        (width - chamfer_depth, height),
+        (chamfer_depth, height),
+        (0, height - chamfer_depth),
+        (0, chamfer_depth),
+    ]
 
 
 def _get_chamfered_surface(width: int, height: int, chamfer_depth: int) -> pygame.Surface:
@@ -25,20 +40,7 @@ def _create_chamfered_surface(width: int, height: int, chamfer_depth: int) -> py
     surface.fill((0, 0, 0, 0))
 
     # Create chamfered polygon points (clockwise from top-left)
-    points = [
-        # Top-left corner cut
-        (chamfer_depth, 0),
-        (width - chamfer_depth, 0),
-        # Top-right corner cut
-        (width, chamfer_depth),
-        (width, height - chamfer_depth),
-        # Bottom-right corner cut
-        (width - chamfer_depth, height),
-        (chamfer_depth, height),
-        # Bottom-left corner cut
-        (0, height - chamfer_depth),
-        (0, chamfer_depth),
-    ]
+    points = create_chamfered_points(width, height, chamfer_depth)
 
     # Draw filled polygon
     pygame.draw.polygon(surface, (255, 255, 255, 255), points)
@@ -85,46 +87,19 @@ def draw_chamfered_panel(
     mask.fill()
     # Create outline for masking would be complex, so we use a different approach
 
-    # Draw glow layer first (if specified)
     if glow_color is not None:
-        glow_surf = _get_chamfered_surface(width + 4, height + 4, chamfer_depth + 2)
-        glow_size = glow_surf.get_size()
-        glow_blit_x = x - 2
-        glow_blit_y = y - 2
-
-        # Scale glow color alpha
-        scaled_glow = (*glow_color[:3], int(glow_color[3] * 0.3))
-        glow_filled = pygame.Surface(glow_size, pygame.SRCALPHA)
-        glow_filled.fill((0, 0, 0, 0))
-
-        # Create glow shape (from cached base)
-        glow_shape = _get_chamfered_surface(width + 4, height + 4, chamfer_depth + 2).copy()
-        glow_filled.blit(glow_shape, (0, 0))
-        pygame.draw.polygon(glow_filled, scaled_glow,
-                           [(chamfer_depth + 2, 0), (width + 2, 0),
-                            (width + 2, height + 2), (0, height + 2),
-                            (0, chamfer_depth + 2), (width + 2, chamfer_depth + 2)][:4], 0)
-
-        glow_filled.set_colorkey((0, 0, 0, 0))
-        glow_mask = _get_chamfered_surface(width + 4, height + 4, chamfer_depth + 2).copy()
-        glow_mask.set_colorkey((0, 0, 0, 0))
-        pygame.draw.polygon(glow_mask, (255, 255, 255, 255),
-                           [(chamfer_depth + 2, 0), (width + 2, 0),
-                            (width + 2, height + 2), (0, height + 2),
-                            (0, chamfer_depth + 2)])
-
-        surface.blit(glow_filled, (glow_blit_x, glow_blit_y))
-
-    # Draw border (if specified)
-    if border_color is not None:
-        border_surf = _get_chamfered_surface(width, height, chamfer_depth).copy()
-        border_surf.set_colorkey((0, 0, 0, 0))
-        pygame.draw.polygon(border_surf, border_color if len(border_color) == 4 else (*border_color, 255),
-                          [(chamfer_depth, 0), (width - chamfer_depth, 0),
-                           (width, chamfer_depth), (width, height - chamfer_depth),
-                           (width - chamfer_depth, height), (chamfer_depth, height),
-                           (0, height - chamfer_depth), (0, chamfer_depth)],
-                          SystemUI.CHAMFER_BORDER_WIDTH)
+        glow_key = (width, height, chamfer_depth, glow_color)
+        if glow_key not in _glow_cache:
+            glow_result = pygame.Surface((width + 4, height + 4), pygame.SRCALPHA)
+            glow_result.fill((0, 0, 0, 0))
+            glow_points = create_chamfered_points(width + 4, height + 4, chamfer_depth + 2)
+            pygame.draw.polygon(
+                glow_result,
+                (*glow_color[:3], int(glow_color[3] * 0.3) if len(glow_color) == 4 else 76),
+                glow_points,
+            )
+            _glow_cache[glow_key] = glow_result
+        surface.blit(_glow_cache[glow_key], (x - 2, y - 2))
 
     # Draw background (from cache)
     bg_key = (width, height, chamfer_depth, bg_color)
@@ -134,10 +109,7 @@ def draw_chamfered_panel(
         chamfer_shape = _get_chamfered_surface(width, height, chamfer_depth).copy()
         chamfer_shape.set_colorkey((0, 0, 0, 0))
         pygame.draw.polygon(chamfer_shape, bg_color if len(bg_color) == 3 else bg_color[:3],
-                           [(chamfer_depth, 0), (width - chamfer_depth, 0),
-                            (width, chamfer_depth), (width, height - chamfer_depth),
-                            (width - chamfer_depth, height), (chamfer_depth, height),
-                            (0, height - chamfer_depth), (0, chamfer_depth)])
+                           create_chamfered_points(width, height, chamfer_depth))
         bg_result.blit(chamfer_shape, (0, 0))
         _bg_cache[bg_key] = bg_result
 
@@ -149,16 +121,7 @@ def draw_chamfered_panel(
         if border_key not in _border_cache:
             border_result = pygame.Surface((width, height), pygame.SRCALPHA)
             border_result.fill((0, 0, 0, 0))
-            points = [
-                (chamfer_depth, 0),
-                (width - chamfer_depth, 0),
-                (width, chamfer_depth),
-                (width, height - chamfer_depth),
-                (width - chamfer_depth, height),
-                (chamfer_depth, height),
-                (0, height - chamfer_depth),
-                (0, chamfer_depth),
-            ]
+            points = create_chamfered_points(width, height, chamfer_depth)
             pygame.draw.lines(border_result,
                              border_color if len(border_color) == 4 else (*border_color, 255),
                              False, points, SystemUI.CHAMFER_BORDER_WIDTH)
