@@ -154,6 +154,22 @@ def test_docked_mothership_requires_exit_hold_before_undocking():
     assert started == [True]
 
 
+def test_event_bus_unsubscribes_repeatedly_failing_callback():
+    event_bus = EventBus()
+    calls = []
+
+    def broken_callback(**_):
+        calls.append("broken")
+        raise RuntimeError("callback failed")
+
+    event_bus.subscribe("BROKEN_EVENT", broken_callback)
+
+    for _ in range(4):
+        event_bus.publish("BROKEN_EVENT")
+
+    assert calls == ["broken", "broken", "broken"]
+
+
 def test_mothership_phantom_fades_in_instead_of_full_opacity_immediately():
     mother_ship = MotherShip(1920, 1080)
     mother_ship.show_phantom()

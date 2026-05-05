@@ -5,13 +5,18 @@ import math
 
 import pygame
 
-from airwar.game.systems.talent_balance_manager import BUFF_LABELS, TalentBalanceManager
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.ui.scene_rendering_utils import fit_text_to_width
 from airwar.utils.fonts import get_cjk_font
 
 
 BASE_MODULES = ("hangar", "loadout", "supply", "mission")
+BUFF_LABELS = {
+    "Spread Shot": "散射弹幕",
+    "Laser": "激光模式",
+    "Phase Dash": "相位突进",
+    "Mothership Recall": "母舰冷却",
+}
 MODULE_LABELS = {
     "hangar": "战机库",
     "loadout": "武器挂载",
@@ -98,7 +103,7 @@ class BaseTalentConsole:
     def render(
         self,
         surface: pygame.Surface,
-        manager: TalentBalanceManager,
+        manager,
         reward_system,
         player=None,
         game_controller=None,
@@ -217,7 +222,7 @@ class BaseTalentConsole:
         deck.blit(shadow, (0, 0), special_flags=pygame.BLEND_RGBA_SUB)
         surface.blit(deck, (0, 0))
 
-    def _draw_header(self, surface: pygame.Surface, x: int, y: int, panel_w: int, manager: TalentBalanceManager) -> None:
+    def _draw_header(self, surface: pygame.Surface, x: int, y: int, panel_w: int, manager) -> None:
         title = self._font_title.render("基地指挥中心", True, (226, 246, 244))
         subtitle = self._font_small.render(
             "返航后完成机库检查、武器挂载、维修补给和下一轮任务规划。",
@@ -250,7 +255,7 @@ class BaseTalentConsole:
         self,
         surface: pygame.Surface,
         rect: pygame.Rect,
-        manager: TalentBalanceManager,
+        manager,
         reward_system,
         player,
         game_controller,
@@ -268,7 +273,7 @@ class BaseTalentConsole:
         else:
             self._draw_hangar_module(surface, inner, status, reward_system)
 
-    def _draw_loadout_module(self, surface: pygame.Surface, rect: pygame.Rect, manager: TalentBalanceManager) -> None:
+    def _draw_loadout_module(self, surface: pygame.Surface, rect: pygame.Rect, manager) -> None:
         compact = rect.h < 250
         intro_h = 46 if compact else 54
         intro = pygame.Rect(rect.x, rect.y, rect.w, intro_h)
@@ -300,7 +305,7 @@ class BaseTalentConsole:
         x: int,
         y: int,
         width: int,
-        manager: TalentBalanceManager,
+        manager,
         route_h: int = 124,
         route_gap: int = 14,
     ) -> None:

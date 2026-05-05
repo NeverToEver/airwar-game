@@ -211,8 +211,6 @@ class BulletManager:
                     bullet.rect.width,
                     bullet.rect.height,
                 ))
-                if len(bullet._trail) > 8:
-                    bullet._trail.pop(0)
 
             # Update active state
             if not is_active or self._is_bullet_outside_screen(bullet):

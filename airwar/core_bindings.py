@@ -1,8 +1,8 @@
-"""Rust 核心模块的 Python 绑定"""
+"""Python bindings for the Rust core module."""
 import logging
 import os
 
-# 静默模式：检查 RUST_AVAILABLE 环境变量
+# Silent mode: check the RUST_SILENT environment variable.
 _RUST_SILENT = os.environ.get("RUST_SILENT", "0") == "1"
 
 try:
@@ -41,7 +41,7 @@ try:
     RUST_AVAILABLE = True
 except ImportError as e:
     if not _RUST_SILENT:
-        logging.warning(f"Rust核心模块不可用，将使用纯Python实现: {e}")
+        logging.warning(f"Rust core module unavailable; using pure Python fallback: {e}")
     RUST_AVAILABLE = False
     # Fallback imports handled by caller
 

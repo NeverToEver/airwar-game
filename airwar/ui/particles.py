@@ -3,7 +3,15 @@ import pygame
 import math
 import random
 from airwar.config.design_tokens import get_design_tokens
-from airwar.game.constants import GAME_CONSTANTS
+
+
+PARTICLE_SIZE_THRESHOLD_LARGE = 18
+PARTICLE_SIZE_THRESHOLD_MEDIUM = 14
+PARTICLE_SIZE_THRESHOLD_SMALL = 10
+PARTICLE_BASE_SIZE_LARGE = 20
+PARTICLE_BASE_SIZE_MEDIUM = 16
+PARTICLE_BASE_SIZE_SMALL = 12
+PARTICLE_BASE_SIZE_TINY = 8
 
 
 class ParticleSystem:
@@ -74,14 +82,13 @@ class ParticleSystem:
             size = int(p['size'] * (0.7 + 0.3 * pulse))
             size = max(4, min(size, 24))
 
-            const = GAME_CONSTANTS.ANIMATION
-            base_size = const.PARTICLE_BASE_SIZE_TINY
-            if size > const.PARTICLE_SIZE_THRESHOLD_LARGE:
-                base_size = const.PARTICLE_BASE_SIZE_LARGE
-            elif size > const.PARTICLE_SIZE_THRESHOLD_MEDIUM:
-                base_size = const.PARTICLE_BASE_SIZE_MEDIUM
-            elif size > const.PARTICLE_SIZE_THRESHOLD_SMALL:
-                base_size = const.PARTICLE_BASE_SIZE_SMALL
+            base_size = PARTICLE_BASE_SIZE_TINY
+            if size > PARTICLE_SIZE_THRESHOLD_LARGE:
+                base_size = PARTICLE_BASE_SIZE_LARGE
+            elif size > PARTICLE_SIZE_THRESHOLD_MEDIUM:
+                base_size = PARTICLE_BASE_SIZE_MEDIUM
+            elif size > PARTICLE_SIZE_THRESHOLD_SMALL:
+                base_size = PARTICLE_BASE_SIZE_SMALL
 
             cache_key = (base_size, p.get('color_key', 'particle'))
             if cache_key in self._texture_cache:

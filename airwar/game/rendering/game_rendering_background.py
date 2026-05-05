@@ -152,7 +152,6 @@ class StarLayer:
         self._init_stars(screen_width, screen_height, count)
 
     def _init_stars(self, screen_width: int, screen_height: int, count: int) -> None:
-        import random
         self._stars = []
         for _ in range(count):
             self._stars.append({
@@ -233,8 +232,6 @@ class DustLayer:
         self._init_dust(screen_width, screen_height, count)
 
     def _init_dust(self, screen_width: int, screen_height: int, count: int) -> None:
-        import random
-
         self._dust = []
         for _ in range(count):
             speed = random.uniform(self._speed_range[0], self._speed_range[1])
@@ -290,5 +287,4 @@ class DustLayer:
                 self._glow_cache[cache_key] = dust_surf
             surface.blit(self._glow_cache[cache_key], (x - size * 2, y - size * 2),
                         special_flags=pygame.BLEND_RGBA_ADD)
-
 

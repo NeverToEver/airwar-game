@@ -1,8 +1,11 @@
 """Reward selector — buff selection interface at milestones."""
-import pygame
-from airwar.utils.fonts import get_cjk_font
 import math
+import random
 from typing import List, Callable, Optional
+
+import pygame
+
+from airwar.utils.fonts import get_cjk_font
 from airwar.utils.mouse_interaction import MouseSelectableMixin
 from airwar.config.design_tokens import SceneColors, SystemUI, get_design_tokens
 from airwar.ui.chamfered_panel import draw_chamfered_panel
@@ -37,8 +40,6 @@ class RewardSelector(MouseSelectableMixin):
         self._init_visual_elements()
 
     def _init_visual_elements(self) -> None:
-        import random
-
         self._tokens = get_design_tokens()
         tokens = self._tokens
         colors = tokens.colors
@@ -198,7 +199,6 @@ class RewardSelector(MouseSelectableMixin):
             self.glow_offset = math.sin(self.animation_time * self._tokens.animation.GLOW_SPEED) * 8
 
     def _update_stars(self) -> None:
-        import random
         for star in self.stars:
             star['y'] += star.get('speed', 0.005) * 0.005
             if star['y'] > 1:
@@ -206,7 +206,6 @@ class RewardSelector(MouseSelectableMixin):
                 star['x'] = random.random()
 
     def _update_particles(self) -> None:
-        import random
         for p in self.particles[:]:
             p['y'] -= p['speed'] * 0.002
             p['x'] += p.get('drift_x', 0) if 'drift_x' in p else 0

@@ -1,12 +1,12 @@
 """Enemy and boss spawning controller with wave management."""
 import random
 from typing import List, Optional, TYPE_CHECKING
-from ...entities import Enemy, Boss, EnemySpawner, BossData, Bullet
-from ...entities.interfaces import IBulletSpawner
-from ...config import get_screen_width, BASE_ENEMY_PARAMS
+from airwar.entities import Enemy, Boss, EnemySpawner, BossData, Bullet
+from airwar.entities.interfaces import IBulletSpawner
+from airwar.config import get_screen_width, BASE_ENEMY_PARAMS
 
 if TYPE_CHECKING:
-    from ..systems.difficulty_manager import DifficultyManager
+    from airwar.game.systems.difficulty_manager import DifficultyManager
 
 from ..spawners.enemy_bullet_spawner import EnemyBulletSpawner
 

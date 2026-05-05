@@ -4,12 +4,13 @@ Provides the Bullet class for all projectiles in the game, including
 player bullets, enemy bullets, lasers, and explosive missiles.
 """
 
-import pygame
+import math
 from collections import deque
 from typing import List
+
+import pygame
 from .base import Entity, BulletData, Vector2
-from ..config import get_screen_width, get_screen_height
-from ..utils.sprites import draw_bullet, draw_explosive_missile
+from airwar.config import get_screen_width, get_screen_height
 
 
 class Bullet(Entity):
@@ -44,7 +45,6 @@ class Bullet(Entity):
         self._hit_enemies: List[int] = []
 
         if data.angle_offset != 0:
-            import math
             angle_rad = math.radians(data.angle_offset)
             self.velocity = Vector2(
                 data.speed * math.sin(angle_rad),
@@ -80,33 +80,8 @@ class Bullet(Entity):
         self._hit_enemies.append(enemy_id)
 
     def render(self, surface: pygame.Surface) -> None:
-        if not self._sprite:
-            if self.data.is_explosive:
-                draw_explosive_missile(surface, self.rect.x, self.rect.y, self.rect.width, self.rect.height)
-            else:
-                draw_bullet(surface, self.rect.x, self.rect.y, self.rect.width, self.rect.height, self.data.bullet_type, self.data.owner)
-        else:
+        if self._sprite:
             surface.blit(self._sprite, self.get_rect())
-
-        if (self.data.bullet_type == "laser" or self.data.is_laser) and self._trail:
-            # Player laser: green, Enemy laser: red
-            trail_color = (30, 255, 100) if self.data.owner == "player" else (255, 30, 30)
-            trail_len = len(self._trail)
-            for i, (tx, ty, tw, th) in enumerate(self._trail):
-                alpha = int(120 * (i / trail_len))
-                cache_key = (tw, th, alpha, self.data.owner)
-                if cache_key not in Bullet._trail_surface_cache:
-                    if len(Bullet._trail_surface_cache) >= Bullet._TRAIL_CACHE_MAX_SIZE:
-                        oldest = Bullet._trail_cache_order.popleft()
-                        Bullet._trail_surface_cache.pop(oldest, None)
-                    trail_surface = pygame.Surface((tw, th), pygame.SRCALPHA)
-                    trail_color_with_alpha = trail_color + (alpha,)
-                    trail_surface.fill(trail_color_with_alpha)
-                    Bullet._trail_surface_cache[cache_key] = trail_surface
-                    Bullet._trail_cache_order.append(cache_key)
-                else:
-                    trail_surface = Bullet._trail_surface_cache[cache_key]
-                surface.blit(trail_surface, (tx, ty))
 
     def set_sprite(self, sprite: pygame.Surface) -> None:
         self._sprite = sprite

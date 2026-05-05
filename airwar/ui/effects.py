@@ -1,20 +1,24 @@
 """UI effects — visual feedback effects for the interface."""
 import pygame
 from airwar.config.design_tokens import get_design_tokens, SystemColors, SystemUI
+from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.utils.fonts import get_cjk_font
 from airwar.utils.responsive import ResponsiveHelper
-from airwar.ui.scene_rendering_utils import adaptive_box_width, fit_text_to_width
+from airwar.ui.scene_rendering_utils import draw_centered_option_box
 
 
 class EffectsRenderer:
     """特效渲染器 — 负责发光文字等视觉效果"""
 
+    OPTION_GLOW_LAYERS = 4
+    OPTION_GLOW_ALPHA_DIVISOR = 50
+    OPTION_BORDER_RADIUS = 12
+    TEXT_GLOW_LAYERS = 3
+    TEXT_GLOW_ALPHA_DIVISOR = 60
+
     def __init__(self):
         self._glow_cache = {}
         self._tokens = get_design_tokens()
-        self._chamfer_bg_cache = {}
-        self._chamfer_border_cache = {}
-        self._chamfer_glow_cache = {}
 
     def render_option_box(
         self,
@@ -33,81 +37,30 @@ class EffectsRenderer:
         if option_height is None:
             option_height = self._tokens.spacing.BOX_HEIGHT
 
-        width = surface.get_width()
-        center_x = width // 2
-
         option_font = get_cjk_font(self._tokens.typography.OPTION_SIZE)
-        arrow = ">> " if is_selected else "   "
-        display_text = f"{arrow}{text}"
-        box_width = adaptive_box_width(
-            option_font,
-            display_text,
-            ResponsiveHelper.scale(option_width, scale),
-            width,
-        )
+        box_width = ResponsiveHelper.scale(option_width, scale)
         box_height = ResponsiveHelper.scale(option_height, scale)
-        box_rect = pygame.Rect(center_x - box_width // 2, y - box_height // 2, box_width, box_height)
 
         colors_config = self._tokens.colors
-        if is_selected:
-            glow_color = colors.get('selected_glow', colors_config.HUD_AMBER_BRIGHT)
-            for i in range(4, 0, -1):
-                glow_rect = box_rect.inflate(i * 4, i * 4)
-                glow_surf = pygame.Surface((glow_rect.width, glow_rect.height), pygame.SRCALPHA)
-                pygame.draw.rect(glow_surf, (*glow_color, 50 // i), glow_surf.get_rect())
-                surface.blit(glow_surf, glow_rect)
-
-            pygame.draw.rect(surface, colors_config.BUTTON_SELECTED_BG, box_rect, border_radius=12)
-            pygame.draw.rect(surface, colors.get('selected', colors_config.HUD_AMBER), box_rect, 3, border_radius=12)
-        else:
-            pygame.draw.rect(surface, colors_config.BUTTON_UNSELECTED_BG, box_rect, border_radius=12)
-            pygame.draw.rect(surface, colors.get('unselected', colors_config.TEXT_MUTED), box_rect, 2, border_radius=12)
-
-        option_text = fit_text_to_width(
+        draw_centered_option_box(
+            surface,
+            text,
             option_font,
-            display_text,
-            colors.get('selected', colors_config.HUD_AMBER) if is_selected else colors.get('unselected', colors_config.TEXT_MUTED),
-            box_rect.width - 48,
+            y,
+            is_selected,
+            box_width,
+            box_height,
+            colors_config.BUTTON_SELECTED_BG,
+            colors.get('selected', colors_config.HUD_AMBER),
+            colors_config.BUTTON_UNSELECTED_BG,
+            colors.get('unselected', colors_config.TEXT_MUTED),
+            colors.get('selected_glow', colors_config.HUD_AMBER_BRIGHT),
+            colors.get('selected', colors_config.HUD_AMBER),
+            colors.get('unselected', colors_config.TEXT_MUTED),
+            glow_layers=self.OPTION_GLOW_LAYERS,
+            glow_alpha_divisor=self.OPTION_GLOW_ALPHA_DIVISOR,
+            border_radius=self.OPTION_BORDER_RADIUS,
         )
-        text_rect = option_text.get_rect(center=(center_x, y))
-        surface.blit(option_text, text_rect)
-
-    @staticmethod
-    def _create_chamfered_points(width, height, chamfer):
-        """Create chamfered polygon points."""
-        return [
-            (chamfer, 0),
-            (width - chamfer, 0),
-            (width, chamfer),
-            (width, height - chamfer),
-            (width - chamfer, height),
-            (chamfer, height),
-            (0, height - chamfer),
-            (0, chamfer),
-        ]
-
-    @staticmethod
-    def _render_chamfered_glow_surface(width, height, chamfer, border_width, glow_color):
-        """Pre-render chamfered glow at full intensity."""
-        glow_surf = pygame.Surface((width + 8, height + 8), pygame.SRCALPHA)
-        glow_surf.fill((0, 0, 0, 0))
-        gw, gh = width + 8, height + 8
-        gch = chamfer + 4
-        glow_points = [
-            (gch, 0), (gw - gch, 0), (gw, gch), (gw, gh - gch),
-            (gw - gch, gh), (gch, gh), (0, gh - gch), (0, gch),
-        ]
-        for layer in range(3, 0, -1):
-            alpha = int(30 / layer)
-            layer_color = (*glow_color[:3], alpha)
-            pygame.draw.lines(glow_surf, layer_color, False, glow_points, border_width + layer)
-            inner_pts = [
-                (gch - 2, 2), (gw - gch + 2, 2), (gw - 2, gch - 2),
-                (gw - 2, gh - gch + 2), (gw - gch + 2, gh - 2),
-                (gch - 2, gh - 2), (2, gh - gch + 2), (2, gch - 2),
-            ]
-            pygame.draw.polygon(glow_surf, (*glow_color[:3], alpha // 2), inner_pts)
-        return glow_surf
 
     def render_chamfered_rect(
         self,
@@ -141,46 +94,24 @@ class EffectsRenderer:
         if glow_color is None:
             glow_color = SystemColors.AMBER_GLOW
 
-        chamfer = SystemUI.CHAMFER_DEPTH
-        border_width = SystemUI.CHAMFER_BORDER_WIDTH
-        cache_key = (width, height, chamfer)
+        effective_glow = self._scaled_alpha(glow_color, glow_intensity) if glow_intensity > 0 else None
+        draw_chamfered_panel(
+            surface,
+            x,
+            y,
+            width,
+            height,
+            bg_color,
+            border_color,
+            effective_glow,
+            SystemUI.CHAMFER_DEPTH,
+        )
 
-        # 绘制发光效果（从缓存读取）
-        if glow_intensity > 0:
-            glow_key = (*cache_key, glow_color)
-            if glow_key not in self._chamfer_glow_cache:
-                self._chamfer_glow_cache[glow_key] = self._render_chamfered_glow_surface(
-                    width, height, chamfer, border_width, glow_color
-                )
-            cached_glow = self._chamfer_glow_cache[glow_key]
-            if glow_intensity >= 1.0:
-                surface.blit(cached_glow, (x - 4, y - 4))
-            else:
-                temp = cached_glow.copy()
-                temp.set_alpha(int(255 * glow_intensity))
-                surface.blit(temp, (x - 4, y - 4))
-
-        # 绘制背景（从缓存读取）
-        bg_key = (*cache_key, bg_color)
-        if bg_key not in self._chamfer_bg_cache:
-            bg_surf = pygame.Surface((width, height), pygame.SRCALPHA)
-            bg_surf.fill((0, 0, 0, 0))
-            points = self._create_chamfered_points(width, height, chamfer)
-            pygame.draw.polygon(bg_surf, bg_color if len(bg_color) == 3 else bg_color[:3], points)
-            self._chamfer_bg_cache[bg_key] = bg_surf
-        surface.blit(self._chamfer_bg_cache[bg_key], (x, y))
-
-        # 绘制边框（从缓存读取）
-        if border_color is not None:
-            border_key = (*cache_key, border_color)
-            if border_key not in self._chamfer_border_cache:
-                border_surf = pygame.Surface((width, height), pygame.SRCALPHA)
-                border_surf.fill((0, 0, 0, 0))
-                points = self._create_chamfered_points(width, height, chamfer)
-                border_col = border_color if len(border_color) == 4 else (*border_color, 255)
-                pygame.draw.lines(border_surf, border_col, False, points, border_width)
-                self._chamfer_border_cache[border_key] = border_surf
-            surface.blit(self._chamfer_border_cache[border_key], (x, y))
+    @staticmethod
+    def _scaled_alpha(color: tuple, intensity: float) -> tuple:
+        if len(color) == 4:
+            return (*color[:3], int(color[3] * max(0.0, min(1.0, intensity))))
+        return (*color, int(255 * max(0.0, min(1.0, intensity))))
 
     def render_glow_text(
         self,
@@ -209,8 +140,8 @@ class EffectsRenderer:
         if glow:
             # 发光层
             glow_color = SystemColors.AMBER_PRIMARY
-            for i in range(3, 0, -1):
-                alpha = int(60 / i)
+            for i in range(self.TEXT_GLOW_LAYERS, 0, -1):
+                alpha = int(self.TEXT_GLOW_ALPHA_DIVISOR / i)
                 glow_surf = font.render(text, True, glow_color)
                 glow_surf.set_alpha(alpha)
                 glow_rect = glow_surf.get_rect(center=(x, y + i * 0.5))

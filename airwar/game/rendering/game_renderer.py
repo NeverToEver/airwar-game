@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import List
 from .hud_renderer import HUDRenderer
 from .integrated_hud import IntegratedHUD
+from .entity_renderer import EntityRenderer
 from ..managers.game_controller import GameState, GameplayState
 from .game_rendering_background import SpaceBackground
 from ..death_animation import DeathAnimation
@@ -32,6 +33,7 @@ class GameRenderer:
     def __init__(self, hud_renderer: HUDRenderer = None, use_integrated_hud: bool = True):
         self.hud_renderer = hud_renderer or HUDRenderer()
         self.integrated_hud = IntegratedHUD() if use_integrated_hud else None
+        self.entity_renderer = EntityRenderer()
         self.background_renderer: SpaceBackground = None
         self._death_animation = None
         self._screen_diagonal = 0
@@ -71,10 +73,10 @@ class GameRenderer:
         self._render_player(surface, state, entities.player)
 
         for enemy in entities.enemies:
-            enemy.render(surface)
+            self.entity_renderer.render_enemy(surface, enemy)
 
         if entities.boss:
-            entities.boss.render(surface)
+            self.entity_renderer.render_boss(surface, entities.boss)
 
         scaled_width = int(surface.get_width() * zoom_scale)
         scaled_height = int(surface.get_height() * zoom_scale)
@@ -102,10 +104,10 @@ class GameRenderer:
                 entities.player.render(surface)
 
             for enemy in entities.enemies:
-                enemy.render(surface)
+                self.entity_renderer.render_enemy(surface, enemy)
 
             if entities.boss:
-                entities.boss.render(surface)
+                self.entity_renderer.render_boss(surface, entities.boss)
 
             self.hud_renderer.render_ripples(surface, state.ripple_effects)
 
@@ -114,10 +116,10 @@ class GameRenderer:
             self._render_player(surface, state, entities.player)
 
             for enemy in entities.enemies:
-                enemy.render(surface)
+                self.entity_renderer.render_enemy(surface, enemy)
 
             if entities.boss:
-                entities.boss.render(surface)
+                self.entity_renderer.render_boss(surface, entities.boss)
                 self.hud_renderer.render_boss_health_bar(surface, entities.boss)
 
             self.hud_renderer.render_ripples(surface, state.ripple_effects)

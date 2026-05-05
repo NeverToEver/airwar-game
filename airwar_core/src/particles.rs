@@ -1,4 +1,6 @@
 use pyo3::prelude::*;
+use std::cell::Cell;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Particle state for batch updates
 #[derive(Debug, Clone)]
@@ -87,14 +89,28 @@ pub fn generate_explosion_particles(
     particles
 }
 
-/// Simple seeded random for particle generation
-fn fast_rand() -> f32 {
-    use std::time::{SystemTime, UNIX_EPOCH};
+thread_local! {
+    static PARTICLE_RNG_STATE: Cell<u64> = Cell::new(initial_rng_seed());
+}
+
+fn initial_rng_seed() -> u64 {
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .subsec_nanos();
-    (nanos as f32 * 0.618034) % 1.0
+        .expect("system clock must be after UNIX_EPOCH for particle RNG seed")
+        .as_nanos() as u64;
+    nanos ^ 0x9E37_79B9_7F4A_7C15
+}
+
+/// Fast deterministic PRNG for particle generation.
+fn fast_rand() -> f32 {
+    PARTICLE_RNG_STATE.with(|state| {
+        let mut value = state.get();
+        value ^= value << 13;
+        value ^= value >> 7;
+        value ^= value << 17;
+        state.set(value);
+        (value as f64 / u64::MAX as f64) as f32
+    })
 }
 
 #[cfg(test)]

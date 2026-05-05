@@ -137,7 +137,6 @@ class GameOverScreen:
     def _render_game_over(self, surface, score: int, kills: int,
                          username: Optional[str], high_score: Optional[int],
                          screen_width: int, screen_height: int) -> None:
-        import pygame
         pygame.font.init()
 
         tokens = self._tokens

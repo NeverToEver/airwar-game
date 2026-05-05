@@ -21,10 +21,10 @@ from typing import TYPE_CHECKING
 from .game_controller import normalize_score
 
 if TYPE_CHECKING:
-    from airwar.game.managers.spawn_controller import SpawnController
-    from airwar.game.managers.game_controller import GameController
-    from airwar.game.systems.reward_system import RewardSystem
-    from airwar.game.managers import BulletManager
+    from .bullet_manager import BulletManager
+    from .spawn_controller import SpawnController
+    from .game_controller import GameController
+    from ..systems.reward_system import RewardSystem
 
 
 class BossManager:

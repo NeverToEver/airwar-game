@@ -1,9 +1,13 @@
 """Database — SimpleDB and UserDB for player statistics persistence."""
+import logging
 import json
 import os
 import hashlib
 import secrets
 from typing import Optional
+
+
+logger = logging.getLogger(__name__)
 
 _AIRWAR_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _DEFAULT_DB_PATH = os.path.join(_AIRWAR_DIR, "data", "users.json")
@@ -51,7 +55,7 @@ class SimpleDB:
                 if os.path.exists(tmp_path):
                     os.remove(tmp_path)
             except OSError:
-                pass
+                logger.warning("Failed to remove temporary account database file: %s", tmp_path, exc_info=True)
             raise DatabaseError(f"Failed to save account database: {self.db_path}") from e
 
     def _hash_password(self, password: str, salt: str) -> str:

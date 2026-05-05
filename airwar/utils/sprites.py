@@ -7,23 +7,12 @@ This module re-exports from the sub-modules for backward compatibility:
 """
 from ._sprites_common import (
     RUST_AVAILABLE,
-    _bytes_to_surface,
-    _glow_circle_cache,
-    _single_bullet_glow_cache,
-    _spread_bullet_glow_cache,
-    _laser_bullet_glow_cache,
-    _ripple_surface_cache,
-    _explosive_missile_cache,
     prewarm_glow_caches,
     create_gradient_surface,
     draw_glow_circle,
     draw_ripple,
 )
 from ._sprites_ships import (
-    _player_sprite_cache,
-    _enemy_sprite_cache,
-    _boss_sprite_cache,
-    _elite_sprite_cache,
     get_player_sprite,
     draw_player_ship,
     get_enemy_sprite,
@@ -44,16 +33,6 @@ from ._sprites_bullets import (
 
 __all__ = [
     'RUST_AVAILABLE',
-    '_bytes_to_surface',
-    '_glow_circle_cache',
-    '_single_bullet_glow_cache',
-    '_spread_bullet_glow_cache',
-    '_laser_bullet_glow_cache',
-    '_ripple_surface_cache',
-    '_explosive_missile_cache',
-    '_player_sprite_cache',
-    '_enemy_sprite_cache',
-    '_boss_sprite_cache',
     'prewarm_glow_caches',
     'create_gradient_surface',
     'draw_glow_circle',

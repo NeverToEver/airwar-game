@@ -11,6 +11,80 @@ from airwar.config.design_tokens import SceneColors
 from airwar.utils.responsive import ResponsiveHelper
 
 
+def draw_centered_option_box(
+    surface: pygame.Surface,
+    text: str,
+    font: pygame.font.Font,
+    y: int,
+    is_selected: bool,
+    box_width: int,
+    box_height: int,
+    selected_bg_color: Tuple[int, int, int],
+    selected_border_color: Tuple[int, int, int],
+    unselected_bg_color: Tuple[int, int, int],
+    unselected_border_color: Tuple[int, int, int],
+    selected_glow_color: Tuple[int, int, int],
+    selected_text_color: Tuple[int, int, int],
+    unselected_text_color: Tuple[int, int, int],
+    glow_layers: int = 3,
+    glow_alpha_divisor: int = 50,
+    selected_border_width: int = 3,
+    unselected_border_width: int = 2,
+    border_radius: int = 12,
+) -> pygame.Rect:
+    """Draw a centered menu option box and return its rect."""
+    width = surface.get_width()
+    center_x = width // 2
+
+    arrow = ">> " if is_selected else "   "
+    display_text = f"{arrow}{text}"
+    box_width = adaptive_box_width(font, display_text, box_width, width)
+    box_rect = pygame.Rect(
+        center_x - box_width // 2, y - box_height // 2, box_width, box_height
+    )
+
+    if is_selected:
+        for i in range(glow_layers, 0, -1):
+            glow_rect = box_rect.inflate(i * 4, i * 4)
+            glow_surf = pygame.Surface(
+                (glow_rect.width, glow_rect.height), pygame.SRCALPHA
+            )
+            pygame.draw.rect(
+                glow_surf,
+                (*selected_glow_color, glow_alpha_divisor // i),
+                glow_surf.get_rect(),
+            )
+            surface.blit(glow_surf, glow_rect)
+
+        pygame.draw.rect(surface, selected_bg_color, box_rect, border_radius=border_radius)
+        pygame.draw.rect(
+            surface,
+            selected_border_color,
+            box_rect,
+            selected_border_width,
+            border_radius=border_radius,
+        )
+    else:
+        pygame.draw.rect(surface, unselected_bg_color, box_rect, border_radius=border_radius)
+        pygame.draw.rect(
+            surface,
+            unselected_border_color,
+            box_rect,
+            unselected_border_width,
+            border_radius=border_radius,
+        )
+
+    option_text = fit_text_to_width(
+        font,
+        display_text,
+        selected_text_color if is_selected else unselected_text_color,
+        box_rect.width - 48,
+    )
+    text_rect = option_text.get_rect(center=(center_x, y))
+    surface.blit(option_text, text_rect)
+    return box_rect
+
+
 def fit_string_to_width(
     font: pygame.font.Font,
     text: str,
@@ -201,60 +275,28 @@ class SceneRenderingUtils:
             unselected_border_width: Border thickness when not selected.
             border_radius: Corner radius for the box.
         """
-        width, height = surface.get_size()
-        center_x = width // 2
-
-        arrow = ">> " if is_selected else "   "
-        display_text = f"{arrow}{text}"
-        box_width = adaptive_box_width(font, display_text, box_width, width)
-        box_rect = pygame.Rect(
-            center_x - box_width // 2, y - box_height // 2, box_width, box_height
+        box_rect = draw_centered_option_box(
+            surface,
+            text,
+            font,
+            y,
+            is_selected,
+            box_width,
+            box_height,
+            selected_bg_color,
+            selected_border_color,
+            unselected_bg_color,
+            unselected_border_color,
+            selected_glow_color,
+            selected_text_color,
+            unselected_text_color,
+            glow_layers,
+            glow_alpha_divisor,
+            selected_border_width,
+            unselected_border_width,
+            border_radius,
         )
         option_rects.append(box_rect)
-
-        if is_selected:
-            for i in range(glow_layers, 0, -1):
-                glow_rect = box_rect.inflate(i * 4, i * 4)
-                glow_surf = pygame.Surface(
-                    (glow_rect.width, glow_rect.height), pygame.SRCALPHA
-                )
-                pygame.draw.rect(
-                    glow_surf,
-                    (*selected_glow_color, glow_alpha_divisor // i),
-                    glow_surf.get_rect(),
-                )
-                surface.blit(glow_surf, glow_rect)
-
-            pygame.draw.rect(
-                surface, selected_bg_color, box_rect, border_radius=border_radius
-            )
-            pygame.draw.rect(
-                surface,
-                selected_border_color,
-                box_rect,
-                selected_border_width,
-                border_radius=border_radius,
-            )
-        else:
-            pygame.draw.rect(
-                surface, unselected_bg_color, box_rect, border_radius=border_radius
-            )
-            pygame.draw.rect(
-                surface,
-                unselected_border_color,
-                box_rect,
-                unselected_border_width,
-                border_radius=border_radius,
-            )
-
-        option_text = fit_text_to_width(
-            font,
-            display_text,
-            selected_text_color if is_selected else unselected_text_color,
-            box_rect.width - 48,
-        )
-        text_rect = option_text.get_rect(center=(center_x, y))
-        surface.blit(option_text, text_rect)
 
     @staticmethod
     def draw_decorative_lines(

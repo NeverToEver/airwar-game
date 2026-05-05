@@ -26,6 +26,7 @@ from .event_bus import (
 from airwar.entities.bullet import Bullet
 from airwar.entities.base import BulletData
 from airwar.config import get_screen_width, get_screen_height
+from airwar.game.rendering.entity_renderer import EntityRenderer
 
 if TYPE_CHECKING:
     from .event_bus import EventBus
@@ -130,6 +131,7 @@ class GameIntegrator:
         self._player_control_disabled = False
 
         self._mothership_bullets: List['Bullet'] = []
+        self._entity_renderer = EntityRenderer()
         self._mothership_fire_timer = 0
         self._mothership_gatling_timer = 0
         self._mothership_gatling_sweep_frame = 0
@@ -801,7 +803,7 @@ class GameIntegrator:
 
     def _render_mothership_bullets(self, surface) -> None:
         for bullet in self._mothership_bullets:
-            bullet.render(surface)
+            self._entity_renderer.render_bullet(surface, bullet)
 
     def is_entering_animation_active(self) -> bool:
         return self._entering_animation_active

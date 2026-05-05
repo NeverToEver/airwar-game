@@ -103,21 +103,9 @@ class SceneDirector:
 
             if isinstance(current_scene, GameScene):
                 result = self._handle_pause_toggle(events, current_scene)
-                if result == "main_menu":
-                    self._clear_saved_game()
-                    self._logger.info("Game flow ended: main_menu")
-                    return "main_menu"
-                elif result == "save_and_quit":
-                    self._save_and_quit(current_scene)
-                    self._logger.info("Game flow ended: save_and_quit")
-                    return self._show_exit_confirm(saved=True)
-                elif result == "quit_without_saving":
-                    self._logger.info("Game flow ended: quit_without_saving")
-                    return self._show_exit_confirm(saved=False)
-                elif result == "quit":
-                    self._save_and_quit(current_scene)
-                    self._logger.info("Game flow ended: quit")
-                    return self._show_exit_confirm(saved=True)
+                dispatched = self._dispatch_pause_result(result, current_scene)
+                if dispatched:
+                    return dispatched
                 escape_handled = result == "resume"
 
             self._handle_scene_events(events, escape_handled)
@@ -127,25 +115,9 @@ class SceneDirector:
                 if not current_scene.is_homecoming_locked() and current_scene.consume_pause_request():
                     current_scene.pause()
                     action = self._show_pause_menu(current_scene)
-                    if action == PauseAction.RESUME:
-                        current_scene.resume()
-                    elif action == PauseAction.MAIN_MENU:
-                        self._clear_saved_game()
-                        current_scene.resume()
-                        self._logger.info("Game flow ended from pause: main_menu")
-                        return "main_menu"
-                    elif action == PauseAction.SAVE_AND_QUIT:
-                        self._save_and_quit(current_scene)
-                        self._logger.info("Game flow ended from pause: save_and_quit")
-                        return self._show_exit_confirm(saved=True)
-                    elif action == PauseAction.QUIT_WITHOUT_SAVING:
-                        self._clear_saved_game()
-                        self._logger.info("Game flow ended from pause: quit_without_saving")
-                        return self._show_exit_confirm(saved=False)
-                    elif action == PauseAction.QUIT:
-                        self._save_and_quit(current_scene)
-                        self._logger.info("Game flow ended from pause: quit")
-                        return self._show_exit_confirm(saved=True)
+                    result = self._dispatch_pause_action(action, current_scene, from_mouse=True)
+                    if result:
+                        return result
 
             self._scene_manager.update()
             self._scene_manager.render(self._window.get_surface())
@@ -190,18 +162,58 @@ class SceneDirector:
                 else:
                     game_scene.pause()
                     action = self._show_pause_menu(game_scene)
-                    if action == PauseAction.RESUME:
-                        game_scene.resume()
-                        return "resume"
-                    elif action == PauseAction.MAIN_MENU:
-                        return "main_menu"
-                    elif action == PauseAction.SAVE_AND_QUIT:
-                        return "save_and_quit"
-                    elif action == PauseAction.QUIT_WITHOUT_SAVING:
-                        return "quit_without_saving"
-                    elif action == PauseAction.QUIT:
-                        return "save_and_quit"
+                    return self._pause_action_result(action, game_scene)
         return "none"
+
+    def _pause_action_result(self, action: PauseAction, game_scene: GameScene) -> str:
+        if action == PauseAction.RESUME:
+            game_scene.resume()
+            return "resume"
+        if action == PauseAction.MAIN_MENU:
+            return "main_menu"
+        if action == PauseAction.SAVE_AND_QUIT:
+            return "save_and_quit"
+        if action == PauseAction.QUIT_WITHOUT_SAVING:
+            return "quit_without_saving"
+        if action == PauseAction.QUIT:
+            return "save_and_quit"
+        return "none"
+
+    def _dispatch_pause_result(
+        self,
+        result: str,
+        current_scene: GameScene,
+        *,
+        source: str = "",
+    ) -> Optional[str]:
+        if result in ("resume", "none"):
+            return None
+        if result == "main_menu":
+            self._clear_saved_game()
+            self._logger.info("Game flow ended%s: main_menu", source)
+            return "main_menu"
+        if result == "save_and_quit":
+            saved = self._save_and_quit(current_scene)
+            self._logger.info("Game flow ended%s: save_and_quit", source)
+            return self._show_exit_confirm(saved=saved)
+        if result == "quit_without_saving":
+            self._clear_saved_game()
+            self._logger.info("Game flow ended%s: quit_without_saving", source)
+            return self._show_exit_confirm(saved=False)
+        return None
+
+    def _dispatch_pause_action(
+        self,
+        action: PauseAction,
+        current_scene: GameScene,
+        *,
+        from_mouse: bool = False,
+    ) -> Optional[str]:
+        result = self._pause_action_result(action, current_scene)
+        if result == "main_menu":
+            current_scene.resume()
+        source = " from pause" if from_mouse else ""
+        return self._dispatch_pause_result(result, current_scene, source=source)
 
     def _show_pause_menu(self, game_scene: GameScene) -> PauseAction:
         pause_scene = self._scene_manager.get_scene("pause")
@@ -265,7 +277,8 @@ class SceneDirector:
         result = exit_scene.get_result()
         exit_scene.exit()
         if result == ExitConfirmAction.RETURN_TO_MENU:
-            self._clear_saved_game()
+            if not saved:
+                self._clear_saved_game()
             return "main_menu"
         elif result == ExitConfirmAction.START_NEW_GAME:
             self._clear_saved_game()
@@ -354,7 +367,8 @@ class SceneDirector:
         return persistence_manager.save_game(save_data)
 
     def _save_game_on_quit(self, game_scene: GameScene) -> None:
-        self._perform_save(game_scene)
+        if not self._perform_save(game_scene):
+            self._logger.warning("Failed to save game during quit")
 
     def _clear_saved_game(self) -> None:
         for persistence_manager in self._candidate_persistence_managers(self._current_user):
@@ -368,8 +382,11 @@ class SceneDirector:
             PersistenceManager(save_dir=self._save_dir),
         ]
 
-    def _save_and_quit(self, game_scene: GameScene) -> None:
-        self._perform_save(game_scene)
+    def _save_and_quit(self, game_scene: GameScene) -> bool:
+        saved = self._perform_save(game_scene)
+        if not saved:
+            self._logger.warning("Failed to save game before quitting")
+        return saved
 
     def _quit_without_saving(self) -> None:
         self._clear_saved_game()
