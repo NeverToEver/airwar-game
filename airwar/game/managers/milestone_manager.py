@@ -114,9 +114,19 @@ class MilestoneManager:
         """
         if not self._reward_selector:
             return
+        if hasattr(self._reward_selector, "show"):
+            self._reward_selector.show(
+                options,
+                lambda reward: self._on_reward_selected(reward, player),
+                buff_levels=dict(getattr(self._reward_system, "buff_levels", {})),
+                unlocked_buffs=list(getattr(self._reward_system, "unlocked_buffs", [])),
+            )
+            return
         self._reward_selector.visible = True
         self._reward_selector.options = options
         self._reward_selector.selected_index = 0
+        self._reward_selector.buff_levels = dict(getattr(self._reward_system, "buff_levels", {}))
+        self._reward_selector.unlocked_buffs = list(getattr(self._reward_system, "unlocked_buffs", []))
         self._reward_selector.on_select = lambda reward: self._on_reward_selected(reward, player)
 
     def _on_reward_selected(self, reward: dict, player) -> None:

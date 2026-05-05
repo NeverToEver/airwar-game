@@ -384,14 +384,14 @@ class RewardSelector(MouseSelectableMixin):
             text_color = self.colors['selected'] if is_selected else self.colors['unselected']
         
         text = fit_text_to_width(self.option_font, name_text, text_color, box_width - 50)
-        text_rect = text.get_rect(midleft=(box_rect.x + 25, box_rect.centery - 14))
+        text_rect = text.get_rect(topleft=(box_rect.x + 25, box_rect.y + 10))
         surface.blit(text, text_rect)
 
         desc_color = self.colors['desc_selected'] if is_selected else self.colors['desc_unselected']
-        desc_y = box_rect.centery + 8
+        desc_y = box_rect.y + 52
         for line in wrap_text(option['desc'], self.hint_font, box_width - 70, max_lines=2):
             desc = self.hint_font.render(line, True, desc_color)
-            surface.blit(desc, desc.get_rect(midleft=(box_rect.x + 35, desc_y)))
+            surface.blit(desc, desc.get_rect(topleft=(box_rect.x + 35, desc_y)))
             desc_y += 22
 
     def _draw_title(self, surface: pygame.Surface) -> None:
@@ -570,12 +570,12 @@ class RewardSelector(MouseSelectableMixin):
             text_color = SceneColors.GOLD_PRIMARY if is_selected else SceneColors.TEXT_DIM
 
         text = fit_text_to_width(self.option_font, name_text, text_color, box_width - 50)
-        text_rect = text.get_rect(midleft=(box_rect.x + 25, box_rect.centery - 14))
+        text_rect = text.get_rect(topleft=(box_rect.x + 25, box_rect.y + 10))
         surface.blit(text, text_rect)
 
         desc_color = SceneColors.FOREST_GREEN if is_selected else SceneColors.TEXT_DIM
-        desc_y = box_rect.centery + 8
+        desc_y = box_rect.y + 52
         for line in wrap_text(option['desc'], self.hint_font, box_width - 70, max_lines=2):
             desc = self.hint_font.render(line, True, desc_color)
-            surface.blit(desc, desc.get_rect(midleft=(box_rect.x + 35, desc_y)))
+            surface.blit(desc, desc.get_rect(topleft=(box_rect.x + 35, desc_y)))
             desc_y += 22

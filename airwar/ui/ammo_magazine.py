@@ -76,6 +76,8 @@ class AmmoMagazine:
     HL_ALPHA_BOOST = 40
     HL_BORDER_RADIUS = 1
     HL_OFFSET = 2
+    COMPACT_SCALE = 0.82
+    COMPACT_HEIGHT_THRESHOLD = 760
 
     def __init__(self):
         self._frame_color = self.FRAME_COLOR
@@ -173,7 +175,59 @@ class AmmoMagazine:
         fw = self.frame_width
         fh = self.frame_height
         fx = self.FRAME_X
+        scale = self.COMPACT_SCALE if screen_h <= self.COMPACT_HEIGHT_THRESHOLD else 1.0
+        if scale < 1.0:
+            layer = pygame.Surface((fw, fh), pygame.SRCALPHA)
+            with contextlib.suppress(pygame.error):
+                layer = layer.convert_alpha()
+            self._render_contents(
+                layer,
+                0,
+                0,
+                fw,
+                fh,
+                ammo_count,
+                ammo_max,
+                is_cooldown,
+                is_warning,
+                cooldown_remaining,
+                cooldown_reduction,
+            )
+            scaled_size = (max(1, int(fw * scale)), max(1, int(fh * scale)))
+            compact = pygame.transform.smoothscale(layer, scaled_size)
+            fy = screen_h // 2 - scaled_size[1] // 2
+            surface.blit(compact, (fx, fy))
+            return
+
         fy = screen_h // 2 - fh // 2
+        self._render_contents(
+            surface,
+            fx,
+            fy,
+            fw,
+            fh,
+            ammo_count,
+            ammo_max,
+            is_cooldown,
+            is_warning,
+            cooldown_remaining,
+            cooldown_reduction,
+        )
+
+    def _render_contents(
+        self,
+        surface: pygame.Surface,
+        fx: int,
+        fy: int,
+        fw: int,
+        fh: int,
+        ammo_count: float,
+        ammo_max: float,
+        is_cooldown: bool,
+        is_warning: bool,
+        cooldown_remaining: float,
+        cooldown_reduction: float,
+    ) -> None:
 
         # Cache frame background
         cache_key = (fw, fh)

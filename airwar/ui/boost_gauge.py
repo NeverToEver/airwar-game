@@ -93,6 +93,8 @@ class BoostGauge:
     LABEL_ACTIVE_FONT_SIZE = 14
     LABEL_ACTIVE_ALPHA = 200
     LABEL_ACTIVE_Y_OFFSET = 44
+    COMPACT_SCALE = 0.78
+    COMPACT_HEIGHT_THRESHOLD = 760
 
     def __init__(self):
         tokens = get_design_tokens()
@@ -142,6 +144,10 @@ class BoostGauge:
         boost_status: dict | None = None,
     ) -> None:
         screen_h = surface.get_height()
+        scale = self.COMPACT_SCALE if screen_h <= self.COMPACT_HEIGHT_THRESHOLD else 1.0
+        if scale < 1.0:
+            self._render_compact(surface, boost_current, boost_max, boost_active, boost_status, scale)
+            return
 
         cx = self.CENTER_X
         cy = screen_h - 98
@@ -199,6 +205,73 @@ class BoostGauge:
         )
 
     # ------------------------------------------------------------------
+
+    def _render_compact(
+        self,
+        surface: pygame.Surface,
+        boost_current: float,
+        boost_max: float,
+        boost_active: bool,
+        boost_status: dict | None,
+        scale: float,
+    ) -> None:
+        pw, ph = self.PANEL_W, self.PANEL_H
+        layer = pygame.Surface((pw, ph), pygame.SRCALPHA)
+        with contextlib.suppress(pygame.error):
+            layer = layer.convert_alpha()
+
+        cx = self.CENTER_X - self.PANEL_PAD_X
+        cy = ph + self.PANEL_PAD_Y - 98
+        r = self.ARC_RADIUS
+        ratio = boost_current / boost_max if boost_max > 0 else 0
+        dash_cooling = bool(
+            boost_status
+            and boost_status.get('dash_enabled')
+            and boost_status.get('dash_cooldown', 0) > 0
+        )
+        dash_active = bool(boost_status and boost_status.get('dash_active'))
+
+        self._render_panel(layer, 0, 0, pw, ph)
+
+        cache_key = ("compact", pw, ph)
+        if self._arc_cache is None or self._arc_cache_key != cache_key:
+            arc_layer = pygame.Surface((pw, ph), pygame.SRCALPHA)
+            with contextlib.suppress(pygame.error):
+                arc_layer = arc_layer.convert_alpha()
+            self._draw_arc(arc_layer, cx, cy, r)
+            self._draw_ticks(arc_layer, cx, cy, 0.0)
+            self._arc_cache = arc_layer
+            self._arc_cache_key = cache_key
+        layer.blit(self._arc_cache, (0, 0))
+
+        if ratio > 0:
+            self._draw_ticks_lit(layer, cx, cy, ratio, dash_cooling)
+
+        angle_deg = self.ARC_START_DEG - ratio * (self.ARC_START_DEG - self.ARC_END_DEG)
+        self._draw_needle(layer, cx, cy, r, angle_deg, boost_active, dash_cooling)
+
+        pygame.draw.circle(layer, (*self._bg_color, 255), (cx, cy), self.HUB_RADIUS)
+        pygame.draw.circle(layer, (*self._arc_color, 140), (cx, cy), self.HUB_INNER_RADIUS, self.HUB_INNER_WIDTH)
+        hub_color = self._cooldown_color if dash_cooling else self._tick_lit
+        pygame.draw.circle(layer, (*hub_color, 80), (cx, cy), self.HUB_DOT_RADIUS)
+
+        self._draw_labels(
+            layer,
+            cx,
+            cy,
+            r,
+            boost_current,
+            boost_max,
+            boost_active,
+            dash_cooling,
+            dash_active,
+        )
+
+        scaled_size = (max(1, int(pw * scale)), max(1, int(ph * scale)))
+        compact = pygame.transform.smoothscale(layer, scaled_size)
+        px = self.PANEL_PAD_X
+        py = surface.get_height() - scaled_size[1] - self.PANEL_PAD_Y
+        surface.blit(compact, (px, py))
 
     def _render_panel(self, surface, x, y, w, h):
         cache_key = (w, h)
