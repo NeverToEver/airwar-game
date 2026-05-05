@@ -135,6 +135,7 @@ class IntegratedHUD:
         colors = self._tokens.colors
         width = surface.get_width()
         height = surface.get_height()
+        self._buff_visible_count = 4 if height <= 760 else self._tokens.components.BUFF_SCROLL_VISIBLE_COUNT
 
         panel_x = width - self._current_width - self.padding
         panel_y = self.padding

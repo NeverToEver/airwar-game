@@ -62,11 +62,11 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     Implements IGameScene for clean integration with GameIntegrator.
     """
 
-    PAUSE_BUTTON_SIZE = 30
+    PAUSE_BUTTON_SIZE = 44
     PAUSE_BUTTON_MARGIN = 10
-    PAUSE_BAR_WIDTH = 4
-    PAUSE_BAR_HEIGHT = 14
-    PAUSE_BAR_GAP = 4
+    PAUSE_BAR_WIDTH = 5
+    PAUSE_BAR_HEIGHT = 18
+    PAUSE_BAR_GAP = 5
     AIM_ASSIST_BREAK_DISTANCE = 38.0
     AIM_ASSIST_SWITCH_DISTANCE = 90.0
     AIM_ASSIST_RELEASE_DISTANCE = 230.0

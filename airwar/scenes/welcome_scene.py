@@ -710,6 +710,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         controls = [
             ("WASD / 方向键", "移动战机"),
             ("SHIFT (按住)", "加速"),
+            ("B (按住2.4秒)", "返航基地"),
             ("H (按住3秒)", "停靠母舰"),
             ("K (按住3秒)", "投降"),
             ("ESC", "暂停游戏"),
