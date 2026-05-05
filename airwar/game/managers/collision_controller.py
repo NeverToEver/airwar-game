@@ -166,11 +166,14 @@ class CollisionController:
             on_clear_bullets,
         )
 
-        # Build spatial hash grid for enemies
+        # The Rust collision path builds its own spatial data from batch input.
+        # Keep the Python grid only for the fallback path to avoid duplicate
+        # per-frame hitbox work when the extension is available.
         self._clear_grid()
-        for enemy in enemies:
-            if enemy.active:
-                self._add_to_grid(enemy, enemy.get_hitbox())
+        if not self._uses_rust_batch_collision():
+            for enemy in enemies:
+                if enemy.active:
+                    self._add_to_grid(enemy, enemy.get_hitbox())
 
         score_gained, enemies_killed = self.check_player_bullets_vs_enemies(
             player.get_bullets(),
@@ -255,7 +258,7 @@ class CollisionController:
         enemies_killed = 0
 
         # Use Rust batch collision — single FFI call for all bullet-enemy pairs
-        if self._use_rust and batch_collide_bullets_vs_entities is not None:
+        if self._uses_rust_batch_collision():
             bullet_data = self._bullet_data
             bullet_map = self._bullet_map
             bullet_data.clear()
@@ -334,6 +337,9 @@ class CollisionController:
                     break
 
         return score_gained, enemies_killed
+
+    def _uses_rust_batch_collision(self) -> bool:
+        return bool(self._use_rust and batch_collide_bullets_vs_entities is not None)
 
     @staticmethod
     def _scaled_score(base_score: int, multiplier: float) -> int:

@@ -63,3 +63,27 @@ def test_player_hitbox_remains_independent_from_visual_sprite_size():
     assert hitbox.width < player.rect.width
     assert hitbox.height < player.rect.height
     assert sprite.get_width() > player.rect.width
+
+
+def test_player_rotated_sprite_cache_reuses_angle_bucket():
+    player = Player(400, 900, MockInputHandler())
+
+    player._facing_angle_degrees = 7.0
+    first = player._rotated_ship_sprite()
+    player._facing_angle_degrees = 7.8
+    second = player._rotated_ship_sprite()
+
+    assert first is second
+    assert len(player._rotated_sprite_cache) == 1
+
+
+def test_phase_dash_render_does_not_mutate_cached_rotated_sprite_alpha():
+    player = Player(400, 900, MockInputHandler())
+    surface = pygame.Surface((240, 240), pygame.SRCALPHA)
+    cached = player._rotated_ship_sprite()
+    original_alpha = cached.get_alpha()
+
+    player._phase_dash_state = "active"
+    player.render(surface)
+
+    assert cached.get_alpha() == original_alpha

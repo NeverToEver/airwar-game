@@ -71,6 +71,8 @@ class Player(Entity):
     PHASE_DASH_MIN_DISTANCE = 120
     PHASE_DASH_ALPHA_MIN = 75
     PHASE_DASH_ALPHA_MAX = 165
+    ROTATED_SPRITE_ANGLE_STEP = 2.0
+    ROTATED_SPRITE_CACHE_MAX = 192
 
     # 1. Special methods
 
@@ -120,6 +122,7 @@ class Player(Entity):
         self._aim_target: Tuple[float, float] | None = None
         self._facing_angle_degrees = 0.0
         self._facing_direction = Vector2(0, -1)
+        self._rotated_sprite_cache: dict[tuple[int, int, int], pygame.Surface] = {}
 
     # 2. Properties
 
@@ -168,6 +171,7 @@ class Player(Entity):
         """
         sprite = self._rotated_ship_sprite()
         if self.is_phase_dashing():
+            sprite = sprite.copy()
             alpha = self._phase_dash_alpha()
             sprite.set_alpha(alpha)
         surface.blit(sprite, sprite.get_rect(center=(self.rect.centerx, self.rect.centery)))
@@ -575,9 +579,23 @@ class Player(Entity):
         bullet.velocity = direction * bullet.data.speed
 
     def _rotated_ship_sprite(self) -> pygame.Surface:
-        sprite = get_player_sprite(self.rect.width, self.rect.height)
-        rotation = -self._facing_angle_degrees
-        return pygame.transform.rotozoom(sprite, rotation, 1.0)
+        width = int(self.rect.width)
+        height = int(self.rect.height)
+        angle_bucket = self._rotation_angle_bucket(self._facing_angle_degrees)
+        cache_key = (width, height, angle_bucket)
+        sprite = self._rotated_sprite_cache.get(cache_key)
+        if sprite is None:
+            if len(self._rotated_sprite_cache) >= self.ROTATED_SPRITE_CACHE_MAX:
+                self._rotated_sprite_cache.pop(next(iter(self._rotated_sprite_cache)))
+            base_sprite = get_player_sprite(width, height)
+            sprite = pygame.transform.rotozoom(base_sprite, -angle_bucket, 1.0)
+            self._rotated_sprite_cache[cache_key] = sprite
+        return sprite
+
+    @classmethod
+    def _rotation_angle_bucket(cls, angle_degrees: float) -> int:
+        bucket = round(angle_degrees / cls.ROTATED_SPRITE_ANGLE_STEP) * cls.ROTATED_SPRITE_ANGLE_STEP
+        return int(cls._normalize_angle_degrees(bucket))
 
     @staticmethod
     def _direction_to_angle_degrees(direction: Vector2) -> float:
