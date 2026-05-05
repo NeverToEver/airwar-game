@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+import airwar.game.managers.collision_controller as collision_module
 from airwar.entities.base import BulletData, EnemyData, Rect
 from airwar.game.constants import GAME_CONSTANTS
 from airwar.game.managers.collision_controller import CollisionController
@@ -98,6 +99,43 @@ def test_enemy_kill_triggers_lifesteal_callback():
     )
 
     assert healed == [(player, 30)]
+
+
+def test_rust_collision_path_skips_python_spatial_grid(monkeypatch):
+    controller = CollisionController()
+    controller._use_rust = True
+    bullet = FakeBullet(Rect(0, 0, 10, 10), BulletData(damage=20, owner="player"))
+    enemy = FakeEnemy(Rect(0, 0, 20, 20), health=10, score=30)
+    player = FakePlayer(Rect(100, 100, 20, 20))
+    player.get_bullets = lambda: [bullet]
+    added_to_grid = []
+
+    def fake_batch_collide(bullets, enemies, grid_cell_size):
+        return [(bullets[0][0], enemies[0][0])]
+
+    monkeypatch.setattr(collision_module, "batch_collide_bullets_vs_entities", fake_batch_collide)
+    monkeypatch.setattr(controller, "_add_to_grid", lambda entity, rect: added_to_grid.append((entity, rect)))
+
+    controller.check_all_collisions(
+        player=player,
+        enemies=[enemy],
+        boss=None,
+        enemy_bullets=[],
+        reward_system=type(
+            "RewardSystem",
+            (),
+            {
+                "calculate_damage_taken": lambda self, damage: damage,
+                "try_dodge": lambda self: False,
+                "piercing_level": 0,
+            },
+        )(),
+        explosive_level=0,
+        piercing_level=0,
+    )
+
+    assert added_to_grid == []
+    assert enemy.active is False
 
 
 def test_piercing_bullet_stays_active_after_enemy_hit():

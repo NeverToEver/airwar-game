@@ -28,6 +28,7 @@ _spread_bullet_glow_cache = {}
 _laser_bullet_glow_cache = {}
 _ripple_surface_cache = {}
 _explosive_missile_cache = {}
+_glow_caches_prewarmed = False
 
 
 def _bytes_to_surface(data: bytes, width: int, height: int) -> pygame.Surface:
@@ -39,8 +40,12 @@ def _bytes_to_surface(data: bytes, width: int, height: int) -> pygame.Surface:
         return surf
 
 
-def prewarm_glow_caches() -> None:
+def prewarm_glow_caches(force: bool = False) -> None:
     """Pre-generate all glow surfaces at startup to eliminate cache misses during gameplay."""
+    global _glow_caches_prewarmed
+    if _glow_caches_prewarmed and not force:
+        return
+
     # Prewarm player bullet caches (uses Rust when available)
     if RUST_AVAILABLE:
         for width, height in [(8, 16), (6, 12), (10, 20), (4, 8)]:
@@ -142,6 +147,8 @@ def prewarm_glow_caches() -> None:
                 alpha = 70 * (10 - i) // 9
                 pygame.draw.line(glow, (255, 20, 40, alpha), (12, 4), (12, height + 8), i)
             _laser_bullet_glow_cache[key] = glow
+
+    _glow_caches_prewarmed = True
 
 
 def create_gradient_surface(width: int, height: int, color1: tuple, color2: tuple, vertical: bool = True) -> pygame.Surface:

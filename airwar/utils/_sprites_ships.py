@@ -11,6 +11,7 @@ _player_sprite_cache = {}
 _enemy_sprite_cache = {}
 _boss_sprite_cache = {}
 _elite_sprite_cache = {}
+_ship_sprite_caches_prewarmed = False
 
 PLAYER_SPRITE_STYLE_VERSION = 5
 PLAYER_SPRITE_CANVAS_PADDING = 20
@@ -1129,11 +1130,17 @@ def _draw_boss_ship(surface: pygame.Surface, x: float, y: float, width: float = 
             pygame.draw.circle(surface, (*bio_green, 80), (dot_x, dot_y), 1)
 
 
-def prewarm_ship_sprite_caches() -> None:
+def prewarm_ship_sprite_caches(force: bool = False) -> None:
     """Generate common ship sprites once so gameplay mostly hits memory cache."""
+    global _ship_sprite_caches_prewarmed
+    if _ship_sprite_caches_prewarmed and not force:
+        return
+
     get_player_sprite(68, 82)
 
     for health_ratio in (1.0, 0.5, 0.25):
         get_enemy_sprite(50, 50, health_ratio)
         get_elite_enemy_sprite(65, 65, health_ratio)
         get_boss_sprite(120, 100, health_ratio)
+
+    _ship_sprite_caches_prewarmed = True
