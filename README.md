@@ -4,14 +4,19 @@
 
 ## 快速开始
 
+**推荐方式 — 一键启动脚本**（自动检测依赖、安装、编译 Rust 扩展、启动游戏）：
+
 ```bash
-# 进入项目目录
+chmod +x run.sh
+./run.sh
+```
+
+**手动启动：**
+
+```bash
 cd airwar-game
-
-# 安装依赖
 pip install -r requirements.txt
-
-# 启动游戏
+cd airwar_core && maturin develop --release && cd ..
 python3 main.py
 ```
 
@@ -20,6 +25,7 @@ python3 main.py
 | 按键 / 输入 | 功能 |
 |-------------|------|
 | 方向键 / WASD | 移动战机 |
+| Ctrl 长按 | 微调姿态，移动速度降至 35%，用于密集弹幕中精细走位 |
 | 鼠标 | 控制瞄准方向，带目标辅瞄与平滑输入延迟 |
 | Shift 长按 | 加速推进，消耗加速燃料，速度提升至 1.7 倍 |
 | Shift 按下松开 | 相位冲刺（需天赋解锁），消耗 25% 燃料，无敌冲刺 250px |

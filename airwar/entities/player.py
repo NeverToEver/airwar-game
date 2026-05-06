@@ -57,6 +57,7 @@ class Player(Entity):
     PLAYER_HITBOX_H = 14
     BOOST_RAMP_MIN = 0.15
     BOOST_RAMP_DELTA = 0.85
+    PRECISION_SPEED_MULT = 0.35
     BULLET_SPAWN_Y_OFFSET = 36
     SPREAD_ANGLES = (-10, 0, 10)
     WING_MUZZLE_X_OFFSETS = (-24, 24)
@@ -176,6 +177,9 @@ class Player(Entity):
             alpha = self._phase_dash_alpha()
             sprite.set_alpha(alpha)
         surface.blit(sprite, sprite.get_rect(center=(self.rect.centerx, self.rect.centery)))
+
+        if self._input_handler.is_precision_pressed():
+            self._render_precision_indicator(surface)
 
         self._render_hitbox_indicator(surface)
 
@@ -359,7 +363,12 @@ class Player(Entity):
 
         self.boost_active = boost_pressed and self.boost_current > 0
 
-        if self.boost_active:
+        precision = self._input_handler.is_precision_pressed()
+        if precision:
+            self.speed = self.base_speed * self.PRECISION_SPEED_MULT
+            self.boost_active = False
+            self._update_boost_recovery()
+        elif self.boost_active:
             self._boost_idle_frames = 0
             self.boost_current = max(0, self.boost_current - 1)
             self.speed = self.base_speed * self.boost_speed_mult
@@ -619,6 +628,21 @@ class Player(Entity):
     @classmethod
     def _shortest_angle_delta(cls, current: float, target: float) -> float:
         return cls._normalize_angle_degrees(target - current)
+
+    def _render_precision_indicator(self, surface: pygame.Surface) -> None:
+        """Subtle ring indicator around the ship during precision movement (CTRL hold)."""
+        pulse = 0.6 + 0.4 * abs(math.sin(self._hitbox_timer * 0.06))
+        radius = int((self.rect.width + self.rect.height) // 4 + 8)
+        alpha = int(55 + 20 * pulse)
+        indicator = pygame.Surface((radius * 2 + 4, radius * 2 + 4), pygame.SRCALPHA)
+        pygame.draw.circle(
+            indicator,
+            (100, 180, 220, alpha),
+            (radius + 2, radius + 2),
+            radius,
+            1,
+        )
+        surface.blit(indicator, indicator.get_rect(center=(self.rect.centerx, self.rect.centery)))
 
     def _render_hitbox_indicator(self, surface: pygame.Surface) -> None:
         hb = self.get_hitbox()
