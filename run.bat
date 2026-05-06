@@ -1,100 +1,157 @@
 @echo off
 setlocal enabledelayedexpansion
-title AirWar Launcher
+title AirWar
 
 set ROOT=%~dp0
 cd /d "%ROOT%"
 
-echo -----------------------------------------
-echo   AirWar Launcher
-echo -----------------------------------------
+echo.
+echo   ==============================
+echo     AirWar - One-Click Launcher
+echo   ==============================
 echo.
 
-REM ---- Find Python ----
+REM ----------------------------------------------------------------
+REM  STEP 1: Find Python (try "py" launcher first, then "python3", then "python")
+REM ----------------------------------------------------------------
 set PYTHON=
 for %%c in (py python3 python) do (
     where %%c >nul 2>&1
     if !errorlevel! equ 0 (
         set PYTHON=%%c
-        goto :found_python
+        goto :step1_done
     )
 )
-:found_python
-
-if "%PYTHON%"=="" (
-    echo [ERROR] Python not found in PATH.
-    echo.
-    echo Install Python 3.12+ from: https://www.python.org/downloads/
-    echo Check "Add Python to PATH" during installation.
-    echo.
-    pause
-    exit /b 1
-)
-echo [OK] Python: %PYTHON%
-%PYTHON% --version
+echo   [ERROR] Python not found.
 echo.
+echo   Please install Python 3.12+ from:
+echo     https://www.python.org/downloads/
+echo   Make sure to check "Add Python to PATH" during install.
+echo.
+pause
+exit /b 1
 
-REM ---- Python deps ----
-echo [..] Checking Python dependencies...
-%PYTHON% -c "import pygame" >nul 2>&1
-if !errorlevel! neq 0 (
-    echo [..] Installing pygame, pillow etc...
-    %PYTHON% -m pip install --user -r requirements.txt
+:step1_done
+%PYTHON% --version 2>&1 | findstr /i "Python" >nul
+echo   [OK] Python found
+
+REM ----------------------------------------------------------------
+REM  STEP 2: Create virtual environment (if missing)
+REM ----------------------------------------------------------------
+set VENV=%ROOT%.venv
+if not exist "%VENV%\Scripts\python.exe" (
+    echo   [..] Creating virtual environment...
+    %PYTHON% -m venv "%VENV%" >nul 2>&1
     if !errorlevel! neq 0 (
-        echo [FAIL] pip install failed. Check internet connection.
+        echo   [ERROR] Failed to create virtual environment.
         pause
         exit /b 1
     )
 )
-echo [OK] Python dependencies
-echo.
+call "%VENV%\Scripts\activate.bat" >nul 2>&1
+echo   [OK] Virtual environment ready
 
-REM ---- Rust / Cargo ----
+REM ----------------------------------------------------------------
+REM  STEP 3: Install Python dependencies into venv
+REM ----------------------------------------------------------------
+echo   [..] Checking Python packages...
+python -c "import pygame; import PIL" >nul 2>&1
+if !errorlevel! neq 0 (
+    echo   [..] Downloading pygame, pillow, etc...
+    python -m pip install --quiet -r requirements.txt
+    if !errorlevel! neq 0 (
+        echo   [ERROR] Failed to install Python packages.
+        echo   Check your internet connection and try again.
+        pause
+        exit /b 1
+    )
+)
+echo   [OK] Python packages ready
+
+REM ----------------------------------------------------------------
+REM  STEP 4: Check for Rust / Cargo
+REM ----------------------------------------------------------------
 where cargo >nul 2>&1
 if !errorlevel! neq 0 (
-    echo [WARN] Rust/Cargo not found.
-    echo        Download: https://rustup.rs/
-    echo        After install, re-run run.bat
+    echo.
+    echo   [WARNING] Rust toolchain not found.
+    echo.
+    echo   This game requires Rust to compile its native extension.
+    echo   It's a one-time setup -- takes about 5 minutes.
+    echo.
+    echo   Would you like to install Rust automatically now? (Y/N)
+    echo.
+    choice /c YN /n /m "  Install Rust? [Y/N] "
+    if !errorlevel! equ 2 (
+        echo   Skipped. Please install Rust manually from https://rustup.rs/
+        pause
+        exit /b 1
+    )
+    echo.
+    echo   [..] Downloading Rust installer...
+    curl -L --progress-bar -o "%TEMP%\rustup-init.exe" https://win.rustup.rs/x86_64
+    if !errorlevel! neq 0 (
+        echo   [ERROR] Failed to download Rust installer.
+        echo   Please install manually from https://rustup.rs/
+        pause
+        exit /b 1
+    )
+    echo   [..] Running Rust installer (follow the prompts)...
+    "%TEMP%\rustup-init.exe" -y --default-toolchain stable
+    if !errorlevel! neq 0 (
+        echo   [ERROR] Rust installation failed.
+        echo   Please install manually from https://rustup.rs/
+        pause
+        exit /b 1
+    )
+    del "%TEMP%\rustup-init.exe"
+    echo   [OK] Rust installed
+    echo.
+    echo   Restart this launcher to continue.
+    echo   (You may need to restart your terminal or File Explorer first)
     pause
-    exit /b 1
+    exit /b 0
 )
-echo [OK] Cargo found
-echo.
+echo   [OK] Cargo found
 
-REM ---- Build Rust extension ----
-echo [..] Building Rust extension (may take a few minutes)...
+REM ----------------------------------------------------------------
+REM  STEP 5: Build Rust native extension (airwar_core)
+REM ----------------------------------------------------------------
+echo   [..] Installing maturin build tool...
+python -m pip install --quiet maturin >nul 2>&1
+
+echo   [..] Compiling native extension (one-time build)...
 cd /d "%ROOT%airwar_core"
-
-%PYTHON% -c "import maturin" >nul 2>&1
-if !errorlevel! neq 0 (
-    %PYTHON% -m pip install --user maturin
-)
-
-%PYTHON% -m maturin develop --release
+python -m maturin develop --release 2>&1
 if !errorlevel! neq 0 (
     cd /d "%ROOT%"
     echo.
-    echo [FAIL] Rust build failed.
+    echo   [ERROR] Rust compilation failed.
     echo.
-    echo On Windows this usually needs:
-    echo   Microsoft Visual C++ Build Tools
-    echo   https://aka.ms/vs/17/release/vs_BuildTools.exe
-    echo   Select "Desktop development with C++" during install
+    echo   This usually means one of:
+    echo     - Visual C++ Build Tools are not installed
+    echo       Download: https://aka.ms/vs/17/release/vs_BuildTools.exe
+    echo       Select "Desktop development with C++" during install
+    echo     - Or your Rust installation is incomplete
+    echo       Try running: rustup default stable
     echo.
     pause
     exit /b 1
 )
 cd /d "%ROOT%"
-echo [OK] Rust extension built
-echo.
+echo   [OK] Native extension compiled
 
-REM ---- Launch ----
-echo -----------------------------------------
-echo   Starting AirWar...
-echo -----------------------------------------
-%PYTHON% main.py
+REM ----------------------------------------------------------------
+REM  STEP 6: Launch the game
+REM ----------------------------------------------------------------
+echo.
+echo   ==============================
+echo     Launching AirWar...
+echo   ==============================
+echo.
+python main.py
 
 echo.
-echo AirWar exited.
+echo   AirWar closed.
 pause
 endlocal
