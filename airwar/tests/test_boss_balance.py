@@ -73,8 +73,8 @@ def test_spawned_boss_escape_time_scales_with_health_and_player_output():
     assert stronger_player_boss.data.escape_time < boss.data.escape_time
 
 
-def test_boss_enrage_duration_is_about_ten_seconds():
-    assert Boss.ENRAGE_DURATION == 10 * 60
+def test_boss_enrage_duration_is_about_six_seconds():
+    assert Boss.ENRAGE_DURATION == 6 * 60
 
 
 def test_boss_enrage_visual_intensity_eases_in_before_reaching_cap():

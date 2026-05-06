@@ -296,7 +296,7 @@ def test_boss_enrage_path_completes_one_square_and_one_circle():
     assert boss._enrage_path_center(player_center, 1.0) == pytest.approx((600, 450 + radius))
 
 
-def test_boss_enrage_uses_slower_snapshot_cadence_for_fewer_bullets():
+def test_boss_enrage_uses_snappier_snapshot_cadence_for_urgent_bursts():
     set_screen_size(1200, 900)
     boss = Boss(500, 120, BossData(health=1000, width=170, height=140))
     boss.entering = False
@@ -309,7 +309,7 @@ def test_boss_enrage_uses_slower_snapshot_cadence_for_fewer_bullets():
         boss.update(player_pos=player_center)
 
     assert 0 < len(collector.bullets) <= 110
-    assert boss.ENRAGE_ATTACK_INTERVAL >= 56
+    assert boss.ENRAGE_ATTACK_INTERVAL == 42
     assert boss.ENRAGE_SNAPSHOT_LASER_COUNT <= 4
     assert boss.ENRAGE_SNAPSHOT_RING_COUNT <= 8
 
@@ -338,7 +338,15 @@ def test_boss_enrage_faces_player_and_aims_muzzles_during_all_direction_movement
     assert muzzle_vector.x * target_vector.x + muzzle_vector.y * target_vector.y > 0.999
     assert boss._muzzle_flash_timer > 0
     assert boss._muzzle_flash_positions
-    assert boss.ENRAGE_MUZZLE_FLASH_PULSES == 1
+    assert boss.ENRAGE_MUZZLE_FLASH_DURATION == 12
+    assert boss.ENRAGE_MUZZLE_FLASH_PULSES == 2
+    expected_flash_count = boss.ENRAGE_SNAPSHOT_LASER_COUNT + boss.ENRAGE_SNAPSHOT_RING_COUNT - 1
+    assert len(boss._muzzle_flash_positions) == expected_flash_count
+    ring_flash_positions = boss._muzzle_flash_positions[boss.ENRAGE_SNAPSHOT_LASER_COUNT :]
+    assert len(set(ring_flash_positions)) == 2
+    assert ring_flash_positions == [
+        ring_flash_positions[index % 2] for index in range(len(ring_flash_positions))
+    ]
 
 
 def test_boss_enrage_trail_is_longer_and_half_resolution_blurred():
@@ -465,13 +473,15 @@ def test_boss_enrage_overlay_keeps_ripples_cool_toned_and_subtle():
         )
     )
 
-    with patch("airwar.scenes.game_scene.pygame.draw.circle") as draw_circle:
+    with patch("airwar.scenes.game_scene.pygame.draw.circle") as draw_circle, \
+         patch("airwar.scenes.game_scene.pygame.draw.line") as draw_line:
         scene._render_boss_enrage_overlay(surface)
 
     colors = [call.args[1] for call in draw_circle.call_args_list]
     assert colors
     assert all(color[2] >= color[0] for color in colors)
     assert all(color[3] <= 12 for color in colors)
+    draw_line.assert_not_called()
 
 
 def test_boss_enrage_overlay_uses_visual_intensity_after_active_phase():

@@ -1,5 +1,5 @@
 """Game bootstrap -- window creation, scene registration, and main loop."""
-from ..scenes import SceneManager, GameScene, WelcomeScene, PauseScene, DeathScene, ExitConfirmScene
+from ..scenes import SceneManager, GameScene, TutorialScene, WelcomeScene, PauseScene, DeathScene, ExitConfirmScene
 from ..utils.database import UserDB
 from ..window import create_window
 from .scene_director import SceneDirector
@@ -37,6 +37,7 @@ class Game:
     def _register_scenes(self) -> None:
         self._scene_manager.register("welcome", WelcomeScene())
         self._scene_manager.register("game", GameScene())
+        self._scene_manager.register("tutorial", TutorialScene())
         self._scene_manager.register("pause", PauseScene())
         self._scene_manager.register("death", DeathScene())
         self._scene_manager.register("exit_confirm", ExitConfirmScene())
