@@ -62,12 +62,14 @@ def test_tutorial_boss_enrages_at_real_thirty_percent_threshold() -> None:
     assert len(scene._enemy_bullets) == 5
 
 
-def test_mothership_docking_runs_approach_docked_and_undock_phases() -> None:
+def test_mothership_docking_runs_real_four_phase_flow() -> None:
     scene = _make_scene()
     scene._load_stage(3)
     scene._fade_phase = ""
 
     assert scene._dock_sub_phase == "approach"
+    assert scene._mothership is not None
+    assert scene._mothership._phantom_visible is True
     assert len(scene._enemies) == 3
     assert all(enemy.kind == "target" for enemy in scene._enemies)
 
@@ -75,9 +77,25 @@ def test_mothership_docking_runs_approach_docked_and_undock_phases() -> None:
     for _ in range(scene.DOCK_HOLD_FRAMES):
         scene._update_docking_stage()
 
+    assert scene._dock_sub_phase == "entering"
+    assert scene._docked is False
+    assert scene._player_enter_timer == 0
+    assert scene._mothership._phantom_visible is False
+
+    enter_start_y = scene._player.centery
+    for _ in range(scene.DOCK_ENTER_FRAMES // 2):
+        scene._update_docking_stage()
+
+    assert scene._dock_sub_phase == "entering"
+    assert scene._player.centery < enter_start_y
+
+    for _ in range(scene.DOCK_ENTER_FRAMES - scene.DOCK_ENTER_FRAMES // 2):
+        scene._update_docking_stage()
+
     assert scene._dock_sub_phase == "docked"
     assert scene._docked is True
     assert scene._mothership_ammo == scene.MOTHERSHIP_STARTING_AMMO
+    assert scene._player.center == scene._docking_player_center()
     assert scene._stage_completed is False
 
     scene._mothership_fire_timer = 0
@@ -88,15 +106,34 @@ def test_mothership_docking_runs_approach_docked_and_undock_phases() -> None:
     assert len([enemy for enemy in scene._enemies if enemy.active]) == 2
     assert scene._stage_progress == 0
 
-    for _ in range(140):
-        scene._update_docking_stage()
+    docked_center = scene._player.center
+    scene._mothership_ammo = scene.MOTHERSHIP_AMMO_DRAIN
+    scene._update_docking_stage()
 
-    assert scene._dock_sub_phase == "undock"
-    assert scene._dock_undock_timer > 0
+    assert scene._dock_sub_phase == "eject_player"
+    assert scene._dock_undock_phase == "player"
+    assert scene._dock_undock_timer == scene._dock_undock_player_frames
+    assert scene._docked is False
+    assert scene._mothership.is_flyaway_mode() is False
 
-    for _ in range(scene.DOCK_UNDOCK_FRAMES):
+    scene._update_docking_stage()
+
+    assert scene._player.centery > docked_center[1]
+
+    for _ in range(scene._dock_undock_player_frames):
         scene._update_docking_stage()
-    scene._check_stage_completion()
+        if scene._dock_undock_phase == "mothership":
+            break
+
+    assert scene._dock_sub_phase == "eject_player"
+    assert scene._dock_undock_phase == "mothership"
+    assert scene._mothership.is_flyaway_mode() is True
+
+    for _ in range(scene.DOCK_UNDOCK_FRAMES + 30):
+        scene._update_docking_stage()
+        scene._check_stage_completion()
+        if scene._stage_completed:
+            break
 
     assert scene._stage_completed is True
     assert scene._enemies == []

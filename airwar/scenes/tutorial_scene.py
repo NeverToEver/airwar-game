@@ -155,7 +155,8 @@ class TutorialScene(Scene, MouseInteractiveMixin):
     HOME_HOLD_FRAMES = 144
     FADE_FRAMES = 24
     COMPLETION_DELAY = 48
-    DOCK_UNDOCK_FRAMES = 72
+    DOCK_ENTER_FRAMES = 30
+    DOCK_UNDOCK_FRAMES = 80
     DEPART_FRAMES = 72
     MOTHERSHIP_VOLLEY_FRAMES = 30
     MOTHERSHIP_STARTING_AMMO = 5.0
@@ -256,7 +257,12 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         self._hold_b_frames = 0
         self._docked = False
         self._dock_sub_phase = "approach"
+        self._player_enter_timer = 0
+        self._player_enter_start_center = pygame.Vector2(self._player.center)
         self._dock_undock_timer = 0
+        self._dock_undock_player_frames = 24
+        self._dock_undock_phase = ""
+        self._dock_eject_position = pygame.Vector2(self._player.center)
         self._mothership_fire_timer = self.MOTHERSHIP_VOLLEY_FRAMES
         self._base_ready = False
         self._base_sub_phase = "combat"
@@ -403,7 +409,12 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         self._hold_b_frames = 0
         self._docked = False
         self._dock_sub_phase = "approach"
+        self._player_enter_timer = 0
+        self._player_enter_start_center = pygame.Vector2(self._player.center)
         self._dock_undock_timer = 0
+        self._dock_undock_player_frames = 24
+        self._dock_undock_phase = ""
+        self._dock_eject_position = pygame.Vector2(self._player.center)
         self._mothership_fire_timer = self.MOTHERSHIP_VOLLEY_FRAMES
         self._base_ready = False
         self._base_sub_phase = "combat"
@@ -422,6 +433,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
             self._warning_banner.reset()
         if self._mothership:
             self._mothership.hide()
+            self._mothership.hide_phantom()
             self._mothership.deactivate_flyaway()
 
         sw = get_screen_width()
@@ -444,6 +456,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
             self._spawn_training_targets()
             if self._mothership:
                 self._mothership.show()
+                self._mothership.show_phantom()
                 self._mothership.set_position(sw // 2, max(190, int(sh * 0.32)))
         elif self._stage.id == "homecoming_base":
             self._spawn_homecoming_enemy_wave()
@@ -493,7 +506,11 @@ class TutorialScene(Scene, MouseInteractiveMixin):
             return
 
         if self._stage.id == "mothership_docking":
-            if self._dock_sub_phase == "undock" and self._dock_undock_timer <= 0:
+            if (
+                self._dock_sub_phase == "eject_player"
+                and self._dock_undock_phase == "mothership"
+                and (not self._mothership or not self._mothership.is_visible())
+            ):
                 self._enemies.clear()
                 self._enemy_bullets.clear()
                 self._bullets.clear()
@@ -690,7 +707,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
 
     def _world_update_locked(self) -> bool:
         if self._stage.id == "mothership_docking":
-            return self._dock_sub_phase in ("docked", "undock")
+            return self._dock_sub_phase in ("entering", "docked", "eject_player")
         if self._stage.id == "homecoming_base":
             return self._base_sub_phase in ("base", "depart")
         return False
@@ -900,20 +917,31 @@ class TutorialScene(Scene, MouseInteractiveMixin):
     def _update_docking_stage(self) -> None:
         if self._mothership:
             sw, sh = get_screen_width(), get_screen_height()
-            self._mothership.show()
+            mothership_departing = (
+                self._dock_sub_phase == "eject_player"
+                and self._dock_undock_phase == "mothership"
+            )
+            if not mothership_departing:
+                self._mothership.show()
             self._mothership.set_player_input(0, 0)
-            if self._dock_sub_phase != "undock":
+            if not mothership_departing:
                 self._mothership.set_position(sw // 2, max(190, int(sh * 0.32)))
             self._mothership.update()
 
         if self._dock_sub_phase == "approach":
             self._update_docking_approach()
+        elif self._dock_sub_phase == "entering":
+            self._update_docking_entering()
         elif self._dock_sub_phase == "docked":
             self._update_docked_mothership_support()
-        elif self._dock_sub_phase == "undock":
-            self._dock_undock_timer = max(0, self._dock_undock_timer - 1)
+        elif self._dock_sub_phase == "eject_player":
+            self._update_docking_eject()
 
     def _update_docking_approach(self) -> None:
+        if self._mothership:
+            self._mothership.show()
+            self._mothership.show_phantom()
+
         if pygame.K_h in self._keys_down:
             self._hold_h_frames = min(self.DOCK_HOLD_FRAMES, self._hold_h_frames + 1)
         else:
@@ -922,20 +950,38 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         if self._hold_h_frames < self.DOCK_HOLD_FRAMES:
             return
 
+        self._dock_sub_phase = "entering"
+        self._player_enter_timer = 0
+        self._player_enter_start_center = pygame.Vector2(self._player.center)
+        self._docked = False
+        self._bullets.clear()
+        self._enemy_bullets.clear()
+        if self._mothership:
+            self._mothership.hide_phantom()
+
+    def _update_docking_entering(self) -> None:
+        self._player_enter_timer = min(self.DOCK_ENTER_FRAMES, self._player_enter_timer + 1)
+        t = self._player_enter_timer / self.DOCK_ENTER_FRAMES
+        eased = t * t
+        target = pygame.Vector2(self._docking_player_center())
+        current = self._player_enter_start_center.lerp(target, eased)
+        self._player.center = (round(current.x), round(current.y))
+
+        if self._player_enter_timer < self.DOCK_ENTER_FRAMES:
+            return
+
         self._dock_sub_phase = "docked"
         self._docked = True
         self._mothership_ammo = self.MOTHERSHIP_STARTING_AMMO
         self._mothership_fire_timer = self.MOTHERSHIP_VOLLEY_FRAMES
-        self._bullets.clear()
-        self._enemy_bullets.clear()
+        self._player.center = self._docking_player_center()
         if self._mothership:
-            dock_x, dock_y = self._mothership.get_docking_position()
-            self._player.center = (dock_x, min(get_screen_height() - 120, dock_y + 42))
+            self._mothership.hide_phantom()
 
     def _update_docked_mothership_support(self) -> None:
+        self._player.center = self._docking_player_center()
         if self._mothership:
-            dock_x, dock_y = self._mothership.get_docking_position()
-            self._player.center = (dock_x, min(get_screen_height() - 120, dock_y + 42))
+            self._mothership.hide_phantom()
 
         self._mothership_fire_timer -= 1
         if self._mothership_fire_timer <= 0:
@@ -952,11 +998,44 @@ class TutorialScene(Scene, MouseInteractiveMixin):
                 self._warning_banner.activate()
 
         if self._mothership_ammo <= 0:
-            self._dock_sub_phase = "undock"
-            self._dock_undock_timer = self.DOCK_UNDOCK_FRAMES
+            self._dock_sub_phase = "eject_player"
+            self._dock_undock_timer = self._dock_undock_player_frames
+            self._dock_undock_phase = "player"
+            self._dock_eject_position = pygame.Vector2(self._player.center)
             self._docked = False
             if self._mothership:
+                self._mothership.hide_phantom()
+
+    def _update_docking_eject(self) -> None:
+        if self._dock_undock_phase == "player":
+            elapsed = self._dock_undock_player_frames - self._dock_undock_timer + 1
+            progress = min(1.0, elapsed / self._dock_undock_player_frames)
+            eased = 1 - (1 - progress) * (1 - progress)
+            target_y = min(get_screen_height() - 90, self._dock_eject_position.y + 140)
+            current_y = self._dock_eject_position.y + (target_y - self._dock_eject_position.y) * eased
+            self._player.center = (round(self._dock_eject_position.x), round(current_y))
+            self._dock_undock_timer = max(0, self._dock_undock_timer - 1)
+            if self._dock_undock_timer > 0:
+                return
+
+            self._dock_undock_phase = "mothership"
+            self._dock_undock_timer = self.DOCK_UNDOCK_FRAMES
+            if self._mothership:
                 self._mothership.activate_flyaway()
+            return
+
+        if self._dock_undock_phase == "mothership":
+            self._dock_undock_timer = max(0, self._dock_undock_timer - 1)
+            return
+
+        self._dock_undock_phase = "player"
+        self._dock_undock_timer = self._dock_undock_player_frames
+        self._dock_eject_position = pygame.Vector2(self._player.center)
+
+    def _docking_player_center(self) -> tuple[int, int]:
+        if not self._mothership:
+            return self._player.center
+        return self._mothership.get_docking_position()
 
     def _update_homecoming_stage(self) -> None:
         if self._base_sub_phase == "combat":
@@ -1252,7 +1331,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
 
         render_hostiles = not (
             self._stage.id == "mothership_docking"
-            and self._dock_sub_phase == "undock"
+            and self._dock_sub_phase == "eject_player"
         )
         if render_hostiles:
             for bullet in self._bullets:
@@ -1417,14 +1496,18 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         if self._stage.id == "mothership_docking":
             if self._dock_sub_phase == "approach":
                 return [
-                    "按住 H 呼叫母舰停靠。停靠后母舰会用导弹扫荡敌方单位，同时自动保存你的游戏进度。",
+                    "按住 H 时母舰虚影会逐渐显现，进度条满后战机会自动对接。",
+                ]
+            if self._dock_sub_phase == "entering":
+                return [
+                    "呼叫完成。战机正在沿停靠航线进入母舰对接口，控制会短暂锁定。",
                 ]
             if self._dock_sub_phase == "docked":
                 return [
                     "停靠完成。母舰正在发射导弹清剿敌方单位，弹药随时间消耗。耗尽后自动脱离。",
                 ]
             return [
-                "弹匣耗尽，母舰正在脱离战场。残余目标会在返航前清理。",
+                "弹匣耗尽，战机先被弹出停靠舱，随后母舰加速上升脱离战场。",
             ]
 
         if self._stage.id == "homecoming_base":
@@ -1445,10 +1528,12 @@ class TutorialScene(Scene, MouseInteractiveMixin):
     def _objective_counter_text(self) -> str:
         if self._stage.id == "mothership_docking" and self._dock_sub_phase == "approach":
             return f"{int(self._hold_h_frames / self.DOCK_HOLD_FRAMES * 100)}%"
+        if self._stage.id == "mothership_docking" and self._dock_sub_phase == "entering":
+            return "对接"
         if self._stage.id == "mothership_docking" and self._dock_sub_phase == "docked":
             return f"{self._mothership_ammo:.1f}"
-        if self._stage.id == "mothership_docking" and self._dock_sub_phase == "undock":
-            return "脱离"
+        if self._stage.id == "mothership_docking" and self._dock_sub_phase == "eject_player":
+            return "弹出" if self._dock_undock_phase == "player" else "脱离"
         if self._stage.id == "homecoming_base" and self._base_sub_phase == "combat":
             return f"返航引擎预热 {int(self._hold_b_frames / self.HOME_HOLD_FRAMES * 100)}%"
         if self._stage.id == "homecoming_base" and self._base_sub_phase == "base":
@@ -1584,7 +1669,12 @@ class TutorialScene(Scene, MouseInteractiveMixin):
 
     def _render_mothership_components(self, surface: pygame.Surface) -> None:
         if self._mothership:
-            self._mothership.show()
+            mothership_departing = (
+                self._dock_sub_phase == "eject_player"
+                and self._dock_undock_phase == "mothership"
+            )
+            if not mothership_departing:
+                self._mothership.show()
             self._mothership.render(surface)
         if self._dock_sub_phase == "docked" and self._ammo_magazine:
             is_warning = self._mothership_ammo < self.WARNING_CELL_THRESHOLD
@@ -1668,8 +1758,8 @@ class TutorialScene(Scene, MouseInteractiveMixin):
                 "desc": "完成一次母舰停靠",
                 "target": "mothership",
                 "goal": 1,
-                "progress": 1 if self._dock_sub_phase in ("docked", "undock") else 0,
-                "done": self._dock_sub_phase in ("docked", "undock"),
+                "progress": 1 if self._dock_sub_phase in ("docked", "eject_player") else 0,
+                "done": self._dock_sub_phase in ("docked", "eject_player"),
                 "claimed": False,
             },
             {
