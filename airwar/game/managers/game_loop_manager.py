@@ -6,12 +6,9 @@ from ...config import get_screen_width, get_screen_height
 from ..explosion_animation import ExplosionManager
 from .game_controller import GameplayState
 
-try:
-    from airwar.core_bindings import batch_update_movements as rust_batch_move, RUST_AVAILABLE as _RUST_OK
-    _HAS_BATCH_MOVE = _RUST_OK
-except ImportError:
-    _HAS_BATCH_MOVE = False
-    rust_batch_move = None
+from airwar.core_bindings import batch_update_movements
+
+_HAS_BATCH_MOVE = True
 
 
 logger = logging.getLogger(__name__)
@@ -230,7 +227,7 @@ class GameLoopManager:
             return
 
         # Batch Rust movement — only for enemies in 'active' state (not entering/exiting)
-        if _HAS_BATCH_MOVE:
+        if batch_update_movements is not None:
             base_list = []
             extra_list = []
             batch_indices = []
@@ -250,7 +247,7 @@ class GameLoopManager:
                         extra_list.append(extra)
                         batch_indices.append(i)
             if base_list:
-                results = rust_batch_move(base_list, extra_list)
+                results = batch_update_movements(base_list, extra_list)
                 for j, (new_x, new_y, new_timer) in enumerate(results):
                     idx = batch_indices[j]
                     enemies[idx].apply_batch_movement_result((new_x, new_y, new_timer))

@@ -1,6 +1,6 @@
 # 空战
 
-一款基于 Python + Pygame 的 2D 空战射击游戏，支持可选 Rust 原生扩展加速。包含完整的 7 阶段新手教程、Boss 战、基地指挥中心（征用点数经济）、鼠标辅瞄、以及运行期生成素材的本地缓存。
+一款基于 Python + Pygame 的 2D 空战射击游戏，使用必需的 Rust 原生扩展加速。包含完整的 7 阶段新手教程、Boss 战、基地指挥中心（征用点数经济）、鼠标辅瞄、以及运行期生成素材的本地缓存。
 
 ## 快速开始
 
@@ -44,7 +44,7 @@ python3 main.py
 - Boss 战：多阶段移动和攻击；Boss 血量降至 30% 时触发核心过载，攻击节奏加快、枪口焰跳动频率大幅提升。暴走总时长 6 秒，视觉表现为 Boss 扩散光圈 + 屏幕边缘暗角。每发弹幕都会触发枪口闪光，压迫感更强。
 - 受击清弹：玩家受击进入短暂无敌时会清理普通敌弹；Boss 暴走布置弹幕不会被该清弹机制移除，但玩家无敌仍然生效。
 - 运行期绘制素材缓存：首次启动时生成飞船 / 光效等素材并缓存在本地，后续启动复用图片素材以降低重复绘制成本。
-- 可选 Rust 原生扩展：用于向量、碰撞、批量移动、粒子、子弹、光效等性能热点；未安装时自动回退到纯 Python。
+- Rust 原生扩展：用于向量、碰撞、批量移动、粒子、子弹、光效等性能热点，是运行游戏的必需组件。
 - 新手教程：主菜单可进入 7 阶段教学关卡，涵盖移动瞄准、加速突进、战斗基础、母舰停靠（含火力支援演示）、返航基地（含整备流程）、Boss 遭遇。教程复用真实游戏 UI 组件，体验与正式战斗一致。
 
 ## 技术栈
@@ -53,7 +53,7 @@ python3 main.py
 - Pygame
 - Pillow
 - Pytest / Ruff
-- Rust + PyO3 + maturin（可选加速模块）
+- Rust + PyO3 + maturin（必需加速模块）
 
 ## 项目结构
 
@@ -70,7 +70,7 @@ airwar-game/
 |   |-- utils/                 # 数据库、字体、素材绘制与缓存等工具
 |   |-- window/                # 窗口创建与缩放
 |   |-- tests/                 # Python 测试
-|   `-- core_bindings.py       # Rust 扩展绑定与纯 Python 回退入口
+|   `-- core_bindings.py       # Rust 扩展绑定入口
 |-- airwar_core/               # Rust 原生扩展
 |   `-- src/
 |       |-- lib.rs             # 模块导出入口
@@ -98,11 +98,11 @@ airwar-game/
 - 管理器拆分：生成、碰撞、子弹、Boss、里程碑、输入协调等逻辑由独立 manager 处理。
 - 系统拆分：生命、奖励、难度、通知、天赋平衡等玩法规则集中在 `airwar/game/systems/`。
 - UI 与渲染分层：HUD、准星、基地指挥中心、奖励选择等组件独立于核心玩法逻辑。
-- Rust 可选加速：`airwar/core_bindings.py` 统一检测扩展是否可用，不可用时保留纯 Python 运行路径。
+- Rust 原生扩展为必需组件：`airwar/core_bindings.py` 直接导入 `airwar_core`，缺失时会在导入阶段失败。
 
 ## Rust 原生扩展
 
-`airwar_core/` 使用 PyO3 + maturin 提供可选性能加速。它不是运行游戏的硬依赖；没有安装时，游戏会打印提示并使用纯 Python 实现。
+`airwar_core/` 使用 PyO3 + maturin 提供必需性能加速。Rust extension is REQUIRED for performance；没有安装时，游戏会在导入阶段失败。
 
 ### 安装
 
@@ -118,7 +118,7 @@ maturin develop --release
 ### 验证
 
 ```bash
-python3 -c "from airwar.core_bindings import RUST_AVAILABLE; print('Rust 加速:', '已启用' if RUST_AVAILABLE else '未安装，使用纯 Python')"
+python3 -c "from airwar.core_bindings import batch_update_bullets; print('Rust 原生扩展: 已安装')"
 ```
 
 ## 素材缓存与性能分析

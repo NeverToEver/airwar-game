@@ -9,7 +9,6 @@ from .explosion_particle import ExplosionParticle
 from airwar.core_bindings import (
     generate_explosion_particles,
     batch_update_particles,
-    RUST_AVAILABLE,
 )
 from ..constants import GAME_CONSTANTS
 
@@ -174,42 +173,19 @@ class ExplosionEffect:
                                  max_life=max_life, size=size, particle_type=particle_type)
 
     def _generate_particles(self) -> None:
-        """Generate explosion particles using Rust if available"""
-        if RUST_AVAILABLE:
-            particle_data = generate_explosion_particles(
-                self._x, self._y,
-                self.PARTICLE_COUNT,
-                self.PARTICLE_LIFE_MIN,
-                self.PARTICLE_LIFE_MAX,
-                self.PARTICLE_SPEED_MIN,
-                self.PARTICLE_SPEED_MAX,
-                self.PARTICLE_SIZE_MIN,
-                self.PARTICLE_SIZE_MAX,
-            )
-            for x, y, vx, vy, life, max_life, size in particle_data:
-                self._particles.append(self._acquire_particle(x, y, vx, vy, life, max_life, size))
-        else:
-            for _ in range(self.PARTICLE_COUNT):
-                angle = random.uniform(0, 2 * math.pi)
-                speed = random.uniform(
-                    self.PARTICLE_SPEED_MIN,
-                    self.PARTICLE_SPEED_MAX
-                )
-                life = random.randint(
-                    self.PARTICLE_LIFE_MIN,
-                    self.PARTICLE_LIFE_MAX
-                )
-                size = random.uniform(
-                    self.PARTICLE_SIZE_MIN,
-                    self.PARTICLE_SIZE_MAX
-                )
-
-                self._particles.append(self._acquire_particle(
-                    self._x, self._y,
-                    math.cos(angle) * speed,
-                    math.sin(angle) * speed,
-                    life, life, size
-                ))
+        """Generate explosion particles using Rust."""
+        particle_data = generate_explosion_particles(
+            self._x, self._y,
+            self.PARTICLE_COUNT,
+            self.PARTICLE_LIFE_MIN,
+            self.PARTICLE_LIFE_MAX,
+            self.PARTICLE_SPEED_MIN,
+            self.PARTICLE_SPEED_MAX,
+            self.PARTICLE_SIZE_MIN,
+            self.PARTICLE_SIZE_MAX,
+        )
+        for x, y, vx, vy, life, max_life, size in particle_data:
+            self._particles.append(self._acquire_particle(x, y, vx, vy, life, max_life, size))
 
         for _ in range(self.SPARK_COUNT):
             angle = random.uniform(0, 2 * math.pi)
@@ -247,52 +223,32 @@ class ExplosionEffect:
         if not self._active:
             return False
 
-        if RUST_AVAILABLE:
-            # Rust path for main particles
-            max_lives = [p.max_life for p in self._particles]
-            particle_data = [
-                (p.x, p.y, p.vx, p.vy, p.life, p.max_life, p.size)
-                for p in self._particles
-            ]
-            results = batch_update_particles(particle_data, dt)
-            # Save original particles list to return dead ones to pool
-            original_particles = self._particles
-            self._particles = []
-            for i, ((x, y, vx, vy, life, size, is_alive), original_max_life) in enumerate(zip(results, max_lives, strict=False)):
-                if is_alive:
-                    self._particles.append(self._acquire_particle(
-                        x, y, vx, vy, life, original_max_life, size
-                    ))
-                else:
-                    # Return dead particle to pool for reuse
-                    self._particle_pool.append(original_particles[i])
+        max_lives = [p.max_life for p in self._particles]
+        particle_data = [
+            (p.x, p.y, p.vx, p.vy, p.life, p.max_life, p.size)
+            for p in self._particles
+        ]
+        results = batch_update_particles(particle_data, dt)
+        original_particles = self._particles
+        self._particles = []
+        for i, ((x, y, vx, vy, life, size, is_alive), original_max_life) in enumerate(zip(results, max_lives, strict=False)):
+            if is_alive:
+                self._particles.append(self._acquire_particle(
+                    x, y, vx, vy, life, original_max_life, size
+                ))
+            else:
+                self._particle_pool.append(original_particles[i])
 
-            # Sparks and debris still use Python update (different damping per type)
-            for i in range(len(self._sparks) - 1, -1, -1):
-                self._sparks[i].update(dt)
-                if not self._sparks[i].is_alive():
-                    self._particle_pool.append(self._sparks.pop(i))
+        # Sparks and debris still use Python update (different damping per type).
+        for i in range(len(self._sparks) - 1, -1, -1):
+            self._sparks[i].update(dt)
+            if not self._sparks[i].is_alive():
+                self._particle_pool.append(self._sparks.pop(i))
 
-            for i in range(len(self._debris) - 1, -1, -1):
-                self._debris[i].update(dt)
-                if not self._debris[i].is_alive():
-                    self._particle_pool.append(self._debris.pop(i))
-        else:
-            # Python fallback: update in-place, return dead particles to pool
-            for i in range(len(self._particles) - 1, -1, -1):
-                self._particles[i].update(dt)
-                if not self._particles[i].is_alive():
-                    self._particle_pool.append(self._particles.pop(i))
-
-            for i in range(len(self._sparks) - 1, -1, -1):
-                self._sparks[i].update(dt)
-                if not self._sparks[i].is_alive():
-                    self._particle_pool.append(self._sparks.pop(i))
-
-            for i in range(len(self._debris) - 1, -1, -1):
-                self._debris[i].update(dt)
-                if not self._debris[i].is_alive():
-                    self._particle_pool.append(self._debris.pop(i))
+        for i in range(len(self._debris) - 1, -1, -1):
+            self._debris[i].update(dt)
+            if not self._debris[i].is_alive():
+                self._particle_pool.append(self._debris.pop(i))
 
         self._shockwave_radius += 4.0 * dt
         self._core_flash = max(0.0, self._core_flash - 0.22 * dt)

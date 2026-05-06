@@ -6,7 +6,6 @@ This module re-exports from the sub-modules for backward compatibility:
 - _sprites_bullets: single, spread, laser, explosive missile bullets
 """
 from ._sprites_common import (
-    RUST_AVAILABLE,
     prewarm_glow_caches,
     create_gradient_surface,
     draw_glow_circle,
@@ -32,7 +31,6 @@ from ._sprites_bullets import (
 )
 
 __all__ = [
-    'RUST_AVAILABLE',
     'prewarm_glow_caches',
     'create_gradient_surface',
     'draw_glow_circle',

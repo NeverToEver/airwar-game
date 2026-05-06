@@ -10,17 +10,10 @@ if TYPE_CHECKING:
     from ...entities.enemy import Boss
     from ...entities.bullet import Bullet, EnemyBullet
 
-# Try to import Rust collision functions
-try:
-    from airwar.core_bindings import (
-        batch_collide_bullets_vs_entities,
-        PersistentSpatialHash,
-        RUST_AVAILABLE,
-    )
-except ImportError:
-    batch_collide_bullets_vs_entities = None
-    PersistentSpatialHash = None
-    RUST_AVAILABLE = False
+from airwar.core_bindings import (
+    batch_collide_bullets_vs_entities,
+    PersistentSpatialHash,
+)
 
 
 @dataclass
@@ -54,13 +47,13 @@ class _QueryRect:
 class CollisionController:
     """Collision controller — detects and handles entity collisions.
 
-        Supports spatial hashing (Rust-accelerated when available) for efficient
+        Supports Rust-accelerated spatial hashing for efficient
         collision detection between player bullets, enemy bullets, enemies,
         bosses, and the player.
 
         Attributes:
             _events: Registered collision event callbacks.
-            _use_rust: Whether Rust spatial hash acceleration is available.
+            _use_rust: Whether Rust batch collision is enabled.
         """
     GRID_CELL_SIZE = 100
 
@@ -71,11 +64,9 @@ class CollisionController:
         self._grid_cells = {}
         self._enemy_grid_cells = {}
         self._grid_cell_size = self.GRID_CELL_SIZE
-        self._use_rust = RUST_AVAILABLE
+        self._use_rust = True
         # Persistent spatial hash for incremental collision detection
-        self._persistent_hash = None
-        if self._use_rust and PersistentSpatialHash is not None:
-            self._persistent_hash = PersistentSpatialHash(self._grid_cell_size)
+        self._persistent_hash = PersistentSpatialHash(self._grid_cell_size)
         self._previous_enemy_ids: set = set()
         # Reusable temp containers for Rust batch collision
         self._bullet_data: List[tuple] = []
@@ -217,8 +208,7 @@ class CollisionController:
         )
 
         # The Rust collision path builds its own spatial data from batch input.
-        # Keep the Python grid only for the fallback path to avoid duplicate
-        # per-frame hitbox work when the extension is available.
+        # Keep the Python grid only when explicitly disabled by tests.
         self._clear_grid()
         if self._uses_rust_batch_collision():
             for enemy in enemies:

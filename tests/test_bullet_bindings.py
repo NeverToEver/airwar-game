@@ -7,8 +7,7 @@ class TestBatchUpdateBullets:
 
     def test_import(self):
         """Test that batch_update_bullets can be imported."""
-        from airwar.core_bindings import batch_update_bullets, RUST_AVAILABLE
-        assert RUST_AVAILABLE is True
+        from airwar.core_bindings import batch_update_bullets
         assert callable(batch_update_bullets)
 
     def test_basic_movement(self):
