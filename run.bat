@@ -2,20 +2,20 @@
 setlocal enabledelayedexpansion
 title AirWar Launcher
 
-set "ROOT=%~dp0"
+set ROOT=%~dp0
 cd /d "%ROOT%"
 
-echo ========================================
+echo -----------------------------------------
 echo   AirWar Launcher
-echo ========================================
+echo -----------------------------------------
 echo.
 
-:: ── Find Python ────────────────────────────────────────────
-set "PYTHON="
+REM ---- Find Python ----
+set PYTHON=
 for %%c in (py python3 python) do (
     where %%c >nul 2>&1
     if !errorlevel! equ 0 (
-        set "PYTHON=%%c"
+        set PYTHON=%%c
         goto :found_python
     )
 )
@@ -25,60 +25,44 @@ if "%PYTHON%"=="" (
     echo [ERROR] Python not found in PATH.
     echo.
     echo Install Python 3.12+ from: https://www.python.org/downloads/
-    echo Make sure to check "Add Python to PATH" during installation.
+    echo Check "Add Python to PATH" during installation.
     echo.
     pause
     exit /b 1
 )
+echo [OK] Python: %PYTHON%
 %PYTHON% --version
-echo Python found: %PYTHON%
 echo.
 
-:: ── Check Python version ───────────────────────────────────
-for /f "tokens=2 delims= " %%v in ('%PYTHON% --version 2^>^&1') do set "VER=%%v"
-for /f "tokens=1 delims=." %%a in ("!VER!") do set "MAJOR=%%a"
-for /f "tokens=2 delims=." %%a in ("!VER!") do set "MINOR=%%a"
-if !MAJOR! lss 3 (
-    echo [ERROR] Python 3.11+ required, found !VER!
-    pause
-    exit /b 1
-)
-if !MAJOR! equ 3 if !MINOR! lss 11 (
-    echo [ERROR] Python 3.11+ required, found !VER!
-    pause
-    exit /b 1
-)
-echo Python !VER! OK
-echo.
-
-:: ── Find Cargo ────────────────────────────────────────────
-where cargo >nul 2>&1
+REM ---- Python deps ----
+echo [..] Checking Python dependencies...
+%PYTHON% -c "import pygame" >nul 2>&1
 if !errorlevel! neq 0 (
-    echo [ERROR] Rust / Cargo not found.
-    echo Install from: https://rustup.rs/
-    echo After installing, re-run run.bat
-    pause
-    exit /b 1
-)
-echo Cargo OK
-echo.
-
-:: ── Python deps ───────────────────────────────────────────
-%PYTHON% -c "import pygame; print('pygame', pygame.version.ver)" >nul 2>&1
-if !errorlevel! neq 0 (
-    echo Installing Python dependencies...
+    echo [..] Installing pygame, pillow etc...
     %PYTHON% -m pip install --user -r requirements.txt
     if !errorlevel! neq 0 (
-        echo [ERROR] pip install failed. Check your internet connection.
+        echo [FAIL] pip install failed. Check internet connection.
         pause
         exit /b 1
     )
 )
-echo Python dependencies OK
+echo [OK] Python dependencies
 echo.
 
-:: ── Rust extension ────────────────────────────────────────
-echo Building Rust extension ^(this may take a few minutes^)...
+REM ---- Rust / Cargo ----
+where cargo >nul 2>&1
+if !errorlevel! neq 0 (
+    echo [WARN] Rust/Cargo not found.
+    echo        Download: https://rustup.rs/
+    echo        After install, re-run run.bat
+    pause
+    exit /b 1
+)
+echo [OK] Cargo found
+echo.
+
+REM ---- Build Rust extension ----
+echo [..] Building Rust extension (may take a few minutes)...
 cd /d "%ROOT%airwar_core"
 
 %PYTHON% -c "import maturin" >nul 2>&1
@@ -90,30 +74,27 @@ if !errorlevel! neq 0 (
 if !errorlevel! neq 0 (
     cd /d "%ROOT%"
     echo.
-    echo ========================================
-    echo [ERROR] Rust build FAILED.
+    echo [FAIL] Rust build failed.
     echo.
-    echo On Windows this usually means you need:
-    echo   Visual Studio Build Tools with C++ workload
-    echo   Download: https://aka.ms/vs/17/release/vs_BuildTools.exe
+    echo On Windows this usually needs:
+    echo   Microsoft Visual C++ Build Tools
+    echo   https://aka.ms/vs/17/release/vs_BuildTools.exe
     echo   Select "Desktop development with C++" during install
     echo.
-    echo OR install with: winget install Microsoft.VisualStudio.2022.BuildTools
-    echo ========================================
     pause
     exit /b 1
 )
 cd /d "%ROOT%"
-echo Rust extension OK
+echo [OK] Rust extension built
 echo.
 
-:: ── Launch ────────────────────────────────────────────────
-echo Starting AirWar...
-echo ========================================
-echo.
+REM ---- Launch ----
+echo -----------------------------------------
+echo   Starting AirWar...
+echo -----------------------------------------
 %PYTHON% main.py
 
 echo.
-echo AirWar has exited ^(code: !errorlevel!^).
+echo AirWar exited.
 pause
 endlocal
