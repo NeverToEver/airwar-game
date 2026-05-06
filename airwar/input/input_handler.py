@@ -18,6 +18,7 @@ class InputHandler(ABC):
         'down_alt': pygame.K_s,
         'pause': pygame.K_ESCAPE,
         'boost': pygame.K_LSHIFT,
+        'precision': pygame.K_LCTRL,
     }
 
     @abstractmethod
@@ -34,6 +35,10 @@ class InputHandler(ABC):
 
     @abstractmethod
     def is_boost_just_pressed(self) -> bool:
+        pass
+
+    @abstractmethod
+    def is_precision_pressed(self) -> bool:
         pass
 
 
@@ -80,6 +85,10 @@ class PygameInputHandler(InputHandler):
         self._boost_just_pressed = False
         return just_pressed
 
+    def is_precision_pressed(self) -> bool:
+        keys = pygame.key.get_pressed()
+        return keys[self._bindings['precision']]
+
 
 class MockInputHandler(InputHandler):
     """Mock input handler — programmable input for testing.
@@ -92,6 +101,7 @@ class MockInputHandler(InputHandler):
         self._pause_pressed = False
         self._boost_pressed = False
         self._boost_just_pressed = False
+        self._precision_pressed = False
 
     def set_direction(self, dx: float, dy: float) -> None:
         self._direction = Vector2(dx, dy)
@@ -107,6 +117,9 @@ class MockInputHandler(InputHandler):
         self._boost_pressed = True
         self._boost_just_pressed = True
 
+    def set_precision_pressed(self, pressed: bool) -> None:
+        self._precision_pressed = pressed
+
     def get_movement_direction(self) -> Vector2:
         return self._direction
 
@@ -120,3 +133,6 @@ class MockInputHandler(InputHandler):
         just_pressed = self._boost_just_pressed
         self._boost_just_pressed = False
         return just_pressed
+
+    def is_precision_pressed(self) -> bool:
+        return self._precision_pressed
