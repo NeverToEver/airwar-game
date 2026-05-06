@@ -6,7 +6,6 @@ from ._sprites_common import (
     _spread_bullet_glow_cache,
     _laser_bullet_glow_cache,
     _explosive_missile_cache,
-    RUST_AVAILABLE,
     create_single_bullet_glow,
     create_spread_bullet_glow,
     create_laser_bullet_glow,
@@ -28,36 +27,25 @@ def draw_single_bullet(surface: pygame.Surface, x: float, y: float, width: float
     top_y = y
     if owner == "player":
         # Player bullets: bright magenta/pink - more visible
-        glow_color = (255, 100, 200, 50)
         bullet_color = (255, 150, 220)
         core_color = (255, 220, 255)
         # Larger player bullet for visibility
         ew, eh = int(width * 1.4), int(height * 1.3)
     elif owner == "mothership":
-        glow_color = (70, 220, 255, 45)
         bullet_color = (75, 210, 245)
         core_color = (210, 250, 255)
         ew, eh = int(width * 1.2), int(height * 1.15)
     else:
-        glow_color = (255, 200, 50, 30)
         bullet_color = (255, 220, 50)
         core_color = None
         ew, eh = width, height
 
     cache_key = (int(ew), int(eh), owner)
     if cache_key not in _single_bullet_glow_cache:
-        # Player bullets use pure Python glow for custom sizing
-        if RUST_AVAILABLE and create_single_bullet_glow and owner != "player":
-            data = create_single_bullet_glow(width, height)
-            surf_w = int(width + 16)
-            surf_h = int(height + 12)
-            glow = _bytes_to_surface(data, surf_w, surf_h)
-        else:
-            glow = pygame.Surface((int(ew + 20), int(eh + 16)), pygame.SRCALPHA)
-            for i in range(8, 0, -1):
-                alpha = 40 * (8 - i) // 7
-                color = glow_color[:3] + (alpha,)
-                pygame.draw.ellipse(glow, color, (10 - i, 5 - i // 2, int(ew) + i * 2 - 10, int(eh) + i - 4))
+        data = create_single_bullet_glow(float(ew), float(eh))
+        surf_w = int(ew + 16)
+        surf_h = int(eh + 12)
+        glow = _bytes_to_surface(data, surf_w, surf_h)
         _single_bullet_glow_cache[cache_key] = glow
     else:
         glow = _single_bullet_glow_cache[cache_key]
@@ -107,25 +95,16 @@ def draw_spread_bullet(surface: pygame.Surface, x: float, y: float, width: float
     radius = int(width / 2)
     # Player bullets: purple/magenta, Enemy bullets: orange/yellow
     if owner == "player":
-        glow_color = (200, 100, 255, 40)
         outer_color = (200, 120, 255)
         inner_color = (230, 180, 255)
     else:
-        glow_color = (255, 150, 50, 40)
         outer_color = (255, 180, 80)
         inner_color = (255, 220, 150)
     cache_key = (radius, owner)
     if cache_key not in _spread_bullet_glow_cache:
-        if RUST_AVAILABLE and create_spread_bullet_glow:
-            data = create_spread_bullet_glow(float(radius))
-            surf_size = radius * 4 + 8
-            glow = _bytes_to_surface(data, surf_size, surf_size)
-        else:
-            glow = pygame.Surface((radius * 4 + 8, radius * 4 + 8), pygame.SRCALPHA)
-            for i in range(radius + 4, 0, -2):
-                alpha = 40 * (radius + 4 - i) // (radius + 4)
-                color = glow_color[:3] + (alpha,)
-                pygame.draw.circle(glow, color, (radius * 2 + 4, radius * 2 + 4), i)
+        data = create_spread_bullet_glow(float(radius))
+        surf_size = radius * 4 + 8
+        glow = _bytes_to_surface(data, surf_size, surf_size)
         _spread_bullet_glow_cache[cache_key] = glow
     else:
         glow = _spread_bullet_glow_cache[cache_key]
@@ -138,26 +117,17 @@ def draw_laser_bullet(surface: pygame.Surface, x: float, y: float, width: float,
     center_x = x + width / 2
     # Player: green laser, Enemy: red/orange laser for distinction
     if owner == "player":
-        glow_line_color = (20, 255, 100, 70)
         outer_color = (30, 200, 80)
         inner_color = (80, 255, 150)
         core_color = (200, 255, 220)
     else:
-        glow_line_color = (255, 20, 40, 70)
         outer_color = (255, 30, 60)
         inner_color = (255, 80, 120)
         core_color = (255, 255, 255)
     cache_key = (int(height), owner)
     if cache_key not in _laser_bullet_glow_cache:
-        if RUST_AVAILABLE and create_laser_bullet_glow:
-            data = create_laser_bullet_glow(height)
-            glow = _bytes_to_surface(data, 24, int(height) + 12)
-        else:
-            glow = pygame.Surface((24, int(height) + 12), pygame.SRCALPHA)
-            for i in range(10, 0, -2):
-                alpha = 70 * (10 - i) // 9
-                color = glow_line_color[:3] + (alpha,)
-                pygame.draw.line(glow, color, (12, 4), (12, int(height) + 8), i)
+        data = create_laser_bullet_glow(height)
+        glow = _bytes_to_surface(data, 24, int(height) + 12)
         _laser_bullet_glow_cache[cache_key] = glow
     else:
         glow = _laser_bullet_glow_cache[cache_key]
@@ -182,17 +152,10 @@ def draw_explosive_missile(surface: pygame.Surface, x: float, y: float, width: f
 
     cache_key = (bw, int(height))
     if cache_key not in _explosive_missile_cache:
-        if RUST_AVAILABLE and create_explosive_missile_glow:
-            data = create_explosive_missile_glow(width, height)
-            surf_w = bw * 3 + 12
-            surf_h = int(height) + 10
-            glow_surf = _bytes_to_surface(data, surf_w, surf_h)
-        else:
-            glow_surf = pygame.Surface((bw * 3 + 12, int(height) + 10), pygame.SRCALPHA)
-            for i in range(6, 0, -1):
-                alpha = 35 * (6 - i) // 5
-                pygame.draw.ellipse(glow_surf, (255, 80, 20, alpha),
-                                    (bw + 6 - i * 2, 2 - i, int(height) + i * 2, int(height) + i * 2))
+        data = create_explosive_missile_glow(width, height)
+        surf_w = bw * 3 + 12
+        surf_h = int(height) + 10
+        glow_surf = _bytes_to_surface(data, surf_w, surf_h)
         _explosive_missile_cache[cache_key] = glow_surf
     else:
         glow_surf = _explosive_missile_cache[cache_key]

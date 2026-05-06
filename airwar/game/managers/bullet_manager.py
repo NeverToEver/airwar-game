@@ -18,12 +18,7 @@ Usage:
 
 from typing import Protocol
 
-# Try to import Rust batch update function
-try:
-    from airwar.core_bindings import batch_update_bullets, RUST_AVAILABLE
-except ImportError:
-    batch_update_bullets = None
-    RUST_AVAILABLE = False
+from airwar.core_bindings import batch_update_bullets
 
 from ...config import get_screen_height, get_screen_width
 
@@ -70,7 +65,7 @@ class BulletManager:
         """
         self._player = player
         self._spawn_controller = spawn_controller
-        self._use_rust = RUST_AVAILABLE and batch_update_bullets is not None
+        self._use_rust = batch_update_bullets is not None
         self._batch_bullet_data = []
         self._batch_bullet_map = {}
 

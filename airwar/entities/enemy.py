@@ -18,12 +18,7 @@ from airwar.config import (
 from airwar.config.constants_access import get_game_constants
 from .movement_strategies import get_movement_strategy
 
-# Try to import Rust movement function
-try:
-    from airwar.core_bindings import update_movement as rust_update_movement, RUST_AVAILABLE
-except ImportError:
-    rust_update_movement = None
-    RUST_AVAILABLE = False
+from airwar.core_bindings import update_movement as rust_update_movement
 
 # Movement type string to Rust enum mapping
 MOVEMENT_TYPE_MAP = {
@@ -175,7 +170,7 @@ class Enemy(Entity):
         """Update enemy state each frame.
 
         Handles entry/active/exit state machine, lifetime tracking,
-        movement (Rust-accelerated or Python fallback), and firing.
+        movement, and firing.
         """
         if not self.active:
             return
@@ -255,7 +250,7 @@ class Enemy(Entity):
             self._movement_strategy.update(self)
 
     def _can_use_rust_movement(self) -> bool:
-        return rust_update_movement is not None and self.move_type in MOVEMENT_TYPE_MAP and self.move_type != "zigzag"
+        return self.move_type in MOVEMENT_TYPE_MAP and self.move_type != "zigzag"
 
     def _update_rust_movement(self) -> None:
         batch_result = getattr(self, '_batch_result', None)
