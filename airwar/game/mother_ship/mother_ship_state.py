@@ -41,7 +41,7 @@ def _coerce_int_field(data: Dict, key: str, minimum: int | None = None) -> None:
 def normalize_save_data(data: Dict) -> Dict:
     """Normalize JSON save values while rejecting genuinely invalid data."""
     normalized = dict(data)
-    for key in ('version', 'score', 'cycle_count', 'kill_count', 'boss_kill_count'):
+    for key in ('version', 'score', 'cycle_count', 'kill_count', 'boss_kill_count', 'requisition_points'):
         _coerce_int_field(normalized, key, minimum=0 if key != 'version' else 1)
     for key in ('player_health', 'player_max_health'):
         _coerce_int_field(normalized, key, minimum=1)
@@ -164,6 +164,7 @@ class GameSaveData:
     player_y: float = 0.0
     is_in_mothership: bool = False
     username: str = ""
+    requisition_points: int = 0
 
     def to_dict(self) -> Dict:
         return normalize_save_data({
@@ -184,6 +185,7 @@ class GameSaveData:
             'player_y': self.player_y,
             'is_in_mothership': self.is_in_mothership,
             'username': self.username,
+            'requisition_points': self.requisition_points,
         })
 
     @classmethod

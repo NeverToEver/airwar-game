@@ -79,6 +79,14 @@ class RewardSystem:
     EVASION_CHANCE = 0.2
     LIFESTEAL_FRACTION = 0.1
     EXPLOSIVE_SPLASH_FRACTION = 0.5
+    def set_difficulty(self, difficulty: str) -> None:
+        """Update base stats to reflect a changed difficulty level."""
+        settings = DIFFICULTY_SETTINGS.get(difficulty, DIFFICULTY_SETTINGS['medium'])
+        self._base_bullet_damage = settings.get('bullet_damage', 50)
+        self._base_fire_cooldown = settings.get('fire_cooldown', 8)
+        self._base_max_health = settings.get('max_health', 100)
+        self._base_boost_recovery_rate = settings.get('boost_recovery_rate', 1.0)
+
     def __init__(self, difficulty: str = 'medium'):
         self.unlocked_buffs: List[str] = []
         self.active_buffs: Dict[str, Buff] = {}
