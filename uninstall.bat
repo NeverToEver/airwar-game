@@ -2,24 +2,22 @@
 setlocal enabledelayedexpansion
 title AirWar Uninstaller
 
-set ROOT=%~dp0
-cd /d "%ROOT%"
+set "GAME_DIR=%~dp0"
+cd /d "%GAME_DIR%"
 
 echo.
-echo   ==============================
-echo     AirWar - Uninstaller
-echo   ==============================
+echo   ======================================
+echo     AirWar - Complete Uninstaller
+echo   ======================================
 echo.
-echo   This will remove all generated files:
-echo     - Virtual environment (.venv)
-echo     - Rust build artifacts (airwar_core/target)
-echo     - Python bytecode cache (__pycache__)
-echo     - Installed wheel (pip uninstall airwar_core)
+echo   This will permanently delete:
+echo     - The entire game folder and all its contents
+echo     - Saves, config, downloaded dependencies
+echo     - Compiled Rust extension
 echo.
-echo   Your source code, saves, and config files
-echo   will NOT be affected.
+echo   Location: %GAME_DIR%
 echo.
-choice /c YN /n /m "  Proceed with uninstall? [Y/N] "
+choice /c YN /n /m "  Are you sure? This CANNOT be undone. [Y/N] "
 if !errorlevel! equ 2 (
     echo   Cancelled.
     pause
@@ -27,45 +25,19 @@ if !errorlevel! equ 2 (
 )
 
 echo.
-echo   [..] Removing virtual environment...
-if exist "%ROOT%.venv" (
-    rmdir /s /q "%ROOT%.venv" 2>nul
-    echo   [OK] .venv removed
-) else (
-    echo   [--] .venv not found
-)
+echo   Removing AirWar...
 
-echo   [..] Removing Rust build cache...
-if exist "%ROOT%airwar_core\target" (
-    rmdir /s /q "%ROOT%airwar_core\target" 2>nul
-    echo   [OK] target/ removed
-) else (
-    echo   [--] target/ not found
-)
+REM A running script cannot delete its own folder.
+REM Write a one-shot cleanup script to %TEMP% that deletes
+REM the game folder, then deletes itself.
+set "CLEANUP=%TEMP%\airwar_uninstall.bat"
+(
+    echo @echo off
+    echo rmdir /s /q "%GAME_DIR%"
+    echo echo AirWar has been completely removed.
+    echo timeout /t 3 ^>nul
+    echo del "%%~f0" ^& exit
+) > "%CLEANUP%"
 
-echo   [..] Removing Python cache files...
-for /d /r "%ROOT%" %%d in (__pycache__) do (
-    if exist "%%d" rmdir /s /q "%%d" 2>nul
-)
-echo   [OK] __pycache__ cleaned
-
-echo   [..] Uninstalling airwar_core package...
-for %%c in (py python3 python) do (
-    where %%c >nul 2>&1
-    if !errorlevel! equ 0 (
-        %%c -m pip uninstall -y airwar_core >nul 2>&1
-        goto :pip_done
-    )
-)
-:pip_done
-echo   [OK] Package unregistered
-
-echo.
-echo   ==============================
-echo     Uninstall complete.
-echo   ==============================
-echo.
-echo   To play again, just run: run.bat
-echo.
-pause
-endlocal
+start "" cmd /c "%CLEANUP%"
+exit
