@@ -11,6 +11,8 @@
 
 首次运行时会自动完成所有配置（包括下载安装 Rust 工具链），后续启动只需双击。
 
+**卸载**：双击 `uninstall.bat`（Windows）或执行 `./uninstall.sh`（Linux）即可完全移除游戏。
+
 > Windows 用户注意：Rust 编译需要 Visual C++ Build Tools。如果编译失败，脚本会提供下载链接。选择「Desktop development with C++」安装即可。
 
 **手动启动：**
