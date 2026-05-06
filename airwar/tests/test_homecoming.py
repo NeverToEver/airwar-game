@@ -543,6 +543,7 @@ def test_game_scene_base_resupply_restores_ship_and_saves(monkeypatch) -> None:
     scene.player.boost_max = 220
     scene.player.boost_current = 40
     scene.game_controller = GameController("medium", "pilot")
+    scene.game_controller.state.requisition_points = 10
     scene.reward_system = scene.game_controller.reward_system
     scene.reward_system.talent_loadout = {"offense": "Laser"}
     scene.notification_manager = SimpleNamespace(show=MagicMock())
@@ -559,8 +560,9 @@ def test_game_scene_base_resupply_restores_ship_and_saves(monkeypatch) -> None:
 
     assert scene.player.health == scene.player.max_health
     assert scene.player.boost_current == scene.player.boost_max
+    assert scene.game_controller.state.requisition_points == 6  # 10 - 4(resupply cost)
     assert saved == [("pilot", {"offense": "Laser"}, False)]
-    scene.notification_manager.show.assert_called_with("基地补给已完成")
+    scene.notification_manager.show.assert_called_with("基地全面补给完成 (-4RP)")
 
 
 def test_game_scene_base_module_action_does_not_change_loadout() -> None:

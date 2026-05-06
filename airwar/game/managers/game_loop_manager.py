@@ -283,7 +283,6 @@ class GameLoopManager:
                 on_boss_hit=lambda score: self._boss_manager.on_boss_hit(score),
                 on_player_hit=on_player_hit,
                 on_lifesteal=lambda player, score: self._reward_system.apply_lifesteal(player, score),
-                on_clear_bullets=lambda: self._bullet_manager.clear_enemy_bullets(),
             )
         except Exception as e:
             logging.critical(f"Collision detection error: {e}", exc_info=True)

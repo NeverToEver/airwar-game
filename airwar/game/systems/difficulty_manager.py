@@ -45,6 +45,12 @@ class DifficultyManager:
 
         self._logger.info(f"DifficultyManager initialized with difficulty: {difficulty}")
 
+    def set_difficulty(self, difficulty: str) -> None:
+        """Update difficulty level and re-create the scaling strategy."""
+        self._strategy = DifficultyStrategyFactory.create(difficulty)
+        self._current_multiplier = self._strategy.base_multiplier
+        self._cache_dirty = True
+
     def set_boss_kill_count(self, count: int) -> None:
         if count < 0:
             raise ValueError("boss_kill_count cannot be negative")

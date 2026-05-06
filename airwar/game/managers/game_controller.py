@@ -45,6 +45,7 @@ class GameState:
     ripple_effects: List[dict] = field(default_factory=list)
     notification: Optional[str] = None
     notification_timer: int = 0
+    requisition_points: int = 0
     entrance_animation: bool = True
     entrance_timer: int = 0
     entrance_duration: int = GAME_CONSTANTS.ANIMATION.ENTRANCE_DURATION
@@ -154,12 +155,17 @@ class GameController:
 
         Applies damage, spawns a ripple effect at the hit position,
         and transitions to DYING state if health reaches 0.
+        If player is shielded, damage is blocked and no ripple/invincibility is triggered.
 
         Args:
         damage: Raw damage amount before armor calculation.
         player: Player entity to apply damage to.
         """
+        pre_health = player.health
         player.take_damage(damage)
+        if player.health == pre_health:
+            return  # Shield absorbed the hit — no ripple, no invincibility
+
         center_x = player.rect.centerx
         center_y = player.rect.centery
         self.state.ripple_effects.append({
@@ -207,6 +213,7 @@ class GameController:
         self.state.kill_count += 1
         self.state.boss_kill_count += 1
         self.state.score = normalize_score(self.state.score + score_gained)
+        self.state.requisition_points += GAME_CONSTANTS.REQUISITION.BOSS_KILL_POINTS
         self.difficulty_manager.on_boss_killed()
         self._logger.info(f"Boss killed: score_gained={score_gained}, boss_kills={self.state.boss_kill_count}")
 

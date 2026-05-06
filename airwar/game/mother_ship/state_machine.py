@@ -158,6 +158,8 @@ class MotherShipStateMachine(IMotherShipStateMachine):
             self._event_bus.publish(EVENT_START_UNDOCKING_ANIMATION)
 
     def _on_exit_progress_update(self, **kwargs) -> None:
+        # Progress is tracked and handled by GameIntegrator (game_integrator.py:484).
+        # The state machine only needs to know about completion/cancellation.
         pass
 
     def _on_exit_cancelled(self, **kwargs) -> None:

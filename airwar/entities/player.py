@@ -103,6 +103,7 @@ class Player(Entity):
         self._has_spread = False
         self._has_laser = False
         self._has_explosive = False
+        self._laser_duration = 0
         self._bullet_listeners: List = []
         self._bullets: List = []
         self.is_shielded = False
@@ -214,6 +215,7 @@ class Player(Entity):
             duration: Number of frames the laser remains active.
         """
         self._has_laser = True
+        self._laser_duration = max(1, duration)
 
     def activate_explosive(self) -> None:
         """Enable explosive bullet modifier."""
@@ -268,7 +270,7 @@ class Player(Entity):
             duration: Number of frames the shield remains active.
         """
         self.is_shielded = True
-        self._shield_duration = duration
+        self._shield_duration = max(1, duration)
 
     def get_hitbox(self) -> pygame.Rect:
         hb_x = self.rect.x + (self.rect.width - self.hitbox_width) // 2
@@ -380,6 +382,10 @@ class Player(Entity):
             self._shield_duration -= 1
             if self._shield_duration <= 0:
                 self.is_shielded = False
+        if self._laser_duration > 0:
+            self._laser_duration -= 1
+            if self._laser_duration <= 0:
+                self._has_laser = False
 
     def _phase_dash_cost(self) -> float:
         return self.boost_max * self.PHASE_DASH_COST_RATIO

@@ -2,11 +2,9 @@
 import math
 
 import pygame
-from airwar.utils.fonts import get_cjk_font
 from typing import Dict
 from .scene import Scene
 from airwar.entities import Player
-from airwar.game.systems.health_system import HealthSystem
 from airwar.game.systems.reward_system import RewardSystem
 from airwar.game.rendering.hud_renderer import HUDRenderer
 from airwar.game.systems.notification_manager import NotificationManager
@@ -88,7 +86,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._pause_btn_cache = {}
         self.game_controller: GameController = None
         self.game_renderer: GameRenderer = None
-        self.health_system: HealthSystem = None
+        self.health_system = None  # delegated to GameController.health_system
         self.reward_system: RewardSystem = None
         self.hud_renderer: HUDRenderer = None
         self.notification_manager: NotificationManager = None
@@ -133,6 +131,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._enrage_sin_b = None
         self._enrage_cos_b = None
         self._enrage_band_cache_key = None
+        self._survival_frames = 0
 
     def enter(self, **kwargs) -> None:
         """Initialize the game scene.
@@ -174,7 +173,6 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self.game_controller = GameController(difficulty, username)
         self.game_renderer = GameRenderer()
         self.game_renderer.init_background(screen_width, screen_height)
-        self.health_system = HealthSystem(difficulty)
         self.reward_system = self.game_controller.reward_system
         self.hud_renderer = HUDRenderer()
         self.notification_manager = self.game_controller.notification_manager
@@ -341,6 +339,13 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self.reward_selector.update()
         if self._homecoming_base_pending and self._base_talent_console:
             self._base_talent_console.update()
+            # Claim completed mission rewards in update, not render
+            for mission in self._base_talent_console._missions:
+                if mission["done"] and not mission["claimed"]:
+                    self.game_controller.state.requisition_points += GAME_CONSTANTS.REQUISITION.MISSION_REWARD
+                    mission["claimed"] = True
+                    if self.notification_manager:
+                        self.notification_manager.show(f"任务完成: {mission['name']} (+{GAME_CONSTANTS.REQUISITION.MISSION_REWARD}RP)")
         self._set_raw_aim_position(pygame.mouse.get_pos())
         self._update_aim_assist()
         self._aim_crosshair.update()
@@ -410,6 +415,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
         self._milestone_manager.check_and_trigger(self.player)
 
+        self._survival_frames += 1
         self._auto_save_timer += 1
         if self._auto_save_timer >= self.AUTO_SAVE_INTERVAL:
             self._auto_save_timer = 0
@@ -476,10 +482,31 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
         self._warning_banner.activate(on_complete=trigger_undock)
 
+    BULLET_CLEAR_RADIUS = 250  # Only clear enemy bullets within this radius on player hit
+
     def _on_player_damaged(self, damage: int, player) -> None:
-        """Handle player hit: apply damage, clear all enemy bullets, trigger invincibility."""
+        """Handle player hit: apply damage, clear nearby enemy bullets, trigger invincibility."""
         self.game_controller.on_player_hit(damage, player)
-        self._bullet_manager.clear_enemy_bullets()
+        self._clear_nearby_enemy_bullets(player)
+
+    def _clear_nearby_enemy_bullets(self, player) -> None:
+        """Clear enemy bullets within BULLET_CLEAR_RADIUS of the player after being hit.
+
+        Preserves distant bullets as ongoing pressure while giving the player
+        a breather from immediate threats near the impact point.
+        """
+        if not self.spawn_controller:
+            return
+        px = player.rect.centerx
+        py = player.rect.centery
+        r2 = self.BULLET_CLEAR_RADIUS * self.BULLET_CLEAR_RADIUS
+        for bullet in self.spawn_controller.enemy_bullets:
+            if not bullet.active:
+                continue
+            dx = bullet.rect.centerx - px
+            dy = bullet.rect.centery - py
+            if dx * dx + dy * dy <= r2:
+                bullet.active = False
 
     def _on_give_up_complete(self) -> None:
         self.game_controller.on_player_hit(GAME_CONSTANTS.DAMAGE.INSTANT_KILL, self.player)
@@ -580,21 +607,72 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if action.kind == BaseTalentConsoleAction.RESUPPLY:
             self._resupply_at_base()
             return
+        if action.kind == BaseTalentConsoleAction.REPAIR:
+            self._repair_at_base()
+            return
+        if action.kind == BaseTalentConsoleAction.RECHARGE:
+            self._recharge_at_base()
+            return
         if action.kind == BaseTalentConsoleAction.SELECT_MODULE:
             return
         if action.kind == BaseTalentConsoleAction.SELECT_ROUTE and action.route:
             if self._talent_balance_manager.next_option(action.route) is not None:
                 self._apply_base_talent_loadout()
 
-    def _resupply_at_base(self) -> None:
-        if not self.player:
+    def _repair_at_base(self) -> None:
+        cost = GAME_CONSTANTS.REQUISITION.REPAIR_COST
+        if not self.player or not self.game_controller:
             return
+        if self.game_controller.state.requisition_points < cost:
+            return
+        if self.player.health >= self.player.max_health:
+            return
+        self.game_controller.state.requisition_points -= cost
         self.player.health = self.player.max_health
-        if hasattr(self.player, "boost_current") and hasattr(self.player, "boost_max"):
+        self._save_base_loadout()
+        if self.notification_manager:
+            self.notification_manager.show(f"机体维修完成 (-{cost}RP)")
+
+    def _recharge_at_base(self) -> None:
+        cost = GAME_CONSTANTS.REQUISITION.RECHARGE_COST
+        if not self.player or not self.game_controller:
+            return
+        if self.game_controller.state.requisition_points < cost:
+            return
+        if self.player.boost_current >= self.player.boost_max:
+            return
+        self.game_controller.state.requisition_points -= cost
+        self.player.boost_current = self.player.boost_max
+        self._save_base_loadout()
+        if self.notification_manager:
+            self.notification_manager.show(f"加速燃料补给完成 (-{cost}RP)")
+
+    def _resupply_at_base(self) -> None:
+        if not self.player or not self.game_controller:
+            return
+        need_health = self.player.health < self.player.max_health
+        need_boost = hasattr(self.player, "boost_current") and self.player.boost_current < self.player.boost_max
+        if not need_health and not need_boost:
+            if self.notification_manager:
+                self.notification_manager.show("机体和燃料已全满，无需补给")
+            return
+        actual_cost = 0
+        if need_health:
+            actual_cost += GAME_CONSTANTS.REQUISITION.REPAIR_COST
+        if need_boost:
+            actual_cost += GAME_CONSTANTS.REQUISITION.RECHARGE_COST
+        if self.game_controller.state.requisition_points < actual_cost:
+            if self.notification_manager:
+                self.notification_manager.show(f"征用点数不足: 需要{actual_cost}RP")
+            return
+        self.game_controller.state.requisition_points -= actual_cost
+        if need_health:
+            self.player.health = self.player.max_health
+        if need_boost:
             self.player.boost_current = self.player.boost_max
         self._save_base_loadout()
         if self.notification_manager:
-            self.notification_manager.show("基地补给已完成")
+            self.notification_manager.show(f"基地全面补给完成 (-{actual_cost}RP)")
 
     def _leave_homecoming_base(self) -> None:
         self._save_base_loadout()
@@ -713,11 +791,6 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         Args:
             surface: pygame rendering surface.
         """
-        # Show loading screen while warming caches
-        if self._is_loading:
-            self._render_loading_screen(surface)
-            return
-
         self._ui_manager.render_game(
             surface,
             self.player,
@@ -784,7 +857,19 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
                 player=self.player,
                 game_controller=self.game_controller,
                 mothership_status=mothership_status,
+                requisition_points=self.game_controller.state.requisition_points if self.game_controller else 0,
+                missions=self._base_talent_console._missions if self._base_talent_console else None,
             )
+            # Keep mission progress in sync with actual game state
+            if self._base_talent_console and self.game_controller:
+                for mission in self._base_talent_console._missions:
+                    if mission["target"] == "kills":
+                        mission["progress"] = self.game_controller.state.kill_count
+                    elif mission["target"] == "survival_time":
+                        mission["progress"] = self._survival_frames // 60
+                    elif mission["target"] == "boss_kills":
+                        mission["progress"] = self.game_controller.state.boss_kill_count
+                    mission["done"] = mission["progress"] >= mission["goal"]
 
         # Reward selector must render above game elements. Homecoming blocks
         # reward selection, but keep the normal layering contract intact.
@@ -1117,37 +1202,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         pygame.draw.rect(surface, bar_color, layout['left_bar'], border_radius=1)
         pygame.draw.rect(surface, bar_color, layout['right_bar'], border_radius=1)
 
-    def _render_loading_screen(self, surface: pygame.Surface) -> None:
-        """Render loading screen while prewarming caches.
 
-        Args:
-            surface: pygame rendering surface.
-        """
-        colors = self._tokens.colors
-        screen_width = surface.get_width()
-        screen_height = surface.get_height()
-
-        # Dark overlay
-        overlay = pygame.Surface((screen_width, screen_height), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 200))
-        surface.blit(overlay, (0, 0))
-
-        # Loading text
-        font_large = get_cjk_font(72)
-        font_small = get_cjk_font(36)
-
-        title = font_large.render("加载中...", True, colors.TEXT_PRIMARY)
-        title_rect = title.get_rect(center=(screen_width // 2, screen_height // 2 - 40))
-
-        progress_text = font_small.render(f"{self._loading_progress}%", True, colors.HUD_AMBER)
-        progress_rect = progress_text.get_rect(center=(screen_width // 2, screen_height // 2 + 20))
-
-        hint = font_small.render("请稍候，正在优化游戏体验", True, colors.TEXT_MUTED)
-        hint_rect = hint.get_rect(center=(screen_width // 2, screen_height // 2 + 70))
-
-        surface.blit(title, title_rect)
-        surface.blit(progress_text, progress_rect)
-        surface.blit(hint, hint_rect)
 
     @property
     def score(self) -> int:
@@ -1285,8 +1340,34 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self.game_controller.state.score = normalize_score(save_data.score)
         self.game_controller.state.kill_count = max(0, save_data.kill_count)
         self.game_controller.state.boss_kill_count = max(0, save_data.boss_kill_count)
+        self.game_controller.state.requisition_points = max(0, getattr(save_data, 'requisition_points', 0))
         self.game_controller.milestone_index = save_data.cycle_count
         self.game_controller.cycle_count = save_data.cycle_count
+
+        # Sync difficulty BEFORE buff re-apply so base stats match the saved difficulty
+        saved_diff = save_data.difficulty if save_data.difficulty in VALID_DIFFICULTIES else 'medium'
+        self.game_controller.state.difficulty = saved_diff
+        self.game_controller.state.username = save_data.username
+        self.game_controller.state.score_multiplier = GAME_CONSTANTS.get_difficulty_multiplier(saved_diff)
+
+        # Re-sync difficulty-dependent subsystems to match restored difficulty
+        self.game_controller.difficulty_manager.set_difficulty(saved_diff)
+        self.game_controller.reward_system.set_difficulty(saved_diff)
+        self.game_controller.health_system.set_difficulty(saved_diff)
+        self.spawn_controller.set_difficulty(saved_diff)
+
+        # Sync player boost config to the restored difficulty
+        boost_cfg = BOOST_CONFIG[saved_diff]
+        self.player.boost_max = boost_cfg['max_boost']
+        self.player.boost_current = boost_cfg['max_boost']
+        self.player.boost_recovery_rate = boost_cfg['recovery_rate']
+        self.player.boost_speed_mult = boost_cfg['speed_mult']
+        self.player.boost_recovery_delay = boost_cfg['recovery_delay']
+        self.player.boost_recovery_ramp = boost_cfg['recovery_ramp']
+
+        # Restore difficulty scaling so enemy stats scale correctly after load
+        if self.game_controller.difficulty_manager:
+            self.game_controller.difficulty_manager.set_boss_kill_count(save_data.boss_kill_count)
 
         self.reward_system.unlocked_buffs = save_data.unlocked_buffs
         self._restore_buff_levels(save_data.buff_levels)
@@ -1296,14 +1377,6 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self.reward_system.capture_player_baselines(self.player)
         self._restore_talent_loadout_effects()
         self.player.health = min(max(1, save_data.player_health), self.player.max_health)
-
-        self.game_controller.state.difficulty = save_data.difficulty if save_data.difficulty in VALID_DIFFICULTIES else 'medium'
-        self.game_controller.state.username = save_data.username
-        self.game_controller.state.score_multiplier = GAME_CONSTANTS.get_difficulty_multiplier(self.game_controller.state.difficulty)
-
-        # Restore difficulty scaling so enemy stats scale correctly after load
-        if self.game_controller.difficulty_manager:
-            self.game_controller.difficulty_manager.set_boss_kill_count(save_data.boss_kill_count)
 
         if save_data.is_in_mothership:
             self._restore_to_mothership_state()
@@ -1366,7 +1439,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         """Restore mothership state with player docked inside."""
         if self._mother_ship_integrator:
             self._mother_ship_integrator.force_docked_state()
-            docking_pos = self._mother_ship_integrator._mother_ship.get_docking_position()
+            docking_pos = self._mother_ship_integrator.get_docking_position()
             self.player.rect.x = docking_pos[0] - self.player.rect.width // 2
             self.player.rect.y = docking_pos[1] - self.player.rect.height // 2
         else:

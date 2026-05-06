@@ -419,8 +419,13 @@ class GameIntegrator:
         base_score = self._get_entity_score(boss, base_score)
         reduced_score = int(base_score * self._score_reduction_factor)
 
-        self._game_scene.add_score(reduced_score)
-        self._game_scene.add_boss_kill()
+        # Route through GameController for RP award and difficulty scaling
+        gc = getattr(self._game_scene, 'game_controller', None)
+        if gc:
+            gc.on_boss_killed(reduced_score)
+        else:
+            self._game_scene.add_score(reduced_score)
+            self._game_scene.add_boss_kill()
         if hasattr(self._game_scene, 'trigger_boss_death_explosion'):
             self._game_scene.trigger_boss_death_explosion(boss)
         self._game_scene.clear_boss()
@@ -535,6 +540,7 @@ class GameIntegrator:
             player_y=player.rect.y if player else 0,
             is_in_mothership=is_docked,
             username=self._game_scene.get_username(),
+            requisition_points=self._game_scene.game_controller.state.requisition_points if self._game_scene.game_controller else 0,
         )
 
     def _on_game_resume(self, **kwargs) -> None:

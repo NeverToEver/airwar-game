@@ -211,6 +211,14 @@ class RewardConstants:
     EXPLOSION_RADIUS: int = 60
 
 
+class RequisitionConstants:
+    """Requisition point costs and rewards for base operations."""
+    BOSS_KILL_POINTS = 5
+    REPAIR_COST = 2
+    RECHARGE_COST = 2
+    MISSION_REWARD = 3
+
+
 @dataclass
 class GameConstants:
     """Aggregates all game constants with unified access.
@@ -242,6 +250,7 @@ class GameConstants:
     BOSS: BossConstants = field(default_factory=BossConstants)
     ENEMY: EnemyConstants = field(default_factory=EnemyConstants)
     REWARD: RewardConstants = field(default_factory=RewardConstants)
+    REQUISITION: RequisitionConstants = field(default_factory=RequisitionConstants)
     
     def get_difficulty_multiplier(self, difficulty: str) -> float:
         """Returns the score multiplier for the given difficulty.

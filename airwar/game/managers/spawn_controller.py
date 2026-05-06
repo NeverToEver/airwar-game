@@ -69,6 +69,18 @@ class SpawnController:
         self._bullet_spawner = spawner
         self.enemy_spawner.set_bullet_spawner(spawner)
 
+    def set_difficulty(self, difficulty: str) -> None:
+        """Re-initialize spawn params from difficulty settings on restore."""
+        from airwar.config import DIFFICULTY_SETTINGS
+        settings = DIFFICULTY_SETTINGS.get(difficulty, DIFFICULTY_SETTINGS['medium'])
+        self._base_enemy_health = settings['enemy_health']
+        self.enemy_spawner.set_params(
+            health=settings['enemy_health'],
+            speed=settings['enemy_speed'],
+            spawn_rate=settings['spawn_rate']
+        )
+        self.enemy_spawner.set_spread_enemy_cap(settings.get('spread_enemy_cap', 2))
+
     def set_difficulty_manager(self, manager: 'DifficultyManager') -> None:
         self._difficulty_manager = manager
 
