@@ -117,7 +117,7 @@ REM Cargo not found anywhere - offer to install
     echo   (You may need to restart your terminal or File Explorer first)
     pause
     exit /b 0
-)
+:cargo_ok
 echo   [OK] Cargo found
 
 REM ----------------------------------------------------------------
