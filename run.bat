@@ -71,8 +71,14 @@ echo   [OK] Python packages ready
 REM ----------------------------------------------------------------
 REM  STEP 4: Check for Rust / Cargo
 REM ----------------------------------------------------------------
+REM Try PATH first, then default install location
 where cargo >nul 2>&1
-if !errorlevel! neq 0 (
+if !errorlevel! equ 0 goto :cargo_ok
+if exist "%USERPROFILE%\.cargo\bin\cargo.exe" (
+    set "PATH=%USERPROFILE%\.cargo\bin;%PATH%"
+    goto :cargo_ok
+)
+REM Cargo not found anywhere - offer to install
     echo.
     echo   [WARNING] Rust toolchain not found.
     echo.
