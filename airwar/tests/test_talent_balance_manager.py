@@ -132,6 +132,19 @@ def test_base_talent_console_modules_render_on_compact_surface() -> None:
         assert all(rect.right <= 800 and rect.bottom <= 600 for rect in console._button_rects.values())
 
 
+def test_base_talent_console_mission_module_handles_empty_missions() -> None:
+    pygame.font.init()
+    surface = pygame.Surface((800, 600), pygame.SRCALPHA)
+    console = BaseTalentConsole(800, 600)
+    console._active_module = "mission"
+    reward_system = RewardSystem("medium")
+    manager = TalentBalanceManager({"Spread Shot": 1}, {"offense": "Spread Shot"})
+
+    console.render(surface, manager, reward_system, missions=[])
+
+    assert surface.get_bounding_rect().width > 0
+
+
 def test_base_talent_console_backdrop_draws_hangar_landing_pad() -> None:
     surface = pygame.Surface((1280, 720), pygame.SRCALPHA)
     console = BaseTalentConsole(1280, 720)
