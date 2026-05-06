@@ -3,6 +3,7 @@ setlocal enabledelayedexpansion
 title AirWar Uninstaller
 
 set "GAME_DIR=%~dp0"
+if "!GAME_DIR:~-1!"=="\" set "GAME_DIR=!GAME_DIR:~0,-1!"
 cd /d "%GAME_DIR%"
 
 echo.
@@ -11,13 +12,11 @@ echo     AirWar - Complete Uninstaller
 echo   ======================================
 echo.
 echo   This will permanently delete:
-echo     - The entire game folder and all its contents
-echo     - Saves, config, downloaded dependencies
-echo     - Compiled Rust extension
+echo     %GAME_DIR%
 echo.
-echo   Location: %GAME_DIR%
+echo   Including all game files, saves, config, and dependencies.
 echo.
-choice /c YN /n /m "  Are you sure? This CANNOT be undone. [Y/N] "
+choice /c YN /n /m "  Are you sure? [Y/N] "
 if !errorlevel! equ 2 (
     echo   Cancelled.
     pause
@@ -27,17 +26,19 @@ if !errorlevel! equ 2 (
 echo.
 echo   Removing AirWar...
 
-REM A running script cannot delete its own folder.
-REM Write a one-shot cleanup script to %TEMP% that deletes
-REM the game folder, then deletes itself.
-set "CLEANUP=%TEMP%\airwar_uninstall.bat"
+set "TMP=%TEMP%\airwar_uninst.bat"
 (
     echo @echo off
-    echo rmdir /s /q "%GAME_DIR%"
-    echo echo AirWar has been completely removed.
-    echo timeout /t 3 ^>nul
-    echo del "%%~f0" ^& exit
-) > "%CLEANUP%"
+    echo rmdir /s /q "%GAME_DIR%" 2^>nul
+    echo if not exist "%GAME_DIR%" echo AirWar has been completely removed.^& echo.^& pause^& del "%%~f0"^& exit
+    echo echo WARNING: Could not remove all files.
+    echo echo The game folder may be in use by another program.
+    echo echo Close it and delete the folder manually:
+    echo echo   %GAME_DIR%
+    echo echo.
+    echo pause
+    echo del "%%~f0"
+) > "%TMP%"
 
-start "" cmd /c "%CLEANUP%"
+start "" cmd /c "%TMP%"
 exit
