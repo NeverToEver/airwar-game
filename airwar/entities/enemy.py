@@ -938,14 +938,14 @@ class Boss(Entity):
     AIM_DASH_MAX_DISTANCE_RATIO = 0.58
     AIM_DASH_DURATION = 10
     ENRAGE_TRIGGER_RATIO = 0.30
-    ENRAGE_DURATION = 600
+    ENRAGE_DURATION = 360
     ENRAGE_TRANSITION_DURATION = 54
     ENRAGE_SLOW_FACTOR = 0.24
     ENRAGE_BULLET_SPEED = 3.2
     ENRAGE_LASER_SPEED = 3.7
     ENRAGE_RELEASE_BULLET_SPEED = 1.55
     ENRAGE_RELEASE_LASER_SPEED = 1.35
-    ENRAGE_ATTACK_INTERVAL = 58
+    ENRAGE_ATTACK_INTERVAL = 42
     ENRAGE_ATTACK_WINDUP = 24
     ENRAGE_RELEASE_INTERVAL = 6
     ENRAGE_SNAPSHOT_LASER_COUNT = 4
@@ -958,12 +958,12 @@ class Boss(Entity):
     ENRAGE_TRAIL_SCALE = 0.5
     ENRAGE_TRAIL_BLUR_PASSES = 2
     ENRAGE_EXIT_BACK_OFFSET = 118
-    ENRAGE_MUZZLE_FLASH_DURATION = 24
-    ENRAGE_MUZZLE_FLASH_PULSES = 1
+    ENRAGE_MUZZLE_FLASH_DURATION = 12
+    ENRAGE_MUZZLE_FLASH_PULSES = 2
     ENRAGE_MUZZLE_FORWARD_SCALE = 0.58
     ENRAGE_MUZZLE_SIDE_SCALE = 0.34
     ENRAGE_RELEASE_HOLD_DURATION = 42
-    ENRAGE_RETURN_DURATION = 72
+    ENRAGE_RETURN_DURATION = 48
     ENRAGE_CORE_COLOR = (126, 220, 255)
     ENRAGE_DANGER_COLOR = (230, 72, 68)
     ENRAGE_TRAIL_TINT = (96, 154, 220)
@@ -1435,7 +1435,6 @@ class Boss(Entity):
         if self._enrage_attack_timer > 0:
             return
         self._spawn_bullets(self._create_enrage_snapshot_attack(target, progress))
-        self._trigger_muzzle_flash()
         self._enrage_attack_timer = self.ENRAGE_ATTACK_INTERVAL
         self._enrage_attack_index += 1
 
@@ -1478,11 +1477,14 @@ class Boss(Entity):
                 aim.x + side_axis.x * phase_bias,
                 aim.y + side_axis.y * phase_bias,
             ).normalize()
-            bullet = Bullet(source[0] + side_axis.x * offset, source[1] + side_axis.y * offset, bullet_data)
+            bullet_x = source[0] + side_axis.x * offset
+            bullet_y = source[1] + side_axis.y * offset
+            bullet = Bullet(bullet_x, bullet_y, bullet_data)
             bullet.velocity = Vector2(0, 0)
             bullet.release_direction = direction
             bullet.enrage_release_speed = self.ENRAGE_RELEASE_LASER_SPEED
             bullets.append(bullet)
+            self._trigger_muzzle_flash((bullet_x, bullet_y))
         return bullets
 
     def _create_enrage_snapshot_ring_bullets(self, target: Tuple[float, float], progress: float) -> List[Bullet]:
@@ -1494,6 +1496,7 @@ class Boss(Entity):
             bullet_type="single",
         )
         bullets = []
+        muzzles = self._boss_muzzle_positions()
         radius = max(self.rect.width, self.rect.height) * (1.65 + 0.25 * math.sin(progress * math.tau * 5))
         base_angle = progress * math.tau * 2.8 + self._enrage_attack_index * 0.47
         gap_index = self._enrage_attack_index % self.ENRAGE_SNAPSHOT_RING_COUNT
@@ -1511,6 +1514,7 @@ class Boss(Entity):
             bullet.release_direction = direction
             bullet.enrage_release_speed = self.ENRAGE_RELEASE_BULLET_SPEED
             bullets.append(bullet)
+            self._trigger_muzzle_flash(muzzles[(len(bullets) - 1) % len(muzzles)])
         return bullets
 
     def _release_enrage_bullets(self, target: Tuple[float, float]) -> None:
@@ -1573,9 +1577,12 @@ class Boss(Entity):
             (muzzles[0][1] + muzzles[1][1]) / 2,
         )
 
-    def _trigger_muzzle_flash(self) -> None:
+    def _trigger_muzzle_flash(self, position: Tuple[float, float] | None = None) -> None:
         self._muzzle_flash_timer = self.ENRAGE_MUZZLE_FLASH_DURATION
-        self._muzzle_flash_positions = list(self._boss_muzzle_positions())
+        if position is None:
+            self._muzzle_flash_positions = list(self._boss_muzzle_positions())
+            return
+        self._muzzle_flash_positions.append(position)
 
     def _update_muzzle_flash(self) -> None:
         if self._muzzle_flash_timer <= 0:

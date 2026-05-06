@@ -75,6 +75,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         self._is_error = False
         self.message_timer = 0
         self.want_to_quit = False
+        self.tutorial_requested = False
         self.show_guest_confirm = False
         self.guest_confirm_focus = 'yes'  # 'yes' | 'no'
         self.show_delete_confirm = False
@@ -237,6 +238,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             'register': self._do_register,
             'skip_login': self._start_guest_session,
             'fullscreen': self._toggle_fullscreen,
+            'tutorial': self._request_tutorial,
             'quit': self._request_quit,
             'username_field': self._focus_username_field,
             'username_dropdown': self._toggle_user_dropdown,
@@ -267,6 +269,10 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
     def _request_quit(self) -> None:
         self.want_to_quit = True
+        self.running = False
+
+    def _request_tutorial(self) -> None:
+        self.tutorial_requested = True
         self.running = False
 
     def _focus_username_field(self) -> None:
@@ -725,8 +731,13 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         pygame.draw.line(surface, SC.BORDER_DIM,
                          (px + 30, sep_y), (px + self.PANEL_W - 30, sep_y), 1)
 
+        # -- Tutorial call-to-action --
+        tutorial_y = py + 80
+        tutorial_rect = pygame.Rect(px + 22, tutorial_y, self.PANEL_W - 44, 56)
+        self._draw_tutorial_cta_button(surface, tutorial_rect)
+
         # -- Difficulty selection --
-        diff_title_y = py + 80
+        diff_title_y = tutorial_rect.bottom + 14
         diff_label = self.hint_font.render("难度", True, SC.TEXT_DIM)
         surface.blit(diff_label, (px + 35, diff_title_y))
 
@@ -738,7 +749,12 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
                                    self.difficulty_labels[opt], i, is_sel)
 
         # -- Quick Controls reference --
-        tips_title_y = diff_start_y + len(self.difficulty_options) * (self.DIFF_OPTION_H + self.DIFF_GAP) + 14
+        tips_title_y = (
+            diff_start_y
+            + len(self.difficulty_options) * self.DIFF_OPTION_H
+            + (len(self.difficulty_options) - 1) * self.DIFF_GAP
+            + 12
+        )
         tips_label = self.hint_font.render("操作说明", True, SC.TEXT_DIM)
         surface.blit(tips_label, (px + 35, tips_title_y))
 
@@ -760,7 +776,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             desc_surf = self.tip_font.render(desc, True, SC.TEXT_DIM)
             surface.blit(key_surf, (key_x, tip_y))
             surface.blit(desc_surf, (desc_right - desc_surf.get_width(), tip_y))
-            tip_y += 20
+            tip_y += 17
 
     def _draw_diff_option(self, surface, x, y, w, label, index, selected):
         SC = SceneColors
@@ -784,6 +800,52 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         color = SC.GOLD_PRIMARY if is_active else SC.TEXT_DIM
         text = self.input_font.render(f"{prefix}{label}", True, color)
         surface.blit(text, text.get_rect(midleft=(x + 20, y + self.DIFF_OPTION_H // 2)))
+
+    def _draw_tutorial_cta_button(self, surface, rect: pygame.Rect) -> None:
+        """Primary tutorial CTA with the same chamfer language as difficulty options."""
+        SC = SceneColors
+        self.register_button('tutorial', rect)
+        hover = self.is_button_hovered('tutorial')
+        pulse = 0.5 + 0.5 * math.sin(self.animation_time * 0.075)
+        glow_alpha = int(58 + 48 * pulse)
+
+        fill = (22, 54, 64) if hover else (16, 42, 52)
+        border = (112, 224, 218) if hover else (82, 190, 190)
+        gold = (220, 190, 96)
+
+        draw_chamfered_panel(
+            surface,
+            rect.x - 5,
+            rect.y - 5,
+            rect.width + 10,
+            rect.height + 10,
+            SC.BG_PANEL,
+            (*border, 150),
+            (*border, glow_alpha),
+            9,
+        )
+        draw_chamfered_panel(surface, rect.x, rect.y, rect.width, rect.height, fill, border, None, 7)
+
+        accent_w = 7
+        accent_points = [
+            (rect.x + 7, rect.y + 9),
+            (rect.x + accent_w + 8, rect.y + 9),
+            (rect.x + accent_w + 2, rect.bottom - 9),
+            (rect.x + 1, rect.bottom - 9),
+        ]
+        pygame.draw.polygon(surface, gold, accent_points)
+
+        text_color = SC.TEXT_BRIGHT if hover else (224, 248, 248)
+        text = fit_text_to_width(self.input_font, "新手教程", text_color, rect.width - 112)
+        surface.blit(text, text.get_rect(midleft=(rect.x + 32, rect.centery)))
+
+        chevron_x = rect.right - 42 + int(3 * pulse)
+        chevron = [
+            (chevron_x, rect.centery - 12),
+            (chevron_x + 14, rect.centery),
+            (chevron_x, rect.centery + 12),
+        ]
+        pygame.draw.lines(surface, gold if hover else border, False, chevron, 3)
 
     def _draw_input(self, surface, rect, text, is_active, is_password=False):
         SC = SceneColors
@@ -1022,7 +1084,10 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         return self.running
 
     def is_ready(self) -> bool:
-        return not self.running
+        return not self.running and not self.tutorial_requested and not self.want_to_quit
 
     def should_quit(self) -> bool:
         return self.want_to_quit
+
+    def should_open_tutorial(self) -> bool:
+        return self.tutorial_requested

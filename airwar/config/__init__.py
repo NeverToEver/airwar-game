@@ -2,7 +2,7 @@
 from .settings import *
 from .game_config import GameConfig, get_screen_width, get_screen_height, set_screen_size
 from .difficulty_config import DIFFICULTY_CONFIGS, MOVEMENT_PATTERNS, BASE_ENEMY_PARAMS
-from .tutorial import TUTORIAL_PAGES
+from .tutorial import TUTORIAL_PAGES, TUTORIAL_STAGES, TutorialStage
 from .design_tokens import get_design_tokens, get_colors
 
 __all__ = [
@@ -17,6 +17,6 @@ __all__ = [
     'HITBOX_INDICATOR_FREQUENCY',
     'RIPPLE_FADE_SPEED', 'BOOST_CONFIG',
     'VALID_DIFFICULTIES',
-    'TUTORIAL_PAGES',
+    'TUTORIAL_PAGES', 'TUTORIAL_STAGES', 'TutorialStage',
     'get_design_tokens', 'get_colors',
 ]

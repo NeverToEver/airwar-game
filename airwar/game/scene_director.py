@@ -54,13 +54,48 @@ class SceneDirector:
 
     def _run_welcome_flow(self) -> tuple:
         """Single-page beginner interface: login + difficulty + controls in one screen."""
-        self._scene_manager.switch("welcome")
-        welcome = self._scene_manager.get_current_scene()
+        while self._running:
+            self._scene_manager.switch("welcome")
+            welcome = self._scene_manager.get_current_scene()
 
-        while self._running and welcome.is_running():
+            while self._running and welcome.is_running():
+                events = self._poll_events()
+                if not self._check_quit(events):
+                    return (False, None)
+                self._handle_resize_if_needed(events)
+                self._handle_scene_events(events)
+                self._scene_manager.update()
+                self._scene_manager.render(self._window.get_surface())
+                self._window.flip()
+                self._window.tick(FPS)
+
+            if hasattr(welcome, 'should_quit') and welcome.should_quit():
+                return (False, None)
+            if hasattr(welcome, 'should_open_tutorial') and welcome.should_open_tutorial():
+                result = self._run_tutorial_flow()
+                if result == "quit":
+                    return (False, None)
+                continue
+            if welcome.is_ready():
+                self._current_user = welcome.get_username()
+                self._selected_difficulty = welcome.get_difficulty()
+                save_data = self._check_and_get_saved_game(self._current_user)
+                return (True, save_data)
+            return (True, None)
+        return (False, None)
+
+    def _run_tutorial_flow(self) -> str:
+        tutorial = self._scene_manager.get_scene("tutorial")
+        if not tutorial:
+            return "main_menu"
+
+        self._scene_manager.switch("tutorial")
+        tutorial = self._scene_manager.get_current_scene()
+
+        while self._running and tutorial.is_running():
             events = self._poll_events()
             if not self._check_quit(events):
-                return (False, None)
+                return "quit"
             self._handle_resize_if_needed(events)
             self._handle_scene_events(events)
             self._scene_manager.update()
@@ -68,14 +103,7 @@ class SceneDirector:
             self._window.flip()
             self._window.tick(FPS)
 
-        if hasattr(welcome, 'should_quit') and welcome.should_quit():
-            return (False, None)
-        if welcome.is_ready():
-            self._current_user = welcome.get_username()
-            self._selected_difficulty = welcome.get_difficulty()
-            save_data = self._check_and_get_saved_game(self._current_user)
-            return (True, save_data)
-        return (True, None)
+        return "main_menu"
 
     def _run_game_flow(self) -> str:
         self._logger.info(f"Starting game flow: difficulty={self._selected_difficulty}, user={self._current_user}")
