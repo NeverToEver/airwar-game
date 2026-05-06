@@ -492,6 +492,11 @@ class BaseTalentConsole:
 
         # Draw all active missions with progress bars
         missions = getattr(self, '_missions', [])
+        if not missions:
+            empty_text = self._font.render("暂无任务", True, (150, 176, 194))
+            surface.blit(empty_text, empty_text.get_rect(center=rect.center))
+            return
+
         mission_y = rect.y + 56
         available_h = rect.h - 72
         mission_h = min(64, (available_h - 12 * (len(missions) - 1)) // len(missions))

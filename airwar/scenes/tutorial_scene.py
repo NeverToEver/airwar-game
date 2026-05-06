@@ -10,12 +10,13 @@ from .scene import Scene
 from airwar.config import TUTORIAL_STAGES, TutorialStage, get_screen_width, get_screen_height
 from airwar.config.design_tokens import SceneColors, get_design_tokens
 from airwar.game.mother_ship import MotherShip
+from airwar.game.constants import GAME_CONSTANTS
 from airwar.game.rendering import GameRenderer
 from airwar.game.systems.reward_system import RewardSystem
 from airwar.game.systems.talent_balance_manager import TalentBalanceManager
 from airwar.ui.aim_crosshair import AimCrosshair
 from airwar.ui.ammo_magazine import AmmoMagazine
-from airwar.ui.base_talent_console import BaseTalentConsole
+from airwar.ui.base_talent_console import BaseTalentConsole, BaseTalentConsoleAction
 from airwar.ui.boost_gauge import BoostGauge
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.ui.discrete_battery import DiscreteBatteryIndicator
@@ -47,6 +48,13 @@ class TutorialBullet:
     damage: int
     bullet_type: str = "single"
     active: bool = True
+
+
+@dataclass
+class TutorialExplosion:
+    center: tuple[int, int]
+    timer: int = 28
+    duration: int = 28
 
 
 @dataclass
@@ -147,6 +155,11 @@ class TutorialScene(Scene, MouseInteractiveMixin):
     HOME_HOLD_FRAMES = 144
     FADE_FRAMES = 24
     COMPLETION_DELAY = 48
+    DOCK_UNDOCK_FRAMES = 72
+    DEPART_FRAMES = 72
+    MOTHERSHIP_VOLLEY_FRAMES = 30
+    MOTHERSHIP_STARTING_AMMO = 5.0
+    MOTHERSHIP_AMMO_DRAIN = 0.04
     ESCAPE_FRAMES = 300
     STAGE_CARD_SLIDE_FRAMES = 22
     STAGE_CARD_HOLD_FRAMES = 90
@@ -242,9 +255,16 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         self._hold_h_frames = 0
         self._hold_b_frames = 0
         self._docked = False
+        self._dock_sub_phase = "approach"
+        self._dock_undock_timer = 0
+        self._mothership_fire_timer = self.MOTHERSHIP_VOLLEY_FRAMES
         self._base_ready = False
+        self._base_sub_phase = "combat"
+        self._depart_timer = 0
+        self._pending_base_sub_phase: str | None = None
         self._mothership_ammo = 10.0
         self._ammo_warning_triggered = False
+        self._tutorial_explosions: list[TutorialExplosion] = []
         self._escape_timer = 0
         self._boost_feedback_timer = 0
 
@@ -279,13 +299,13 @@ class TutorialScene(Scene, MouseInteractiveMixin):
             self._keys_down.discard(event.key)
         elif event.type == pygame.MOUSEMOTION:
             self._set_raw_aim_position(event.pos)
-            if self._stage.id == "homecoming_base" and self._base_talent_console:
+            if self._is_base_console_active() and self._base_talent_console:
                 self._base_talent_console.handle_mouse_motion(event.pos)
             self.handle_mouse_motion(event.pos)
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
                 self._set_raw_aim_position(event.pos)
-                if self._stage.id == "homecoming_base" and self._handle_base_console_click(event.pos):
+                if self._is_base_console_active() and self._handle_base_console_click(event.pos):
                     return
                 if self.handle_mouse_click(event.pos):
                     self._handle_button_click(self.get_hovered_button())
@@ -306,7 +326,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         self._battery_indicator.set_health(self._player_health, self._player_max_health)
         if self._warning_banner:
             self._warning_banner.update()
-        if self._base_talent_console and self._stage.id == "homecoming_base":
+        if self._base_talent_console and self._is_base_console_active():
             self._base_talent_console.update()
 
         self._update_fade()
@@ -317,6 +337,13 @@ class TutorialScene(Scene, MouseInteractiveMixin):
             return
 
         self._update_aim_assist()
+        if self._world_update_locked():
+            self._update_stage_logic()
+            self._cleanup_entities()
+            self._update_tutorial_effects()
+            self._check_stage_completion()
+            return
+
         self._update_player()
         self._update_stage_logic()
         self._update_bullets()
@@ -324,6 +351,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         self._update_boss()
         self._handle_collisions()
         self._cleanup_entities()
+        self._update_tutorial_effects()
         self._check_stage_completion()
 
     def render(self, surface: pygame.Surface) -> None:
@@ -333,12 +361,16 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         if self._is_summary_stage():
             self._render_summary(surface)
         else:
-            if self._stage.id == "homecoming_base":
+            if self._is_base_console_active():
                 self._render_base_talent_console(surface)
+                self._render_fade(surface)
+                return
             else:
                 self._render_world(surface)
             self._render_stage_overlay(surface)
             self._render_status_bar(surface)
+            if self._stage.id == "homecoming_base" and self._base_sub_phase == "depart":
+                self._render_homecoming_depart_transition(surface)
 
         self._render_skip_button(surface)
         self._render_fade(surface)
@@ -370,13 +402,20 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         self._hold_h_frames = 0
         self._hold_b_frames = 0
         self._docked = False
+        self._dock_sub_phase = "approach"
+        self._dock_undock_timer = 0
+        self._mothership_fire_timer = self.MOTHERSHIP_VOLLEY_FRAMES
         self._base_ready = False
+        self._base_sub_phase = "combat"
+        self._depart_timer = 0
+        self._pending_base_sub_phase = None
         self._mothership_ammo = 10.0
         self._ammo_warning_triggered = False
         self._escape_timer = 0
         self._bullets.clear()
         self._enemy_bullets.clear()
         self._enemies.clear()
+        self._tutorial_explosions.clear()
         self._boss = None
         self._fire_timer = 0
         if self._warning_banner:
@@ -401,9 +440,22 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         elif setup == "boss":
             self._spawn_boss()
 
-        if self._stage.id == "mothership_docking" and self._mothership:
-            self._mothership.show()
-            self._mothership.set_position(sw // 2, max(190, int(sh * 0.32)))
+        if self._stage.id == "mothership_docking":
+            self._spawn_training_targets()
+            if self._mothership:
+                self._mothership.show()
+                self._mothership.set_position(sw // 2, max(190, int(sh * 0.32)))
+        elif self._stage.id == "homecoming_base":
+            self._spawn_homecoming_enemy_wave()
+            self._player_health = self._player_max_health
+            self._player_energy = self.ENERGY_MAX
+            if self._base_talent_console:
+                self._base_talent_console._active_module = "supply"
+            if self._base_game_controller:
+                self._base_game_controller.state.requisition_points = 10
+            if self._base_player_status:
+                self._base_player_status.health = max(1, self._base_player_status.max_health - 42)
+                self._base_player_status.boost_current = max(0.0, self._base_player_status.boost_max - 36.0)
 
         if self._is_summary_stage():
             self._mark_current_stage_cleared()
@@ -423,8 +475,11 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         if self._fade_phase == "out":
             self._fade_alpha = min(255, self._fade_alpha + step)
             if self._fade_alpha >= 255:
-                if self._pending_stage_index is not None:
+                if self._pending_base_sub_phase == "base":
+                    self._enter_homecoming_base()
+                elif self._pending_stage_index is not None:
                     self._load_stage(self._pending_stage_index)
+                self._pending_base_sub_phase = None
                 self._pending_stage_index = None
                 self._fade_phase = "in"
             return
@@ -437,14 +492,30 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         if self._stage_completed or self._fade_phase:
             return
 
+        if self._stage.id == "mothership_docking":
+            if self._dock_sub_phase == "undock" and self._dock_undock_timer <= 0:
+                self._enemies.clear()
+                self._enemy_bullets.clear()
+                self._bullets.clear()
+                self._mark_stage_complete()
+            return
+
+        if self._stage.id == "homecoming_base":
+            if self._base_sub_phase == "depart" and self._depart_timer <= 0:
+                self._mark_stage_complete()
+            return
+
         if self._stage_progress >= self._stage.objective_count:
-            self._stage_completed = True
-            self._completion_delay = self.COMPLETION_DELAY
-            self._mark_current_stage_cleared()
+            self._mark_stage_complete()
             return
 
         if self._stage_completed:
             return
+
+    def _mark_stage_complete(self) -> None:
+        self._stage_completed = True
+        self._completion_delay = self.COMPLETION_DELAY
+        self._mark_current_stage_cleared()
 
     def _mark_current_stage_cleared(self) -> None:
         if self._stage.id not in self._cleared_stage_ids:
@@ -495,28 +566,83 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         action = self._base_talent_console.handle_mouse_click(pos)
         if action is None:
             return False
-        if action.kind == "continue":
-            self._base_ready = True
-            self._stage_progress = 1
-            return True
-        if action.kind in ("resupply", "repair"):
-            self._base_ready = True
-            self._stage_progress = 1
-            if self._base_player_status:
-                self._base_player_status.health = self._base_player_status.max_health
-        if action.kind in ("resupply", "recharge"):
-            self._base_ready = True
-            self._stage_progress = 1
-            if self._base_player_status:
-                self._base_player_status.boost_current = self._base_player_status.boost_max
-        if action.route:
+        self._handle_base_console_action(action)
+        return True
+
+    def _handle_base_console_action(self, action: BaseTalentConsoleAction) -> None:
+        if action.kind == BaseTalentConsoleAction.CONTINUE:
+            if self._stage.id == "homecoming_base" and self._base_sub_phase == "base":
+                self._base_sub_phase = "depart"
+                self._depart_timer = self.DEPART_FRAMES
+                self._stage_progress = 0
+                self._fade_phase = "out"
+                self._fade_alpha = 0
+            return
+
+        if action.kind == BaseTalentConsoleAction.RESUPPLY:
+            self._resupply_at_tutorial_base()
+            return
+
+        if action.kind == BaseTalentConsoleAction.REPAIR:
+            self._repair_at_tutorial_base()
+            return
+
+        if action.kind == BaseTalentConsoleAction.RECHARGE:
+            self._recharge_at_tutorial_base()
+            return
+
+        if action.kind == BaseTalentConsoleAction.SELECT_MODULE:
+            return
+
+        if action.kind == BaseTalentConsoleAction.SELECT_ROUTE and action.route:
             self._talent_balance_manager.next_option(action.route)
             if self._base_reward_system and self._base_player_status:
                 self._talent_balance_manager.apply_to_reward_system(
                     self._base_reward_system,
                     self._base_player_status,
                 )
-        return True
+
+    def _repair_at_tutorial_base(self) -> None:
+        if not self._base_game_controller or not self._base_player_status:
+            return
+        cost = GAME_CONSTANTS.REQUISITION.REPAIR_COST
+        if self._base_game_controller.state.requisition_points < cost:
+            return
+        if self._base_player_status.health >= self._base_player_status.max_health:
+            return
+        self._base_game_controller.state.requisition_points -= cost
+        self._base_player_status.health = self._base_player_status.max_health
+
+    def _recharge_at_tutorial_base(self) -> None:
+        if not self._base_game_controller or not self._base_player_status:
+            return
+        cost = GAME_CONSTANTS.REQUISITION.RECHARGE_COST
+        if self._base_game_controller.state.requisition_points < cost:
+            return
+        if self._base_player_status.boost_current >= self._base_player_status.boost_max:
+            return
+        self._base_game_controller.state.requisition_points -= cost
+        self._base_player_status.boost_current = self._base_player_status.boost_max
+
+    def _resupply_at_tutorial_base(self) -> None:
+        if not self._base_game_controller or not self._base_player_status:
+            return
+        need_health = self._base_player_status.health < self._base_player_status.max_health
+        need_boost = self._base_player_status.boost_current < self._base_player_status.boost_max
+        if not need_health and not need_boost:
+            return
+        cost = 0
+        if need_health:
+            cost += GAME_CONSTANTS.REQUISITION.REPAIR_COST
+        if need_boost:
+            cost += GAME_CONSTANTS.REQUISITION.RECHARGE_COST
+        if self._base_game_controller.state.requisition_points < cost:
+            return
+        self._base_game_controller.state.requisition_points -= cost
+        if need_health:
+            self._base_player_status.health = self._base_player_status.max_health
+        if need_boost:
+            self._base_player_status.boost_current = self._base_player_status.boost_max
 
     def _return_to_menu(self, *, skipped: bool) -> None:
         self.skipped = skipped
@@ -558,6 +684,16 @@ class TutorialScene(Scene, MouseInteractiveMixin):
 
     def _boost_held(self) -> bool:
         return pygame.K_LSHIFT in self._keys_down or pygame.K_RSHIFT in self._keys_down
+
+    def _is_base_console_active(self) -> bool:
+        return self._stage.id == "homecoming_base" and self._base_sub_phase == "base"
+
+    def _world_update_locked(self) -> bool:
+        if self._stage.id == "mothership_docking":
+            return self._dock_sub_phase in ("docked", "undock")
+        if self._stage.id == "homecoming_base":
+            return self._base_sub_phase in ("base", "depart")
+        return False
 
     def _set_raw_aim_position(self, position: tuple[int, int]) -> None:
         x = max(0.0, min(float(position[0]), float(get_screen_width())))
@@ -744,13 +880,17 @@ class TutorialScene(Scene, MouseInteractiveMixin):
                 self._advance_after_delay()
             return
 
+        if self._stage.id == "homecoming_base":
+            self._update_homecoming_stage()
+            if self._stage_completed:
+                self._advance_after_delay()
+            return
+
         if self._stage_completed:
             self._advance_after_delay()
             return
 
-        if self._stage.id == "homecoming_base":
-            self._update_homecoming_stage()
-        elif self._stage.id == "combat_basics":
+        if self._stage.id == "combat_basics":
             if len(self._enemies) < 3 and self._stage_spawned < self._stage.objective_count:
                 if self._animation_time % 38 == 0:
                     self._spawn_easy_enemy_wave(initial=False)
@@ -762,40 +902,89 @@ class TutorialScene(Scene, MouseInteractiveMixin):
             sw, sh = get_screen_width(), get_screen_height()
             self._mothership.show()
             self._mothership.set_player_input(0, 0)
-            self._mothership.set_position(sw // 2, max(190, int(sh * 0.32)))
+            if self._dock_sub_phase != "undock":
+                self._mothership.set_position(sw // 2, max(190, int(sh * 0.32)))
             self._mothership.update()
 
+        if self._dock_sub_phase == "approach":
+            self._update_docking_approach()
+        elif self._dock_sub_phase == "docked":
+            self._update_docked_mothership_support()
+        elif self._dock_sub_phase == "undock":
+            self._dock_undock_timer = max(0, self._dock_undock_timer - 1)
+
+    def _update_docking_approach(self) -> None:
         if pygame.K_h in self._keys_down:
             self._hold_h_frames = min(self.DOCK_HOLD_FRAMES, self._hold_h_frames + 1)
-        elif not self._docked:
+        else:
             self._hold_h_frames = max(0, self._hold_h_frames - 3)
 
-        if not self._docked and self._hold_h_frames >= self.DOCK_HOLD_FRAMES:
-            self._docked = True
-            self._mothership_ammo = 4.0
-            self._stage_progress = 1
+        if self._hold_h_frames < self.DOCK_HOLD_FRAMES:
+            return
 
-        if self._docked:
-            self._mothership_ammo = max(0.0, self._mothership_ammo - 0.045)
-            if (
-                not self._ammo_warning_triggered
-                and self._mothership_ammo < self.WARNING_CELL_THRESHOLD
-            ):
-                self._ammo_warning_triggered = True
-                if self._warning_banner:
-                    self._warning_banner.activate()
+        self._dock_sub_phase = "docked"
+        self._docked = True
+        self._mothership_ammo = self.MOTHERSHIP_STARTING_AMMO
+        self._mothership_fire_timer = self.MOTHERSHIP_VOLLEY_FRAMES
+        self._bullets.clear()
+        self._enemy_bullets.clear()
+        if self._mothership:
+            dock_x, dock_y = self._mothership.get_docking_position()
+            self._player.center = (dock_x, min(get_screen_height() - 120, dock_y + 42))
+
+    def _update_docked_mothership_support(self) -> None:
+        if self._mothership:
+            dock_x, dock_y = self._mothership.get_docking_position()
+            self._player.center = (dock_x, min(get_screen_height() - 120, dock_y + 42))
+
+        self._mothership_fire_timer -= 1
+        if self._mothership_fire_timer <= 0:
+            self._mothership_fire_timer = self.MOTHERSHIP_VOLLEY_FRAMES
+            self._mothership_destroy_nearest_enemy()
+
+        self._mothership_ammo = max(0.0, self._mothership_ammo - self.MOTHERSHIP_AMMO_DRAIN)
+        if (
+            not self._ammo_warning_triggered
+            and self._mothership_ammo < self.WARNING_CELL_THRESHOLD
+        ):
+            self._ammo_warning_triggered = True
+            if self._warning_banner:
+                self._warning_banner.activate()
+
+        if self._mothership_ammo <= 0:
+            self._dock_sub_phase = "undock"
+            self._dock_undock_timer = self.DOCK_UNDOCK_FRAMES
+            self._docked = False
+            if self._mothership:
+                self._mothership.activate_flyaway()
 
     def _update_homecoming_stage(self) -> None:
+        if self._base_sub_phase == "combat":
+            self._update_homecoming_combat()
+        elif self._base_sub_phase == "depart":
+            self._depart_timer = max(0, self._depart_timer - 1)
+
+    def _update_homecoming_combat(self) -> None:
         if pygame.K_b in self._keys_down:
             self._hold_b_frames = min(self.HOME_HOLD_FRAMES, self._hold_b_frames + 1)
-        elif not self._base_ready:
+        else:
             self._hold_b_frames = max(0, self._hold_b_frames - 3)
 
-        if not self._base_ready and self._hold_b_frames >= self.HOME_HOLD_FRAMES:
-            self._base_ready = True
-            self._stage_progress = 1
-            if self._base_talent_console:
-                self._base_talent_console._active_module = "loadout"
+        if self._hold_b_frames >= self.HOME_HOLD_FRAMES:
+            self._pending_base_sub_phase = "base"
+            self._fade_phase = "out"
+            self._fade_alpha = 0
+
+    def _enter_homecoming_base(self) -> None:
+        self._base_sub_phase = "base"
+        self._base_ready = True
+        self._stage_progress = 0
+        self._enemies.clear()
+        self._bullets.clear()
+        self._enemy_bullets.clear()
+        self._aim_assist_target = None
+        if self._base_talent_console:
+            self._base_talent_console._active_module = "supply"
 
     def _update_escape_timer(self) -> None:
         if self._boss is not None or self._escape_timer <= 0:
@@ -851,11 +1040,62 @@ class TutorialScene(Scene, MouseInteractiveMixin):
             )
             self._stage_spawned += 1
 
+    def _spawn_homecoming_enemy_wave(self) -> None:
+        sw = get_screen_width()
+        for index, lane in enumerate((0, 1, 3, 4)):
+            rect = pygame.Rect(0, 0, self.ENEMY_SIZE, self.ENEMY_SIZE)
+            rect.center = (
+                int(sw * (0.18 + lane * 0.16)),
+                214 + (index % 2) * 66,
+            )
+            self._enemies.append(
+                TutorialEnemy(
+                    rect=rect,
+                    health=44,
+                    max_health=44,
+                    speed=0.55,
+                    score_value=110,
+                    kind="enemy",
+                    phase=index * 1.2,
+                    fire_timer=45 + index * 18,
+                )
+            )
+        self._stage_spawned = len(self._enemies)
+
     def _spawn_boss(self) -> None:
         sw = get_screen_width()
         rect = pygame.Rect(0, 0, self.BOSS_W, self.BOSS_H)
         rect.center = (sw // 2, 246)
         self._boss = TutorialBoss(rect=rect, health=280, max_health=280)
+
+    def _mothership_destroy_nearest_enemy(self) -> None:
+        active_enemies = [enemy for enemy in self._enemies if enemy.active]
+        if not active_enemies:
+            return
+
+        if self._mothership:
+            origin = self._mothership.get_docking_position()
+        else:
+            origin = (get_screen_width() // 2, int(get_screen_height() * 0.32))
+
+        target = min(
+            active_enemies,
+            key=lambda enemy: (
+                enemy.rect.centerx - origin[0]
+            ) * (
+                enemy.rect.centerx - origin[0]
+            ) + (
+                enemy.rect.centery - origin[1]
+            ) * (
+                enemy.rect.centery - origin[1]
+            ),
+        )
+        target.health -= 50
+        if target.health <= 0:
+            target.active = False
+            self._score += target.score_value
+            self._kills += 1
+            self._tutorial_explosions.append(TutorialExplosion(target.rect.center))
 
     def _update_bullets(self) -> None:
         sw = get_screen_width()
@@ -868,6 +1108,13 @@ class TutorialScene(Scene, MouseInteractiveMixin):
             bullet.rect.y += int(bullet.velocity.y)
             if not bounds.colliderect(bullet.rect):
                 bullet.active = False
+
+    def _update_tutorial_effects(self) -> None:
+        for explosion in self._tutorial_explosions:
+            explosion.timer -= 1
+        self._tutorial_explosions[:] = [
+            explosion for explosion in self._tutorial_explosions if explosion.timer > 0
+        ]
 
     def _update_enemies(self) -> None:
         for enemy in self._enemies:
@@ -1000,7 +1247,14 @@ class TutorialScene(Scene, MouseInteractiveMixin):
     def _render_world(self, surface: pygame.Surface) -> None:
         self._render_stage_props(surface)
 
-        if self._stage.id != "homecoming_base":
+        if self._stage.id == "homecoming_base" and self._base_sub_phase != "combat":
+            return
+
+        render_hostiles = not (
+            self._stage.id == "mothership_docking"
+            and self._dock_sub_phase == "undock"
+        )
+        if render_hostiles:
             for bullet in self._bullets:
                 draw_bullet(surface, bullet.rect.x, bullet.rect.y, bullet.rect.width, bullet.rect.height, "single", "player")
             for bullet in self._enemy_bullets:
@@ -1011,22 +1265,23 @@ class TutorialScene(Scene, MouseInteractiveMixin):
                 draw_enemy_ship(surface, enemy.rect.centerx, enemy.rect.centery, enemy.rect.width, enemy.rect.height, health_ratio)
                 self._draw_entity_health_bar(surface, enemy.rect, health_ratio)
 
-            if self._boss is not None:
-                boss = self._boss
-                health_ratio = max(0.0, boss.health / boss.max_health)
-                if boss.enraged:
-                    self._render_boss_enrage_aura(surface, boss)
-                draw_boss_ship(surface, boss.rect.centerx, boss.rect.centery, boss.rect.width, boss.rect.height, health_ratio)
-                self._draw_boss_health(surface, boss)
-                if boss.enraged:
-                    self._render_boss_enrage_warning(surface, boss)
+        if self._boss is not None:
+            boss = self._boss
+            health_ratio = max(0.0, boss.health / boss.max_health)
+            if boss.enraged:
+                self._render_boss_enrage_aura(surface, boss)
+            draw_boss_ship(surface, boss.rect.centerx, boss.rect.centery, boss.rect.width, boss.rect.height, health_ratio)
+            self._draw_boss_health(surface, boss)
+            if boss.enraged:
+                self._render_boss_enrage_warning(surface, boss)
 
-            self._aim_crosshair.render(surface, self._aim_pos)
-            self._render_player(surface)
+        self._aim_crosshair.render(surface, self._aim_pos)
+        self._render_player(surface)
 
     def _render_stage_props(self, surface: pygame.Surface) -> None:
         if self._stage.id == "mothership_docking":
             self._render_mothership_components(surface)
+            self._render_tutorial_explosions(surface)
         elif self._stage.id == "boost_phase_dash":
             self._render_boost_gate(surface)
         elif self._stage.id == "boss_encounter" and self._boss is None and self._escape_timer > 0:
@@ -1054,8 +1309,9 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         content_right = x + panel_w - right_badge_w - 26
         max_text_w = max(230, content_right - content_left)
 
+        stage_instructions = self._current_stage_instructions()
         instruction_lines: list[str] = []
-        for line in self._stage.instructions:
+        for line in stage_instructions:
             instruction_lines.extend(wrap_text(line, self._small_font, max_text_w, max_lines=2))
         instruction_lines = instruction_lines[:4]
         panel_h = min(sh - 156, 120 + len(instruction_lines) * 24)
@@ -1157,11 +1413,48 @@ class TutorialScene(Scene, MouseInteractiveMixin):
             bar = pygame.Rect(x + 96, y + panel_h - 24, panel_w - 192, 10)
             self._draw_bar(surface, bar, hold_ratio, SceneColors.ACCENT_TEAL_BRIGHT)
 
+    def _current_stage_instructions(self) -> list[str]:
+        if self._stage.id == "mothership_docking":
+            if self._dock_sub_phase == "approach":
+                return [
+                    "按住 H 呼叫母舰停靠。停靠后母舰会用导弹扫荡敌方单位，同时自动保存你的游戏进度。",
+                ]
+            if self._dock_sub_phase == "docked":
+                return [
+                    "停靠完成。母舰正在发射导弹清剿敌方单位，弹药随时间消耗。耗尽后自动脱离。",
+                ]
+            return [
+                "弹匣耗尽，母舰正在脱离战场。残余目标会在返航前清理。",
+            ]
+
+        if self._stage.id == "homecoming_base":
+            if self._base_sub_phase == "combat":
+                return [
+                    "战斗中按住 B 启动返航。返航后可在基地恢复机体、充能燃料、切换天赋配置。",
+                ]
+            if self._base_sub_phase == "base":
+                return [
+                    "基地指挥中心。你可以维修机体、补给燃料、切换天赋路线。准备完成后点击「继续出击」。",
+                ]
+            return [
+                "轨道导弹清场完成，已返回战场。",
+            ]
+
+        return self._stage.instructions
+
     def _objective_counter_text(self) -> str:
-        if self._stage.id == "mothership_docking" and not self._docked:
+        if self._stage.id == "mothership_docking" and self._dock_sub_phase == "approach":
             return f"{int(self._hold_h_frames / self.DOCK_HOLD_FRAMES * 100)}%"
-        if self._stage.id == "homecoming_base" and not self._base_ready:
-            return f"{int(self._hold_b_frames / self.HOME_HOLD_FRAMES * 100)}%"
+        if self._stage.id == "mothership_docking" and self._dock_sub_phase == "docked":
+            return f"{self._mothership_ammo:.1f}"
+        if self._stage.id == "mothership_docking" and self._dock_sub_phase == "undock":
+            return "脱离"
+        if self._stage.id == "homecoming_base" and self._base_sub_phase == "combat":
+            return f"返航引擎预热 {int(self._hold_b_frames / self.HOME_HOLD_FRAMES * 100)}%"
+        if self._stage.id == "homecoming_base" and self._base_sub_phase == "base":
+            return "整备"
+        if self._stage.id == "homecoming_base" and self._base_sub_phase == "depart":
+            return "出击"
         if self._stage.id == "boss_encounter" and self._boss is None and self._escape_timer > 0:
             seconds = max(0, math.ceil(self._escape_timer / 60))
             return f"撤离 {seconds}s"
@@ -1170,9 +1463,9 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         return f"{self._stage_progress}/{self._stage.objective_count}"
 
     def _stage_hold_ratio(self) -> float | None:
-        if self._stage.id == "mothership_docking" and not self._docked:
+        if self._stage.id == "mothership_docking" and self._dock_sub_phase == "approach":
             return self._hold_h_frames / self.DOCK_HOLD_FRAMES
-        if self._stage.id == "homecoming_base" and not self._base_ready:
+        if self._stage.id == "homecoming_base" and self._base_sub_phase == "combat":
             return self._hold_b_frames / self.HOME_HOLD_FRAMES
         return None
 
@@ -1293,12 +1586,12 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         if self._mothership:
             self._mothership.show()
             self._mothership.render(surface)
-        if self._docked and self._ammo_magazine:
+        if self._dock_sub_phase == "docked" and self._ammo_magazine:
             is_warning = self._mothership_ammo < self.WARNING_CELL_THRESHOLD
             self._ammo_magazine.render(
                 surface,
                 ammo_count=self._mothership_ammo,
-                ammo_max=10.0,
+                ammo_max=self.MOTHERSHIP_STARTING_AMMO,
                 is_cooldown=False,
                 is_docked=True,
                 is_warning=is_warning,
@@ -1306,6 +1599,25 @@ class TutorialScene(Scene, MouseInteractiveMixin):
             )
         if self._warning_banner:
             self._warning_banner.render(surface)
+
+    def _render_tutorial_explosions(self, surface: pygame.Surface) -> None:
+        for explosion in self._tutorial_explosions:
+            age = explosion.duration - explosion.timer
+            ratio = max(0.0, min(1.0, age / explosion.duration))
+            alpha = int(210 * (1.0 - ratio))
+            radius = int(12 + ratio * 34)
+            layer = pygame.Surface((radius * 2 + 8, radius * 2 + 8), pygame.SRCALPHA)
+            center = (layer.get_width() // 2, layer.get_height() // 2)
+            pygame.draw.circle(layer, (*SceneColors.WARNING_ACCENT, alpha), center, radius)
+            pygame.draw.circle(layer, (*SceneColors.DANGER_RED, max(0, alpha - 50)), center, max(3, radius // 2), 2)
+            surface.blit(layer, layer.get_rect(center=explosion.center), special_flags=pygame.BLEND_RGBA_ADD)
+
+    def _render_homecoming_depart_transition(self, surface: pygame.Surface) -> None:
+        overlay = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 138))
+        surface.blit(overlay, (0, 0))
+        text = self._heading_font.render("轨道导弹清场完成，已返回战场", True, SceneColors.ACCENT_TEAL_BRIGHT)
+        surface.blit(text, text.get_rect(center=(surface.get_width() // 2, surface.get_height() // 2)))
 
     def _render_base_talent_console(self, surface: pygame.Surface) -> None:
         if not (
@@ -1328,12 +1640,12 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         )
 
     def _mothership_status_data(self) -> dict:
-        ammo_count = max(0.0, min(10.0, float(self._mothership_ammo)))
+        ammo_count = max(0.0, min(self.MOTHERSHIP_STARTING_AMMO, float(self._mothership_ammo)))
         return {
             "ammo_count": ammo_count,
-            "ammo_max": 10.0,
+            "ammo_max": self.MOTHERSHIP_STARTING_AMMO,
             "is_in_cooldown": False,
-            "is_docked": self._docked,
+            "is_docked": self._dock_sub_phase == "docked",
             "ammo_warning": ammo_count < self.WARNING_CELL_THRESHOLD,
             "is_present": self._stage.id == "mothership_docking",
             "cooldown_remaining": 0.0,
@@ -1356,8 +1668,8 @@ class TutorialScene(Scene, MouseInteractiveMixin):
                 "desc": "完成一次母舰停靠",
                 "target": "mothership",
                 "goal": 1,
-                "progress": 1,
-                "done": True,
+                "progress": 1 if self._dock_sub_phase in ("docked", "undock") else 0,
+                "done": self._dock_sub_phase in ("docked", "undock"),
                 "claimed": False,
             },
             {
@@ -1365,8 +1677,8 @@ class TutorialScene(Scene, MouseInteractiveMixin):
                 "desc": "进入基地控制台",
                 "target": "homecoming",
                 "goal": 1,
-                "progress": 1 if self._base_ready else 0,
-                "done": self._base_ready,
+                "progress": 1 if self._base_sub_phase in ("base", "depart") else 0,
+                "done": self._base_sub_phase in ("base", "depart"),
                 "claimed": False,
             },
         ]

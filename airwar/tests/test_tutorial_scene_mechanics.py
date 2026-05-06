@@ -1,6 +1,7 @@
 import pygame
 
 from airwar.scenes.tutorial_scene import TutorialScene
+from airwar.ui.base_talent_console import BaseTalentConsoleAction
 
 
 def _make_scene() -> TutorialScene:
@@ -59,3 +60,85 @@ def test_tutorial_boss_enrages_at_real_thirty_percent_threshold() -> None:
     assert scene._boss.enraged is True
     assert scene._boss.fire_timer == 22
     assert len(scene._enemy_bullets) == 5
+
+
+def test_mothership_docking_runs_approach_docked_and_undock_phases() -> None:
+    scene = _make_scene()
+    scene._load_stage(3)
+    scene._fade_phase = ""
+
+    assert scene._dock_sub_phase == "approach"
+    assert len(scene._enemies) == 3
+    assert all(enemy.kind == "target" for enemy in scene._enemies)
+
+    scene._keys_down.add(pygame.K_h)
+    for _ in range(scene.DOCK_HOLD_FRAMES):
+        scene._update_docking_stage()
+
+    assert scene._dock_sub_phase == "docked"
+    assert scene._docked is True
+    assert scene._mothership_ammo == scene.MOTHERSHIP_STARTING_AMMO
+    assert scene._stage_completed is False
+
+    scene._mothership_fire_timer = 0
+    scene._update_docking_stage()
+
+    assert scene._kills == 1
+    assert len(scene._tutorial_explosions) == 1
+    assert len([enemy for enemy in scene._enemies if enemy.active]) == 2
+    assert scene._stage_progress == 0
+
+    for _ in range(140):
+        scene._update_docking_stage()
+
+    assert scene._dock_sub_phase == "undock"
+    assert scene._dock_undock_timer > 0
+
+    for _ in range(scene.DOCK_UNDOCK_FRAMES):
+        scene._update_docking_stage()
+    scene._check_stage_completion()
+
+    assert scene._stage_completed is True
+    assert scene._enemies == []
+
+
+def test_homecoming_runs_combat_base_and_depart_phases() -> None:
+    scene = _make_scene()
+    scene._load_stage(4)
+    scene._fade_phase = ""
+
+    assert scene._base_sub_phase == "combat"
+    assert len(scene._enemies) >= 3
+    assert all(enemy.kind == "enemy" for enemy in scene._enemies)
+    assert scene._player_health == scene._player_max_health
+    assert scene._player_energy == scene.ENERGY_MAX
+
+    scene._keys_down.add(pygame.K_b)
+    for _ in range(scene.HOME_HOLD_FRAMES):
+        scene._update_homecoming_stage()
+    assert scene._pending_base_sub_phase == "base"
+    for _ in range(scene.FADE_FRAMES + 4):
+        scene._update_fade()
+
+    assert scene._base_sub_phase == "base"
+    assert scene._base_ready is True
+    assert scene._enemies == []
+    assert scene._base_game_controller is not None
+    assert scene._base_game_controller.state.requisition_points == 10
+    assert scene._stage_completed is False
+
+    scene._handle_base_console_action(BaseTalentConsoleAction.resupply())
+    assert scene._base_game_controller.state.requisition_points < 10
+
+    scene._handle_base_console_action(BaseTalentConsoleAction.continue_sortie())
+    assert scene._base_sub_phase == "depart"
+    assert scene._depart_timer == scene.DEPART_FRAMES
+
+    while scene._fade_phase == "out":
+        scene._update_fade()
+    scene._fade_phase = ""
+    for _ in range(scene.DEPART_FRAMES):
+        scene._update_homecoming_stage()
+    scene._check_stage_completion()
+
+    assert scene._stage_completed is True
