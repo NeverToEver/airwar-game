@@ -639,7 +639,9 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         user_y = py + 106
         pass_y = user_y + self.INPUT_H + self.LOGIN_ROW_GAP
         primary_y = pass_y + self.INPUT_H + 38
-        secondary_y = primary_y + self.BTN_H + 20
+
+        settings_y = primary_y + self.BTN_H + 16
+        secondary_y = settings_y + self.LOGIN_SECONDARY_H + 14
 
         primary_total_w = self.LOGIN_PRIMARY_W * 2 + self.LOGIN_PRIMARY_GAP
         primary_x = px + (self.PANEL_W - primary_total_w) // 2
@@ -665,13 +667,13 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
                 self.LOGIN_PRIMARY_W,
                 self.BTN_H,
             ),
-            "guest": pygame.Rect(secondary_x, secondary_y, self.LOGIN_SECONDARY_W, self.LOGIN_SECONDARY_H),
             "settings": pygame.Rect(
                 px + (self.PANEL_W - self.LOGIN_SECONDARY_W) // 2,
-                secondary_y + self.LOGIN_SECONDARY_H + 16,
+                settings_y,
                 self.LOGIN_SECONDARY_W,
                 self.LOGIN_SECONDARY_H,
             ),
+            "guest": pygame.Rect(secondary_x, secondary_y, self.LOGIN_SECONDARY_W, self.LOGIN_SECONDARY_H),
             "delete": pygame.Rect(
                 secondary_x + self.LOGIN_SECONDARY_W + self.LOGIN_PRIMARY_GAP,
                 secondary_y,

@@ -6,7 +6,7 @@ from airwar.entities.base import Rect
 from airwar.entities.enemy import Enemy, EnemySpawner
 from airwar.config import DIFFICULTY_SETTINGS
 from airwar.game.managers.spawn_controller import SpawnController
-from airwar.scenes.game_scene import GameScene
+from airwar.game.systems.aim_assist_system import AimAssistSystem
 
 
 def test_spawn_controller_applies_spread_enemy_caps_by_difficulty() -> None:
@@ -40,51 +40,45 @@ def test_enemy_spread_fire_pattern_is_narrowed() -> None:
 
 
 def test_aim_assist_sticks_while_mouse_stays_near_target() -> None:
-    scene = GameScene()
+    aim_assist = AimAssistSystem()
     target = SimpleNamespace(
         active=True,
         rect=Rect(100, 100, 80, 60),
     )
-    scene.spawn_controller = SimpleNamespace(enemies=[target], boss=None)
+    spawn_controller = SimpleNamespace(enemies=[target], boss=None)
 
-    scene._set_raw_aim_position((120, 120))
-    scene._update_aim_assist()
-    assisted = scene._aim_position
+    assisted = aim_assist.update(spawn_controller, (120, 120))
 
     assert assisted == target.rect.center
 
-    scene._set_raw_aim_position((165, 130))
-    scene._update_aim_assist()
+    aim_assist.update(spawn_controller, (165, 130))
 
-    assert scene._aim_assist_target is target
+    assert aim_assist.get_aim_position() == target.rect.center
 
 
 def test_aim_assist_defaults_to_nearest_enemy_when_cursor_is_not_on_target() -> None:
-    scene = GameScene()
+    aim_assist = AimAssistSystem()
     near = SimpleNamespace(active=True, rect=pygame.Rect(200, 160, 80, 60))
     far = SimpleNamespace(active=True, rect=pygame.Rect(700, 500, 80, 60))
-    scene.spawn_controller = SimpleNamespace(enemies=[far, near], boss=None)
+    spawn_controller = SimpleNamespace(enemies=[far, near], boss=None)
 
-    scene._set_raw_aim_position((40, 40))
-    scene._update_aim_assist()
+    aim_assist.update(spawn_controller, (40, 40))
 
-    assert scene._aim_assist_target is near
+    assert aim_assist.get_aim_position() == near.rect.center
 
 
 def test_aim_assist_crosshair_overlaps_locked_enemy_center() -> None:
-    scene = GameScene()
+    aim_assist = AimAssistSystem()
     target = SimpleNamespace(active=True, rect=pygame.Rect(200, 160, 80, 60))
-    scene.spawn_controller = SimpleNamespace(enemies=[target], boss=None)
+    spawn_controller = SimpleNamespace(enemies=[target], boss=None)
 
-    scene._set_raw_aim_position((40, 40))
-    scene._update_aim_assist()
+    aim_assist.update(spawn_controller, (40, 40))
 
-    assert scene._aim_assist_target is target
-    assert scene._aim_position == target.rect.center
+    assert aim_assist.get_aim_position() == target.rect.center
 
 
 def test_aim_assist_switches_to_enemy_in_mouse_movement_direction() -> None:
-    scene = GameScene()
+    aim_assist = AimAssistSystem()
     center = SimpleNamespace(
         active=True,
         rect=pygame.Rect(450, 340, 80, 60),
@@ -93,56 +87,48 @@ def test_aim_assist_switches_to_enemy_in_mouse_movement_direction() -> None:
         active=True,
         rect=pygame.Rect(780, 340, 80, 60),
     )
-    scene.spawn_controller = SimpleNamespace(enemies=[center, right], boss=None)
+    spawn_controller = SimpleNamespace(enemies=[center, right], boss=None)
 
-    scene._set_raw_aim_position((490, 370))
-    scene._update_aim_assist()
-    scene._set_raw_aim_position((490 + scene.AIM_ASSIST_SWITCH_DISTANCE + 12, 372))
-    scene._update_aim_assist()
+    aim_assist.update(spawn_controller, (490, 370))
+    aim_assist.update(spawn_controller, (490 + AimAssistSystem.AIM_ASSIST_SWITCH_DISTANCE + 12, 372))
 
-    assert scene._aim_assist_target is right
+    assert aim_assist.get_aim_position() == right.rect.center
 
 
 def test_aim_assist_delays_raw_input_to_reduce_cursor_snapping() -> None:
-    scene = GameScene()
+    aim_assist = AimAssistSystem()
     target = SimpleNamespace(active=True, rect=pygame.Rect(500, 300, 80, 60))
-    scene.spawn_controller = SimpleNamespace(enemies=[target], boss=None)
+    spawn_controller = SimpleNamespace(enemies=[target], boss=None)
 
-    scene._set_raw_aim_position((100, 100))
-    scene._update_aim_assist()
-    scene._set_raw_aim_position((500, 300))
-    scene._update_aim_assist()
+    aim_assist.update(spawn_controller, (100, 100))
+    aim_assist.update(spawn_controller, (500, 300))
 
-    assert scene._smoothed_raw_aim_position != scene._raw_aim_position
-    assert 100 < scene._smoothed_raw_aim_position[0] < 500
-    assert 100 < scene._smoothed_raw_aim_position[1] < 300
+    assert aim_assist._smoothed_raw_aim_position != aim_assist._raw_aim_position
+    assert 100 < aim_assist._smoothed_raw_aim_position[0] < 500
+    assert 100 < aim_assist._smoothed_raw_aim_position[1] < 300
 
 
 def test_aim_assist_delayed_input_catches_up_over_repeated_updates() -> None:
-    scene = GameScene()
+    aim_assist = AimAssistSystem()
     target = SimpleNamespace(active=True, rect=pygame.Rect(500, 300, 80, 60))
-    scene.spawn_controller = SimpleNamespace(enemies=[target], boss=None)
+    spawn_controller = SimpleNamespace(enemies=[target], boss=None)
 
-    scene._set_raw_aim_position((100, 100))
-    scene._update_aim_assist()
-    scene._set_raw_aim_position((500, 300))
+    aim_assist.update(spawn_controller, (100, 100))
+    aim_assist.set_raw_aim_position((500, 300))
     for _ in range(20):
-        scene._update_aim_assist()
+        aim_assist.update_aim_assist(spawn_controller)
 
-    assert abs(scene._smoothed_raw_aim_position[0] - 500) < 10
-    assert abs(scene._smoothed_raw_aim_position[1] - 300) < 10
+    assert abs(aim_assist._smoothed_raw_aim_position[0] - 500) < 10
+    assert abs(aim_assist._smoothed_raw_aim_position[1] - 300) < 10
 
 
 def test_aim_assist_releases_after_stronger_decisive_mouse_movement() -> None:
-    scene = GameScene()
+    aim_assist = AimAssistSystem()
     target = SimpleNamespace(active=True, rect=pygame.Rect(100, 100, 80, 60))
-    scene.spawn_controller = SimpleNamespace(enemies=[target], boss=None)
+    spawn_controller = SimpleNamespace(enemies=[target], boss=None)
 
-    scene._set_raw_aim_position((120, 120))
-    scene._update_aim_assist()
-    scene._set_raw_aim_position((120 + scene.AIM_ASSIST_RELEASE_DISTANCE + 12, 120))
-    scene._update_aim_assist()
+    aim_assist.update(spawn_controller, (120, 120))
+    aim_assist.update(spawn_controller, (120 + AimAssistSystem.AIM_ASSIST_RELEASE_DISTANCE + 12, 120))
 
-    assert scene._aim_assist_target is None
-    assert scene._aim_position == scene._smoothed_raw_aim_position
-    assert scene._aim_position != scene._raw_aim_position
+    assert aim_assist.get_aim_position() == aim_assist._smoothed_raw_aim_position
+    assert aim_assist.get_aim_position() != aim_assist._raw_aim_position

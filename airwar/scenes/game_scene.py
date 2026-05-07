@@ -1,12 +1,15 @@
 """Main game scene -- gameplay loop, entity coordination, and rendering."""
-import math
 
 import pygame
 from typing import Dict
 from .scene import Scene
 from airwar.entities import Player
 from airwar.game.systems.reward_system import RewardSystem
+from airwar.game.systems.aim_assist_system import AimAssistSystem
+from airwar.game.systems.lock_manager import LockLayer, LockManager, LockRequest
 from airwar.game.rendering.hud_renderer import HUDRenderer
+from airwar.game.rendering.boss_enrage_renderer import BossEnrageRenderer
+from airwar.game.systems.save_restore_manager import SaveRestoreManager
 from airwar.game.systems.notification_manager import NotificationManager
 from airwar.game.managers.game_controller import GameController, GameplayState
 from airwar.game.managers.spawn_controller import SpawnController
@@ -20,6 +23,7 @@ from airwar.ui.warning_banner import WarningBanner
 from airwar.ui.aim_crosshair import AimCrosshair
 from airwar.ui.base_talent_console import BaseTalentConsole, BaseTalentConsoleAction
 from airwar.ui.homecoming_ui import HomecomingUI
+from airwar.ui.pause_button import PauseButtonComponent
 from airwar.game.mother_ship import (
     EventBus,
     InputDetector,
@@ -43,7 +47,7 @@ from airwar.game.managers import (
     UIManager,
     GameLoopManager,
 )
-from airwar.config import DIFFICULTY_SETTINGS, BOOST_CONFIG, VALID_DIFFICULTIES, get_screen_width, get_screen_height
+from airwar.config import DIFFICULTY_SETTINGS, BOOST_CONFIG, get_screen_width, get_screen_height
 from airwar.input import PygameInputHandler
 from airwar.utils.mouse_interaction import MouseInteractiveMixin
 from airwar.config.design_tokens import get_design_tokens
@@ -60,17 +64,17 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     Implements IGameScene for clean integration with GameIntegrator.
     """
 
-    PAUSE_BUTTON_SIZE = 44
-    PAUSE_BUTTON_MARGIN = 10
-    PAUSE_BAR_WIDTH = 5
-    PAUSE_BAR_HEIGHT = 18
-    PAUSE_BAR_GAP = 5
-    AIM_ASSIST_BREAK_DISTANCE = 38.0
-    AIM_ASSIST_SWITCH_DISTANCE = 90.0
-    AIM_ASSIST_RELEASE_DISTANCE = 230.0
-    AIM_ASSIST_DIRECTION_CONE_DOT = 0.42
-    AIM_INPUT_DELAY_BLEND = 0.28
-    AIM_INPUT_SNAP_DISTANCE = 10.0
+    PAUSE_BUTTON_SIZE = PauseButtonComponent.PAUSE_BUTTON_SIZE
+    PAUSE_BUTTON_MARGIN = PauseButtonComponent.PAUSE_BUTTON_MARGIN
+    PAUSE_BAR_WIDTH = PauseButtonComponent.PAUSE_BAR_WIDTH
+    PAUSE_BAR_HEIGHT = PauseButtonComponent.PAUSE_BAR_HEIGHT
+    PAUSE_BAR_GAP = PauseButtonComponent.PAUSE_BAR_GAP
+    AIM_ASSIST_BREAK_DISTANCE = AimAssistSystem.AIM_ASSIST_BREAK_DISTANCE
+    AIM_ASSIST_SWITCH_DISTANCE = AimAssistSystem.AIM_ASSIST_SWITCH_DISTANCE
+    AIM_ASSIST_RELEASE_DISTANCE = AimAssistSystem.AIM_ASSIST_RELEASE_DISTANCE
+    AIM_ASSIST_DIRECTION_CONE_DOT = AimAssistSystem.AIM_ASSIST_DIRECTION_CONE_DOT
+    AIM_INPUT_DELAY_BLEND = AimAssistSystem.AIM_INPUT_DELAY_BLEND
+    AIM_INPUT_SNAP_DISTANCE = AimAssistSystem.AIM_INPUT_SNAP_DISTANCE
     HOMECOMING_LOCK_INVINCIBILITY_TIMER = 999999
 
     AUTO_SAVE_INTERVAL = 1800  # 30 seconds at 60fps
@@ -82,8 +86,11 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._is_loading = True
         self._loading_progress = 0
         self._tokens = get_design_tokens()
-        self._pause_btn_layout = None
-        self._pause_btn_cache = {}
+        self._pause_button = PauseButtonComponent()
+        self._aim_assist = AimAssistSystem()
+        self._boss_enrage_renderer = BossEnrageRenderer()
+        self._save_restore_manager = SaveRestoreManager()
+        self._lock_manager = LockManager(None)
         self.game_controller: GameController = None
         self.game_renderer: GameRenderer = None
         self.health_system = None  # delegated to GameController.health_system
@@ -99,12 +106,6 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._warning_banner: WarningBanner = None
         self._boost_gauge: BoostGauge = None
         self._aim_crosshair = AimCrosshair()
-        self._aim_position = (0.0, 0.0)
-        self._raw_aim_position = (0.0, 0.0)
-        self._previous_raw_aim_position = (0.0, 0.0)
-        self._smoothed_raw_aim_position = (0.0, 0.0)
-        self._aim_input_initialized = False
-        self._aim_assist_target = None
         self._give_up_detector = None
         self._give_up_ui = None
         self._homecoming_detector = None
@@ -120,17 +121,6 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._ui_manager: UIManager = None
         self._game_loop_manager: GameLoopManager = None
         self._phase_dash_invincibility_active = False
-        self._phase_dash_previous_invincible = False
-        self._phase_dash_previous_silent = False
-        self._enrage_overlay_cache = None
-        self._enrage_overlay_cache_key = None
-        self._enrage_distortion_buffer = None
-        self._enrage_ripple_surface = None
-        self._enrage_sin_a = None
-        self._enrage_cos_a = None
-        self._enrage_sin_b = None
-        self._enrage_cos_b = None
-        self._enrage_band_cache_key = None
         self._survival_frames = 0
 
     def enter(self, **kwargs) -> None:
@@ -152,7 +142,9 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._loading_progress = 0
         self.clear_hover()
         self.clear_buttons()
-        self._pause_btn_cache.clear()
+        self._pause_button.clear_cache()
+        self._lock_manager.clear()
+        self._phase_dash_invincibility_active = False
 
         # Prewarm glow caches before gameplay starts
         self._loading_progress = 20
@@ -164,7 +156,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         screen_width = get_screen_width()
         screen_height = get_screen_height()
         self._init_pause_button_layout()
-        self._set_raw_aim_position(pygame.mouse.get_pos())
+        self._aim_assist.set_raw_aim_position(pygame.mouse.get_pos())
 
         difficulty = kwargs.get('difficulty', 'medium')
         username = kwargs.get('username', 'Player')
@@ -172,6 +164,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         settings = DIFFICULTY_SETTINGS[difficulty]
 
         self.game_controller = GameController(difficulty, username)
+        self._lock_manager.set_game_state(self.game_controller.state)
         self.game_renderer = GameRenderer()
         self.game_renderer.init_background(screen_width, screen_height)
         self.reward_system = self.game_controller.reward_system
@@ -189,6 +182,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             screen_height - PlayerConstants.SCREEN_BOTTOM_OFFSET,
             input_handler
         )
+        self._lock_manager.set_player(self.player)
         self._sync_player_aim_target()
         self.player.rect.y = PlayerConstants.INITIAL_Y
         self.player.bullet_damage = settings['bullet_damage']
@@ -242,6 +236,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             self._bullet_manager,
             self._boss_manager,
             self.collision_controller,
+            self._lock_manager,
         )
 
         self._auto_save_timer = 0
@@ -295,12 +290,14 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             if self.game_renderer.integrated_hud:
                 self.game_renderer.integrated_hud.toggle()
         elif event.type == pygame.MOUSEMOTION:
-            self._set_raw_aim_position(event.pos)
+            self._aim_assist.set_raw_aim_position(event.pos)
+            self._sync_player_aim_target()
             if self._homecoming_base_pending and self._base_talent_console:
                 self._base_talent_console.handle_mouse_motion(event.pos)
             self.handle_mouse_motion(event.pos)
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            self._set_raw_aim_position(event.pos)
+            self._aim_assist.set_raw_aim_position(event.pos)
+            self._sync_player_aim_target()
             if event.button == 1 and self._homecoming_base_pending and self._handle_base_console_click(event.pos):
                 return
             if event.button == 1 and self.handle_mouse_click(event.pos):
@@ -348,8 +345,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
                     mission["claimed"] = True
                     if self.notification_manager:
                         self.notification_manager.show(f"任务完成: {mission['name']} (+{GAME_CONSTANTS.REQUISITION.MISSION_REWARD}RP)")
-        self._set_raw_aim_position(pygame.mouse.get_pos())
-        self._update_aim_assist()
+        self._aim_assist.update(self.spawn_controller, pygame.mouse.get_pos())
+        self._sync_player_aim_target()
         self._aim_crosshair.update()
         self._update_homecoming()
 
@@ -440,27 +437,36 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if not self.game_controller or not self.player:
             return
 
-        state = self.game_controller.state
+        self._sync_lock_manager_targets()
         if self.player.is_phase_dash_invincible():
-            if not self._phase_dash_invincibility_active:
-                self._phase_dash_previous_invincible = state.player_invincible
-                self._phase_dash_previous_silent = state.silent_invincible
             self._phase_dash_invincibility_active = True
-            state.player_invincible = True
-            state.invincibility_timer = max(state.invincibility_timer, 2)
-            state.silent_invincible = True
+            self._lock_manager.acquire(
+                LockLayer.PHASE_DASH,
+                LockRequest(invincible=True, silent_invincible=True, invincibility_duration=2),
+            )
             return
 
         if not self._phase_dash_invincibility_active:
             return
 
         self._phase_dash_invincibility_active = False
-        if state.invincibility_timer <= 2 and not self._phase_dash_previous_invincible:
-            state.player_invincible = False
-            state.invincibility_timer = 0
-            state.silent_invincible = False
-        else:
-            state.silent_invincible = self._phase_dash_previous_silent
+        self._lock_manager.release(LockLayer.PHASE_DASH)
+
+    def _activate_invincibility(self) -> None:
+        self._sync_lock_manager_targets()
+        self._lock_manager.acquire(
+            LockLayer.MOTHERSHIP,
+            LockRequest(
+                invincible=True,
+                lock_controls=True,
+                silent_invincible=True,
+                invincibility_duration=1200,
+            ),
+        )
+
+    def _deactivate_invincibility(self) -> None:
+        self._sync_lock_manager_targets()
+        self._lock_manager.release(LockLayer.MOTHERSHIP)
 
     def _update_mothership_ammo_warning(self) -> None:
         """Check ammo level and activate warning banner when critically low.
@@ -520,7 +526,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if self._homecoming_sequence.is_active():
             self._homecoming_sequence.update(self.player)
             if self.player and self._homecoming_sequence.is_active():
-                self.player.controls_locked = True
+                self._set_homecoming_protection(locked=True)
             return
 
         can_use = self._can_request_homecoming()
@@ -749,7 +755,13 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         state = self.game_controller.state
         state.entrance_animation = True
         state.entrance_timer = 0
-        state.paused = False
+        self._sync_lock_manager_targets()
+        self._lock_manager.apply_transient_state(
+            paused=False,
+            invincible=True,
+            invincibility_duration=GAME_CONSTANTS.PLAYER.INVINCIBILITY_DURATION,
+            silent_invincible=False,
+        )
         self.player.rect.x = get_screen_width() // 2 - PlayerConstants.INITIAL_X_OFFSET
         self.player.rect.y = PlayerConstants.INITIAL_Y
 
@@ -763,17 +775,26 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         return PersistenceManager(username=save_data.username).save_game(save_data)
 
     def _set_homecoming_protection(self, locked: bool) -> None:
-        if self.player:
-            self.player.controls_locked = locked
-        if self.game_controller:
-            self.game_controller.state.paused = locked
-            self.game_controller.state.player_invincible = True
-            self.game_controller.state.invincibility_timer = (
-                self.HOMECOMING_LOCK_INVINCIBILITY_TIMER
-                if locked
-                else GAME_CONSTANTS.PLAYER.INVINCIBILITY_DURATION
+        self._sync_lock_manager_targets()
+        if locked:
+            self._lock_manager.acquire(
+                LockLayer.HOMECOMING,
+                LockRequest(
+                    invincible=True,
+                    lock_controls=True,
+                    paused=True,
+                    silent_invincible=True,
+                    invincibility_duration=self.HOMECOMING_LOCK_INVINCIBILITY_TIMER,
+                ),
             )
-            self.game_controller.state.silent_invincible = locked
+        else:
+            self._lock_manager.release(LockLayer.HOMECOMING)
+
+    def _sync_lock_manager_targets(self) -> None:
+        if self.game_controller:
+            self._lock_manager.set_game_state(self.game_controller.state)
+        if self.player:
+            self._lock_manager.set_player(self.player)
 
     def _is_homecoming_active(self) -> bool:
         return bool(self._homecoming_sequence and self._homecoming_sequence.is_active())
@@ -834,7 +855,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if self._mother_ship_integrator:
             self._mother_ship_integrator.render(surface)
 
-        self._render_boss_enrage_overlay(surface)
+        boss = self.spawn_controller.boss if self.spawn_controller else None
+        self._boss_enrage_renderer.render(surface, boss)
 
         self._game_loop_manager.render_explosions(surface)
         self._input_coordinator.render_give_up(surface)
@@ -881,208 +903,9 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         # Render notifications above reward selector so critical messages are not obscured
         self._ui_manager.render_notification(surface)
 
-    def _render_boss_enrage_overlay(self, surface: pygame.Surface) -> None:
-        boss = self.spawn_controller.boss if self.spawn_controller else None
-        if not boss:
-            return
-
-        intensity = boss.enrage_visual_intensity()
-        if intensity <= 0:
-            return
-        sw, sh = surface.get_size()
-
-        # Ensure persistent buffers are allocated (re-create on resize)
-        buf_key = (sw, sh)
-        if self._enrage_band_cache_key != buf_key:
-            self._enrage_distortion_buffer = pygame.Surface((sw, sh))
-            self._enrage_ripple_surface = pygame.Surface((sw, sh), pygame.SRCALPHA)
-            self._enrage_overlay_cache = pygame.Surface((sw, sh), pygame.SRCALPHA)
-            self._enrage_sin_a = None
-            self._enrage_cos_a = None
-            self._enrage_sin_b = None
-            self._enrage_cos_b = None
-            self._enrage_band_cache_key = buf_key
-
-        ticks = pygame.time.get_ticks()
-
-        # Phase B: ripple circles from the boss center on a pre-allocated surface
-        self._enrage_ripple_surface.fill((0, 0, 0, 0))
-        center_x = getattr(boss.rect, "centerx", sw // 2)
-        center_y = getattr(boss.rect, "centery", sh // 2)
-        ring_phase = ticks * 0.0018
-        max_dim = max(sw, sh)
-        for index in range(3):
-            radius = int((ring_phase * 76 + index * 116) % max_dim)
-            if radius < 20:
-                continue
-            alpha = int(12 * intensity * (1.0 - radius / max_dim))
-            if alpha <= 0:
-                continue
-            pygame.draw.circle(self._enrage_ripple_surface, (160, 220, 255, alpha),
-                               (int(center_x), int(center_y)), radius, 2)
-
-        surface.blit(self._enrage_ripple_surface, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
-
-        # Phase C: dark vignette overlay (persistent cache, resize-aware)
-        self._enrage_overlay_cache.fill((34, 28, 42, int(12 * intensity)))
-        surface.blit(self._enrage_overlay_cache, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
-
-    def _set_raw_aim_position(self, position: tuple[int, int]) -> None:
-        x = max(0, min(float(position[0]), float(get_screen_width())))
-        y = max(0, min(float(position[1]), float(get_screen_height())))
-        if not self._aim_input_initialized:
-            self._aim_input_initialized = True
-            self._previous_raw_aim_position = (x, y)
-            self._raw_aim_position = (x, y)
-            self._smoothed_raw_aim_position = (x, y)
-            self._aim_position = (x, y)
-            self._sync_player_aim_target()
-            return
-        self._previous_raw_aim_position = self._raw_aim_position
-        self._raw_aim_position = (x, y)
-        self._aim_position = self._smoothed_raw_aim_position
-        self._sync_player_aim_target()
-
-    def _update_aim_assist(self) -> None:
-        self._update_smoothed_raw_aim_position()
-        target = self._resolve_aim_assist_target()
-        if target is None:
-            self._aim_position = self._smoothed_raw_aim_position
-            self._sync_player_aim_target()
-            return
-
-        target_rect = self._target_rect(target)
-        self._aim_position = target_rect.center
-        self._sync_player_aim_target()
-
-    def _resolve_aim_assist_target(self):
-        raw_x, raw_y = self._smoothed_raw_aim_position
-        candidates = self._aim_assist_candidates()
-        if not candidates:
-            self._aim_assist_target = None
-            return None
-
-        movement = self._raw_aim_movement()
-        movement_len_sq = movement[0] * movement[0] + movement[1] * movement[1]
-
-        if movement_len_sq >= self.AIM_ASSIST_SWITCH_DISTANCE * self.AIM_ASSIST_SWITCH_DISTANCE:
-            directional_target = self._target_in_movement_direction(candidates, movement)
-            if directional_target is not None:
-                self._aim_assist_target = directional_target
-                return directional_target
-            if movement_len_sq >= self.AIM_ASSIST_RELEASE_DISTANCE * self.AIM_ASSIST_RELEASE_DISTANCE:
-                self._aim_assist_target = None
-                return None
-            if self._aim_assist_target and getattr(self._aim_assist_target, 'active', False):
-                return self._aim_assist_target
-
-        if self._aim_assist_target and self._is_aim_assist_locked(self._aim_assist_target, raw_x, raw_y):
-            return self._aim_assist_target
-
-        for target in candidates:
-            if self._is_raw_aim_inside_target(target, raw_x, raw_y):
-                self._aim_assist_target = target
-                return target
-
-        target = self._nearest_aim_assist_target(candidates, raw_x, raw_y)
-        self._aim_assist_target = target
-        return target
-
-    def _update_smoothed_raw_aim_position(self) -> None:
-        sx, sy = self._smoothed_raw_aim_position
-        rx, ry = self._raw_aim_position
-        dx = rx - sx
-        dy = ry - sy
-        if dx * dx + dy * dy <= self.AIM_INPUT_SNAP_DISTANCE * self.AIM_INPUT_SNAP_DISTANCE:
-            self._smoothed_raw_aim_position = self._raw_aim_position
-            return
-        self._smoothed_raw_aim_position = (
-            sx + dx * self.AIM_INPUT_DELAY_BLEND,
-            sy + dy * self.AIM_INPUT_DELAY_BLEND,
-        )
-
-    def _aim_assist_candidates(self) -> list:
-        if not self.spawn_controller:
-            return []
-        targets = [enemy for enemy in self.spawn_controller.enemies if getattr(enemy, 'active', False)]
-        boss = self.spawn_controller.boss
-        if boss and getattr(boss, 'active', False):
-            targets.append(boss)
-        return targets
-
-    def _is_raw_aim_inside_target(self, target, raw_x: float, raw_y: float) -> bool:
-        return self._target_rect(target).collidepoint(raw_x, raw_y)
-
-    def _is_aim_assist_locked(self, target, raw_x: float, raw_y: float) -> bool:
-        if not getattr(target, 'active', False):
-            return False
-        rect = self._target_rect(target)
-        if rect.collidepoint(raw_x, raw_y):
-            return True
-        dx = raw_x - rect.centerx
-        dy = raw_y - rect.centery
-        return (dx * dx + dy * dy) <= self.AIM_ASSIST_RELEASE_DISTANCE * self.AIM_ASSIST_RELEASE_DISTANCE
-
-    def _raw_aim_movement(self) -> tuple[float, float]:
-        return (
-            self._raw_aim_position[0] - self._previous_raw_aim_position[0],
-            self._raw_aim_position[1] - self._previous_raw_aim_position[1],
-        )
-
-    def _nearest_aim_assist_target(self, candidates: list, raw_x: float, raw_y: float):
-        return min(
-            candidates,
-            key=lambda target: self._distance_sq_to_target(target, raw_x, raw_y),
-            default=None,
-        )
-
-    def _target_in_movement_direction(self, candidates: list, movement: tuple[float, float]):
-        if self._aim_assist_target:
-            origin = self._target_rect(self._aim_assist_target).center
-        else:
-            origin = self._raw_aim_position
-
-        mx, my = movement
-        movement_len = math.hypot(mx, my)
-        if movement_len <= 0:
-            return None
-        move_x = mx / movement_len
-        move_y = my / movement_len
-
-        best_target = None
-        best_score = 0.0
-        for target in candidates:
-            if target is self._aim_assist_target:
-                continue
-            rect = self._target_rect(target)
-            tx = rect.centerx - origin[0]
-            ty = rect.centery - origin[1]
-            distance = math.hypot(tx, ty)
-            if distance <= 0:
-                continue
-            dot = (tx / distance) * move_x + (ty / distance) * move_y
-            if dot > best_score and dot >= self.AIM_ASSIST_DIRECTION_CONE_DOT:
-                best_score = dot
-                best_target = target
-        return best_target
-
-    def _distance_sq_to_target(self, target, raw_x: float, raw_y: float) -> float:
-        rect = self._target_rect(target)
-        dx = raw_x - rect.centerx
-        dy = raw_y - rect.centery
-        return dx * dx + dy * dy
-
-    def _target_rect(self, target) -> pygame.Rect:
-        rect = target.get_hitbox() if hasattr(target, 'get_hitbox') else target.rect
-        if isinstance(rect, pygame.Rect):
-            return rect
-        if hasattr(target, 'get_hitbox'):
-            rect = target.get_hitbox()
-        return pygame.Rect(rect.x, rect.y, rect.width, rect.height)
-
     def _sync_player_aim_target(self) -> None:
         if self.player:
-            self.player.set_aim_target(*self._aim_position)
+            self.player.set_aim_target(*self._aim_assist.get_aim_position())
 
     def _render_aim_crosshair(self, surface: pygame.Surface) -> None:
         if not self.game_controller or not self.game_controller.is_playing():
@@ -1091,59 +914,10 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             return
         if self.reward_selector and self.reward_selector.visible:
             return
-        self._aim_crosshair.render(surface, self._aim_position)
+        self._aim_crosshair.render(surface, self._aim_assist.get_aim_position())
 
     def _init_pause_button_layout(self) -> None:
-        """Pre-calculate pause button geometry and register button regions.
-
-        Only called in enter() and resize to avoid per-frame recalculation.
-        Also pre-renders both states (normal/hovered) Surface and caches them.
-        """
-        colors = self._tokens.colors
-        spacing = self._tokens.spacing
-        size = self.PAUSE_BUTTON_SIZE
-        margin = self.PAUSE_BUTTON_MARGIN
-        bar_w = self.PAUSE_BAR_WIDTH
-        bar_h = self.PAUSE_BAR_HEIGHT
-        bar_gap = self.PAUSE_BAR_GAP
-
-        button_x = margin
-        button_y = margin
-        center_x = button_x + size // 2
-        center_y = button_y + size // 2
-
-        self._pause_btn_layout = {
-            'rect': pygame.Rect(button_x, button_y, size, size),
-            'left_bar': (center_x - bar_gap // 2 - bar_w, center_y - bar_h // 2, bar_w, bar_h),
-            'right_bar': (center_x + bar_gap // 2, center_y - bar_h // 2, bar_w, bar_h),
-            'pos': (button_x, button_y),
-        }
-        self.register_button("pause", self._pause_btn_layout['rect'])
-
-        # Pre-render both normal and hovered state surfaces
-        self._pause_btn_cache.clear()
-        for state_key, bg_alpha, border_alpha in [
-            ("normal", 180, 120),
-            ("hovered", 220, 200),
-        ]:
-            bg_color = (*colors.BACKGROUND_PANEL, bg_alpha)
-            bg_surface = pygame.Surface((size, size), pygame.SRCALPHA)
-            pygame.draw.rect(
-                bg_surface, bg_color,
-                bg_surface.get_rect(),
-                border_radius=spacing.BORDER_RADIUS_SM
-            )
-
-            border_color = (*colors.PANEL_BORDER, border_alpha)
-            border_surface = pygame.Surface((size, size), pygame.SRCALPHA)
-            pygame.draw.rect(
-                border_surface, border_color,
-                border_surface.get_rect(),
-                width=1,
-                border_radius=spacing.BORDER_RADIUS_SM
-            )
-
-            self._pause_btn_cache[state_key] = (bg_surface, border_surface)
+        self._pause_button.init_layout(self.register_button)
 
     def _render_pause_button(self, surface: pygame.Surface) -> None:
         """Render the pause button.
@@ -1159,21 +933,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             return
         if self.reward_selector and self.reward_selector.visible:
             return
-        if not self._pause_btn_layout:
-            return
-
         is_hovered = self.is_button_hovered("pause")
-        state_key = "hovered" if is_hovered else "normal"
-        bg_surface, border_surface = self._pause_btn_cache[state_key]
-
-        layout = self._pause_btn_layout
-        pos = layout['pos']
-        surface.blit(bg_surface, pos)
-        surface.blit(border_surface, pos)
-
-        bar_color = self._tokens.colors.HUD_AMBER if is_hovered else self._tokens.colors.TEXT_MUTED
-        pygame.draw.rect(surface, bar_color, layout['left_bar'], border_radius=1)
-        pygame.draw.rect(surface, bar_color, layout['right_bar'], border_radius=1)
+        self._pause_button.render(surface, is_hovered, self._tokens.colors, self._tokens.spacing)
 
 
 
@@ -1307,119 +1068,14 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
                 - username: Player name.
                 - is_in_mothership: Whether in mothership state.
         """
-        if not save_data or not self.game_controller or not self.player:
-            return
-
-        self.game_controller.state.score = normalize_score(save_data.score)
-        self.game_controller.state.kill_count = max(0, save_data.kill_count)
-        self.game_controller.state.boss_kill_count = max(0, save_data.boss_kill_count)
-        self.game_controller.state.requisition_points = max(0, getattr(save_data, 'requisition_points', 0))
-        self.game_controller.milestone_index = save_data.cycle_count
-        self.game_controller.cycle_count = save_data.cycle_count
-
-        # Sync difficulty BEFORE buff re-apply so base stats match the saved difficulty
-        saved_diff = save_data.difficulty if save_data.difficulty in VALID_DIFFICULTIES else 'medium'
-        self.game_controller.state.difficulty = saved_diff
-        self.game_controller.state.username = save_data.username
-        self.game_controller.state.score_multiplier = GAME_CONSTANTS.get_difficulty_multiplier(saved_diff)
-
-        # Re-sync difficulty-dependent subsystems to match restored difficulty
-        self.game_controller.difficulty_manager.set_difficulty(saved_diff)
-        self.game_controller.reward_system.set_difficulty(saved_diff)
-        self.game_controller.health_system.set_difficulty(saved_diff)
-        self.spawn_controller.set_difficulty(saved_diff)
-
-        # Sync player boost config to the restored difficulty
-        boost_cfg = BOOST_CONFIG[saved_diff]
-        self.player.boost_max = boost_cfg['max_boost']
-        self.player.boost_current = boost_cfg['max_boost']
-        self.player.boost_recovery_rate = boost_cfg['recovery_rate']
-        self.player.boost_speed_mult = boost_cfg['speed_mult']
-        self.player.boost_recovery_delay = boost_cfg['recovery_delay']
-        self.player.boost_recovery_ramp = boost_cfg['recovery_ramp']
-
-        # Restore difficulty scaling so enemy stats scale correctly after load
-        if self.game_controller.difficulty_manager:
-            self.game_controller.difficulty_manager.set_boss_kill_count(save_data.boss_kill_count)
-
-        self.reward_system.unlocked_buffs = save_data.unlocked_buffs
-        self._restore_buff_levels(save_data.buff_levels)
-        self._restore_earned_buff_levels(getattr(save_data, "earned_buff_levels", {}))
-        if getattr(save_data, "talent_loadout", None):
-            self.reward_system.talent_loadout = dict(save_data.talent_loadout)
-        self.reward_system.capture_player_baselines(self.player)
-        self._restore_talent_loadout_effects()
-        self.player.health = min(max(1, save_data.player_health), self.player.max_health)
-
-        if save_data.is_in_mothership:
-            self._restore_to_mothership_state()
-        else:
-            sw = get_screen_width()
-            sh = get_screen_height()
-            self.player.rect.x = max(0, min(save_data.player_x, sw - self.player.rect.width))
-            self.player.rect.y = max(0, min(save_data.player_y, sh - self.player.rect.height))
-
-        self.game_controller.state.entrance_animation = False
-        self.game_controller.state.entrance_timer = 0
-
-    def _restore_buff_levels(self, buff_levels: dict) -> None:
-        """Restore buff levels from save data.
-
-        Handles both legacy short-name keys (piercing_level, etc.)
-        and current proper buff names (Piercing, etc.).
-        """
-        if not buff_levels:
-            return
-        legacy_map = {
-            'piercing_level': 'Piercing', 'spread_level': 'Spread Shot',
-            'explosive_level': 'Explosive', 'armor_level': 'Armor',
-            'evasion_level': 'Evasion', 'rapid_fire_level': 'Rapid Fire',
-        }
-        for key, value in buff_levels.items():
-            name = legacy_map.get(key, key)
-            if name in self.reward_system.buff_levels:
-                self.reward_system.buff_levels[name] = value
-
-    def _restore_earned_buff_levels(self, earned_buff_levels: dict) -> None:
-        if not self.reward_system:
-            return
-        if not earned_buff_levels:
-            self.reward_system.earned_buff_levels = dict(self.reward_system.buff_levels)
-            return
-        for key, value in earned_buff_levels.items():
-            if key in self.reward_system.earned_buff_levels:
-                self.reward_system.earned_buff_levels[key] = max(0, int(value))
-
-    def _reapply_buff_effects(self) -> None:
-        """Re-apply all buff effects after restoring levels from save."""
-        if not self.reward_system or not self.player:
-            return
-        self.reward_system.reapply_all_effects(self.player)
-
-    def _restore_talent_loadout_effects(self) -> None:
-        if not self.reward_system or not self.player:
-            return
-        if not self.reward_system.talent_loadout:
-            self.reward_system.reapply_all_effects(self.player)
-            return
-        manager = TalentBalanceManager(
-            self.reward_system.get_earned_buff_levels(),
-            self.reward_system.talent_loadout,
+        self._save_restore_manager.restore(
+            save_data,
+            self.game_controller,
+            self.player,
+            self.reward_system,
+            self.spawn_controller,
+            self._mother_ship_integrator,
         )
-        manager.apply_to_reward_system(self.reward_system, self.player)
-
-    def _restore_to_mothership_state(self) -> None:
-        """Restore mothership state with player docked inside."""
-        if self._mother_ship_integrator:
-            self._mother_ship_integrator.force_docked_state()
-            docking_pos = self._mother_ship_integrator.get_docking_position()
-            self.player.rect.x = docking_pos[0] - self.player.rect.width // 2
-            self.player.rect.y = docking_pos[1] - self.player.rect.height // 2
-        else:
-            screen_w = get_screen_width()
-            screen_h = get_screen_height()
-            self.player.rect.x = screen_w // 2 - self.player.rect.width // 2
-            self.player.rect.y = screen_h // 2
 
     def create_save_data(self):
         """Create save data snapshot, or None if mothership not available."""
@@ -1503,10 +1159,25 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
         When silent=True, the player is invincible without the blink flash effect.
         """
-        if self.game_controller:
-            self.game_controller.state.player_invincible = invincible
-            self.game_controller.state.invincibility_timer = timer
-            self.game_controller.state.silent_invincible = silent
+        if not self.game_controller:
+            return
+        if self._lock_manager:
+            self._sync_lock_manager_targets()
+            if invincible:
+                self._lock_manager.acquire(
+                    LockLayer.MOTHERSHIP,
+                    LockRequest(
+                        invincible=True,
+                        silent_invincible=silent,
+                        invincibility_duration=timer,
+                    ),
+                )
+            else:
+                self._lock_manager.release(LockLayer.MOTHERSHIP)
+            return
+        self.game_controller.state.player_invincible = invincible
+        self.game_controller.state.invincibility_timer = timer
+        self.game_controller.state.silent_invincible = silent
 
     def get_score(self) -> int:
         """Get current score."""
