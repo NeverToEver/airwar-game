@@ -431,19 +431,22 @@ class BaseTalentConsole:
 
     def _draw_supply_module(self, surface: pygame.Surface, rect: pygame.Rect, status: dict, requisition_points: int = 0) -> None:
         rp = requisition_points
+        button_rect = pygame.Rect(rect.right - 218, rect.y + 8, 190, 52)
         title = self._font_section.render("维修补给站", True, (225, 242, 240))
-        surface.blit(title, (rect.x, rect.y))
         rp_display = self._font_small.render(f"征用点数: {rp} RP", True, (222, 224, 110))
-        surface.blit(rp_display, rp_display.get_rect(topright=(rect.right, rect.y + 4)))
         subtitle = fit_text_to_width(
             self._font_small,
             "击败Boss获得征用点数，在此消耗点数进行补给。",
             (142, 170, 186),
             rect.w - 260,
         )
+
+        # Layout: title | rp (left of button) | button (right)
+        surface.blit(title, (rect.x, rect.y))
+        rp_x = min(rect.x + title.get_width() + 24, button_rect.left - rp_display.get_width() - 16)
+        surface.blit(rp_display, (rp_x, rect.y + 8))
         surface.blit(subtitle, (rect.x, rect.y + 36))
 
-        button_rect = pygame.Rect(rect.right - 218, rect.y + 8, 190, 52)
         self._button_rects["supply:resupply"] = button_rect
         self._draw_resupply_button(surface, button_rect, self._hovered_button == "supply:resupply")
 
