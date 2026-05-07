@@ -96,6 +96,10 @@ class Player(Entity):
         self.boost_recovery_delay: int = self.DEFAULT_BOOST_RECOVERY_DELAY
         self.boost_recovery_ramp: int = self.DEFAULT_BOOST_RECOVERY_RAMP
         self.phase_dash_enabled: bool = False
+        self.ctrl_mode: str = "hold"
+        self.shift_boost_mode: str = "hold"
+        self._precision_toggle_active: bool = False
+        self._boost_toggle_active: bool = False
         self._boost_idle_frames: int = 0
         self._boost_pressed_last_frame = False
         self.mothership_cooldown_mult: float = 1.0
@@ -152,6 +156,16 @@ class Player(Entity):
     def bullet_damage_value(self, value: int) -> None:
         self.bullet_damage = value
 
+    @property
+    def precision_active(self) -> bool:
+        if self.ctrl_mode == "toggle":
+            return self._precision_toggle_active
+        return self._input_handler.is_precision_pressed()
+
+    def apply_settings(self, settings: dict) -> None:
+        self.ctrl_mode = settings.get("ctrl_mode", "hold")
+        self.shift_boost_mode = settings.get("shift_boost_mode", "hold")
+
     # 3. Public lifecycle methods
 
     def update(self, *args, **kwargs) -> None:
@@ -178,7 +192,7 @@ class Player(Entity):
             sprite.set_alpha(alpha)
         surface.blit(sprite, sprite.get_rect(center=(self.rect.centerx, self.rect.centery)))
 
-        if self._input_handler.is_precision_pressed():
+        if self.precision_active:
             self._render_precision_indicator(surface)
 
         self._render_hitbox_indicator(surface)
@@ -352,18 +366,35 @@ class Player(Entity):
         self._update_phase_dash_cooldown()
         direction = self._input_handler.get_movement_direction()
 
-        # Boost: activate when Shift held + has energy
+        # Boost: detect key state and edge
         boost_pressed = self._input_handler.is_boost_pressed()
         boost_just_pressed = self._read_boost_just_pressed(boost_pressed)
+
+        # Phase dash takes priority over boost (regardless of toggle mode)
         if boost_just_pressed and self.can_phase_dash():
             self._start_phase_dash(direction)
             self._update_phase_dash_motion()
             self._update_boost_recovery(active_blocked=True)
             return
 
-        self.boost_active = boost_pressed and self.boost_current > 0
+        # Apply boost mode (hold vs toggle)
+        if self.shift_boost_mode == "toggle":
+            if boost_just_pressed:
+                self._boost_toggle_active = not self._boost_toggle_active
+            self.boost_active = self._boost_toggle_active and self.boost_current > 0
+        else:
+            self.boost_active = boost_pressed and self.boost_current > 0
 
-        precision = self._input_handler.is_precision_pressed()
+        # Precision mode (hold vs toggle)
+        ctrl_pressed = self._input_handler.is_precision_pressed()
+        if self.ctrl_mode == "toggle":
+            ctrl_just_pressed = self._input_handler.is_precision_just_pressed()
+            if ctrl_just_pressed:
+                self._precision_toggle_active = not self._precision_toggle_active
+            precision = self._precision_toggle_active
+        else:
+            precision = ctrl_pressed
+
         if precision:
             self.speed = self.base_speed * self.PRECISION_SPEED_MULT
             self.boost_active = False
