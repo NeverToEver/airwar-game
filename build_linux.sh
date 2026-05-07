@@ -11,10 +11,26 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
 echo "=== Air War Linux Build ==="
+KEEP_BUILD_VENV="${AIRWAR_KEEP_BUILD_VENV:-0}"
+
+cleanup_build_venv() {
+    if [ "$KEEP_BUILD_VENV" != "1" ]; then
+        rm -rf .venv-build
+    fi
+}
+trap cleanup_build_venv EXIT
+
+PYTHON_BIN="${PYTHON:-python3}"
+PYTHON_VERSION="$("$PYTHON_BIN" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+if ! "$PYTHON_BIN" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)'; then
+    echo "ERROR: Python >= 3.11 is required. Found $PYTHON_VERSION at $PYTHON_BIN."
+    exit 1
+fi
+echo "Python: $PYTHON_VERSION"
 
 # 1. Create isolated build environment
 echo "[1/4] Preparing build environment..."
-python3 -m venv .venv-build
+"$PYTHON_BIN" -m venv .venv-build
 . .venv-build/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements-dev.txt
@@ -42,7 +58,6 @@ echo "[4/4] Building standalone executable..."
 rm -rf build dist
 PYINSTALLER_ARGS=(
     --name="AirWar" \
-    --add-data="airwar/data:airwar/data" \
     --hidden-import=pygame \
     --hidden-import=PIL \
     --hidden-import=PIL.Image \

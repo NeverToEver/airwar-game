@@ -87,7 +87,7 @@ bash build_macos.sh
 build_windows.bat
 ```
 
-Build output at `dist/AirWar` (~40MB standalone executable with Python runtime + Rust extension when available). Requires Python 3.12+ and a platform compiler. Build scripts use `.venv-build/` and install packaging tools there.
+Build output at `dist/AirWar` (~40MB standalone executable with Python runtime + Rust extension when available). Requires Python 3.11+ and a platform compiler. Build scripts use `.venv-build/` during packaging and remove it by default unless `AIRWAR_KEEP_BUILD_VENV=1` is set.
 
 ### Test Configuration
 
@@ -181,7 +181,7 @@ airwar-game/                  # Project root
 |??   |-- input/               # PygameInputHandler
 |??   |-- utils/               # UserDB, mouse_interaction mixins, sprites, responsive
 |??   |-- window/              # Resizable window management
-|??   |-- data/                # Runtime save files (users.json, user_docking_save.json)
+|??   |-- data/                # Legacy runtime data location; current saves use platform user data dirs
 |??   |-- tests/               # pytest suite
 |??   |-- core_bindings.py     # Rust->Python bridge with fallback
 |-- airwar_core/             # Rust PyO3 extension (maturin)

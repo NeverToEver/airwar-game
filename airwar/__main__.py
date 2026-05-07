@@ -1,0 +1,14 @@
+"""Command-line entry point for AirWar."""
+
+from __future__ import annotations
+
+from airwar.game import Game
+
+
+def main() -> None:
+    game = Game()
+    game.run()
+
+
+if __name__ == "__main__":
+    main()
