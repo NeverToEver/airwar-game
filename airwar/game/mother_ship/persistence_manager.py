@@ -5,15 +5,20 @@ import logging
 import time
 import re
 import hashlib
+import shutil
 from typing import Optional
+
+from airwar.utils.platform_paths import user_data_dir
+
 from .interfaces import IPersistenceManager
 from .mother_ship_state import GameSaveData, SaveDataCorruptedError, normalize_save_data
 
 
 logger = logging.getLogger(__name__)
 
+_DEFAULT_SAVE_DIRECTORY = user_data_dir()
 _AIRWAR_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-_DEFAULT_SAVE_DIRECTORY = os.path.join(_AIRWAR_DIR, "data")
+_LEGACY_SAVE_DIRECTORY = os.path.join(_AIRWAR_DIR, "data")
 
 
 class PersistenceManager(IPersistenceManager):
@@ -34,10 +39,22 @@ class PersistenceManager(IPersistenceManager):
         self.SAVE_DIRECTORY = save_dir or self.DEFAULT_SAVE_DIRECTORY
         self.SAVE_FILE_NAME = save_file or self._save_file_for_user(username)
         self._save_path = os.path.join(self.SAVE_DIRECTORY, self.SAVE_FILE_NAME)
+        self._migrate_legacy_save_if_needed()
 
     @property
     def save_path(self) -> str:
         return self._save_path
+
+    def _migrate_legacy_save_if_needed(self) -> None:
+        if self.SAVE_DIRECTORY != self.DEFAULT_SAVE_DIRECTORY:
+            return
+        if os.path.exists(self._save_path):
+            return
+        legacy_path = os.path.join(_LEGACY_SAVE_DIRECTORY, self.SAVE_FILE_NAME)
+        if not os.path.exists(legacy_path):
+            return
+        os.makedirs(self.SAVE_DIRECTORY, exist_ok=True)
+        shutil.copy2(legacy_path, self._save_path)
 
     @classmethod
     def _save_file_for_user(cls, username: Optional[str]) -> str:

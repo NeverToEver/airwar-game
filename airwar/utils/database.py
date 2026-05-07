@@ -4,13 +4,17 @@ import json
 import os
 import hashlib
 import secrets
+import shutil
 from typing import Optional
+
+from airwar.utils.platform_paths import user_data_dir
 
 
 logger = logging.getLogger(__name__)
 
+_DEFAULT_DB_PATH = os.path.join(user_data_dir(), "users.json")
 _AIRWAR_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_DEFAULT_DB_PATH = os.path.join(_AIRWAR_DIR, "data", "users.json")
+_LEGACY_DB_PATH = os.path.join(_AIRWAR_DIR, "data", "users.json")
 
 _HASH_ITERATIONS = 100_000
 
@@ -30,10 +34,18 @@ class SimpleDB:
         try:
             if db_dir:
                 os.makedirs(db_dir, exist_ok=True)
+            self._migrate_legacy_db_if_needed()
         except OSError as e:
             raise DatabaseError(f"Failed to create account database directory: {db_dir}") from e
         if not os.path.exists(self.db_path):
             self._save({})
+
+    def _migrate_legacy_db_if_needed(self) -> None:
+        if self.db_path != _DEFAULT_DB_PATH:
+            return
+        if os.path.exists(self.db_path) or not os.path.exists(_LEGACY_DB_PATH):
+            return
+        shutil.copy2(_LEGACY_DB_PATH, self.db_path)
 
     def _load(self) -> dict:
         try:

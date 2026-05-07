@@ -2,8 +2,22 @@
 setlocal enabledelayedexpansion
 title AirWar
 
-set ROOT=%~dp0
+set "ROOT=%~dp0"
 cd /d "%ROOT%"
+
+set "INSTALL_DEPS=%AIRWAR_INSTALL_DEPS%"
+if "%INSTALL_DEPS%"=="" set "INSTALL_DEPS=0"
+if "%~1"=="" goto :args_done
+if "%~1"=="--install-deps" set "INSTALL_DEPS=1" & goto :args_done
+if "%~1"=="--help" goto :help
+if "%~1"=="-h" goto :help
+echo   [ERROR] Unknown option: %~1
+goto :help_error
+:args_done
+if not "%~2"=="" (
+    echo   [ERROR] Too many arguments.
+    goto :help_error
+)
 
 echo.
 echo   ==============================
@@ -11,34 +25,33 @@ echo     AirWar - One-Click Launcher
 echo   ==============================
 echo.
 
-REM ----------------------------------------------------------------
-REM  STEP 1: Find Python (try "py" launcher first, then "python3", then "python")
-REM ----------------------------------------------------------------
+REM Step 1: Find Python 3.11+
 set PYTHON=
 for %%c in (py python3 python) do (
     where %%c >nul 2>&1
     if !errorlevel! equ 0 (
-        set PYTHON=%%c
-        goto :step1_done
+        %%c -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)" >nul 2>&1
+        if !errorlevel! equ 0 (
+            set PYTHON=%%c
+            goto :python_done
+        )
     )
 )
-echo   [ERROR] Python not found.
+echo   [ERROR] Python 3.11 or newer not found.
 echo.
-echo   Please install Python 3.12+ from:
+echo   Please install Python from:
 echo     https://www.python.org/downloads/
 echo   Make sure to check "Add Python to PATH" during install.
 echo.
 pause
 exit /b 1
 
-:step1_done
-%PYTHON% --version 2>&1 | findstr /i "Python" >nul
-echo   [OK] Python found
+:python_done
+for /f "tokens=*" %%v in ('%PYTHON% --version 2^>^&1') do set "PYTHON_VERSION=%%v"
+echo   [OK] %PYTHON_VERSION%
 
-REM ----------------------------------------------------------------
-REM  STEP 2: Create virtual environment (if missing)
-REM ----------------------------------------------------------------
-set VENV=%ROOT%.venv
+REM Step 2: Create virtual environment.
+set "VENV=%ROOT%.venv"
 if not exist "%VENV%\Scripts\python.exe" (
     echo   [..] Creating virtual environment...
     %PYTHON% -m venv "%VENV%" >nul 2>&1
@@ -51,9 +64,7 @@ if not exist "%VENV%\Scripts\python.exe" (
 call "%VENV%\Scripts\activate.bat" >nul 2>&1
 echo   [OK] Virtual environment ready
 
-REM ----------------------------------------------------------------
-REM  STEP 3: Install Python dependencies into venv
-REM ----------------------------------------------------------------
+REM Step 3: Install Python dependencies into venv.
 echo   [..] Checking Python packages...
 python -c "import pygame; import PIL" >nul 2>&1
 if !errorlevel! neq 0 (
@@ -68,31 +79,17 @@ if !errorlevel! neq 0 (
 )
 echo   [OK] Python packages ready
 
-REM ----------------------------------------------------------------
-REM  STEP 4: Check for Rust / Cargo
-REM ----------------------------------------------------------------
-REM Try PATH first, then default install location
+REM Step 4: Optional Rust native extension.
 where cargo >nul 2>&1
 if !errorlevel! equ 0 goto :cargo_ok
 if exist "%USERPROFILE%\.cargo\bin\cargo.exe" (
     set "PATH=%USERPROFILE%\.cargo\bin;%PATH%"
     goto :cargo_ok
 )
-REM Cargo not found anywhere - offer to install
-    echo.
-    echo   [WARNING] Rust toolchain not found.
-    echo.
-    echo   This game requires Rust to compile its native extension.
-    echo   It's a one-time setup -- takes about 5 minutes.
-    echo.
-    echo   Would you like to install Rust automatically now? (Y/N)
-    echo.
-    choice /c YN /n /m "  Install Rust? [Y/N] "
-    if !errorlevel! equ 2 (
-        echo   Skipped. Please install Rust manually from https://rustup.rs/
-        pause
-        exit /b 1
-    )
+
+if /i "%INSTALL_DEPS%"=="true" set "INSTALL_DEPS=1"
+if /i "%INSTALL_DEPS%"=="yes" set "INSTALL_DEPS=1"
+if /i "%INSTALL_DEPS%"=="1" (
     echo.
     echo   [..] Downloading Rust installer...
     curl -L --progress-bar -o "%TEMP%\rustup-init.exe" https://win.rustup.rs/x86_64
@@ -102,7 +99,7 @@ REM Cargo not found anywhere - offer to install
         pause
         exit /b 1
     )
-    echo   [..] Running Rust installer (follow the prompts)...
+    echo   [..] Running Rust installer...
     "%TEMP%\rustup-init.exe" -y --default-toolchain stable
     if !errorlevel! neq 0 (
         echo   [ERROR] Rust installation failed.
@@ -114,42 +111,34 @@ REM Cargo not found anywhere - offer to install
     echo   [OK] Rust installed
     echo.
     echo   Restart this launcher to continue.
-    echo   (You may need to restart your terminal or File Explorer first)
     pause
     exit /b 0
+) else (
+    echo   [WARN] Cargo not found. AirWar will use the pure-Python fallback.
+    echo          For Rust acceleration, install Rust from https://rustup.rs/
+    echo          To let this script install it, rerun: run.bat --install-deps
+    goto :launch
+)
+
 :cargo_ok
 echo   [OK] Cargo found
-
-REM ----------------------------------------------------------------
-REM  STEP 5: Build Rust native extension (airwar_core)
-REM ----------------------------------------------------------------
 echo   [..] Installing maturin build tool...
-python -m pip install --quiet maturin >nul 2>&1
+python -m pip install --quiet "maturin>=1,<2" >nul 2>&1
 
-echo   [..] Compiling native extension (one-time build)...
+echo   [..] Compiling native extension...
 cd /d "%ROOT%airwar_core"
 python -m maturin develop --release 2>&1
 if !errorlevel! neq 0 (
     cd /d "%ROOT%"
-    echo.
-    echo   [ERROR] Rust compilation failed.
-    echo.
-    echo   This usually means one of:
-    echo     - Visual C++ Build Tools are not installed
-    echo       Download: https://aka.ms/vs/17/release/vs_BuildTools.exe
-    echo       Select "Desktop development with C++" during install
-    echo     - Or your Rust installation is incomplete
-    echo       Try running: rustup default stable
-    echo.
-    pause
-    exit /b 1
+    echo   [WARN] Rust compilation failed. AirWar will use the pure-Python fallback.
+    echo          Visual C++ Build Tools are required for Rust acceleration.
+    echo          Download: https://aka.ms/vs/17/release/vs_BuildTools.exe
+    goto :launch
 )
 cd /d "%ROOT%"
 echo   [OK] Native extension compiled
 
-REM ----------------------------------------------------------------
-REM  STEP 6: Launch the game
-REM ----------------------------------------------------------------
+:launch
 echo.
 echo   ==============================
 echo     Launching AirWar...
@@ -161,3 +150,16 @@ echo.
 echo   AirWar closed.
 pause
 endlocal
+exit /b 0
+
+:help
+echo Usage: run.bat [--install-deps]
+echo.
+echo By default this script only creates the project virtualenv and installs
+echo Python packages into it. Rust is installed only when --install-deps is
+echo passed or AIRWAR_INSTALL_DEPS=1 is set.
+exit /b 0
+
+:help_error
+echo Usage: run.bat [--install-deps]
+exit /b 2

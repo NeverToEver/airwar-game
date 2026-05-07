@@ -8,18 +8,17 @@ from collections.abc import Callable
 
 import pygame
 
+from airwar.utils.platform_paths import generated_asset_cache_dir as _platform_generated_asset_cache_dir
+
 
 logger = logging.getLogger(__name__)
 
 ASSET_CACHE_VERSION = 1
 
-_AIRWAR_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_DEFAULT_CACHE_DIR = os.path.join(_AIRWAR_DIR, "data", "generated_assets")
-
 
 def generated_asset_cache_dir() -> str:
     """Return the directory used for generated local image assets."""
-    return os.environ.get("AIRWAR_GENERATED_ASSET_DIR", _DEFAULT_CACHE_DIR)
+    return _platform_generated_asset_cache_dir()
 
 
 def _cache_path(namespace: str, cache_key: tuple) -> str:

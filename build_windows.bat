@@ -3,12 +3,21 @@ REM ============================================================================
 REM Air War - Windows Build Script
 REM =============================================================================
 REM Usage: build_windows.bat
-REM Prerequisites: Rust (rustup), Python 3.12+, Visual Studio Build Tools
+REM Prerequisites: Rust (rustup), Python 3.11+, Visual Studio Build Tools
 REM Output: dist\AirWar.exe (standalone executable)
 REM =============================================================================
 setlocal enabledelayedexpansion
 
 echo === Air War Windows Build ===
+set KEEP_BUILD_VENV=%AIRWAR_KEEP_BUILD_VENV%
+
+python -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)" >nul 2>nul
+if errorlevel 1 (
+    echo ERROR: Python 3.11 or newer is required.
+    python --version
+    exit /b 1
+)
+python --version
 
 REM 1. Create isolated build environment
 echo [1/4] Preparing build environment...
@@ -48,7 +57,6 @@ if %errorlevel% equ 0 set COLLECT_AIRWAR_CORE=--collect-all airwar_core
 
 python -m PyInstaller ^
     --name="AirWar" ^
-    --add-data="airwar\data;airwar\data" ^
     %COLLECT_AIRWAR_CORE% ^
     --hidden-import=pygame ^
     --hidden-import=PIL ^
@@ -56,8 +64,18 @@ python -m PyInstaller ^
     --noconsole ^
     --onefile ^
     main.py
+if errorlevel 1 (
+    if not "%KEEP_BUILD_VENV%"=="1" (
+        if exist .venv-build rmdir /s /q .venv-build
+    )
+    exit /b 1
+)
 
 echo.
 echo === Build complete ===
 echo Executable: dist\AirWar.exe
 dir dist\AirWar.exe
+
+if not "%KEEP_BUILD_VENV%"=="1" (
+    if exist .venv-build rmdir /s /q .venv-build
+)

@@ -1,4 +1,4 @@
-from airwar.game import Game
+from airwar.__main__ import main
+
 if __name__ == "__main__":
-    game = Game()
-    game.run()
+    main()
