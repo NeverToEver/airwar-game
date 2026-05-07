@@ -5,6 +5,7 @@ from ..window import create_window
 from .scene_director import SceneDirector
 from ..config import SCREEN_WIDTH, SCREEN_HEIGHT
 from ..utils.sprites import prewarm_glow_caches, prewarm_ship_sprite_caches
+from .scaled_viewport import ScaledViewport
 
 
 class Game:
@@ -25,12 +26,15 @@ class Game:
             'Air War - Sky Combat',
             resizable=True
         )
+        self._viewport = ScaledViewport(SCREEN_WIDTH, SCREEN_HEIGHT)
+        self._viewport.update(*self._window.get_size())
         self._scene_manager = SceneManager()
         self._db = UserDB()
         self._director = SceneDirector(
             self._window,
             self._scene_manager,
-            self._db
+            self._db,
+            self._viewport
         )
         self._register_scenes()
 

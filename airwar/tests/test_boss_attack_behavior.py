@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from airwar.config.game_config import set_screen_size
+from airwar.config.game_config import set_display_size
 from airwar.entities.base import BulletData, Rect, Vector2
 from airwar.entities.bullet import Bullet
 from airwar.entities.enemy import Boss, BossData
@@ -25,7 +25,7 @@ class BulletCollector:
 @pytest.fixture(autouse=True)
 def restore_screen_size():
     yield
-    set_screen_size(1920, 1080)
+    set_display_size(1920, 1080)
 
 
 def test_boss_aim_attack_dashes_toward_player_before_snapshot_lasers():
@@ -75,7 +75,7 @@ def test_boss_aim_attack_does_not_home_after_fire():
 
 
 def test_boss_enrage_triggers_once_at_thirty_percent_and_pulls_player_to_center():
-    set_screen_size(1000, 800)
+    set_display_size(1000, 800)
     boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
     boss.entering = False
     collector = BulletCollector()
@@ -92,7 +92,7 @@ def test_boss_enrage_triggers_once_at_thirty_percent_and_pulls_player_to_center(
     assert boss.is_enraged() is True
     assert boss.is_enrage_active() is True
     assert boss.is_enrage_transitioning() is True
-    assert (player.rect.x, player.rect.y) == (466, 359)
+    assert (player.rect.x, player.rect.y) == (926.0, 499.0)
     assert boss.enrage_visual_intensity() > 0
 
     boss.take_damage(1)
@@ -102,7 +102,7 @@ def test_boss_enrage_triggers_once_at_thirty_percent_and_pulls_player_to_center(
 
 
 def test_boss_enrage_transition_delays_snapshot_attacks_and_eases_to_release_anchor():
-    set_screen_size(1000, 800)
+    set_display_size(1000, 800)
     boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
     boss.entering = False
     collector = BulletCollector()
@@ -169,7 +169,7 @@ def test_boss_enrage_reports_player_movement_lock_until_release():
 
 
 def test_boss_enrage_release_hold_does_not_recenter_unlocked_player():
-    set_screen_size(1000, 800)
+    set_display_size(1000, 800)
     boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
     boss.entering = False
     boss.set_bullet_spawner(BulletCollector())
@@ -192,7 +192,7 @@ def test_boss_enrage_release_hold_does_not_recenter_unlocked_player():
 
 
 def test_boss_enrage_finishes_at_players_six_oclock_release_anchor():
-    set_screen_size(1000, 800)
+    set_display_size(1000, 800)
     boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
     boss.entering = False
     boss.set_bullet_spawner(BulletCollector())
@@ -208,7 +208,7 @@ def test_boss_enrage_finishes_at_players_six_oclock_release_anchor():
 
 
 def test_boss_enrage_holds_snapshot_attacks_until_flow_finishes():
-    set_screen_size(1000, 800)
+    set_display_size(1000, 800)
     boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
     boss.entering = False
     collector = BulletCollector()
@@ -239,7 +239,7 @@ def test_boss_enrage_holds_snapshot_attacks_until_flow_finishes():
 
 
 def test_boss_enrage_releases_held_bullets_gradually_after_flow_finishes():
-    set_screen_size(1000, 800)
+    set_display_size(1000, 800)
     boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
     boss.entering = False
     collector = BulletCollector()
@@ -278,7 +278,7 @@ def test_boss_enrage_releases_held_bullets_gradually_after_flow_finishes():
 
 
 def test_boss_enrage_path_completes_one_square_and_one_circle():
-    set_screen_size(1200, 900)
+    set_display_size(1200, 900)
     boss = Boss(500, 120, BossData(health=1000, width=170, height=140))
     boss.entering = False
     boss.set_bullet_spawner(BulletCollector())
@@ -297,7 +297,7 @@ def test_boss_enrage_path_completes_one_square_and_one_circle():
 
 
 def test_boss_enrage_uses_snappier_snapshot_cadence_for_urgent_bursts():
-    set_screen_size(1200, 900)
+    set_display_size(1200, 900)
     boss = Boss(500, 120, BossData(health=1000, width=170, height=140))
     boss.entering = False
     collector = BulletCollector()
@@ -315,7 +315,7 @@ def test_boss_enrage_uses_snappier_snapshot_cadence_for_urgent_bursts():
 
 
 def test_boss_enrage_faces_player_and_aims_muzzles_during_all_direction_movement():
-    set_screen_size(1200, 900)
+    set_display_size(1200, 900)
     boss = Boss(500, 120, BossData(health=1000, width=170, height=140))
     boss.entering = False
     boss.set_bullet_spawner(BulletCollector())
@@ -374,7 +374,7 @@ def test_boss_enrage_trail_is_longer_and_half_resolution_blurred():
 
 
 def test_boss_enrage_finish_clears_trail_artifacts():
-    set_screen_size(1000, 800)
+    set_display_size(1000, 800)
     boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
     boss.entering = False
     collector = BulletCollector()
@@ -390,13 +390,13 @@ def test_boss_enrage_finish_clears_trail_artifacts():
 
 
 def test_boss_enrage_visuals_fade_through_release_hold_and_return_without_jump():
-    set_screen_size(1000, 800)
+    set_display_size(1000, 800)
     boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
     boss.entering = False
     boss.set_bullet_spawner(BulletCollector())
     boss.take_damage(700)
 
-    player_center = (500, 400)
+    player_center = (960, 540)
     for _ in range(boss.ENRAGE_DURATION + 1):
         boss.update(player_pos=player_center)
 
@@ -417,7 +417,7 @@ def test_boss_enrage_visuals_fade_through_release_hold_and_return_without_jump()
 
 
 def test_bullet_manager_keeps_held_enrage_bullets_stationary_on_rust_path():
-    set_screen_size(1000, 800)
+    set_display_size(1000, 800)
     held = Bullet(100, 120, BulletData(damage=1, speed=5, owner="enemy", bullet_type="single"))
     held.held = True
     held.velocity = Vector2(9, 4)
@@ -433,7 +433,7 @@ def test_bullet_manager_keeps_held_enrage_bullets_stationary_on_rust_path():
         manager.update_all()
 
     assert batch_update.call_args.args[0] == [
-        (id(moving), 40, 60, 3, 2, 0, False, 800.0)
+        (id(moving), 40, 60, 3, 2, 0, False, 1080.0)
     ]
     assert (held.rect.x, held.rect.y) == (100, 120)
     assert (moving.rect.x, moving.rect.y) == (43, 62)

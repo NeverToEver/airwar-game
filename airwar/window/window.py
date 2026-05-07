@@ -1,7 +1,7 @@
 """Window — resizable display window with event handling."""
 import pygame
 from typing import Optional, Tuple, List
-from airwar.config import set_screen_size
+from airwar.config import set_display_size
 
 
 class Window:
@@ -37,7 +37,7 @@ class Window:
         pygame.display.set_caption(self._title)
         self._clock = pygame.time.Clock()
         self._running = True
-        set_screen_size(self._width, self._height)
+        set_display_size(self._width, self._height)
 
     def _get_adaptive_size(self) -> Tuple[int, int]:
         try:
@@ -105,7 +105,7 @@ class Window:
         self._height = height
         if self._screen:
             self._screen = pygame.display.set_mode((width, height), pygame.DOUBLEBUF | pygame.RESIZABLE)
-        set_screen_size(width, height)
+        set_display_size(width, height)
 
     def flip(self) -> None:
         if self._screen:
@@ -190,7 +190,7 @@ class Window:
                     return
             self._is_fullscreen = True
         self._width, self._height = self._screen.get_size()
-        set_screen_size(self._width, self._height)
+        set_display_size(self._width, self._height)
 
     def is_fullscreen(self) -> bool:
         return self._is_fullscreen

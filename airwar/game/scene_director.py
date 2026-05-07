@@ -2,10 +2,11 @@
 from typing import Optional, List
 import pygame
 import logging
-from ..config import FPS, set_screen_size
+from ..config import FPS, set_display_size
 from ..scenes import SceneManager, GameScene
 from ..scenes.scene import PauseAction, ExitConfirmAction
 from .mother_ship import PersistenceManager, GameSaveData
+from .scaled_viewport import ScaledViewport
 from ..utils.database import DatabaseError
 
 
@@ -20,17 +21,19 @@ class SceneDirector:
             _window: Pygame display window reference.
             _scene_manager: SceneManager for registration and switching.
         """
-    def __init__(self, window, scene_manager: SceneManager, user_db=None):
+    def __init__(self, window, scene_manager: SceneManager, user_db=None, viewport: ScaledViewport = None):
         self._logger = logging.getLogger(self.__class__.__name__)
         self._window = window
         self._scene_manager = scene_manager
         self._user_db = user_db
+        self._viewport = viewport or ScaledViewport()
         self._running = True
         self._current_user: Optional[str] = None
         self._selected_difficulty: str = 'medium'
         self._pending_save_data = None
         self._save_dir = None
         self._settings_ref = {'ctrl_mode': 'hold', 'shift_boost_mode': 'hold'}
+        self._update_viewport_from_window()
 
     @property
     def current_user(self) -> Optional[str]:
@@ -56,7 +59,7 @@ class SceneDirector:
     def _run_welcome_flow(self) -> tuple:
         """Single-page beginner interface: login + difficulty + controls in one screen."""
         while self._running:
-            self._scene_manager.switch("welcome")
+            self._scene_manager.switch("welcome", viewport=self._viewport)
             welcome = self._scene_manager.get_current_scene()
 
             while self._running and welcome.is_running():
@@ -66,7 +69,7 @@ class SceneDirector:
                 self._handle_resize_if_needed(events)
                 self._handle_scene_events(events)
                 self._scene_manager.update()
-                self._scene_manager.render(self._window.get_surface())
+                self._render_current_scene()
                 self._window.flip()
                 self._window.tick(FPS)
 
@@ -95,7 +98,7 @@ class SceneDirector:
         if not tutorial:
             return "main_menu"
 
-        self._scene_manager.switch("tutorial")
+        self._scene_manager.switch("tutorial", viewport=self._viewport)
         tutorial = self._scene_manager.get_current_scene()
 
         while self._running and tutorial.is_running():
@@ -105,7 +108,7 @@ class SceneDirector:
             self._handle_resize_if_needed(events)
             self._handle_scene_events(events)
             self._scene_manager.update()
-            self._scene_manager.render(self._window.get_surface())
+            self._render_current_scene()
             self._window.flip()
             self._window.tick(FPS)
 
@@ -116,7 +119,8 @@ class SceneDirector:
         self._scene_manager.switch("game",
                                   difficulty=self._selected_difficulty,
                                   username=self._current_user or 'Guest',
-                                  settings_ref=self._settings_ref)
+                                  settings_ref=self._settings_ref,
+                                  viewport=self._viewport)
 
         current_scene = self._scene_manager.get_current_scene()
         if self._pending_save_data and isinstance(current_scene, GameScene):
@@ -155,7 +159,7 @@ class SceneDirector:
                         return result
 
             self._scene_manager.update()
-            self._scene_manager.render(self._window.get_surface())
+            self._render_current_scene()
             self._window.flip()
             self._window.tick(FPS)
 
@@ -170,7 +174,7 @@ class SceneDirector:
         return "quit"
 
     def _poll_events(self) -> List[pygame.event.Event]:
-        return pygame.event.get()
+        return [self._map_mouse_event(event) for event in pygame.event.get()]
 
     def _check_quit(self, events: List[pygame.event.Event]) -> bool:
         for event in events:
@@ -274,7 +278,7 @@ class SceneDirector:
             settings_ref=self._settings_ref,
         )
         while settings_scene.is_running():
-            events = pygame.event.get()
+            events = self._poll_events()
             quit_seen = False
             for event in events:
                 if event.type == pygame.QUIT:
@@ -289,7 +293,7 @@ class SceneDirector:
             if quit_seen:
                 break
             settings_scene.update()
-            settings_scene.render(self._window.get_surface())
+            self._render_scene(settings_scene)
             self._window.flip()
             self._window.tick(FPS)
         settings_scene.exit()
@@ -307,7 +311,7 @@ class SceneDirector:
             pause_scene.enter()
 
             while pause_scene.running:
-                events = pygame.event.get()
+                events = self._poll_events()
                 for event in events:
                     if event.type == pygame.QUIT:
                         self._running = False
@@ -318,7 +322,7 @@ class SceneDirector:
                 for event in events:
                     pause_scene.handle_events(event)
                 pause_scene.update()
-                pause_scene.render(self._window.get_surface())
+                self._render_scene(pause_scene)
                 self._window.flip()
                 self._window.tick(FPS)
 
@@ -351,7 +355,7 @@ class SceneDirector:
         exit_scene.enter(saved=saved, difficulty=self._selected_difficulty)
 
         while exit_scene.is_running():
-            events = pygame.event.get()
+            events = self._poll_events()
             for event in events:
                 if event.type == pygame.QUIT:
                     self._running = False
@@ -361,7 +365,7 @@ class SceneDirector:
                     self._handle_resize(event.w, event.h)
                 exit_scene.handle_events(event)
             exit_scene.update()
-            exit_scene.render(self._window.get_surface())
+            self._render_scene(exit_scene)
             self._window.flip()
             self._window.tick(FPS)
 
@@ -392,7 +396,7 @@ class SceneDirector:
         death_scene.enter(score=final_score, kills=kills, boss_kills=boss_kills, username=self._current_user)
 
         while death_scene.is_running():
-            events = pygame.event.get()
+            events = self._poll_events()
             for event in events:
                 if event.type == pygame.QUIT:
                     self._running = False
@@ -404,7 +408,7 @@ class SceneDirector:
                 death_scene.handle_events(event)
 
             death_scene.update()
-            death_scene.render(self._window.get_surface())
+            self._render_scene(death_scene)
             self._window.flip()
             self._window.tick(FPS)
 
@@ -435,7 +439,31 @@ class SceneDirector:
             self._scene_manager.handle_events(event)
 
     def _handle_resize(self, width: int, height: int) -> None:
-        set_screen_size(width, height)
+        set_display_size(width, height)
+        self._viewport.update(width, height)
+
+    def _update_viewport_from_window(self) -> None:
+        if not hasattr(self._window, "get_size"):
+            return
+        width, height = self._window.get_size()
+        self._handle_resize(width, height)
+
+    def _map_mouse_event(self, event: pygame.event.Event) -> pygame.event.Event:
+        if not hasattr(event, "pos"):
+            return event
+        attrs = getattr(event, "dict", {}).copy()
+        attrs["pos"] = self._viewport.screen_to_logical(*event.pos)
+        return pygame.event.Event(event.type, attrs)
+
+    def _render_current_scene(self) -> None:
+        self._viewport.logical_surface.fill((0, 0, 0))
+        self._scene_manager.render(self._viewport.logical_surface)
+        self._viewport.present(self._window.get_surface())
+
+    def _render_scene(self, scene) -> None:
+        self._viewport.logical_surface.fill((0, 0, 0))
+        scene.render(self._viewport.logical_surface)
+        self._viewport.present(self._window.get_surface())
 
     def _check_and_get_saved_game(self, username: str) -> Optional[GameSaveData]:
         if not username:
