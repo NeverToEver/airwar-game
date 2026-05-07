@@ -2,6 +2,7 @@ from types import SimpleNamespace
 
 from airwar.game.managers.game_controller import GameplayState
 from airwar.game.managers.game_loop_manager import GameLoopManager
+from airwar.game.systems.lock_manager import LockManager
 
 
 class _Player:
@@ -32,6 +33,7 @@ class _Player:
 class _Boss:
     def __init__(self):
         self.lock_player = False
+        self._enrage_transition_timer = 0
         self.active = True
         self.rect = SimpleNamespace(centerx=300, centery=180, width=210, height=170)
 
@@ -117,6 +119,28 @@ def test_game_loop_preserves_external_player_lock_after_boss_enrage_update() -> 
 
     assert player.locked_seen_during_update[-1] is True
     assert player.controls_locked is True
+
+
+def test_game_loop_makes_player_invincible_only_during_boss_enrage_transition() -> None:
+    boss = _Boss()
+    player = _Player()
+    loop = _make_loop(boss)
+    state = loop._game_controller.state
+    lock_manager = LockManager(state, player)
+    loop._lock_manager = lock_manager
+
+    boss.lock_player = True
+    boss._enrage_transition_timer = 1
+    loop._sync_boss_enrage_lock()
+
+    assert player.controls_locked is True
+    assert state.player_invincible is True
+
+    boss._enrage_transition_timer = 0
+    loop._sync_boss_enrage_lock()
+
+    assert player.controls_locked is True
+    assert state.player_invincible is False
 
 
 def test_game_loop_balances_spawn_controller_from_current_player_dps() -> None:

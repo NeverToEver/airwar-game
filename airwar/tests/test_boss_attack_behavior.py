@@ -288,11 +288,11 @@ def test_boss_enrage_path_completes_one_square_and_one_circle():
     radius = boss._enrage_path_radius(player_center)
     square = boss.ENRAGE_SQUARE_PATH_RATIO
 
-    assert boss._enrage_path_center(player_center, 0.0) == pytest.approx((600, 450 + radius))
+    assert boss._enrage_path_center(player_center, 0.0) == pytest.approx((600, 450 - radius))
     assert boss._enrage_path_center(player_center, square * 0.25) == pytest.approx((600 + radius, 450))
-    assert boss._enrage_path_center(player_center, square * 0.50) == pytest.approx((600, 450 - radius))
+    assert boss._enrage_path_center(player_center, square * 0.50) == pytest.approx((600, 450 + radius))
     assert boss._enrage_path_center(player_center, square * 0.75) == pytest.approx((600 - radius, 450))
-    assert boss._enrage_path_center(player_center, square) == pytest.approx((600, 450 + radius))
+    assert boss._enrage_path_center(player_center, square) == pytest.approx((600, 450 - radius))
     assert boss._enrage_path_center(player_center, 1.0) == pytest.approx((600, 450 + radius))
 
 

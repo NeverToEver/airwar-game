@@ -1398,11 +1398,11 @@ class Boss(Entity):
         segment = min(3, int(progress * 4))
         local = progress * 4 - segment
         points = (
-            (target[0], target[1] + radius),
-            (target[0] + radius, target[1]),
             (target[0], target[1] - radius),
-            (target[0] - radius, target[1]),
+            (target[0] + radius, target[1]),
             (target[0], target[1] + radius),
+            (target[0] - radius, target[1]),
+            (target[0], target[1] - radius),
         )
         start = points[segment]
         end = points[segment + 1]
