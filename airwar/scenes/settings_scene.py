@@ -1,4 +1,5 @@
 """Settings scene — configure control behavior per user account."""
+import logging
 import math
 import pygame
 from .scene import Scene
@@ -11,6 +12,9 @@ from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.ui.scene_rendering_utils import fit_text_to_width
 from airwar.config.design_tokens import get_design_tokens, SceneColors
 from airwar.utils.mouse_interaction import MouseInteractiveMixin
+
+
+logger = logging.getLogger(__name__)
 
 
 class SettingsScene(Scene, MouseInteractiveMixin):
@@ -109,7 +113,11 @@ class SettingsScene(Scene, MouseInteractiveMixin):
         elif event.key in (pygame.K_UP, pygame.K_w):
             self._focus_index = (self._focus_index - 1) % self._focus_count
         elif event.key == pygame.K_RETURN:
-            if self._focus_index == 2:
+            if self._focus_index == 0:
+                self._toggle_setting('ctrl_mode')
+            elif self._focus_index == 1:
+                self._toggle_setting('shift_boost_mode')
+            elif self._focus_index == 2:
                 self.running = False
         elif event.key in (pygame.K_LEFT, pygame.K_RIGHT):
             if self._focus_index == 0:
@@ -147,7 +155,7 @@ class SettingsScene(Scene, MouseInteractiveMixin):
             if self._db.user_exists(self._username):
                 self._db.update_user_settings(self._username, dict(self._settings_ref))
         except DatabaseError:
-            pass
+            logger.warning("Failed to save settings for user %s", self._username)
 
     # -- Update -------------------------------------------------------------
 
