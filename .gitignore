@@ -114,8 +114,6 @@ airwar_core/target/
 Cargo.lock
 
 # PyInstaller build artifacts
-build/
-dist/
 *.spec
 *.spec.bak
 
