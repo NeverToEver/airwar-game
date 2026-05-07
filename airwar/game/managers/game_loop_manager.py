@@ -207,8 +207,19 @@ class GameLoopManager:
     def _sync_boss_enrage_lock(self) -> None:
         if not self._lock_manager:
             return
+        boss = self._boss_manager.boss
+        if not boss:
+            self._lock_manager.release(LockLayer.BOSS_ENRAGE)
+            return
         if self._should_lock_player_for_boss_enrage():
-            self._lock_manager.acquire(LockLayer.BOSS_ENRAGE, LockRequest(lock_controls=True))
+            in_transition = getattr(boss, '_enrage_transition_timer', 0) > 0
+            self._lock_manager.acquire(
+                LockLayer.BOSS_ENRAGE,
+                LockRequest(
+                    lock_controls=True,
+                    invincible=in_transition,
+                ),
+            )
         else:
             self._lock_manager.release(LockLayer.BOSS_ENRAGE)
 
