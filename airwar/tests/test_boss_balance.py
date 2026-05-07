@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from airwar.config import DIFFICULTY_SETTINGS, set_screen_size
+from airwar.config import DIFFICULTY_SETTINGS, set_display_size
 from airwar.entities.enemy import Boss, BossData
 from airwar.game.managers.spawn_controller import SpawnController
 
@@ -18,7 +18,7 @@ class BulletCollector:
 @pytest.fixture(autouse=True)
 def restore_screen_size():
     yield
-    set_screen_size(1920, 1080)
+    set_display_size(1920, 1080)
 
 
 def test_spawned_boss_health_is_four_elite_enemies_across_difficulties():

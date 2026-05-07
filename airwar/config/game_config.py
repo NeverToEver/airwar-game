@@ -1,21 +1,25 @@
-"""Game config — singleton configuration with adaptive screen sizing."""
+"""Game config — singleton configuration with fixed logical sizing."""
 from typing import Tuple
 import pygame
 
 
 class GameConfig:
-    """Game config singleton — manages screen dimensions and scaling.
+    """Game config singleton — manages logical and display dimensions.
     
-        Provides adaptive screen sizing functions and caches computed
-        dimension values for the current display.
+        Game logic always uses the fixed logical size. The physical display
+        size is tracked separately for the window and scaled rendering.
         """
     _instance = None
+    LOGICAL_WIDTH = 1920
+    LOGICAL_HEIGHT = 1080
 
     def __init__(self):
         if GameConfig._instance is not None:
             raise RuntimeError("Use get_instance() to get GameConfig")
-        self._screen_width = 1920
-        self._screen_height = 1080
+        self._screen_width = self.LOGICAL_WIDTH
+        self._screen_height = self.LOGICAL_HEIGHT
+        self._display_width = self.LOGICAL_WIDTH
+        self._display_height = self.LOGICAL_HEIGHT
         self._fps = 60
 
     @classmethod
@@ -26,23 +30,47 @@ class GameConfig:
 
     @property
     def screen_width(self) -> int:
-        return self._screen_width
+        return self.get_screen_width()
 
     @property
     def screen_height(self) -> int:
-        return self._screen_height
+        return self.get_screen_height()
 
     @property
     def screen_size(self) -> Tuple[int, int]:
         return (self._screen_width, self._screen_height)
 
     @property
+    def display_width(self) -> int:
+        return self.get_display_width()
+
+    @property
+    def display_height(self) -> int:
+        return self.get_display_height()
+
+    @property
+    def display_size(self) -> Tuple[int, int]:
+        return (self._display_width, self._display_height)
+
+    @property
     def fps(self) -> int:
         return self._fps
 
-    def set_screen_size(self, width: int, height: int) -> None:
-        self._screen_width = width
-        self._screen_height = height
+    def get_screen_width(self) -> int:
+        return self._screen_width
+
+    def get_screen_height(self) -> int:
+        return self._screen_height
+
+    def get_display_width(self) -> int:
+        return self._display_width
+
+    def get_display_height(self) -> int:
+        return self._display_height
+
+    def set_display_size(self, width: int, height: int) -> None:
+        self._display_width = width
+        self._display_height = height
 
     def get_adaptive_screen_size(self) -> Tuple[int, int]:
         info = pygame.display.Info()
@@ -71,5 +99,11 @@ def get_screen_width() -> int:
 def get_screen_height() -> int:
     return GameConfig.get_instance().screen_height
 
-def set_screen_size(width: int, height: int) -> None:
-    GameConfig.get_instance().set_screen_size(width, height)
+def get_display_width() -> int:
+    return GameConfig.get_instance().display_width
+
+def get_display_height() -> int:
+    return GameConfig.get_instance().display_height
+
+def set_display_size(width: int, height: int) -> None:
+    GameConfig.get_instance().set_display_size(width, height)

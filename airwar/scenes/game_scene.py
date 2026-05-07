@@ -120,6 +120,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._input_coordinator: InputCoordinator = None
         self._ui_manager: UIManager = None
         self._game_loop_manager: GameLoopManager = None
+        self._viewport = None
         self._phase_dash_invincibility_active = False
         self._survival_frames = 0
 
@@ -145,6 +146,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._pause_button.clear_cache()
         self._lock_manager.clear()
         self._phase_dash_invincibility_active = False
+        self._viewport = kwargs.get('viewport')
 
         # Prewarm glow caches before gameplay starts
         self._loading_progress = 20
@@ -156,7 +158,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         screen_width = get_screen_width()
         screen_height = get_screen_height()
         self._init_pause_button_layout()
-        self._aim_assist.set_raw_aim_position(pygame.mouse.get_pos())
+        self._aim_assist.set_raw_aim_position(self._get_logical_mouse_pos())
 
         difficulty = kwargs.get('difficulty', 'medium')
         username = kwargs.get('username', 'Player')
@@ -312,6 +314,12 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if button_name == "pause":
             self._pause_requested = True
 
+    def _get_logical_mouse_pos(self) -> tuple[float, float]:
+        pos = pygame.mouse.get_pos()
+        if self._viewport:
+            return self._viewport.screen_to_logical(*pos)
+        return pos
+
     def consume_pause_request(self) -> bool:
         """Consume the pause request flag.
 
@@ -345,7 +353,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
                     mission["claimed"] = True
                     if self.notification_manager:
                         self.notification_manager.show(f"任务完成: {mission['name']} (+{GAME_CONSTANTS.REQUISITION.MISSION_REWARD}RP)")
-        self._aim_assist.update(self.spawn_controller, pygame.mouse.get_pos())
+        self._aim_assist.update(self.spawn_controller, self._get_logical_mouse_pos())
         self._sync_player_aim_target()
         self._aim_crosshair.update()
         self._update_homecoming()

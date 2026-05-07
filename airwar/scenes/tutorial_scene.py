@@ -196,6 +196,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         self._base_reward_system: RewardSystem | None = None
         self._base_player_status: TutorialBasePlayerStatus | None = None
         self._base_game_controller: TutorialBaseGameController | None = None
+        self._viewport = None
         self.running = False
         self.skipped = False
 
@@ -203,6 +204,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         pygame.font.init()
         self.running = True
         self.skipped = False
+        self._viewport = kwargs.get('viewport')
         self.clear_hover()
         self.clear_buttons()
 
@@ -230,7 +232,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         self._aim_assist_target: TutorialEnemy | TutorialBoss | None = None
         self._aim_input_initialized = False
         self._aim_assist_release_timer = 0
-        self._set_raw_aim_position(pygame.mouse.get_pos())
+        self._set_raw_aim_position(self._get_logical_mouse_pos())
         self._player = pygame.Rect(
             get_screen_width() // 2 - self.PLAYER_W // 2,
             get_screen_height() - 126,
@@ -724,6 +726,12 @@ class TutorialScene(Scene, MouseInteractiveMixin):
             return
         self._previous_raw_aim_position = self._raw_aim_position
         self._raw_aim_position = (x, y)
+
+    def _get_logical_mouse_pos(self) -> tuple[float, float]:
+        pos = pygame.mouse.get_pos()
+        if self._viewport:
+            return self._viewport.screen_to_logical(*pos)
+        return pos
 
     def _update_aim_assist(self) -> None:
         self._update_smoothed_raw_aim_position()
