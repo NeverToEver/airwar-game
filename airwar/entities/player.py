@@ -163,8 +163,14 @@ class Player(Entity):
         return self._input_handler.is_precision_pressed()
 
     def apply_settings(self, settings: dict) -> None:
-        self.ctrl_mode = settings.get("ctrl_mode", "hold")
-        self.shift_boost_mode = settings.get("shift_boost_mode", "hold")
+        new_ctrl = settings.get("ctrl_mode", "hold")
+        new_shift = settings.get("shift_boost_mode", "hold")
+        if new_ctrl != "toggle" and self.ctrl_mode == "toggle":
+            self._precision_toggle_active = False
+        if new_shift != "toggle" and self.shift_boost_mode == "toggle":
+            self._boost_toggle_active = False
+        self.ctrl_mode = new_ctrl
+        self.shift_boost_mode = new_shift
 
     # 3. Public lifecycle methods
 

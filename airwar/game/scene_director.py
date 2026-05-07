@@ -78,7 +78,8 @@ class SceneDirector:
                     return (False, None)
                 continue
             if hasattr(welcome, 'should_open_settings') and welcome.should_open_settings():
-                self._show_settings_menu()
+                if not self._show_settings_menu():
+                    return (False, None)
                 continue
             if welcome.is_ready():
                 self._current_user = welcome.get_username()
@@ -250,21 +251,23 @@ class SceneDirector:
         return self._dispatch_pause_result(result, current_scene, source=source)
 
     def _load_user_settings(self) -> None:
-        if self._current_user and self._user_db:
-            try:
-                saved = self._user_db.get_user_settings(self._current_user)
-                if saved:
-                    self._settings_ref.update(saved)
-            except DatabaseError:
-                self._logger.warning("Failed to load user settings", exc_info=True)
+        if not self._current_user or self._current_user == 'Guest' or not self._user_db:
+            return
+        try:
+            saved = self._user_db.get_user_settings(self._current_user)
+            if saved:
+                self._settings_ref.update(saved)
+        except DatabaseError:
+            self._logger.warning("Failed to load user settings", exc_info=True)
 
     def _apply_settings_to_player(self, player) -> None:
         player.apply_settings(self._settings_ref)
 
-    def _show_settings_menu(self, game_scene=None) -> None:
+    def _show_settings_menu(self, game_scene=None) -> bool:
+        """Show settings menu. Returns False if QUIT was triggered."""
         settings_scene = self._scene_manager.get_scene("settings")
         if not settings_scene:
-            return
+            return True
         settings_scene.enter(
             db=self._user_db,
             username=self._current_user,
@@ -272,22 +275,29 @@ class SceneDirector:
         )
         while settings_scene.is_running():
             events = pygame.event.get()
+            quit_seen = False
             for event in events:
                 if event.type == pygame.QUIT:
                     self._running = False
                     settings_scene.running = False
+                    quit_seen = True
                     break
                 if event.type == pygame.VIDEORESIZE:
                     self._window.resize(event.w, event.h)
                     self._handle_resize(event.w, event.h)
                 settings_scene.handle_events(event)
+            if quit_seen:
+                break
             settings_scene.update()
             settings_scene.render(self._window.get_surface())
             self._window.flip()
             self._window.tick(FPS)
         settings_scene.exit()
+        if not self._running:
+            return False
         if game_scene and hasattr(game_scene, 'player') and game_scene.player:
             self._apply_settings_to_player(game_scene.player)
+        return True
 
     def _show_pause_menu(self, game_scene: GameScene) -> PauseAction:
         while True:
@@ -316,7 +326,8 @@ class SceneDirector:
             pause_scene.exit()
 
             if result == "settings":
-                self._show_settings_menu(game_scene=game_scene)
+                if not self._show_settings_menu(game_scene=game_scene):
+                    return PauseAction.QUIT
                 continue
 
             return result if result else PauseAction.RESUME
