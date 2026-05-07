@@ -24,7 +24,7 @@ class PauseScene(Scene, MouseSelectableMixin):
     def enter(self, **kwargs) -> None:
         self.running = True
         self.result: PauseAction = None
-        self.options = ['继续游戏', '返回主菜单', '保存并退出', '不保存退出']
+        self.options = ['继续游戏', '返回主菜单', '保存并退出', '不保存退出', '设置']
         self.selected_index = 0
         self.animation_time = 0
         self.glow_offset = 0
@@ -106,6 +106,8 @@ class PauseScene(Scene, MouseSelectableMixin):
             self.result = PauseAction.SAVE_AND_QUIT
         elif effective == 3:
             self.result = PauseAction.QUIT_WITHOUT_SAVING
+        elif effective == 4:
+            self.result = "settings"
 
     def update(self, *args, **kwargs) -> None:
         self.animation_time += 1

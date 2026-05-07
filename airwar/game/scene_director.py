@@ -30,6 +30,7 @@ class SceneDirector:
         self._selected_difficulty: str = 'medium'
         self._pending_save_data = None
         self._save_dir = None
+        self._settings_ref = {'ctrl_mode': 'hold', 'shift_boost_mode': 'hold'}
 
     @property
     def current_user(self) -> Optional[str]:
@@ -76,9 +77,13 @@ class SceneDirector:
                 if result == "quit":
                     return (False, None)
                 continue
+            if hasattr(welcome, 'should_open_settings') and welcome.should_open_settings():
+                self._show_settings_menu()
+                continue
             if welcome.is_ready():
                 self._current_user = welcome.get_username()
                 self._selected_difficulty = welcome.get_difficulty()
+                self._load_user_settings()
                 save_data = self._check_and_get_saved_game(self._current_user)
                 return (True, save_data)
             return (True, None)
@@ -109,7 +114,8 @@ class SceneDirector:
         self._logger.info(f"Starting game flow: difficulty={self._selected_difficulty}, user={self._current_user}")
         self._scene_manager.switch("game",
                                   difficulty=self._selected_difficulty,
-                                  username=self._current_user or 'Guest')
+                                  username=self._current_user or 'Guest',
+                                  settings_ref=self._settings_ref)
 
         current_scene = self._scene_manager.get_current_scene()
         if self._pending_save_data and isinstance(current_scene, GameScene):
@@ -243,31 +249,77 @@ class SceneDirector:
         source = " from pause" if from_mouse else ""
         return self._dispatch_pause_result(result, current_scene, source=source)
 
-    def _show_pause_menu(self, game_scene: GameScene) -> PauseAction:
-        pause_scene = self._scene_manager.get_scene("pause")
-        if not pause_scene:
-            return PauseAction.QUIT
-        pause_scene.enter()
+    def _load_user_settings(self) -> None:
+        if self._current_user and self._user_db:
+            try:
+                saved = self._user_db.get_user_settings(self._current_user)
+                if saved:
+                    self._settings_ref.update(saved)
+            except DatabaseError:
+                self._logger.warning("Failed to load user settings", exc_info=True)
 
-        while pause_scene.running:
+    def _apply_settings_to_player(self, player) -> None:
+        player.apply_settings(self._settings_ref)
+
+    def _show_settings_menu(self, game_scene=None) -> None:
+        settings_scene = self._scene_manager.get_scene("settings")
+        if not settings_scene:
+            return
+        settings_scene.enter(
+            db=self._user_db,
+            username=self._current_user,
+            settings_ref=self._settings_ref,
+        )
+        while settings_scene.is_running():
             events = pygame.event.get()
             for event in events:
                 if event.type == pygame.QUIT:
                     self._running = False
-                    return PauseAction.QUIT
+                    settings_scene.running = False
+                    break
                 if event.type == pygame.VIDEORESIZE:
                     self._window.resize(event.w, event.h)
                     self._handle_resize(event.w, event.h)
-            for event in events:
-                pause_scene.handle_events(event)
-            pause_scene.update()
-            pause_scene.render(self._window.get_surface())
+                settings_scene.handle_events(event)
+            settings_scene.update()
+            settings_scene.render(self._window.get_surface())
             self._window.flip()
             self._window.tick(FPS)
+        settings_scene.exit()
+        if game_scene and hasattr(game_scene, 'player') and game_scene.player:
+            self._apply_settings_to_player(game_scene.player)
 
-        result = pause_scene.get_result()
-        pause_scene.exit()
-        return result if result else PauseAction.RESUME
+    def _show_pause_menu(self, game_scene: GameScene) -> PauseAction:
+        while True:
+            pause_scene = self._scene_manager.get_scene("pause")
+            if not pause_scene:
+                return PauseAction.QUIT
+            pause_scene.enter()
+
+            while pause_scene.running:
+                events = pygame.event.get()
+                for event in events:
+                    if event.type == pygame.QUIT:
+                        self._running = False
+                        return PauseAction.QUIT
+                    if event.type == pygame.VIDEORESIZE:
+                        self._window.resize(event.w, event.h)
+                        self._handle_resize(event.w, event.h)
+                for event in events:
+                    pause_scene.handle_events(event)
+                pause_scene.update()
+                pause_scene.render(self._window.get_surface())
+                self._window.flip()
+                self._window.tick(FPS)
+
+            result = pause_scene.get_result()
+            pause_scene.exit()
+
+            if result == "settings":
+                self._show_settings_menu(game_scene=game_scene)
+                continue
+
+            return result if result else PauseAction.RESUME
 
     def _show_exit_confirm(self, saved: bool) -> str:
         """Show exit confirmation menu.

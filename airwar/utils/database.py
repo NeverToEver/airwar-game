@@ -174,6 +174,21 @@ class UserDB(SimpleDB):
             self._save(data)
             return True
         return False
+    DEFAULT_SETTINGS = {
+        'ctrl_mode': 'hold',
+        'shift_boost_mode': 'hold',
+    }
+
+    def get_user_settings(self, user_id: str) -> dict:
+        data = self._load()
+        if user_id not in data:
+            return dict(self.DEFAULT_SETTINGS)
+        saved = data[user_id].get('settings', {})
+        return {**self.DEFAULT_SETTINGS, **saved}
+
+    def update_user_settings(self, user_id: str, settings: dict) -> bool:
+        return self.update_user_data(user_id, {'settings': settings})
+
     def delete_user(self, user_id: str, password: str = None) -> bool:
         """Delete a user account.
 

@@ -168,6 +168,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
         difficulty = kwargs.get('difficulty', 'medium')
         username = kwargs.get('username', 'Player')
+        settings_ref = kwargs.get('settings_ref', {})
         settings = DIFFICULTY_SETTINGS[difficulty]
 
         self.game_controller = GameController(difficulty, username)
@@ -198,6 +199,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self.player.boost_speed_mult = boost_cfg['speed_mult']
         self.player.boost_recovery_delay = boost_cfg['recovery_delay']
         self.player.boost_recovery_ramp = boost_cfg['recovery_ramp']
+        self.player.apply_settings(settings_ref)
         self.reward_system.capture_player_baselines(self.player)
         self._boost_gauge = BoostGauge()
         self._ammo_magazine = AmmoMagazine()

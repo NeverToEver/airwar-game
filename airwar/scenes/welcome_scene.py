@@ -76,6 +76,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         self.message_timer = 0
         self.want_to_quit = False
         self.tutorial_requested = False
+        self.settings_requested = False
         self.show_guest_confirm = False
         self.guest_confirm_focus = 'yes'  # 'yes' | 'no'
         self.show_delete_confirm = False
@@ -239,6 +240,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             'skip_login': self._start_guest_session,
             'fullscreen': self._toggle_fullscreen,
             'tutorial': self._request_tutorial,
+            'settings': self._request_settings,
             'quit': self._request_quit,
             'username_field': self._focus_username_field,
             'username_dropdown': self._toggle_user_dropdown,
@@ -273,6 +275,10 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
     def _request_tutorial(self) -> None:
         self.tutorial_requested = True
+        self.running = False
+
+    def _request_settings(self) -> None:
+        self.settings_requested = True
         self.running = False
 
     def _focus_username_field(self) -> None:
@@ -593,6 +599,21 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
                          SceneColors.GOLD_DIM)
 
         self._draw_ghost_button(surface, layout["guest"], "游客模式", 'skip_login')
+
+        # Settings button
+        settings_rect = layout["settings"]
+        self.register_button('settings', settings_rect)
+        settings_hover = self.is_button_hovered('settings')
+        settings_fill = (20, 32, 42) if settings_hover else SC.BG_PANEL_LIGHT
+        settings_border = (82, 180, 200) if settings_hover else SC.BORDER_DIM
+        draw_chamfered_panel(surface, settings_rect.x, settings_rect.y,
+                             settings_rect.width, settings_rect.height,
+                             settings_fill, settings_border, None, 6)
+        settings_color = (160, 220, 240) if settings_hover else SC.TEXT_DIM
+        settings_font = get_cjk_font(self._tokens.typography.SMALL_SIZE)
+        settings_text = settings_font.render("设置", True, settings_color)
+        surface.blit(settings_text, settings_text.get_rect(center=settings_rect.center))
+
         delete_rect = layout["delete"]
         self.register_button('delete_user', delete_rect)
         delete_hover = self.is_button_hovered('delete_user')
@@ -645,6 +666,12 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
                 self.BTN_H,
             ),
             "guest": pygame.Rect(secondary_x, secondary_y, self.LOGIN_SECONDARY_W, self.LOGIN_SECONDARY_H),
+            "settings": pygame.Rect(
+                px + (self.PANEL_W - self.LOGIN_SECONDARY_W) // 2,
+                secondary_y + self.LOGIN_SECONDARY_H + 16,
+                self.LOGIN_SECONDARY_W,
+                self.LOGIN_SECONDARY_H,
+            ),
             "delete": pygame.Rect(
                 secondary_x + self.LOGIN_SECONDARY_W + self.LOGIN_PRIMARY_GAP,
                 secondary_y,
@@ -1091,3 +1118,6 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
     def should_open_tutorial(self) -> bool:
         return self.tutorial_requested
+
+    def should_open_settings(self) -> bool:
+        return self.settings_requested
