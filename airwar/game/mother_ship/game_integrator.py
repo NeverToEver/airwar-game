@@ -27,6 +27,7 @@ from airwar.entities.bullet import Bullet
 from airwar.entities.base import BulletData
 from airwar.config import get_screen_width, get_screen_height
 from airwar.game.rendering.entity_renderer import EntityRenderer
+from airwar.game.systems.lock_manager import LockLayer, LockRequest
 
 if TYPE_CHECKING:
     from .event_bus import EventBus
@@ -460,9 +461,20 @@ class GameIntegrator:
             self._clear_ripple_effects()
 
     def _activate_invincibility(self) -> None:
-        if self._game_scene:
-            self._game_scene.set_player_invincible(True, 1200, silent=True)
-            if self._game_scene.player:
+        if self._game_scene and hasattr(self._game_scene, "_lock_manager"):
+            self._game_scene._lock_manager.acquire(
+                LockLayer.MOTHERSHIP,
+                LockRequest(
+                    invincible=True,
+                    lock_controls=True,
+                    silent_invincible=True,
+                    invincibility_duration=1200,
+                ),
+            )
+        elif self._game_scene:
+            if hasattr(self._game_scene, "set_player_invincible"):
+                self._game_scene.set_player_invincible(True, 1200, silent=True)
+            if getattr(self._game_scene, "player", None):
                 self._game_scene.player.controls_locked = True
 
     def _on_cooldown_started(self, **kwargs) -> None:
@@ -488,9 +500,12 @@ class GameIntegrator:
         self._progress_bar_ui.hide()
 
     def _deactivate_invincibility(self) -> None:
-        if self._game_scene:
-            self._game_scene.set_player_invincible(False, 0, silent=False)
-            if self._game_scene.player:
+        if self._game_scene and hasattr(self._game_scene, "_lock_manager"):
+            self._game_scene._lock_manager.release(LockLayer.MOTHERSHIP)
+        elif self._game_scene:
+            if hasattr(self._game_scene, "set_player_invincible"):
+                self._game_scene.set_player_invincible(False, 0, silent=False)
+            if getattr(self._game_scene, "player", None):
                 self._game_scene.player.controls_locked = False
 
     def _apply_cooldown_multiplier_from_player(self) -> None:

@@ -5,6 +5,7 @@ from ..constants import PlayerConstants
 from ...config import get_screen_width, get_screen_height
 from ..explosion_animation import ExplosionManager
 from .game_controller import GameplayState
+from ..systems.lock_manager import LockLayer, LockRequest
 
 from airwar.core_bindings import batch_update_movements
 
@@ -100,6 +101,7 @@ class GameLoopManager:
         bullet_manager: BulletManagerProtocol,
         boss_manager: BossManagerProtocol,
         collision_controller: CollisionControllerProtocol,
+        lock_manager=None,
     ):
         self._game_controller = game_controller
         self._game_renderer = game_renderer
@@ -108,6 +110,7 @@ class GameLoopManager:
         self._bullet_manager = bullet_manager
         self._boss_manager = boss_manager
         self._collision_controller = collision_controller
+        self._lock_manager = lock_manager
 
         self._init_explosion_system()
 
@@ -166,6 +169,7 @@ class GameLoopManager:
     def _update_core(self, player: PlayerProtocol) -> None:
         has_regen = 'Regeneration' in self._reward_system.unlocked_buffs
         self._game_controller.update(player, has_regen)
+        self._refresh_locks()
 
         if self._game_controller.state.gameplay_state == GameplayState.DYING:
             self._game_renderer.update_death_animation()
@@ -174,12 +178,17 @@ class GameLoopManager:
 
         self._game_renderer.update_death_animation()
         self._explosion_manager.update()
-        restore_controls_locked = player.controls_locked
-        if self._should_lock_player_for_boss_enrage():
-            player.controls_locked = True
-        player.update()
-        player.auto_fire()
-        player.controls_locked = restore_controls_locked
+        if self._lock_manager:
+            self._sync_boss_enrage_lock()
+            player.update()
+            player.auto_fire()
+        else:
+            restore_controls_locked = player.controls_locked
+            if self._should_lock_player_for_boss_enrage():
+                player.controls_locked = True
+            player.update()
+            player.auto_fire()
+            player.controls_locked = restore_controls_locked
 
         self._bullet_manager.update_all()
         self._update_enemy_spawning(player)
@@ -194,6 +203,18 @@ class GameLoopManager:
     def _should_lock_player_for_boss_enrage(self) -> bool:
         boss = self._boss_manager.boss
         return bool(boss and getattr(boss, "should_lock_player_movement", lambda: False)())
+
+    def _sync_boss_enrage_lock(self) -> None:
+        if not self._lock_manager:
+            return
+        if self._should_lock_player_for_boss_enrage():
+            self._lock_manager.acquire(LockLayer.BOSS_ENRAGE, LockRequest(lock_controls=True))
+        else:
+            self._lock_manager.release(LockLayer.BOSS_ENRAGE)
+
+    def _refresh_locks(self) -> None:
+        if self._lock_manager and self._lock_manager.has_locks():
+            self._lock_manager.refresh()
 
     def _update_enemy_spawning(self, player: PlayerProtocol) -> None:
         player_pos = (player.rect.centerx, player.rect.centery)

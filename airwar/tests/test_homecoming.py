@@ -71,6 +71,45 @@ def test_homecoming_detector_resets_when_disabled(monkeypatch) -> None:
     assert detector.is_active() is False
 
 
+def test_homecoming_detector_resets_when_released_before_full_hold(monkeypatch) -> None:
+    completed = []
+    pressed_key = HomecomingDetector.B_KEY
+    detector = HomecomingDetector(lambda: completed.append(True))
+    monkeypatch.setattr(pygame.key, "get_pressed", lambda: _PressedKeys(pressed_key))
+
+    detector.update(0.0)
+    detector.update(HomecomingDetector.HOLD_DURATION * 0.8)
+    assert detector.is_active() is True
+
+    pressed_key = None
+    detector.update(0.0)
+
+    assert detector.get_progress() == 0.0
+    assert detector.is_active() is False
+    assert completed == []
+
+
+def test_homecoming_detector_does_not_repeat_complete_until_repressed(monkeypatch) -> None:
+    completed = []
+    pressed_key = HomecomingDetector.B_KEY
+    detector = HomecomingDetector(lambda: completed.append(True))
+    monkeypatch.setattr(pygame.key, "get_pressed", lambda: _PressedKeys(pressed_key))
+
+    detector.update(0.0)
+    detector.update(HomecomingDetector.HOLD_DURATION)
+    detector.update(HomecomingDetector.HOLD_DURATION)
+
+    assert completed == [True]
+
+    pressed_key = None
+    detector.update(0.0)
+    pressed_key = HomecomingDetector.B_KEY
+    detector.update(0.0)
+    detector.update(HomecomingDetector.HOLD_DURATION)
+
+    assert completed == [True, True]
+
+
 def test_homecoming_sequence_runs_to_complete_and_locks_final_state() -> None:
     player = _make_player()
     completed = []
@@ -93,6 +132,21 @@ def test_homecoming_sequence_runs_to_complete_and_locks_final_state() -> None:
     assert sequence.is_complete() is True
     assert completed == [True]
     assert player.rect.centery < 1080
+
+
+def test_homecoming_sequence_rejects_reentry_while_active_and_restarts_after_reset() -> None:
+    player = _make_player()
+    sequence = HomecomingSequence()
+
+    assert sequence.start(player, 1920, 1080) is True
+    assert sequence.start(player, 1920, 1080) is False
+    assert sequence.start_departure(player, 1920, 1080) is False
+
+    sequence.reset()
+
+    assert sequence.phase == HomecomingPhase.INACTIVE
+    assert sequence.start_departure(player, 1920, 1080) is True
+    assert sequence.phase == HomecomingPhase.BASE_LAUNCH
 
 
 def test_homecoming_handoff_moves_player_into_base_entry() -> None:

@@ -11,7 +11,7 @@ from airwar.entities.enemy import Boss, BossData
 from airwar.game.managers.bullet_manager import BulletManager
 from airwar.game.managers.collision_controller import CollisionController
 from airwar.game.rendering.entity_renderer import EntityRenderer
-from airwar.scenes.game_scene import GameScene
+from airwar.game.rendering.boss_enrage_renderer import BossEnrageRenderer
 
 
 class BulletCollector:
@@ -464,18 +464,16 @@ def test_held_enemy_bullets_do_not_damage_player_until_released():
 def test_boss_enrage_overlay_keeps_ripples_cool_toned_and_subtle():
     pygame = pytest.importorskip("pygame")
     surface = pygame.Surface((640, 480), pygame.SRCALPHA)
-    scene = GameScene()
-    scene.spawn_controller = SimpleNamespace(
-        boss=SimpleNamespace(
-            is_enrage_active=lambda: True,
-            enrage_visual_intensity=lambda: 0.8,
-            rect=SimpleNamespace(centerx=320, centery=220),
-        )
+    renderer = BossEnrageRenderer()
+    boss = SimpleNamespace(
+        is_enrage_active=lambda: True,
+        enrage_visual_intensity=lambda: 0.8,
+        rect=SimpleNamespace(centerx=320, centery=220),
     )
 
-    with patch("airwar.scenes.game_scene.pygame.draw.circle") as draw_circle, \
-         patch("airwar.scenes.game_scene.pygame.draw.line") as draw_line:
-        scene._render_boss_enrage_overlay(surface)
+    with patch("airwar.game.rendering.boss_enrage_renderer.pygame.draw.circle") as draw_circle, \
+         patch("airwar.game.rendering.boss_enrage_renderer.pygame.draw.line") as draw_line:
+        renderer.render(surface, boss)
 
     colors = [call.args[1] for call in draw_circle.call_args_list]
     assert colors
@@ -488,17 +486,15 @@ def test_boss_enrage_overlay_uses_visual_intensity_after_active_phase():
     pygame = pytest.importorskip("pygame")
     surface = pygame.Surface((160, 120), pygame.SRCALPHA)
     surface.fill((20, 30, 40))
-    scene = GameScene()
-    scene.spawn_controller = SimpleNamespace(
-        boss=SimpleNamespace(
-            is_enrage_active=lambda: False,
-            enrage_visual_intensity=lambda: 0.5,
-            rect=SimpleNamespace(centerx=80, centery=60),
-        )
+    renderer = BossEnrageRenderer()
+    boss = SimpleNamespace(
+        is_enrage_active=lambda: False,
+        enrage_visual_intensity=lambda: 0.5,
+        rect=SimpleNamespace(centerx=80, centery=60),
     )
 
     before = surface.copy()
-    scene._render_boss_enrage_overlay(surface)
+    renderer.render(surface, boss)
 
     assert pygame.image.tostring(surface, "RGBA") != pygame.image.tostring(before, "RGBA")
 

@@ -75,7 +75,7 @@ airwar-game/
 |-- airwar/                    # Python 游戏源码
 |   |-- config/                # 配置、设计令牌、难度参数
 |   |-- entities/              # 玩家、敌人、Boss、子弹等实体
-|   |-- game/                  # 游戏主流程、管理器、系统、渲染、母舰、动画
+|   |-- game/                  # 游戏主流程、管理器、系统、渲染、母舰、动画、状态锁仲裁
 |   |-- scenes/                # 欢迎、教程、战斗、暂停、死亡、退出确认等场景
 |   |-- ui/                    # HUD、奖励选择、基地指挥中心、准星、提示等 UI
 |   |-- input/                 # 输入处理
@@ -107,6 +107,8 @@ airwar-game/
 ## 架构概览
 
 - 场景模式：`SceneManager` 管理欢迎、游戏、暂停、死亡、退出确认等场景生命周期。
+- GameScene 职责拆分：瞄准辅助（`AimAssistSystem`）、狂暴覆盖渲染（`BossEnrageRenderer`）、存档恢复（`SaveRestoreManager`）、暂停按钮（`PauseButtonComponent`）均为独立组件，GameScene 只做编排。
+- 状态锁仲裁：`LockManager` 统一管理母舰停靠、返航基地、Boss 过载、相位冲刺之间的玩家无敌/控制/暂停互锁，按优先级堆叠避免状态冲突。
 - 管理器拆分：生成、碰撞、子弹、Boss、里程碑、输入协调等逻辑由独立 manager 处理。
 - 系统拆分：生命、奖励、难度、通知、天赋平衡等玩法规则集中在 `airwar/game/systems/`。
 - UI 与渲染分层：HUD、准星、基地指挥中心、奖励选择等组件独立于核心玩法逻辑。
