@@ -930,6 +930,9 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
         self._render_aim_crosshair(surface)
 
+        if self._haunting_renderer:
+            self._haunting_renderer.render_hud_corruption(surface)
+
         if self._homecoming_ui and self._homecoming_sequence:
             self._homecoming_ui.render_sequence(surface, self._homecoming_sequence, self.player)
 
