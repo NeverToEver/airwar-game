@@ -1,6 +1,8 @@
 """Window — resizable display window with event handling."""
+from __future__ import annotations
+
 import pygame
-from typing import Optional, Tuple, List
+
 from airwar.config import set_display_size
 
 
@@ -8,8 +10,8 @@ class Window:
     """Resizable pygame window with event handling and mode management."""
     def __init__(self, width: int = 1920, height: int = 1080, title: str = 'Air War', resizable: bool = True):
         self._running = False
-        self._screen: Optional[pygame.Surface] = None
-        self._clock: Optional[pygame.time.Clock] = None
+        self._screen: pygame.Surface | None = None
+        self._clock: pygame.time.Clock | None = None
         self._default_width = width
         self._default_height = height
         self._width = width
@@ -21,7 +23,7 @@ class Window:
         self._is_fullscreen = False
         self._windowed_size = (width, height)
 
-    def init(self, width: Optional[int] = None, height: Optional[int] = None) -> None:
+    def init(self, width: int | None = None, height: int | None = None) -> None:
         pygame.init()
         
         if width is not None and height is not None:
@@ -39,14 +41,17 @@ class Window:
         self._running = True
         set_display_size(self._width, self._height)
 
-    def _get_adaptive_size(self) -> Tuple[int, int]:
+    def _get_adaptive_size(self) -> tuple[int, int]:
         try:
             info = pygame.display.Info()
-            max_width = info.current_w - 40
-            max_height = info.current_h - 80
-
             target_width = self._default_width
             target_height = self._default_height
+
+            if target_width <= info.current_w and target_height <= info.current_h:
+                return (target_width, target_height)
+
+            max_width = info.current_w - 40
+            max_height = info.current_h - 80
 
             if target_width > max_width:
                 scale = max_width / target_width
@@ -74,7 +79,7 @@ class Window:
     def set_running(self, running: bool) -> None:
         self._running = running
 
-    def get_size(self) -> Tuple[int, int]:
+    def get_size(self) -> tuple[int, int]:
         if self._screen:
             return self._screen.get_size()
         return (self._width, self._height)
@@ -119,10 +124,10 @@ class Window:
         if self._clock:
             self._clock.tick_busy_loop(fps)
 
-    def get_events(self) -> List[pygame.event.Event]:
+    def get_events(self) -> list[pygame.event.Event]:
         return pygame.event.get()
 
-    def process_events(self) -> Tuple[bool, Optional[pygame.event.Event], Optional[Tuple[int, int]]]:
+    def process_events(self) -> tuple[bool, pygame.event.Event | None, tuple[int, int] | None]:
         quit_event = None
         resize_event = None
         keydown_event = None
@@ -138,11 +143,11 @@ class Window:
 
         return quit_event is not None, keydown_event, resize_event
 
-    def clear(self, color: Tuple[int, int, int] = (0, 0, 0)) -> None:
+    def clear(self, color: tuple[int, int, int] = (0, 0, 0)) -> None:
         if self._screen:
             self._screen.fill(color)
 
-    def blit(self, surface: pygame.Surface, pos: Tuple[int, int]) -> None:
+    def blit(self, surface: pygame.Surface, pos: tuple[int, int]) -> None:
         if self._screen:
             self._screen.blit(surface, pos)
 
@@ -196,7 +201,7 @@ class Window:
         return self._is_fullscreen
 
 
-_window_instance: Optional[Window] = None
+_window_instance: Window | None = None
 
 
 def get_window() -> Window:

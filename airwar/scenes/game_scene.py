@@ -9,6 +9,7 @@ from airwar.game.systems.aim_assist_system import AimAssistSystem
 from airwar.game.systems.lock_manager import LockLayer, LockManager, LockRequest
 from airwar.game.rendering.hud_renderer import HUDRenderer
 from airwar.game.rendering.boss_enrage_renderer import BossEnrageRenderer
+from airwar.game.rendering.haunting_renderer import HauntingRenderer
 from airwar.game.systems.save_restore_manager import SaveRestoreManager
 from airwar.game.systems.notification_manager import NotificationManager
 from airwar.game.managers.game_controller import GameController, GameplayState
@@ -89,9 +90,10 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._pause_button = PauseButtonComponent()
         self._aim_assist = AimAssistSystem()
         self._boss_enrage_renderer = BossEnrageRenderer()
+        self._haunting_renderer: HauntingRenderer | None = None
         self._save_restore_manager = SaveRestoreManager()
         self._lock_manager = LockManager(None)
-        self.game_controller: GameController = None
+        self.game_controller: GameController | None = None
         self.game_renderer: GameRenderer = None
         self.health_system = None  # delegated to GameController.health_system
         self.reward_system: RewardSystem = None
@@ -146,6 +148,9 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._pause_button.clear_cache()
         self._lock_manager.clear()
         self._phase_dash_invincibility_active = False
+        if self._haunting_renderer:
+            self._haunting_renderer.dispose()
+        self._haunting_renderer = HauntingRenderer()
         self._viewport = kwargs.get('viewport')
 
         # Prewarm glow caches before gameplay starts
@@ -278,7 +283,9 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._homecoming_base_pending = False
 
     def exit(self) -> None:
-        pass
+        if self._haunting_renderer:
+            self._haunting_renderer.dispose()
+            self._haunting_renderer = None
 
     def handle_events(self, event: pygame.event.Event) -> None:
         """Process input events.
@@ -423,10 +430,54 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._milestone_manager.check_and_trigger(self.player)
 
         self._survival_frames += 1
+        self._update_haunting_effect()
         self._auto_save_timer += 1
         if self._auto_save_timer >= self.AUTO_SAVE_INTERVAL:
             self._auto_save_timer = 0
             self._try_auto_save()
+
+    def _update_haunting_effect(self) -> None:
+        if not self._haunting_renderer or not self.spawn_controller:
+            return
+        enemy_pressure = len(self.spawn_controller.enemies)
+        if self.spawn_controller.boss:
+            enemy_pressure += 3
+        if self.spawn_controller.enemy_bullets:
+            enemy_pressure += min(8, len(self.spawn_controller.enemy_bullets) // 6)
+        self._haunting_renderer.update(self._survival_frames, enemy_pressure)
+
+    def _render_haunting_world(self, surface: pygame.Surface) -> None:
+        """Render haunting world-style pass (before bullets)."""
+        if not self._haunting_renderer:
+            return
+        self._haunting_renderer.render_world_styles(
+            surface,
+            self.player,
+            self.spawn_controller.enemies,
+            self.spawn_controller.boss,
+        )
+
+    def _render_haunting_post_bullets(self, surface: pygame.Surface) -> None:
+        """Render haunting projectile styles, distortion, and atmosphere overlay."""
+        if not self._haunting_renderer:
+            return
+        self._haunting_renderer.render_projectile_styles(
+            surface,
+            self.player.get_bullets(),
+            self.spawn_controller.enemy_bullets,
+        )
+        self._haunting_renderer.distort_world(surface)
+        self._haunting_renderer.render_atmosphere_overlay(surface)
+
+    def _render_haunting_foreground(self, surface: pygame.Surface) -> None:
+        """Render haunting UI corruption overlay above HUD elements."""
+        if not self._haunting_renderer:
+            return
+        self._haunting_renderer.render_foreground_distortion(
+            surface,
+            self.game_controller.state if self.game_controller else None,
+            self.player,
+        )
 
     def _try_auto_save(self) -> None:
         """Periodic auto-save while game is running normally."""
@@ -828,12 +879,14 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             self.spawn_controller.enemies,
             self.spawn_controller.boss
         )
+        self._render_haunting_world(surface)
 
         self._ui_manager.render_bullets(
             surface,
             self.player,
             self.spawn_controller.enemy_bullets
         )
+        self._render_haunting_post_bullets(surface)
         self._ui_manager.render_hud(surface, self.player)
         self._ui_manager.render_buff_stats_panel(surface, self.player)
 
@@ -910,6 +963,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
         # Render notifications above reward selector so critical messages are not obscured
         self._ui_manager.render_notification(surface)
+        self._render_haunting_foreground(surface)
 
     def _sync_player_aim_target(self) -> None:
         if self.player:
