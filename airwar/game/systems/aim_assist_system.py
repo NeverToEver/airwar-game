@@ -5,6 +5,11 @@ import math
 import pygame
 
 from airwar.config import get_screen_height, get_screen_width
+from airwar.core_bindings import (
+    RUST_AVAILABLE,
+    find_nearest_target,
+    find_target_in_direction,
+)
 
 
 class AimAssistSystem:
@@ -133,6 +138,13 @@ class AimAssistSystem:
         )
 
     def _nearest_aim_assist_target(self, candidates: list, raw_x: float, raw_y: float):
+        if RUST_AVAILABLE:
+            data = [(id(t), float(self._target_rect(t).centerx), float(self._target_rect(t).centery))
+                    for t in candidates]
+            result_id = find_nearest_target(data, raw_x, raw_y)
+            if result_id is not None:
+                return next((t for t in candidates if id(t) == result_id), None)
+            return None
         return min(
             candidates,
             key=lambda target: self._distance_sq_to_target(target, raw_x, raw_y),
@@ -146,6 +158,18 @@ class AimAssistSystem:
             origin = self._raw_aim_position
 
         mx, my = movement
+        if RUST_AVAILABLE:
+            data = [(id(t), float(self._target_rect(t).centerx), float(self._target_rect(t).centery))
+                    for t in candidates]
+            exclude = id(self._aim_assist_target) if self._aim_assist_target else None
+            result_id = find_target_in_direction(
+                data, origin[0], origin[1], mx, my,
+                self.AIM_ASSIST_DIRECTION_CONE_DOT, exclude,
+            )
+            if result_id is not None:
+                return next((t for t in candidates if id(t) == result_id), None)
+            return None
+
         movement_len = math.hypot(mx, my)
         if movement_len <= 0:
             return None

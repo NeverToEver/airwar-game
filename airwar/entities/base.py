@@ -4,11 +4,16 @@ Provides foundational data structures (Vector2, Rect) and the Entity base class
 used by all game entities (Player, Enemy, Boss, Bullet).
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 import math
-import pygame
-from typing import Tuple, Optional
 from dataclasses import dataclass
+from typing import Optional
+
+import pygame
+
+from airwar.core_bindings import RUST_AVAILABLE, vec2_length, vec2_normalize
 
 
 @dataclass
@@ -18,31 +23,36 @@ class Vector2:
     x: float = 0
     y: float = 0
 
-    def __add__(self, other: 'Vector2') -> 'Vector2':
+    def __add__(self, other: Vector2) -> Vector2:
         return Vector2(self.x + other.x, self.y + other.y)
 
-    def __radd__(self, other: 'Vector2') -> 'Vector2':
+    def __radd__(self, other: Vector2) -> Vector2:
         return self.__add__(other)
 
-    def __mul__(self, scalar: float) -> 'Vector2':
+    def __mul__(self, scalar: float) -> Vector2:
         return Vector2(self.x * scalar, self.y * scalar)
 
-    def __rmul__(self, scalar: float) -> 'Vector2':
+    def __rmul__(self, scalar: float) -> Vector2:
         return self.__mul__(scalar)
 
-    def __abs__(self) -> 'Vector2':
+    def __abs__(self) -> Vector2:
         return Vector2(abs(self.x), abs(self.y))
-    
+
     def length(self) -> float:
+        if RUST_AVAILABLE:
+            return vec2_length(self.x, self.y)
         return math.sqrt(self.x * self.x + self.y * self.y)
-    
-    def normalize(self) -> 'Vector2':
+
+    def normalize(self) -> Vector2:
+        if RUST_AVAILABLE:
+            nx, ny = vec2_normalize(self.x, self.y)
+            return Vector2(nx, ny)
         length = self.length()
         if length > 0:
             return Vector2(self.x / length, self.y / length)
         return Vector2(0, 0)
     
-    def to_tuple(self) -> Tuple[float, float]:
+    def to_tuple(self) -> tuple[float, float]:
         return (self.x, self.y)
 
 
@@ -55,7 +65,7 @@ class Rect:
     height: float
 
     @property
-    def center(self) -> Tuple[float, float]:
+    def center(self) -> tuple[float, float]:
         return (self.x + self.width / 2, self.y + self.height / 2)
 
     @property
@@ -108,11 +118,11 @@ class Entity(ABC):
         self._sprite: Optional[pygame.Surface] = None
 
     @property
-    def position(self) -> Tuple[float, float]:
+    def position(self) -> tuple[float, float]:
         return (self.rect.x, self.rect.y)
 
     @position.setter
-    def position(self, pos: Tuple[float, float]):
+    def position(self, pos: tuple[float, float]):
         self.rect.x, self.rect.y = pos
 
     @abstractmethod

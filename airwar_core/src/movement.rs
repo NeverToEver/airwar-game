@@ -441,6 +441,106 @@ pub fn compute_boss_attack(
     }
 }
 
+/// Batch-compute hallucinated enemy positions for the haunting visual system.
+///
+/// For each enemy `(cx, cy, entity_id)`, compute a jittered, optionally lunging
+/// position based on frame counter, haunting strength, and player proximity.
+#[pyfunction]
+#[pyo3(signature = (enemies, player_center, frame, strength, lunge_scale))]
+pub fn batch_hallucinated_enemy_centers(
+    enemies: Vec<(f32, f32, u64)>,
+    player_center: Option<(f32, f32)>,
+    frame: i64,
+    strength: f32,
+    lunge_scale: f32,
+) -> Vec<(f32, f32)> {
+    let f = frame as f32;
+    enemies
+        .into_iter()
+        .map(|(cx, cy, entity_id)| {
+            let pulse = (f * 0.13 + (entity_id % 31) as f32).sin().max(0.0);
+            let jitter_x = (f * 0.21 + (entity_id % 17) as f32).sin() * 8.0 * strength;
+            let jitter_y = (f * 0.18 + (entity_id % 23) as f32).cos() * 6.0 * strength;
+
+            let (lx, ly) = match player_center {
+                Some((px, py)) => {
+                    let dx = px - cx;
+                    let dy = py - cy;
+                    let length = dx.hypot(dy);
+                    if length <= 0.001 {
+                        (0.0, 0.0)
+                    } else {
+                        let lunge = pulse * (12.0 + 36.0 * strength) * lunge_scale;
+                        (dx / length * lunge, dy / length * lunge)
+                    }
+                }
+                None => (0.0, 0.0),
+            };
+
+            (cx + jitter_x + lx, cy + jitter_y + ly)
+        })
+        .collect()
+}
+
+/// Find the candidate nearest to (query_x, query_y) by squared Euclidean distance.
+#[pyfunction]
+#[pyo3(signature = (candidates, query_x, query_y))]
+pub fn find_nearest_target(
+    candidates: Vec<(u64, f32, f32)>,
+    query_x: f32,
+    query_y: f32,
+) -> Option<u64> {
+    candidates
+        .into_iter()
+        .min_by(|(_, x1, y1), (_, x2, y2)| {
+            let d1 = (x1 - query_x).powi(2) + (y1 - query_y).powi(2);
+            let d2 = (x2 - query_x).powi(2) + (y2 - query_y).powi(2);
+            d1.partial_cmp(&d2).unwrap_or(std::cmp::Ordering::Equal)
+        })
+        .map(|(id, _, _)| id)
+}
+
+/// Find the candidate most in the direction of mouse movement using dot-product
+/// scoring. Only targets with dot >= direction_cone_dot are considered.
+#[pyfunction]
+#[pyo3(signature = (candidates, origin_x, origin_y, move_x, move_y, direction_cone_dot, exclude_id))]
+pub fn find_target_in_direction(
+    candidates: Vec<(u64, f32, f32)>,
+    origin_x: f32,
+    origin_y: f32,
+    move_x: f32,
+    move_y: f32,
+    direction_cone_dot: f32,
+    exclude_id: Option<u64>,
+) -> Option<u64> {
+    let movement_len = move_x.hypot(move_y);
+    if movement_len <= 0.0 {
+        return None;
+    }
+    let mx = move_x / movement_len;
+    let my = move_y / movement_len;
+
+    let mut best_id = None;
+    let mut best_score = 0.0f32;
+    for (id, cx, cy) in candidates {
+        if exclude_id == Some(id) {
+            continue;
+        }
+        let tx = cx - origin_x;
+        let ty = cy - origin_y;
+        let dist = tx.hypot(ty);
+        if dist <= 0.0 {
+            continue;
+        }
+        let dot = (tx / dist) * mx + (ty / dist) * my;
+        if dot > best_score && dot >= direction_cone_dot {
+            best_score = dot;
+            best_id = Some(id);
+        }
+    }
+    best_id
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
