@@ -28,6 +28,7 @@ from airwar.ui.pause_button import PauseButtonComponent
 from airwar.game.mother_ship import (
     EventBus,
     InputDetector,
+    MotherShipState,
     MotherShipStateMachine,
     PersistenceManager,
     ProgressBarUI,
@@ -446,9 +447,19 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             enemy_pressure += min(8, len(self.spawn_controller.enemy_bullets) // 6)
         self._haunting_renderer.update(self._survival_frames, enemy_pressure)
 
+    def _should_suppress_haunting(self) -> bool:
+        """Suppress haunting visuals when player is inside or near mothership."""
+        if not self._mother_ship_integrator:
+            return False
+        state = self._mother_ship_integrator._state_machine.current_state
+        return state in (
+            MotherShipState.ENTERING, MotherShipState.DOCKING,
+            MotherShipState.DOCKED, MotherShipState.UNDOCKING,
+        )
+
     def _render_haunting_world(self, surface: pygame.Surface) -> None:
         """Render haunting world-style pass (before bullets)."""
-        if not self._haunting_renderer:
+        if not self._haunting_renderer or self._should_suppress_haunting():
             return
         self._haunting_renderer.render_world_styles(
             surface,
@@ -459,7 +470,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
     def _render_haunting_post_bullets(self, surface: pygame.Surface) -> None:
         """Render haunting projectile styles, distortion, and atmosphere overlay."""
-        if not self._haunting_renderer:
+        if not self._haunting_renderer or self._should_suppress_haunting():
             return
         self._haunting_renderer.render_projectile_styles(
             surface,
@@ -471,7 +482,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
     def _render_haunting_foreground(self, surface: pygame.Surface) -> None:
         """Render haunting UI corruption overlay above HUD elements."""
-        if not self._haunting_renderer:
+        if not self._haunting_renderer or self._should_suppress_haunting():
             return
         self._haunting_renderer.render_foreground_distortion(
             surface,
@@ -930,7 +941,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
         self._render_aim_crosshair(surface)
 
-        if self._haunting_renderer:
+        if self._haunting_renderer and not self._should_suppress_haunting():
             self._haunting_renderer.render_hud_corruption(surface)
 
         if self._homecoming_ui and self._homecoming_sequence:
@@ -968,7 +979,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._ui_manager.render_notification(surface)
         self._render_haunting_foreground(surface)
 
-        if self._haunting_renderer:
+        if self._haunting_renderer and not self._should_suppress_haunting():
             self._haunting_renderer.render_transition_flicker(surface)
 
     def _sync_player_aim_target(self) -> None:
