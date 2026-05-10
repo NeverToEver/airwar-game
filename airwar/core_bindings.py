@@ -26,6 +26,9 @@ try:
         update_movement,
         batch_update_movements,
         compute_boss_attack,
+        batch_hallucinated_enemy_centers,
+        find_nearest_target,
+        find_target_in_direction,
         # Particle functions
         batch_update_particles,
         generate_explosion_particles,
@@ -557,6 +560,76 @@ except (ImportError, OSError):
             results.append((bullet_id, new_x, new_y, active))
         return results
 
+    def find_nearest_target(
+        candidates: list[tuple[int, float, float]],
+        query_x: float,
+        query_y: float,
+    ) -> int | None:
+        best_id = None
+        best_dist_sq = float('inf')
+        for cid, cx, cy in candidates:
+            d = (cx - query_x) ** 2 + (cy - query_y) ** 2
+            if d < best_dist_sq:
+                best_dist_sq = d
+                best_id = cid
+        return best_id
+
+    def find_target_in_direction(
+        candidates: list[tuple[int, float, float]],
+        origin_x: float,
+        origin_y: float,
+        move_x: float,
+        move_y: float,
+        direction_cone_dot: float,
+        exclude_id: int | None,
+    ) -> int | None:
+        movement_len = math.hypot(move_x, move_y)
+        if movement_len <= 0:
+            return None
+        mx = move_x / movement_len
+        my = move_y / movement_len
+        best_id = None
+        best_score = 0.0
+        for cid, cx, cy in candidates:
+            if exclude_id == cid:
+                continue
+            tx = cx - origin_x
+            ty = cy - origin_y
+            dist = math.hypot(tx, ty)
+            if dist <= 0:
+                continue
+            dot = (tx / dist) * mx + (ty / dist) * my
+            if dot > best_score and dot >= direction_cone_dot:
+                best_score = dot
+                best_id = cid
+        return best_id
+
+    def batch_hallucinated_enemy_centers(
+        enemies: list[tuple[float, float, int]],
+        player_center: tuple[float, float] | None,
+        frame: int,
+        strength: float,
+        lunge_scale: float,
+    ) -> list[tuple[float, float]]:
+        f = float(frame)
+        results = []
+        for cx, cy, entity_id in enemies:
+            pulse = max(0.0, math.sin(f * 0.13 + (entity_id % 31)))
+            jx = math.sin(f * 0.21 + (entity_id % 17)) * 8.0 * strength
+            jy = math.cos(f * 0.18 + (entity_id % 23)) * 6.0 * strength
+            lx = ly = 0.0
+            if player_center is not None:
+                px, py = player_center
+                dx = px - cx
+                dy = py - cy
+                length = math.hypot(dx, dy)
+                if length > 0.001:
+                    lunge = pulse * (12.0 + 36.0 * strength) * lunge_scale
+                    lx = dx / length * lunge
+                    ly = dy / length * lunge
+            results.append((cx + jx + lx, cy + jy + ly))
+        return results
+
 __all__ = [
     'RUST_AVAILABLE',
     # Vector2 functions
@@ -578,6 +651,9 @@ __all__ = [
     'update_movement',
     'batch_update_movements',
     'compute_boss_attack',
+    'batch_hallucinated_enemy_centers',
+    'find_nearest_target',
+    'find_target_in_direction',
     # Particle functions
     'batch_update_particles',
     'generate_explosion_particles',

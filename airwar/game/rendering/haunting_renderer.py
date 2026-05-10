@@ -9,6 +9,7 @@ from typing import Any, Iterable
 
 import pygame
 
+from airwar.core_bindings import RUST_AVAILABLE, batch_hallucinated_enemy_centers
 from airwar.utils.fonts import get_cjk_font
 
 
@@ -130,8 +131,21 @@ class HauntingRenderer:
         self._occlude_original_hostiles(surface, enemies, boss)
         player_center = _entity_center(player) if player else None
 
-        for enemy in enemies:
-            if getattr(enemy, "active", True):
+        active_enemies = [e for e in enemies if getattr(e, "active", True)]
+        if active_enemies and RUST_AVAILABLE:
+            enemy_data = [
+                (float(getattr(e.rect, "centerx", 0.0)),
+                 float(getattr(e.rect, "centery", 0.0)),
+                 id(e))
+                for e in active_enemies
+            ]
+            batch_results = batch_hallucinated_enemy_centers(
+                enemy_data, player_center, self._frame, self._strength, 1.0,
+            )
+            for enemy, (hx, hy) in zip(active_enemies, batch_results, strict=False):
+                self._render_spirit_enemy_at(surface, enemy, hx, hy)
+        else:
+            for enemy in active_enemies:
                 self._render_spirit_enemy(surface, enemy, player_center)
 
         if boss and getattr(boss, "active", True):
@@ -563,6 +577,14 @@ class HauntingRenderer:
         height = max(36, int(getattr(enemy.rect, "height", 50) * 1.7))
         alpha = int(82 + self._strength * 158)
         self._draw_spirit_ship(surface, cx, cy, width, height, alpha, elite=getattr(enemy, "_is_elite", False))
+
+    def _render_spirit_enemy_at(
+        self, surface: pygame.Surface, enemy, hx: float, hy: float
+    ) -> None:
+        width = max(36, int(getattr(enemy.rect, "width", 50) * 1.7))
+        height = max(36, int(getattr(enemy.rect, "height", 50) * 1.7))
+        alpha = int(82 + self._strength * 158)
+        self._draw_spirit_ship(surface, hx, hy, width, height, alpha, elite=getattr(enemy, "_is_elite", False))
 
     def _render_spirit_boss(self, surface: pygame.Surface, boss, player_center: tuple[float, float] | None) -> None:
         cx, cy = _entity_center(boss)

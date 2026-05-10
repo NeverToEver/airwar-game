@@ -250,7 +250,7 @@ class Enemy(Entity):
             self._movement_strategy.update(self)
 
     def _can_use_rust_movement(self) -> bool:
-        return self.move_type in MOVEMENT_TYPE_MAP and self.move_type != "zigzag"
+        return self.move_type in MOVEMENT_TYPE_MAP
 
     def _update_rust_movement(self) -> None:
         batch_result = getattr(self, '_batch_result', None)
@@ -378,7 +378,7 @@ class Enemy(Entity):
 
     def get_rust_batch_params(self):
         """Return (base_tuple, extra_tuple) for batch Rust movement, or (None, None)."""
-        if not hasattr(self, '_rust_move_type_code') or self.move_type == "zigzag":
+        if not hasattr(self, '_rust_move_type_code'):
             return None, None
         p = self._rust_params
         timer = getattr(self, self._timer_attr, 0.0)
