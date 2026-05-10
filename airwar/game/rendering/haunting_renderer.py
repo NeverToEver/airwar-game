@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import math
 import random
-from typing import Iterable
+from typing import Any, Iterable
 
 import pygame
 
@@ -121,7 +121,7 @@ class HauntingRenderer:
         self._advance_memory_fragments()
         self._update_lightning()
 
-    def render_world_styles(self, surface: pygame.Surface, player, enemies: Iterable, boss=None) -> None:
+    def render_world_styles(self, surface: pygame.Surface, player: Any, enemies: Iterable, boss: Any = None) -> None:
         """Draw storm, WWI player craft, and haunted enemy overlays."""
         if not self.is_active():
             return
@@ -173,7 +173,7 @@ class HauntingRenderer:
                 self._draw_tracer_round(overlay, bullet, player_owned=False)
         surface.blit(overlay, (0, 0))
 
-    def render_foreground_distortion(self, surface: pygame.Surface, state=None, player=None) -> None:
+    def render_foreground_distortion(self, surface: pygame.Surface, state: Any = None, player: Any = None) -> None:
         """Overlay sharp corrupt UI values without resampling the HUD layer."""
         if not self.is_active():
             return
