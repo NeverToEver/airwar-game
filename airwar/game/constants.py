@@ -96,13 +96,6 @@ class AnimationConstants:
         RIPPLE_INITIAL_ALPHA: Ripple effect initial alpha.
         NOTIFICATION_DECAY_RATE: Notification decay rate.
         PARTICLE_ALPHA_VISIBILITY_THRESHOLD: Minimum alpha for particle visibility.
-        PARTICLE_SIZE_THRESHOLD_LARGE: Large particle size threshold.
-        PARTICLE_SIZE_THRESHOLD_MEDIUM: Medium particle size threshold.
-        PARTICLE_SIZE_THRESHOLD_SMALL: Small particle size threshold.
-        PARTICLE_BASE_SIZE_LARGE: Base texture size for large particles.
-        PARTICLE_BASE_SIZE_MEDIUM: Base texture size for medium particles.
-        PARTICLE_BASE_SIZE_SMALL: Base texture size for small particles.
-        PARTICLE_BASE_SIZE_TINY: Base texture size for tiny particles.
     """
     ENTRANCE_DURATION: int = 60
     RIPPLE_INITIAL_RADIUS: int = 15
@@ -110,13 +103,6 @@ class AnimationConstants:
     RIPPLE_EXPANSION_SPEED: float = 2.5
     NOTIFICATION_DECAY_RATE: int = 1
     PARTICLE_ALPHA_VISIBILITY_THRESHOLD: int = 10
-    PARTICLE_SIZE_THRESHOLD_LARGE: int = 18
-    PARTICLE_SIZE_THRESHOLD_MEDIUM: int = 14
-    PARTICLE_SIZE_THRESHOLD_SMALL: int = 10
-    PARTICLE_BASE_SIZE_LARGE: int = 20
-    PARTICLE_BASE_SIZE_MEDIUM: int = 16
-    PARTICLE_BASE_SIZE_SMALL: int = 12
-    PARTICLE_BASE_SIZE_TINY: int = 8
 
 
 @dataclass(frozen=True)

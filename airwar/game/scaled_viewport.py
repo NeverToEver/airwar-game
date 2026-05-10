@@ -1,8 +1,6 @@
 """Scaled logical viewport for fixed-resolution game rendering."""
 from __future__ import annotations
 
-from typing import Tuple
-
 import pygame
 
 
@@ -13,7 +11,7 @@ class ScaledViewport:
         self.logical_size = (logical_w, logical_h)
         self._scale = 1.0
         self._offset = (0.0, 0.0)
-        self._logical_surface = pygame.Surface((logical_w, logical_h))
+        self._logical_surface = pygame.Surface((logical_w, logical_h), pygame.SRCALPHA)
 
     def update(self, display_w: int, display_h: int) -> None:
         scale_x = display_w / self.logical_size[0]
@@ -24,7 +22,7 @@ class ScaledViewport:
             (display_h - self.logical_size[1] * self._scale) / 2,
         )
 
-    def screen_to_logical(self, screen_x: float, screen_y: float) -> Tuple[float, float]:
+    def screen_to_logical(self, screen_x: float, screen_y: float) -> tuple[float, float]:
         x = (screen_x - self._offset[0]) / self._scale
         y = (screen_y - self._offset[1]) / self._scale
         return (
@@ -37,8 +35,12 @@ class ScaledViewport:
             int(self.logical_size[0] * self._scale),
             int(self.logical_size[1] * self._scale),
         )
-        scaled = pygame.transform.scale(self._logical_surface, scaled_size)
         display_surface.fill((0, 0, 0))
+        if scaled_size == self.logical_size:
+            display_surface.blit(self._logical_surface, self._offset)
+            return
+
+        scaled = pygame.transform.scale(self._logical_surface, scaled_size)
         display_surface.blit(scaled, self._offset)
 
     @property
