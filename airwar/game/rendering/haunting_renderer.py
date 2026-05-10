@@ -55,6 +55,7 @@ class HauntingRenderer:
     MAX_EVENT_DURATION = 360
     MAX_MEMORY_FRAGMENTS = 18
     LIGHTNING_DURATION = 6
+    FLICKER_DURATION = 18
     JITTER_CYCLE_FRAMES = 44
 
     @dataclass
@@ -88,6 +89,8 @@ class HauntingRenderer:
         self._overlay: pygame.Surface | None = None
         self._blend_surf: pygame.Surface | None = None
         self._distort_buf: pygame.Surface | None = None
+        self._was_active = False
+        self._flicker_timer = 0
 
     @property
     def progression(self) -> float:
@@ -117,6 +120,10 @@ class HauntingRenderer:
         self._progression = self._calculate_progression(self._survival_frames)
         self._update_event_schedule()
         self._strength = self._calculate_strength()
+        is_now_active = self.is_active()
+        if is_now_active != self._was_active:
+            self._was_active = is_now_active
+            self._flicker_timer = self.FLICKER_DURATION
         self._advance_memory_fragments()
         self._update_lightning()
 
@@ -327,6 +334,21 @@ class HauntingRenderer:
         overlay = self._get_overlay(width, height)
         alpha = int(18 + self._strength * 64)
         overlay.fill((18, 14, 10, alpha))
+        surface.blit(overlay, (0, 0))
+
+    def render_transition_flicker(self, surface: pygame.Surface) -> None:
+        """Brief subtle flicker when haunting rendering toggles on/off."""
+        if self._flicker_timer <= 0:
+            return
+        self._flicker_timer -= 1
+        progress = 1.0 - self._flicker_timer / self.FLICKER_DURATION
+        envelope = math.sin(progress * math.pi)
+        alpha = int(envelope * 38)
+        if alpha <= 2:
+            return
+        width, height = surface.get_size()
+        overlay = self._get_overlay(width, height)
+        overlay.fill((24, 20, 32, alpha))
         surface.blit(overlay, (0, 0))
 
     def _render_lightning(self, surface: pygame.Surface) -> None:

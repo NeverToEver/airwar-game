@@ -968,6 +968,9 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._ui_manager.render_notification(surface)
         self._render_haunting_foreground(surface)
 
+        if self._haunting_renderer:
+            self._haunting_renderer.render_transition_flicker(surface)
+
     def _sync_player_aim_target(self) -> None:
         if self.player:
             self.player.set_aim_target(*self._aim_assist.get_aim_position())
