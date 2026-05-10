@@ -56,8 +56,6 @@ class HauntingRenderer:
     MAX_MEMORY_FRAGMENTS = 18
     LIGHTNING_DURATION = 6
     JITTER_CYCLE_FRAMES = 44
-    LABEL_GOODBYE = "再见"
-    LABEL_TAKE_CARE = "保重"
 
     @dataclass
     class MemoryFragment:
@@ -719,7 +717,7 @@ class HauntingRenderer:
             return
 
         width, height = size
-        kind = self._rng.choice(("crying_face", "departure", "family_goodbye", "letter"))
+        kind = self._rng.choice(("skull", "departure", "black_hole"))
         scale = self._rng.uniform(0.72, 1.65) * (0.75 + self._strength * 0.55)
         fragment = self.MemoryFragment(
             kind=kind,
@@ -745,36 +743,43 @@ class HauntingRenderer:
             alpha = int(fragment.alpha * envelope * (0.55 + self._strength * 0.72))
             if alpha <= 2:
                 continue
-            if fragment.kind == "crying_face":
-                self._draw_crying_face(overlay, fragment, alpha)
+            if fragment.kind == "skull":
+                self._draw_skull(overlay, fragment, alpha)
             elif fragment.kind == "departure":
                 self._draw_departure_scene(overlay, fragment, alpha)
-            elif fragment.kind == "family_goodbye":
-                self._draw_family_goodbye(overlay, fragment, alpha)
             else:
-                self._draw_goodbye_letter(overlay, fragment, alpha)
+                self._draw_black_hole(overlay, fragment, alpha)
         surface.blit(overlay, (0, 0))
 
-    def _draw_crying_face(self, overlay: pygame.Surface, fragment: MemoryFragment, alpha: int) -> None:
+    def _draw_skull(self, overlay: pygame.Surface, fragment: MemoryFragment, alpha: int) -> None:
         x, y = int(fragment.x), int(fragment.y)
-        radius = max(18, int(42 * fragment.scale))
-        color = (218, 214, 196, alpha)
-        shadow = (34, 28, 26, max(20, alpha // 2))
-        pygame.draw.ellipse(overlay, shadow, pygame.Rect(x - radius, y - radius, radius * 2, radius * 2))
-        pygame.draw.ellipse(overlay, color, pygame.Rect(x - radius, y - radius, radius * 2, radius * 2), 2)
-        eye_y = y - radius // 5
+        r = max(16, int(36 * fragment.scale))
+        bone_color = (212, 208, 190, alpha)
+        shadow_color = (28, 24, 20, max(20, alpha // 2))
+        eye_color = (10, 6, 8, alpha)
+
+        pygame.draw.ellipse(overlay, shadow_color, pygame.Rect(x - r, y - r, r * 2, r * 2))
+        pygame.draw.ellipse(overlay, bone_color, pygame.Rect(x - r, y - r, r * 2, r * 2), 2)
+        # Jaw
+        jaw_h = max(6, int(r * 0.55))
+        pygame.draw.ellipse(overlay, bone_color, pygame.Rect(x - r * 3 // 4, y + r // 3, r * 3 // 2, jaw_h), 2)
+        # Eye sockets
+        eye_r = max(3, r // 4)
+        eye_y = y - r // 4
         for side in (-1, 1):
-            ex = x + side * radius // 3
-            pygame.draw.arc(overlay, color, pygame.Rect(ex - 9, eye_y - 7, 18, 14), math.pi * 0.12, math.pi * 0.88, 2)
-            pygame.draw.line(overlay, (98, 132, 160, alpha), (ex, eye_y + 6), (ex - side * 3, eye_y + radius // 2), 2)
-        pygame.draw.arc(
-            overlay,
-            color,
-            pygame.Rect(x - radius // 3, y + radius // 5, radius * 2 // 3, radius // 2),
-            math.pi,
-            math.tau,
-            2,
+            ex = x + side * r // 3
+            pygame.draw.circle(overlay, shadow_color, (ex, eye_y), eye_r + 1)
+            pygame.draw.circle(overlay, eye_color, (ex, eye_y), eye_r)
+        # Nose
+        nose_y = y + r // 6
+        pygame.draw.polygon(
+            overlay, shadow_color,
+            [(x - 3, nose_y - 3), (x + 3, nose_y - 3), (x, nose_y + 4)],
         )
+        # Crack lines
+        crack_alpha = max(16, alpha // 3)
+        pygame.draw.line(overlay, (64, 56, 48, crack_alpha), (x + r // 3, y - r // 2), (x + r // 4, y + r // 5), 1)
+        pygame.draw.line(overlay, (64, 56, 48, crack_alpha), (x - r // 4, y - r // 5), (x - r // 2, y), 1)
 
     def _draw_departure_scene(self, overlay: pygame.Surface, fragment: MemoryFragment, alpha: int) -> None:
         x, y = int(fragment.x), int(fragment.y)
@@ -795,43 +800,32 @@ class HauntingRenderer:
             1,
         )
 
-    def _draw_family_goodbye(self, overlay: pygame.Surface, fragment: MemoryFragment, alpha: int) -> None:
+    def _draw_black_hole(self, overlay: pygame.Surface, fragment: MemoryFragment, alpha: int) -> None:
         x, y = int(fragment.x), int(fragment.y)
-        scale = fragment.scale
-        door = pygame.Rect(0, 0, int(96 * scale), int(118 * scale))
-        door.center = (x, y)
-        pygame.draw.rect(overlay, (184, 166, 128, alpha // 2), door, 2)
-        for offset, size in ((-28, 0.78), (0, 1.0), (30, 0.72)):
-            self._draw_silhouette(
-                overlay, x + int(offset * scale), y + int(26 * scale), scale * size, (18, 16, 18, alpha)
-            )
-        font = get_cjk_font(max(13, int(18 * scale)))
-        text = font.render(self.LABEL_GOODBYE, True, (226, 218, 194))
-        text.set_alpha(alpha)
-        overlay.blit(text, text.get_rect(center=(x, door.top - int(14 * scale))))
+        r = max(14, int(38 * fragment.scale))
+        core_alpha = max(180, alpha)
+        ring_alpha = int(alpha * 0.45)
+        glow_alpha = int(alpha * 0.18)
 
-    def _draw_goodbye_letter(self, overlay: pygame.Surface, fragment: MemoryFragment, alpha: int) -> None:
-        x, y = int(fragment.x), int(fragment.y)
-        scale = fragment.scale
-        w = int(116 * scale)
-        h = int(72 * scale)
-        letter = pygame.Surface((w, h), pygame.SRCALPHA)
-        pygame.draw.rect(letter, (190, 178, 146, alpha), letter.get_rect())
-        pygame.draw.rect(letter, (78, 48, 42, alpha), letter.get_rect(), 2)
-        for row in range(3):
-            pygame.draw.line(
-                letter,
-                (74, 46, 42, max(20, alpha - 30)),
-                (int(18 * scale), int((20 + row * 13) * scale)),
-                (w - int(18 * scale), int((20 + row * 13) * scale)),
-                1,
-            )
-        font = get_cjk_font(max(12, int(15 * scale)))
-        text = font.render(self.LABEL_TAKE_CARE, True, (72, 36, 38))
-        text.set_alpha(alpha)
-        letter.blit(text, (int(22 * scale), int(45 * scale)))
-        rotated = pygame.transform.rotate(letter, math.sin(self._frame * 0.03 + x) * 5)
-        overlay.blit(rotated, rotated.get_rect(center=(x, y)))
+        # Outer glow
+        for i in range(3):
+            glow_r = r + 6 + i * 5
+            glow_a = max(4, glow_alpha - i * 8)
+            pygame.draw.circle(overlay, (64, 28, 80, glow_a), (x, y), glow_r)
+        # Event horizon ring
+        pygame.draw.circle(overlay, (0, 0, 0, core_alpha), (x, y), r)
+        # Accretion disk ellipse
+        disk_w = int(r * 2.0)
+        disk_h = max(6, int(r * 0.28))
+        angle = self._frame * 0.04 + x * 0.003
+        rx = int(math.cos(angle) * r * 0.55)
+        ry = int(math.sin(angle) * r * 0.55) if abs(math.sin(angle)) > 0.01 else 0
+        disk_rect = pygame.Rect(x - disk_w // 2, y - disk_h // 2, disk_w, disk_h)
+        pygame.draw.ellipse(overlay, (120, 40, 140, ring_alpha), disk_rect, max(1, int(r * 0.06)))
+        # Accretion bright spot
+        spot_x = x + rx
+        spot_y = y + ry
+        pygame.draw.circle(overlay, (200, 100, 220, int(ring_alpha * 1.3)), (spot_x, spot_y), max(2, int(r * 0.15)))
 
     @staticmethod
     def _draw_silhouette(
