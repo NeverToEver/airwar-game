@@ -134,6 +134,38 @@ def test_memory_fragment_does_not_expire_before_duration() -> None:
     assert renderer._memory_fragments[0].age == 60
 
 
+def test_enemy_pressure_feeds_into_scheduler() -> None:
+    renderer = HauntingRenderer()
+    renderer.update(HauntingRenderer.FULL_REPLACE_FRAME, enemy_pressure=12)
+    assert renderer.progression == 1.0
+
+
+def test_haunting_renderer_survives_render_after_dispose() -> None:
+    renderer = HauntingRenderer()
+    renderer.update(HauntingRenderer.FULL_REPLACE_FRAME, enemy_pressure=1)
+    renderer.dispose()
+
+    surface = pygame.Surface((640, 480), pygame.SRCALPHA)
+    renderer.render_world_styles(surface, None, [])
+    renderer.render_projectile_styles(surface, [], [])
+    renderer.distort_world(surface)
+    renderer.render_atmosphere_overlay(surface)
+    renderer.render_foreground_distortion(surface, None, None)
+
+
+def test_haunting_renderer_recreates_surfaces_after_dispose() -> None:
+    renderer = HauntingRenderer()
+    renderer.update(HauntingRenderer.FULL_REPLACE_FRAME, enemy_pressure=1)
+    renderer.dispose()
+    assert not renderer._storm_cache
+
+    renderer.update(HauntingRenderer.FULL_REPLACE_FRAME, enemy_pressure=1)
+    surface = pygame.Surface((640, 480), pygame.SRCALPHA)
+    renderer.render_world_styles(surface, None, [])
+
+    assert renderer._storm_cache or renderer._overlay
+
+
 def _count_black_alpha_edge_pixels(surface: pygame.Surface) -> int:
     count = 0
     for y in range(surface.get_height()):
