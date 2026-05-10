@@ -47,14 +47,14 @@ class HauntingRenderer:
     corruption while preserving gameplay state and collision rectangles.
     """
 
-    START_FRAME = 20 * 60
-    FULL_REPLACE_FRAME = 6 * 60 * 60
-    MIN_EVENT_INTERVAL = 42
-    MAX_EVENT_INTERVAL = 10 * 60
-    MIN_EVENT_DURATION = 95
-    MAX_EVENT_DURATION = 420
-    MAX_MEMORY_FRAGMENTS = 28
-    LIGHTNING_DURATION = 8
+    START_FRAME = 3 * 60
+    FULL_REPLACE_FRAME = 30 * 60
+    MIN_EVENT_INTERVAL = 28
+    MAX_EVENT_INTERVAL = 5 * 60
+    MIN_EVENT_DURATION = 80
+    MAX_EVENT_DURATION = 360
+    MAX_MEMORY_FRAGMENTS = 18
+    LIGHTNING_DURATION = 6
     JITTER_CYCLE_FRAMES = 44
     LABEL_GOODBYE = "再见"
     LABEL_TAKE_CARE = "保重"
@@ -167,7 +167,7 @@ class HauntingRenderer:
 
         self._maybe_spawn_memory_fragment(surface.get_size())
         self._render_memory_fragments(surface)
-        self._render_vignette_and_scanlines(surface)
+        self._render_vignette(surface)
 
     def render_projectile_styles(
         self, surface: pygame.Surface, player_bullets: Iterable, enemy_bullets: Iterable
@@ -276,7 +276,6 @@ class HauntingRenderer:
             self._blend_surf.set_alpha(alpha)
             surface.blit(self._blend_surf, (0, 0))
 
-        self._render_rain(surface)
         self._render_lightning(surface)
 
     def _get_storm_surface(self, width: int, height: int) -> pygame.Surface:
@@ -322,24 +321,15 @@ class HauntingRenderer:
         self._storm_cache[cache_key] = storm
         return storm
 
-    def _render_rain(self, surface: pygame.Surface) -> None:
+    def render_hud_corruption(self, surface: pygame.Surface) -> None:
+        """Apply a subtle corruption darkening over HUD layer for visual cohesion."""
+        if self._strength < 0.15:
+            return
         width, height = surface.get_size()
-        rain = self._get_overlay(width, height)
-        density = int((width * height / 8200) * (0.24 + self._strength * 1.15))
-        alpha = int(34 + self._strength * 96)
-        wind = int(5 + self._strength * 18)
-        for index in range(density):
-            x = (index * 73 + self._frame * 17) % (width + 180) - 90
-            y = (index * 131 + self._frame * 31) % (height + 120) - 60
-            length = 14 + (index % 23)
-            pygame.draw.line(
-                rain,
-                (150, 164, 166, alpha),
-                (int(x), int(y)),
-                (int(x - wind), int(y + length)),
-                1,
-            )
-        surface.blit(rain, (0, 0))
+        overlay = self._get_overlay(width, height)
+        alpha = int(18 + self._strength * 64)
+        overlay.fill((18, 14, 10, alpha))
+        surface.blit(overlay, (0, 0))
 
     def _render_lightning(self, surface: pygame.Surface) -> None:
         if self._lightning_timer <= 0:
@@ -904,15 +894,11 @@ class HauntingRenderer:
     def _lcg_randint(seed: int, lo: int, hi: int) -> int:
         return lo + (((seed * 1103515245 + 12345) & 0x7FFFFFFF) % (hi - lo + 1))
 
-    def _render_vignette_and_scanlines(self, surface: pygame.Surface) -> None:
+    def _render_vignette(self, surface: pygame.Surface) -> None:
         width, height = surface.get_size()
         overlay = self._get_overlay(width, height)
         tint_alpha = int(30 + self._strength * 88)
         overlay.fill((52, 38, 24, tint_alpha))
-
-        for y in range(0, height, 4):
-            alpha = int(12 + self._strength * 34)
-            pygame.draw.line(overlay, (4, 3, 3, alpha), (0, y), (width, y), 1)
 
         vignette_alpha = int(64 + self._strength * 118)
         border = max(24, int(min(width, height) * 0.10))
