@@ -36,6 +36,9 @@ class EntityRenderer:
     _warning_font = None
     _escape_font = None
 
+    def __init__(self):
+        self.player_docked = False
+
     @classmethod
     def _get_warning_font(cls):
         if cls._warning_font is None:
@@ -128,7 +131,7 @@ class EntityRenderer:
             warning_surf.set_alpha(int(150 + 35 * pulse))
             surface.blit(warning_surf, warning_surf.get_rect(center=(surface.get_width() // 2, 20)))
 
-        if boss._enrage_timer > 0:
+        if boss._enrage_timer > 0 and not self.player_docked:
             intensity = boss.enrage_visual_intensity()
             pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() * 0.0022)
             warning_surf = self._get_escape_font().render("核心过载", True, (178, 226, 255))

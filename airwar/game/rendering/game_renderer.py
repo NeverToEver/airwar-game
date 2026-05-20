@@ -68,7 +68,6 @@ class GameRenderer:
 
     def _render_entrance(self, surface, state, entities):
         progress = state.entrance_timer / state.entrance_duration
-        zoom_scale = 1.0 + (1.5 - 1.0) * (1 - progress)
 
         self._render_player(surface, state, entities.player)
 
@@ -78,23 +77,13 @@ class GameRenderer:
         if entities.boss:
             self.entity_renderer.render_boss(surface, entities.boss)
 
-        scaled_width = int(surface.get_width() * zoom_scale)
-        scaled_height = int(surface.get_height() * zoom_scale)
-        
-        cached_key = (scaled_width, scaled_height)
-        if not hasattr(self, '_entrance_cache') or self._entrance_cache_key != cached_key:
-            self._entrance_scaled_surface = pygame.transform.scale(surface, (scaled_width, scaled_height))
-            self._entrance_cache_key = cached_key
-
-        x_offset = (scaled_width - surface.get_width()) // 2
-        y_offset = (scaled_height - surface.get_height()) // 2
-        surface.fill((0, 0, 0))
-        surface.blit(self._entrance_scaled_surface, (-x_offset, -y_offset))
-
-        if not hasattr(self, '_fade_surface') or self._fade_surface.get_size() != surface.get_size():
-            self._fade_surface = pygame.Surface(surface.get_size())
-        self._fade_surface.set_alpha(int(80 * (1 - progress)))
-        surface.blit(self._fade_surface, (0, 0))
+        fade_alpha = int(160 * (1 - progress))
+        if fade_alpha > 0:
+            if not hasattr(self, '_entrance_fade') or self._entrance_fade.get_size() != surface.get_size():
+                self._entrance_fade = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+                self._entrance_fade.fill((0, 0, 0))
+            self._entrance_fade.set_alpha(fade_alpha)
+            surface.blit(self._entrance_fade, (0, 0))
 
     def _render_game(self, surface, state, entities):
         is_dying = state.gameplay_state == GameplayState.DYING

@@ -186,7 +186,8 @@ class SceneDirector:
     def _handle_resize_if_needed(self, events: List[pygame.event.Event]) -> None:
         for event in events:
             if event.type == pygame.VIDEORESIZE:
-                self._window.resize(event.w, event.h)
+                # With SCALED, SDL2 handles scaling — just update viewport
+                # for coordinate conversion; don't recreate the display surface.
                 self._handle_resize(event.w, event.h)
 
     def _handle_pause_toggle(self, events: List[pygame.event.Event], game_scene: GameScene) -> str:

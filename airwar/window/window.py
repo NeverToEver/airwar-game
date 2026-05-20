@@ -1,9 +1,16 @@
 """Window — resizable display window with event handling."""
 from __future__ import annotations
 
+import os
+
 import pygame
 
 from airwar.config import set_display_size
+
+# Prefer GPU-accelerated SDL2 render backend on Linux.
+# On Windows this is handled by the direct3d default.
+if not os.environ.get("SDL_RENDER_DRIVER"):
+    os.environ["SDL_RENDER_DRIVER"] = "opengl"
 
 
 class Window:
@@ -32,7 +39,7 @@ class Window:
         else:
             self._width, self._height = self._get_adaptive_size()
 
-        flags = pygame.DOUBLEBUF
+        flags = pygame.DOUBLEBUF | pygame.SCALED
         if self._resizable:
             flags |= pygame.RESIZABLE
         self._screen = pygame.display.set_mode((self._width, self._height), flags)
@@ -80,6 +87,14 @@ class Window:
         self._running = running
 
     def get_size(self) -> tuple[int, int]:
+        # get_window_size() returns the actual pixel dimensions of the OS window.
+        # With SCALED, the display surface is always at the logical resolution
+        # (e.g. 1920x1080), but the window itself may be larger or smaller.
+        # Mouse events use OS window coordinates, so that's what callers need.
+        try:
+            return pygame.display.get_window_size()
+        except (pygame.error, AttributeError):
+            pass
         if self._screen:
             return self._screen.get_size()
         return (self._width, self._height)
@@ -108,8 +123,13 @@ class Window:
         height = max(self._min_size[1], min(height, self._max_size[1]))
         self._width = width
         self._height = height
+        # With SCALED, the display surface stays at its original logical
+        # resolution; SDL2 scales to the window. Only recreate on explicit
+        # size change that alters the logical resolution.
         if self._screen:
-            self._screen = pygame.display.set_mode((width, height), pygame.DOUBLEBUF | pygame.RESIZABLE)
+            self._screen = pygame.display.set_mode(
+                (width, height), pygame.DOUBLEBUF | pygame.SCALED | pygame.RESIZABLE
+            )
         set_display_size(width, height)
 
     def flip(self) -> None:
@@ -136,7 +156,10 @@ class Window:
             if event.type == pygame.QUIT:
                 quit_event = event
             elif event.type == pygame.VIDEORESIZE:
-                self.resize(event.w, event.h)
+                # With SCALED, SDL2 handles scaling — track size but don't recreate surface
+                self._width = event.w
+                self._height = event.h
+                set_display_size(event.w, event.h)
                 resize_event = (event.w, event.h)
             elif event.type == pygame.KEYDOWN:
                 keydown_event = event

@@ -1397,12 +1397,14 @@ class Boss(Entity):
         progress = max(0.0, min(1.0, progress))
         segment = min(3, int(progress * 4))
         local = progress * 4 - segment
+        # Square path starts/ends at bottom (same as circle-path start) so
+        # the square→circle transition at ENRAGE_SQUARE_PATH_RATIO is seamless.
         points = (
-            (target[0], target[1] - radius),
-            (target[0] + radius, target[1]),
             (target[0], target[1] + radius),
             (target[0] - radius, target[1]),
             (target[0], target[1] - radius),
+            (target[0] + radius, target[1]),
+            (target[0], target[1] + radius),
         )
         start = points[segment]
         end = points[segment + 1]

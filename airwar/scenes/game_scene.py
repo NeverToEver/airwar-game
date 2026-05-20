@@ -884,6 +884,11 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         Args:
             surface: pygame rendering surface.
         """
+        is_docked_render = self._mother_ship_integrator and self._mother_ship_integrator.is_docked()
+        if self.game_renderer:
+            self.game_renderer.entity_renderer.player_docked = is_docked_render
+        self._ui_manager._entity_renderer.player_docked = is_docked_render
+
         self._ui_manager.render_game(
             surface,
             self.player,
@@ -928,7 +933,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             self._mother_ship_integrator.render(surface)
 
         boss = self.spawn_controller.boss if self.spawn_controller else None
-        self._boss_enrage_renderer.render(surface, boss)
+        if not is_docked_render:
+            self._boss_enrage_renderer.render(surface, boss)
 
         self._game_loop_manager.render_explosions(surface)
         self._input_coordinator.render_give_up(surface)

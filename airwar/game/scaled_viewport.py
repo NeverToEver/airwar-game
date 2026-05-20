@@ -5,7 +5,11 @@ import pygame
 
 
 class ScaledViewport:
-    """Render a fixed logical surface into an arbitrary display surface."""
+    """Render a fixed logical surface into an arbitrary display surface.
+
+    With the pygame SCALED flag, SDL2's GPU-accelerated renderer handles
+    window-level scaling, so this viewport only needs a 1:1 blit.
+    """
 
     def __init__(self, logical_w: int = 1920, logical_h: int = 1080):
         self.logical_size = (logical_w, logical_h)
@@ -14,9 +18,10 @@ class ScaledViewport:
         self._logical_surface = pygame.Surface((logical_w, logical_h), pygame.SRCALPHA)
 
     def update(self, display_w: int, display_h: int) -> None:
-        scale_x = display_w / self.logical_size[0]
-        scale_y = display_h / self.logical_size[1]
-        self._scale = min(scale_x, scale_y)
+        self._scale = min(
+            display_w / self.logical_size[0],
+            display_h / self.logical_size[1],
+        )
         self._offset = (
             (display_w - self.logical_size[0] * self._scale) / 2,
             (display_h - self.logical_size[1] * self._scale) / 2,
@@ -31,17 +36,10 @@ class ScaledViewport:
         )
 
     def present(self, display_surface: pygame.Surface) -> None:
-        scaled_size = (
-            int(self.logical_size[0] * self._scale),
-            int(self.logical_size[1] * self._scale),
-        )
-        display_surface.fill((0, 0, 0))
-        if scaled_size == self.logical_size:
-            display_surface.blit(self._logical_surface, self._offset)
-            return
-
-        scaled = pygame.transform.scale(self._logical_surface, scaled_size)
-        display_surface.blit(scaled, self._offset)
+        # The SCALED flag means SDL2's GPU renderer handles scaling.
+        # The display surface is always at the logical resolution, so a
+        # 1:1 blit is all that's needed; SDL2 scales to the actual window.
+        display_surface.blit(self._logical_surface, (0, 0))
 
     @property
     def logical_surface(self) -> pygame.Surface:
