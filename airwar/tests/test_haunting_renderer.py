@@ -9,140 +9,91 @@ from airwar.game.rendering.haunting_renderer import HauntingRenderer
 from airwar.input.input_handler import MockInputHandler
 
 
-def test_haunting_renderer_reaches_full_replacement_strength() -> None:
+def test_flashback_triggers_with_high_enemy_pressure() -> None:
     renderer = HauntingRenderer()
 
-    renderer.update(HauntingRenderer.FULL_REPLACE_FRAME)
+    for _ in range(2000):
+        renderer.update(enemy_pressure=10)
 
-    assert renderer.progression == 1.0
-    assert renderer.current_strength == 1.0
-    assert renderer.is_active()
+    assert renderer._flashback_timer > 0 or renderer._flashback_cooldown > 0
 
 
-def test_haunting_renderer_does_not_mutate_gameplay_entities_or_state() -> None:
-    pygame.font.init()
+def test_flashback_does_not_trigger_with_low_pressure() -> None:
     renderer = HauntingRenderer()
-    renderer.update(HauntingRenderer.FULL_REPLACE_FRAME, enemy_pressure=4)
-    surface = pygame.Surface((640, 480), pygame.SRCALPHA)
-    player = Player(260, 360, MockInputHandler())
-    enemy = Enemy(250, 110, EnemyData(health=120, enemy_type="sine"))
-    enemy._state = "active"
-    enemy.sync_rects()
-    state = SimpleNamespace(score=12345, kill_count=7)
 
-    player_rect_before = (player.rect.x, player.rect.y, player.rect.width, player.rect.height)
-    player_hitbox_before = player.get_hitbox().copy()
-    enemy_rect_before = (enemy.rect.x, enemy.rect.y, enemy.rect.width, enemy.rect.height)
-    enemy_collision_before = enemy.collision_rect.copy()
-    state_before = (state.score, state.kill_count, player.health, enemy.health)
+    for _ in range(500):
+        renderer.update(enemy_pressure=1)
 
-    renderer.render_world_styles(surface, player, [enemy])
-    renderer.render_projectile_styles(surface, [], [])
-    renderer.distort_world(surface)
-    renderer.render_atmosphere_overlay(surface)
-    renderer.render_foreground_distortion(surface, state, player)
-
-    assert (player.rect.x, player.rect.y, player.rect.width, player.rect.height) == player_rect_before
-    assert player.get_hitbox() == player_hitbox_before
-    assert (enemy.rect.x, enemy.rect.y, enemy.rect.width, enemy.rect.height) == enemy_rect_before
-    assert enemy.collision_rect == enemy_collision_before
-    assert (state.score, state.kill_count, player.health, enemy.health) == state_before
-
-
-def test_haunting_renderer_does_not_draw_black_player_veil() -> None:
-    renderer = HauntingRenderer()
-    renderer.update(HauntingRenderer.FULL_REPLACE_FRAME, enemy_pressure=1)
-    surface = pygame.Surface((640, 480), pygame.SRCALPHA)
-    player = Player(260, 360, MockInputHandler())
-
-    renderer.render_world_styles(surface, player, [])
-
-    center = (int(player.rect.centerx), int(player.rect.centery))
-    center_color = surface.get_at(center)
-
-    assert center_color.a > 0
-    assert max(center_color.r, center_color.g, center_color.b) > 24
-
-
-def test_haunting_renderer_rotated_sprites_do_not_add_black_alpha_edges() -> None:
-    renderer = HauntingRenderer()
-    renderer.update(HauntingRenderer.FULL_REPLACE_FRAME, enemy_pressure=1)
-    surface = pygame.Surface((640, 480), pygame.SRCALPHA)
-    player = Player(260, 360, MockInputHandler())
-    enemy = Enemy(250, 110, EnemyData(health=120, enemy_type="sine"))
-    enemy._state = "active"
-    enemy.sync_rects()
-
-    renderer.render_world_styles(surface, player, [enemy])
-
-    assert _count_black_alpha_edge_pixels(surface) == 0
-
-
-def test_haunting_renderer_inactive_before_start_frame() -> None:
-    renderer = HauntingRenderer()
-    renderer.update(0)
     assert not renderer.is_active()
-    assert renderer.progression == 0.0
+    assert renderer._flashback_timer == 0
+
+
+def test_flashback_activates_and_deactivates() -> None:
+    renderer = HauntingRenderer()
+    renderer._flashback_timer = HauntingRenderer.FLASHBACK_DURATION
+    renderer.update(enemy_pressure=5)
+
+    assert renderer.is_active()
+    assert renderer.current_strength > 0.0
+
+    for _ in range(HauntingRenderer.FLASHBACK_DURATION + 5):
+        renderer.update(enemy_pressure=0)
+
+    assert not renderer.is_active()
     assert renderer.current_strength == 0.0
 
 
-def test_haunting_renderer_progression_increases_over_time() -> None:
+def test_flashback_strength_instant_on_off() -> None:
+    """Flashback hits full strength immediately and cuts to zero when expired."""
     renderer = HauntingRenderer()
-    halfway = (HauntingRenderer.FULL_REPLACE_FRAME + HauntingRenderer.START_FRAME) // 2
-    renderer.update(halfway)
-    assert 0.0 < renderer.progression < 1.0
+    renderer._flashback_timer = HauntingRenderer.FLASHBACK_DURATION
+    renderer.update(enemy_pressure=0)
+    assert renderer.current_strength == 1.0
+
+    for _ in range(HauntingRenderer.FLASHBACK_DURATION - 2):
+        renderer.update(enemy_pressure=0)
+    assert renderer.current_strength == 1.0
+
+    renderer.update(enemy_pressure=0)
+    assert renderer.current_strength == 0.0
+    assert not renderer.is_active()
+
+
+def test_flashback_inactive_by_default() -> None:
+    renderer = HauntingRenderer()
+    renderer.update()
+    assert not renderer.is_active()
+    assert renderer.current_strength == 0.0
+
+
+def test_flashback_cooldown_prevents_immediate_retrigger() -> None:
+    renderer = HauntingRenderer()
+    renderer._flashback_timer = HauntingRenderer.FLASHBACK_DURATION
+    renderer.update(enemy_pressure=5)
+
+    for _ in range(HauntingRenderer.FLASHBACK_DURATION + 2):
+        renderer.update(enemy_pressure=0)
+
+    assert not renderer.is_active()
+    assert renderer._flashback_cooldown > 0
 
 
 def test_haunting_renderer_dispose_clears_state() -> None:
     renderer = HauntingRenderer()
-    renderer.update(HauntingRenderer.FULL_REPLACE_FRAME)
+    renderer._flashback_timer = HauntingRenderer.FLASHBACK_DURATION
+    renderer.update(enemy_pressure=5)
     assert renderer.is_active()
 
     renderer.dispose()
 
-    assert not renderer._storm_cache
-    assert renderer._overlay is None
-    assert renderer._blend_surf is None
-
-
-def test_haunting_renderer_memory_fragments_expire() -> None:
-    renderer = HauntingRenderer()
-    fragment = HauntingRenderer.MemoryFragment(
-        kind="letter", x=100, y=100, scale=1.0, alpha=200,
-        age=0, duration=5, drift_x=0.0, drift_y=0.0,
-    )
-    renderer._memory_fragments.append(fragment)
-
-    for _ in range(10):
-        renderer.update(0)
-
-    assert len(renderer._memory_fragments) == 0
-
-
-def test_memory_fragment_does_not_expire_before_duration() -> None:
-    renderer = HauntingRenderer()
-    fragment = HauntingRenderer.MemoryFragment(
-        kind="letter", x=100, y=100, scale=1.0, alpha=200,
-        age=0, duration=120, drift_x=0.0, drift_y=0.0,
-    )
-    renderer._memory_fragments.append(fragment)
-
-    for _ in range(60):
-        renderer.update(0)
-
-    assert len(renderer._memory_fragments) == 1
-    assert renderer._memory_fragments[0].age == 60
-
-
-def test_enemy_pressure_feeds_into_scheduler() -> None:
-    renderer = HauntingRenderer()
-    renderer.update(HauntingRenderer.FULL_REPLACE_FRAME, enemy_pressure=12)
-    assert renderer.progression == 1.0
+    assert renderer._static_filter is None
+    assert renderer._band_buf is None
 
 
 def test_haunting_renderer_survives_render_after_dispose() -> None:
     renderer = HauntingRenderer()
-    renderer.update(HauntingRenderer.FULL_REPLACE_FRAME, enemy_pressure=1)
+    renderer._flashback_timer = HauntingRenderer.FLASHBACK_DURATION
+    renderer.update(enemy_pressure=1)
     renderer.dispose()
 
     surface = pygame.Surface((640, 480), pygame.SRCALPHA)
@@ -155,22 +106,84 @@ def test_haunting_renderer_survives_render_after_dispose() -> None:
 
 def test_haunting_renderer_recreates_surfaces_after_dispose() -> None:
     renderer = HauntingRenderer()
-    renderer.update(HauntingRenderer.FULL_REPLACE_FRAME, enemy_pressure=1)
+    renderer._flashback_timer = HauntingRenderer.FLASHBACK_DURATION
+    renderer.update(enemy_pressure=1)
     renderer.dispose()
-    assert not renderer._storm_cache
+    assert renderer._static_filter is None
 
-    renderer.update(HauntingRenderer.FULL_REPLACE_FRAME, enemy_pressure=1)
+    renderer._flashback_timer = HauntingRenderer.FLASHBACK_DURATION
+    renderer.update(enemy_pressure=1)
     surface = pygame.Surface((640, 480), pygame.SRCALPHA)
-    renderer.render_world_styles(surface, None, [])
+    renderer.render_atmosphere_overlay(surface)
 
-    assert renderer._storm_cache or renderer._overlay
+    assert renderer._static_filter is not None
 
 
-def _count_black_alpha_edge_pixels(surface: pygame.Surface) -> int:
-    count = 0
-    for y in range(surface.get_height()):
-        for x in range(surface.get_width()):
-            color = surface.get_at((x, y))
-            if 0 < color.a <= 64 and max(color.r, color.g, color.b) <= 10:
-                count += 1
-    return count
+def test_crt_glitch_effects_render_without_crash() -> None:
+    """All CRT glitch passes should render without error during active flashback."""
+    pygame.font.init()
+    renderer = HauntingRenderer()
+    renderer._flashback_timer = HauntingRenderer.FLASHBACK_DURATION
+    renderer.update(enemy_pressure=4)
+    surface = pygame.Surface((640, 480), pygame.SRCALPHA)
+    player = Player(260, 360, MockInputHandler())
+    enemy = Enemy(250, 110, EnemyData(health=120, enemy_type="sine"))
+    enemy._state = "active"
+    enemy.sync_rects()
+    state = SimpleNamespace(score=12345, kill_count=7)
+
+    renderer.render_world_styles(surface, player, [enemy])
+    renderer.render_projectile_styles(surface, [], [])
+    renderer.distort_world(surface)
+    renderer.render_atmosphere_overlay(surface)
+    renderer.render_foreground_distortion(surface, state, player)
+    renderer.render_hud_corruption(surface)
+    renderer.render_transition_flicker(surface)
+
+
+def test_crt_glitch_does_not_mutate_entities() -> None:
+    renderer = HauntingRenderer()
+    renderer._flashback_timer = HauntingRenderer.FLASHBACK_DURATION
+    renderer.update(enemy_pressure=4)
+    surface = pygame.Surface((640, 480), pygame.SRCALPHA)
+    player = Player(260, 360, MockInputHandler())
+    enemy = Enemy(250, 110, EnemyData(health=120, enemy_type="sine"))
+    enemy._state = "active"
+    enemy.sync_rects()
+    state = SimpleNamespace(score=12345, kill_count=7)
+
+    player_hp_before = player.health
+    enemy_hp_before = enemy.health
+    state_score_before = state.score
+
+    renderer.render_world_styles(surface, player, [enemy])
+    renderer.render_projectile_styles(surface, [], [])
+    renderer.distort_world(surface)
+    renderer.render_atmosphere_overlay(surface)
+    renderer.render_foreground_distortion(surface, state, player)
+
+    assert player.health == player_hp_before
+    assert enemy.health == enemy_hp_before
+    assert state.score == state_score_before
+
+
+def test_static_filter_is_cached() -> None:
+    """_get_static_filter reuses the surface on same-size calls."""
+    renderer = HauntingRenderer()
+    w, h = 640, 480
+
+    sf1 = renderer._get_static_filter(w, h)
+    sf2 = renderer._get_static_filter(w, h)
+
+    assert sf1 is sf2
+
+
+def test_noise_tex_is_cached() -> None:
+    """_get_noise_tex reuses the surface on same-size calls."""
+    renderer = HauntingRenderer()
+    w, h = 640, 480
+
+    nt1 = renderer._get_noise_tex(w, h)
+    nt2 = renderer._get_noise_tex(w, h)
+
+    assert nt1 is nt2

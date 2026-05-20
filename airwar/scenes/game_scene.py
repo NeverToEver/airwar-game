@@ -445,7 +445,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             enemy_pressure += 3
         if self.spawn_controller.enemy_bullets:
             enemy_pressure += min(8, len(self.spawn_controller.enemy_bullets) // 6)
-        self._haunting_renderer.update(self._survival_frames, enemy_pressure)
+        self._haunting_renderer.update(enemy_pressure)
 
     def _should_suppress_haunting(self) -> bool:
         """Suppress haunting visuals when player is inside or near mothership."""
