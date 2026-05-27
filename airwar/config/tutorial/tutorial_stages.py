@@ -4,6 +4,8 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class TutorialStage:
+    """Configuration for a single tutorial stage."""
+
     id: str
     title: str
     instructions: list[str]

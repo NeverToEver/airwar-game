@@ -13,6 +13,8 @@ from airwar.core_bindings import (
 
 
 class AimAssistSystem:
+    """Mouse-driven aiming with auto-aim assist and smoothing."""
+
     AIM_ASSIST_BREAK_DISTANCE = 38.0
     AIM_ASSIST_SWITCH_DISTANCE = 90.0
     AIM_ASSIST_RELEASE_DISTANCE = 230.0

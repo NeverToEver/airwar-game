@@ -8,8 +8,8 @@ import pygame
 from airwar.utils.fonts import get_cjk_font
 from airwar.utils.mouse_interaction import MouseSelectableMixin
 from airwar.config.design_tokens import SceneColors, SystemUI, get_design_tokens
-from airwar.ui.chamfered_panel import draw_chamfered_panel
-from airwar.ui.scene_rendering_utils import fit_text_to_width, wrap_text
+from .chamfered_panel import draw_chamfered_panel
+from .scene_rendering_utils import fit_text_to_width, wrap_text
 
 
 class RewardSelector(MouseSelectableMixin):
@@ -176,6 +176,8 @@ class RewardSelector(MouseSelectableMixin):
             return
 
         if event.type == pygame.KEYDOWN:
+            if not self.options:
+                return
             if event.key in (pygame.K_UP, pygame.K_w):
                 self.selected_index = (self.selected_index - 1) % len(self.options)
             elif event.key in (pygame.K_DOWN, pygame.K_s):

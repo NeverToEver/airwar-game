@@ -4,6 +4,8 @@ import pygame
 
 
 class BossEnrageRenderer:
+    """Renders boss enrage screen distortion overlay."""
+
     def __init__(self) -> None:
         self._enrage_overlay_cache = None
         self._enrage_overlay_cache_key = None

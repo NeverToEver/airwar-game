@@ -1,4 +1,4 @@
-"""分段进度条组件 - 军事风格 HUD"""
+"""Segmented progress bar component — military HUD style."""
 import pygame
 from typing import Tuple
 from airwar.config.design_tokens import SystemColors, SystemUI
@@ -6,7 +6,7 @@ from airwar.utils.fonts import get_cjk_font
 
 
 class SegmentedProgressBar:
-    """分段进度条组件，支持军事风格样式"""
+    """Segmented progress bar with military-style rendering."""
 
     def __init__(
         self,
@@ -15,13 +15,13 @@ class SegmentedProgressBar:
         segments: int = 10,
         segment_gap: int = None
     ):
-        """初始化分段进度条
+        """Initialize the segmented progress bar.
 
         Args:
-            width: 总宽度
-            height: 条高度
-            segments: 分段数量
-            segment_gap: 段间距
+            width: Total width.
+            height: Bar height.
+            segments: Number of segments.
+            segment_gap: Gap between segments.
         """
         self.width = width
         self.height = height
@@ -42,18 +42,18 @@ class SegmentedProgressBar:
         border_color: Tuple[int, int, int] = None,
         is_chamfered: bool = False
     ) -> None:
-        """渲染分段进度条
+        """Render the segmented progress bar.
 
         Args:
-            surface: 目标 surface
-            x: x 坐标
-            y: y 坐标
-            value: 当前值
-            max_value: 最大值
-            fill_color: 填充颜色
-            bg_color: 背景颜色
-            border_color: 边框颜色
-            is_chamfered: 是否使用切角样式
+            surface: Target surface.
+            x: X coordinate.
+            y: Y coordinate.
+            value: Current value.
+            max_value: Maximum value.
+            fill_color: Fill color.
+            bg_color: Background color.
+            border_color: Border color.
+            is_chamfered: Whether to use chamfered (cut-corner) style.
         """
         if fill_color is None:
             fill_color = SystemColors.HEALTH_MEDIUM
@@ -91,7 +91,7 @@ class SegmentedProgressBar:
         fill_color: Tuple[int, int, int],
         border_color: Tuple[int, int, int]
     ) -> None:
-        """绘制切角段"""
+        """Draw a chamfered (cut-corner) segment."""
         cache_key = (self.segment_width, self.height, fill_color, border_color)
         if cache_key not in self._rendered_cache:
             chamfer = min(3, rect.width // 4, rect.height // 2)
@@ -124,18 +124,18 @@ class SegmentedProgressBar:
         bg_color: Tuple[int, int, int] = None,
         is_chamfered: bool = False
     ) -> None:
-        """渲染带发光效果的进度条
+        """Render a progress bar with a glow effect.
 
         Args:
-            surface: 目标 surface
-            x: x 坐标
-            y: y 坐标
-            value: 当前值
-            max_value: 最大值
-            glow_color: 发光颜色
-            fill_color: 填充颜色
-            bg_color: 背景颜色
-            is_chamfered: 是否使用切角样式
+            surface: Target surface.
+            x: X coordinate.
+            y: Y coordinate.
+            value: Current value.
+            max_value: Maximum value.
+            glow_color: Glow color (RGBA).
+            fill_color: Fill color.
+            bg_color: Background color.
+            is_chamfered: Whether to use chamfered style.
         """
         if glow_color is None:
             glow_color = SystemColors.AMBER_GLOW
@@ -169,15 +169,15 @@ class SegmentedProgressBar:
         max_value: float,
         pulse_alpha: int
     ) -> None:
-        """渲染危险状态脉冲效果（用于低血量）
+        """Render a danger pulse effect for low health.
 
         Args:
-            surface: 目标 surface
-            x: x 坐标
-            y: y 坐标
-            value: 当前值
-            max_value: 最大值
-            pulse_alpha: 脉冲透明度 0-255
+            surface: Target surface.
+            x: X coordinate.
+            y: Y coordinate.
+            value: Current value.
+            max_value: Maximum value.
+            pulse_alpha: Pulse opacity (0-255).
         """
         danger_color = SystemColors.DANGER_RED
 
@@ -194,14 +194,14 @@ class SegmentedProgressBar:
 
 
 class BossHealthBar:
-    """Boss 血条组件 - 军事风格"""
+    """Boss health bar component — military style."""
 
     def __init__(self, width: int = 600, height: int = 30):
-        """初始化 Boss 血条
+        """Initialize the Boss health bar.
 
         Args:
-            width: 总宽度
-            height: 条高度
+            width: Total width.
+            height: Bar height.
         """
         self.width = width
         self.height = height
@@ -226,18 +226,18 @@ class BossHealthBar:
         total_phases: int = 3,
         font: pygame.font.Font = None
     ) -> None:
-        """渲染 Boss 血条
+        """Render the Boss health bar.
 
         Args:
-            surface: 目标 surface
-            x: x 坐标
-            y: y 坐标
-            current_hp: 当前血量
-            max_hp: 最大血量
-            boss_name: Boss 名称
-            current_phase: 当前阶段
-            total_phases: 总阶段数
-            font: 字体
+            surface: Target surface.
+            x: X coordinate.
+            y: Y coordinate.
+            current_hp: Current health points.
+            max_hp: Maximum health points.
+            boss_name: Boss display name.
+            current_phase: Current phase number.
+            total_phases: Total number of phases.
+            font: Font to use.
         """
         if font is None:
             font = self._default_font
@@ -253,7 +253,7 @@ class BossHealthBar:
         pygame.draw.rect(surface, SystemColors.BORDER_DIM, bg_rect, 1, border_radius=2)
 
         # 绘制分段血条
-        ratio = min(current_hp / max_hp, 1.0)
+        ratio = min(current_hp / max_hp, 1.0) if max_hp > 0 else 0.0
 
         # 根据血量选择颜色
         if ratio > 0.6:

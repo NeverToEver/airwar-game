@@ -1,9 +1,11 @@
 """Ammo magazine UI — vertical sci-fi ammunition rack for mothership cooldown/duration."""
+import contextlib
 import math
+
 import pygame
+
 from airwar.utils.fonts import get_cjk_font
 from airwar.config.design_tokens import SystemColors
-import contextlib
 
 
 class AmmoMagazine:

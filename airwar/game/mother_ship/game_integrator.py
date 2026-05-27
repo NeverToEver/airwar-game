@@ -26,8 +26,8 @@ from .event_bus import (
 from airwar.entities.bullet import Bullet
 from airwar.entities.base import BulletData
 from airwar.config import get_screen_width, get_screen_height
-from airwar.game.rendering.entity_renderer import EntityRenderer
-from airwar.game.systems.lock_manager import LockLayer, LockRequest
+from ..rendering.entity_renderer import EntityRenderer
+from ..systems.lock_manager import LockLayer, LockRequest
 
 if TYPE_CHECKING:
     from .event_bus import EventBus
@@ -38,6 +38,8 @@ if TYPE_CHECKING:
 
 
 class GatlingTurretSpec(NamedTuple):
+    """Specification for a mothership gatling turret."""
+
     name: str
     offset_x: float
     angle_min: float

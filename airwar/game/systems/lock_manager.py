@@ -5,6 +5,8 @@ from enum import IntEnum
 
 
 class LockLayer(IntEnum):
+    """Enum defining lock priority layers for state arbitration."""
+
     HOMECOMING = 100
     MOTHERSHIP = 80
     BOSS_ENRAGE = 60
@@ -22,6 +24,8 @@ class LockRequest:
 
 
 class LockManager:
+    """Centralized arbitration for player invincibility, control locks, and pause blocking."""
+
     def __init__(self, game_state, player=None):
         self._game_state = game_state
         self._player = player

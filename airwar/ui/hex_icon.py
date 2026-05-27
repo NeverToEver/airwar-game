@@ -1,4 +1,4 @@
-"""六边形图标组件 - 军事风格 HUD"""
+"""Hexagonal icon component — military HUD style."""
 import pygame
 import math
 from typing import Tuple
@@ -30,15 +30,15 @@ ICON_COLORS = {
 
 
 def _get_hexagon_points(center: Tuple[float, float], size: float, pointy_top: bool = True) -> list:
-    """计算六边形的6个顶点
+    """Calculate the 6 vertices of a hexagon.
 
     Args:
-        center: 中心点坐标 (x, y)
-        size: 六边形外接圆半径
-        pointy_top: True 为尖顶朝上, False 为平顶朝上
+        center: Center point (x, y).
+        size: Circumradius of the hexagon.
+        pointy_top: True for pointy-top orientation, False for flat-top.
 
     Returns:
-        6个顶点坐标列表
+        List of 6 vertex coordinates.
     """
     points = []
     for i in range(6):
@@ -59,17 +59,17 @@ def draw_hexagon(
     glow_color: Tuple[int, int, int, int] = None,
     pointy_top: bool = True
 ) -> None:
-    """绘制六边形
+    """Draw a hexagon.
 
     Args:
-        surface: 目标 surface
-        center: 中心点坐标
-        size: 六边形外接圆半径
-        fill_color: 填充颜色
-        border_color: 边框颜色 (RGBA)
-        border_width: 边框宽度
-        glow_color: 发光颜色 (RGBA)
-        pointy_top: 是否尖顶朝上
+        surface: Target surface.
+        center: Center point (x, y).
+        size: Circumradius of the hexagon.
+        fill_color: Fill color.
+        border_color: Border color (RGBA).
+        border_width: Border width.
+        glow_color: Glow color (RGBA).
+        pointy_top: Whether to use pointy-top orientation.
     """
     points = _get_hexagon_points(center, size, pointy_top)
 
@@ -103,15 +103,15 @@ def draw_icon(
     color: Tuple[int, int, int] = None,
     glow: bool = False
 ) -> None:
-    """绘制图标符号
+    """Draw an icon symbol.
 
     Args:
-        surface: 目标 surface
-        icon_type: 图标类型 (ICON_POWER, ICON_DEFENSE 等)
-        center: 中心点坐标
-        size: 图标大小
-        color: 颜色，默认根据类型自动选择
-        glow: 是否发光
+        surface: Target surface.
+        icon_type: Icon type (ICON_POWER, ICON_DEFENSE, etc.).
+        center: Center point (x, y).
+        size: Icon size.
+        color: Color; defaults to auto-selection based on type.
+        glow: Whether to add glow effect.
     """
     if color is None:
         color = ICON_COLORS.get(icon_type, SystemColors.AMBER_PRIMARY)
@@ -135,7 +135,7 @@ def _draw_icon_shape(
     color: Tuple[int, int, int],
     line_width: int
 ) -> None:
-    """绘制图标形状"""
+    """Draw the icon shape."""
     cx, cy = center
 
     if icon_type == ICON_POWER:
@@ -242,7 +242,7 @@ def _draw_icon_shape(
 
 
 class HexIcon:
-    """六边形图标组件"""
+    """Hexagonal icon component."""
 
     def __init__(
         self,
@@ -254,16 +254,16 @@ class HexIcon:
         is_active: bool = True,
         is_max_level: bool = False
     ):
-        """初始化六边形图标
+        """Initialize the hexagonal icon.
 
         Args:
-            icon_type: 图标类型
-            size: 图标大小
-            fill_color: 填充颜色
-            border_color: 边框颜色
-            glow_color: 发光颜色
-            is_active: 是否激活
-            is_max_level: 是否满级（显示金色高亮）
+            icon_type: Icon type.
+            size: Icon size.
+            fill_color: Fill color.
+            border_color: Border color.
+            glow_color: Glow color.
+            is_active: Whether the icon is active.
+            is_max_level: Whether at max level (shows gold highlight).
         """
         self.icon_type = icon_type
         self.size = size
@@ -279,12 +279,12 @@ class HexIcon:
         center: Tuple[float, float],
         icon_color: Tuple[int, int, int] = None
     ) -> None:
-        """渲染图标
+        """Render the icon.
 
         Args:
-            surface: 目标 surface
-            center: 中心点坐标
-            icon_color: 图标颜色，默认根据类型自动选择
+            surface: Target surface.
+            center: Center point (x, y).
+            icon_color: Icon color; defaults to auto-selection based on type.
         """
         if icon_color is None:
             icon_color = ICON_COLORS.get(self.icon_type, SystemColors.AMBER_PRIMARY)
@@ -329,15 +329,15 @@ class HexIcon:
         level: int = None,
         icon_color: Tuple[int, int, int] = None
     ) -> None:
-        """渲染图标和标签
+        """Render the icon with a label.
 
         Args:
-            surface: 目标 surface
-            center: 中心点坐标
-            label: 标签文字
-            font: 字体
-            level: 等级数字
-            icon_color: 图标颜色
+            surface: Target surface.
+            center: Center point (x, y).
+            label: Label text.
+            font: Font to use.
+            level: Level number.
+            icon_color: Icon color.
         """
         # 渲染图标
         self.render(surface, center, icon_color)

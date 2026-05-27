@@ -6,7 +6,7 @@ from airwar.config.design_tokens import get_design_tokens, SceneColors
 
 
 class _ScanBeam:
-    """单个雷达扫描束 — 带随机目标点和平滑插值移动。"""
+    """Single radar scan beam with random target and smooth interpolation."""
 
     def __init__(self, orientation: str, screen_size: float):
         self.orientation = orientation
@@ -30,13 +30,13 @@ class _ScanBeam:
 
 
 class MenuBackground:
-    """菜单背景渲染器 — 渐变背景、雷达扫描束、微粒、光斑。
+    """Menu background renderer — gradient background, radar scan beams, particles, light spots.
 
-    性能优化：
-    - 预渲染渐变背景到缓存
-    - 扫描束发光表面缓存
-    - 限制微粒数量
-    - 全部动画使用数学计算，无表面重建
+    Performance optimizations:
+    - Pre-rendered gradient background cached
+    - Scan beam glow surfaces cached
+    - Particle count limited
+    - All animations use math calculations, no surface rebuilding
     """
 
     _gradient_cache = {}
@@ -61,7 +61,7 @@ class MenuBackground:
         self._init_light_spots()
 
     def _ensure_cached_surfaces(self, width: int, height: int):
-        """确保缓存的表面尺寸与屏幕尺寸匹配"""
+        """Ensure cached surfaces match the current screen size."""
         if self._screen_size == (width, height):
             return
         self._screen_size = (width, height)
@@ -91,7 +91,7 @@ class MenuBackground:
         return MenuBackground._light_surface_cache[cache_key]
 
     def _init_leaves_far(self):
-        """初始化远景叶子"""
+        """Initialize far-background leaf layer."""
         self._leaves_far = []
         for _ in range(6):
             self._leaves_far.append({
@@ -105,15 +105,15 @@ class MenuBackground:
             })
 
     def _init_particles(self):
-        """初始化浮动微粒"""
+        """Initialize floating particles."""
         self._particles = []
 
     def _init_light_spots(self):
-        """初始化光斑"""
+        """Initialize light spots."""
         self._light_spots = []
 
     def _ensure_scan_beams(self, width: int, height: int) -> None:
-        """确保扫描束已按屏幕尺寸初始化"""
+        """Ensure scan beams are initialized for the screen size."""
         if self._scan_beams_initialized:
             return
         self._scan_beams = []
@@ -125,7 +125,7 @@ class MenuBackground:
         self._scan_beams_initialized = True
 
     def update(self):
-        """更新动画状态"""
+        """Update animation state."""
         self._animation_time += 1
         for beam in self._scan_beams:
             beam.update()
@@ -150,7 +150,7 @@ class MenuBackground:
                 spot['x'] = random.uniform(0.1, 0.9)
 
     def _get_cached_gradient(self, surface: pygame.Surface, bg_color: tuple, gradient_color: tuple) -> pygame.Surface:
-        """获取或创建渐变背景缓存"""
+        """Get or create a cached gradient background surface."""
         width, height = surface.get_size()
         cache_key = (width, height, bg_color, gradient_color)
 
@@ -167,7 +167,7 @@ class MenuBackground:
         return MenuBackground._gradient_cache[cache_key]
 
     def render(self, surface: pygame.Surface, colors: dict):
-        """渲染背景"""
+        """Render the background."""
         # 先清除屏幕
         surface.fill(colors['bg'])
         gradient = self._get_cached_gradient(
@@ -188,11 +188,11 @@ class MenuBackground:
             pygame.draw.circle(surface, star_color(brightness), (x, y), int(star['size']))
 
     def render_themed_style(self, surface: pygame.Surface, colors: dict):
-        """渲染菜单背景
+        """Render the themed menu background.
 
         Args:
-            surface: 目标 surface
-            colors: 颜色配置
+            surface: Target surface.
+            colors: Color configuration dict.
         """
         width, height = surface.get_size()
         bg_color = colors.get('bg', SceneColors.BG_PRIMARY)
@@ -217,7 +217,7 @@ class MenuBackground:
         self._render_particles(surface, width, height)
 
     def _render_light_spots(self, surface: pygame.Surface, width: int, height: int) -> None:
-        """渲染光斑层 - 模拟树隙透光"""
+        """Render light-spot layer simulating light through tree gaps."""
         self._ensure_cached_surfaces(width, height)
         for spot in self._light_spots:
             x = spot['x'] * width
@@ -231,7 +231,7 @@ class MenuBackground:
             surface.blit(light_surf, (int(x - spot_width), 0))
 
     def _render_leaves(self, surface: pygame.Surface, width: int, height: int) -> None:
-        """渲染远景叶子层"""
+        """Render the far-background leaf layer."""
         self._ensure_cached_surfaces(width, height)
         for leaf in self._leaves_far:
             x = leaf['x'] * width
@@ -245,7 +245,7 @@ class MenuBackground:
             surface.blit(leaf_surf, (int(x - size + sway), int(y - size * 1.5)))
 
     def _render_particles(self, surface: pygame.Surface, width: int, height: int) -> None:
-        """渲染浮动微粒层 - 模拟阳光中的尘埃"""
+        """Render floating particle layer simulating dust in sunlight."""
         for p in self._particles:
             x = p['x'] * width
             y = p['y'] * height
@@ -260,7 +260,7 @@ class MenuBackground:
 
     def _get_scan_glow_surface(self, orientation: str, length: int, radius: int,
                                 base_alpha: int) -> pygame.Surface:
-        """获取或创建扫描束发光渐变表面缓存"""
+        """Get or create a cached glow gradient surface for scan beams."""
         cache_key = (orientation, length, radius, base_alpha)
         if cache_key not in MenuBackground._scan_glow_cache:
             thickness = radius * 2 + 4
@@ -287,7 +287,7 @@ class MenuBackground:
 
     def _render_scan_beams(self, surface: pygame.Surface, width: int,
                             height: int) -> None:
-        """渲染雷达扫描束 — 随机目标点、平滑插值、发光渐变。"""
+        """Render radar scan beams with random targets, smooth interpolation, and glow gradients."""
         for beam in self._scan_beams:
             pulse = beam.pulse(self._animation_time)
             glow_radius = int(beam.glow_radius * pulse)

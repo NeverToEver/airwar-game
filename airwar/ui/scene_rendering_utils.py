@@ -6,7 +6,7 @@ and exit_confirm_scene.py into a single utility class.
 
 import pygame
 from typing import List, Optional, Tuple
-from airwar.ui.chamfered_panel import draw_chamfered_panel
+from .chamfered_panel import draw_chamfered_panel
 from airwar.config.design_tokens import SceneColors
 from airwar.utils.responsive import ResponsiveHelper
 

@@ -1,12 +1,14 @@
 """Save restore orchestration for GameScene dependencies."""
 
 from airwar.config import BOOST_CONFIG, VALID_DIFFICULTIES, get_screen_height, get_screen_width
-from airwar.game.constants import GAME_CONSTANTS
-from airwar.game.managers.game_controller import normalize_score
-from airwar.game.systems.talent_balance_manager import TalentBalanceManager
+from ..constants import GAME_CONSTANTS
+from ..managers.game_controller import normalize_score
+from .talent_balance_manager import TalentBalanceManager
 
 
 class SaveRestoreManager:
+    """Handles save/restore of game state via mothership persistence."""
+
     def __init__(self) -> None:
         self._game_controller = None
         self._player = None

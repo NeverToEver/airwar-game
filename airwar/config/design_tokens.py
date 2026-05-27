@@ -1,6 +1,8 @@
 """Design tokens — color themes, typography, spacing, and animation values."""
 from typing import Tuple
 
+from airwar.utils.fonts import get_cjk_font
+
 
 class Colors:
     """Base color theme — cold steel palette matching ship armor."""
@@ -438,11 +440,9 @@ class DesignTokens:
         self.forest = SceneColors
 
     def get_font(self, size: int):
-        from airwar.utils.fonts import get_cjk_font
         return get_cjk_font(size)
 
     def get_scaled_font(self, base_size: int, scale: float):
-        from airwar.utils.fonts import get_cjk_font
         return get_cjk_font(int(base_size * scale))
 
 

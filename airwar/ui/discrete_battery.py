@@ -3,10 +3,10 @@ import pygame
 
 
 class DiscreteBatteryIndicator:
-    """离散分段血量指示器 — 无外壳，仅渲染细密分段。
+    """Discrete segmented health indicator — no shell, renders fine segments only.
 
-    支持 vertical（折叠模式）和 horizontal（展开模式）两种方向。
-    所有有效段使用同一颜色，颜色根据血量比例整体变化。
+    Supports vertical (collapsed) and horizontal (expanded) orientations.
+    All active segments share the same color, which changes based on health ratio.
     """
 
     # Health thresholds
@@ -42,7 +42,7 @@ class DiscreteBatteryIndicator:
         self._max_health = max_health
 
     def _health_color(self, ratio: float):
-        """根据血量比例返回整体颜色。"""
+        """Return the segment color based on health ratio."""
         if ratio > self.GREEN_THRESHOLD:
             return self.HEALTH_GREEN
         elif ratio > self.AMBER_THRESHOLD:

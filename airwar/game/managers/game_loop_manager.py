@@ -2,7 +2,7 @@
 import logging
 from typing import Protocol, Callable, List
 from ..constants import PlayerConstants
-from ...config import get_screen_width, get_screen_height
+from airwar.config import get_screen_width, get_screen_height
 from ..explosion_animation import ExplosionManager
 from .game_controller import GameplayState
 from ..systems.lock_manager import LockLayer, LockRequest

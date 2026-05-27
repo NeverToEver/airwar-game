@@ -1,10 +1,12 @@
 """Background renderer — parallax starfield and rainforest visuals."""
-import pygame
+import contextlib
 import math
 import random
 from typing import List, Tuple
+
+import pygame
+
 from airwar.config.design_tokens import get_design_tokens
-import contextlib
 
 
 class SpaceBackground:

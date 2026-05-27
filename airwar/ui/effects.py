@@ -1,14 +1,14 @@
 """UI effects — visual feedback effects for the interface."""
 import pygame
 from airwar.config.design_tokens import get_design_tokens, SystemColors, SystemUI
-from airwar.ui.chamfered_panel import draw_chamfered_panel
+from .chamfered_panel import draw_chamfered_panel
 from airwar.utils.fonts import get_cjk_font
 from airwar.utils.responsive import ResponsiveHelper
-from airwar.ui.scene_rendering_utils import draw_centered_option_box
+from .scene_rendering_utils import draw_centered_option_box
 
 
 class EffectsRenderer:
-    """特效渲染器 — 负责发光文字等视觉效果"""
+    """Effects renderer for glow text and other visual feedback."""
 
     OPTION_GLOW_LAYERS = 4
     OPTION_GLOW_ALPHA_DIVISOR = 50
@@ -31,7 +31,7 @@ class EffectsRenderer:
         option_height: int = None,
         scale: float = 1.0
     ):
-        """渲染选项框"""
+        """Render an option selection box."""
         if option_width is None:
             option_width = self._tokens.spacing.BOX_WIDTH
         if option_height is None:
@@ -74,18 +74,18 @@ class EffectsRenderer:
         glow_color: tuple = None,
         glow_intensity: float = 1.0
     ):
-        """渲染切角矩形面板（军事风格）
+        """Render a chamfered rectangle panel (military style).
 
         Args:
-            surface: 目标 surface
-            x: 左上角 x 坐标
-            y: 左上角 y 坐标
-            width: 面板宽度
-            height: 面板高度
-            bg_color: 背景颜色
-            border_color: 边框颜色
-            glow_color: 发光颜色
-            glow_intensity: 发光强度 0.0-1.0
+            surface: Target surface.
+            x: Top-left X coordinate.
+            y: Top-left Y coordinate.
+            width: Panel width.
+            height: Panel height.
+            bg_color: Background color.
+            border_color: Border color.
+            glow_color: Glow color.
+            glow_intensity: Glow intensity (0.0-1.0).
         """
         if bg_color is None:
             bg_color = SystemColors.BG_PANEL
@@ -123,16 +123,16 @@ class EffectsRenderer:
         color: tuple = None,
         glow: bool = True
     ):
-        """渲染军事风格文字（带发光）
+        """Render military-style text with optional glow.
 
         Args:
-            surface: 目标 surface
-            text: 文字内容
-            font: 字体
-            x: x 坐标
-            y: y 坐标
-            color: 文字颜色
-            glow: 是否发光
+            surface: Target surface.
+            text: Text content.
+            font: Font to use.
+            x: X coordinate.
+            y: Y coordinate.
+            color: Text color.
+            glow: Whether to add glow effect.
         """
         if color is None:
             color = SystemColors.TEXT_PRIMARY
@@ -157,12 +157,12 @@ class EffectsRenderer:
         rect: pygame.Rect = None,
         alpha: int = None
     ):
-        """渲染扫描线覆盖效果
+        """Render a scanline overlay effect.
 
         Args:
-            surface: 目标 surface
-            rect: 覆盖区域，None 则覆盖整个 surface
-            alpha: 扫描线透明度
+            surface: Target surface.
+            rect: Coverage area; None covers the entire surface.
+            alpha: Scanline opacity.
         """
         if alpha is None:
             alpha = SystemUI.SCANLINE_ALPHA

@@ -377,6 +377,10 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if self._is_homecoming_active():
             return
 
+        # Always update warning banner scroll animation (even during entrance/dying)
+        if self._warning_banner:
+            self._warning_banner.update()
+
         if self._game_loop_manager.is_entrance_playing():
             self._game_loop_manager.update_entrance(self.player)
             if self._mother_ship_integrator:
@@ -390,10 +394,6 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             if self._mother_ship_integrator:
                 self._mother_ship_integrator.update()
             return
-
-        # Always update warning banner scroll animation (even during pause)
-        if self._warning_banner:
-            self._warning_banner.update()
 
         if self.game_controller.state.is_paused or self.reward_selector.visible:
             return

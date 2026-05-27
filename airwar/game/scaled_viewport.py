@@ -28,6 +28,8 @@ class ScaledViewport:
         )
 
     def screen_to_logical(self, screen_x: float, screen_y: float) -> tuple[float, float]:
+        if self._scale <= 0:
+            return (0.0, 0.0)
         x = (screen_x - self._offset[0]) / self._scale
         y = (screen_y - self._offset[1]) / self._scale
         return (

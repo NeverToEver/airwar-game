@@ -1,8 +1,10 @@
 """Warning banner — slide-in tech alert panel for mothership ammo depletion."""
-import math
-import pygame
-from airwar.utils.fonts import get_cjk_font
 import contextlib
+import math
+
+import pygame
+
+from airwar.utils.fonts import get_cjk_font
 
 
 class WarningBanner:

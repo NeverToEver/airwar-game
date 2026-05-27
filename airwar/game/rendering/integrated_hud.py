@@ -1,7 +1,9 @@
 """Integrated HUD — unified heads-up display combining all UI elements."""
-import pygame
-from airwar.utils.fonts import get_cjk_font
 from typing import List
+
+import pygame
+
+from airwar.utils.fonts import get_cjk_font
 from airwar.config.design_tokens import get_design_tokens
 from airwar.ui.buff_display import get_buff_display_name
 from airwar.ui.discrete_battery import DiscreteBatteryIndicator

@@ -4,6 +4,8 @@ import pygame
 
 
 class PauseButtonComponent:
+    """Pause button UI component with click detection."""
+
     PAUSE_BUTTON_SIZE = 44
     PAUSE_BUTTON_MARGIN = 10
     PAUSE_BAR_WIDTH = 5

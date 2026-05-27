@@ -103,7 +103,7 @@ class MotherShipCooldown:
     def update_cooldown(self, current_time: float) -> None:
         if self.is_in_cooldown:
             elapsed = current_time - self.cooldown_start_time
-            self.cooldown_progress = min(elapsed / self.cooldown_duration, 1.0)
+            self.cooldown_progress = min(elapsed / self.cooldown_duration, 1.0) if self.cooldown_duration > 0 else 1.0
             if self.cooldown_progress >= 1.0:
                 self.is_in_cooldown = False
                 self.cooldown_progress = 1.0

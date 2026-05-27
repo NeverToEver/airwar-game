@@ -1,6 +1,6 @@
 """Health and regeneration system for player entities."""
 from typing import TYPE_CHECKING
-from ...config import HEALTH_REGEN
+from airwar.config import HEALTH_REGEN
 from ..constants import GAME_CONSTANTS
 
 if TYPE_CHECKING:

@@ -973,7 +973,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         surface.blit(msg_surf, msg_surf.get_rect(center=(sw // 2, sh - 75)))
 
     def _render_guest_confirm(self, surface):
-        """覆盖确认对话框：游客模式不保存进度"""
+        """Overlay confirmation dialog: guest mode does not save progress."""
         SC = SceneColors
         sw, sh = surface.get_width(), surface.get_height()
 
@@ -1025,7 +1025,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
 
     def _render_delete_confirm(self, surface):
-        """覆盖确认对话框：删除用户账号"""
+        """Overlay confirmation dialog: delete user account."""
         SC = SceneColors
         sw, sh = surface.get_width(), surface.get_height()
 

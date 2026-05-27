@@ -1,7 +1,9 @@
 """Exit confirmation dialog overlay."""
-import pygame
-from airwar.utils.fonts import get_cjk_font
 import math
+
+import pygame
+
+from airwar.utils.fonts import get_cjk_font
 from .scene import Scene, ExitConfirmAction
 from .themed_scene_mixin import ThemedSceneMixin
 from airwar.utils.responsive import ResponsiveHelper
@@ -83,6 +85,9 @@ class ExitConfirmScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
 
     def exit(self) -> None:
         pass
+
+    def update(self, *args, **kwargs) -> None:
+        self.animation_time += 1
 
     def handle_events(self, event: pygame.event.Event) -> None:
         if event.type == pygame.KEYDOWN:

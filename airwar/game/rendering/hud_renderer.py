@@ -180,7 +180,7 @@ class HUDRenderer:
         pygame.draw.rect(surface, (40, 40, 60), (x - 3, y - 3, bar_width + 6, bar_height + 6), border_radius=8)
         pygame.draw.rect(surface, (55, 55, 75), (x, y, bar_width, bar_height), border_radius=6)
 
-        health_ratio = boss.health / boss.max_health
+        health_ratio = boss.health / boss.max_health if boss.max_health > 0 else 0.0
         bar_color = colors.BOSS_HEALTH_HIGH if health_ratio > 0.5 else colors.BOSS_HEALTH_MED if health_ratio > 0.25 else colors.BOSS_HEALTH_LOW
         pygame.draw.rect(surface, bar_color, (x, y, int(bar_width * health_ratio), bar_height), border_radius=6)
 
@@ -238,8 +238,6 @@ class HUDRenderer:
         bar_height = components.HEALTH_BAR_HEIGHT
         x = (surface.get_width() - bar_width) // 2
         y = 15
-
-        boss.health / boss.max_health
 
         # Draw chamfered panel background
         draw_chamfered_panel(

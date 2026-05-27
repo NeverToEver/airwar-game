@@ -4,7 +4,7 @@ import math
 
 import pygame
 
-from airwar.ui.chamfered_panel import draw_chamfered_panel
+from .chamfered_panel import draw_chamfered_panel
 from airwar.utils.fonts import get_cjk_font
 from airwar.utils.sprites import draw_glow_circle, draw_player_ship
 

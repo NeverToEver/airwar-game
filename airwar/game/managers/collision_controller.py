@@ -5,10 +5,9 @@ from typing import Any, List, Tuple, Callable, Optional, TYPE_CHECKING
 from ..constants import GAME_CONSTANTS
 
 if TYPE_CHECKING:
-    from ...entities.player import Player
-    from ...entities.enemy import Enemy
-    from ...entities.enemy import Boss
-    from ...entities.bullet import Bullet
+    from airwar.entities.player import Player
+    from airwar.entities.enemy import Enemy, Boss
+    from airwar.entities.bullet import Bullet
 
 from airwar.core_bindings import (
     batch_collide_bullets_vs_entities,
@@ -233,8 +232,7 @@ class CollisionController:
             if on_enemy_killed:
                 on_enemy_killed(score_gained)
             if on_lifesteal:
-                for _ in range(enemies_killed):
-                    on_lifesteal(player, score_gained)
+                on_lifesteal(player, score_gained)
         
         if not player_invincible and self.check_enemy_bullets_vs_player(
             enemy_bullets,

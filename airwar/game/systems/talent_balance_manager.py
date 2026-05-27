@@ -24,6 +24,8 @@ BUFF_LABELS = {
 
 @dataclass(frozen=True)
 class TalentRouteView:
+    """View of a single talent route's effective levels and selection state."""
+
     route: str
     label: str
     options: tuple[str, ...]

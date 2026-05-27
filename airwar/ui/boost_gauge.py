@@ -1,9 +1,11 @@
 """Boost gauge UI — 270° arc fuel gauge with pointer needle."""
+import contextlib
 import math
+
 import pygame
+
 from airwar.utils.fonts import get_cjk_font
 from airwar.config.design_tokens import get_design_tokens, SystemColors
-import contextlib
 
 
 class BoostGauge:

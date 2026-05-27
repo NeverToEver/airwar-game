@@ -20,7 +20,7 @@ from typing import Protocol
 
 from airwar.core_bindings import batch_update_bullets
 
-from ...config import get_screen_height, get_screen_width
+from airwar.config import get_screen_height, get_screen_width
 
 
 class PlayerProtocol(Protocol):

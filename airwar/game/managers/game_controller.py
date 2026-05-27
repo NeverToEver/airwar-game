@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 from enum import Enum
 import logging
-from ...config import VALID_DIFFICULTIES, RIPPLE_FADE_SPEED
+from airwar.config import VALID_DIFFICULTIES, RIPPLE_FADE_SPEED
 from ..constants import GAME_CONSTANTS
 from ..death_animation import DeathAnimation
 from ..systems.health_system import HealthSystem

@@ -48,7 +48,7 @@ class ExplosionParticle:
 
     def get_alpha(self) -> int:
         """Get alpha value (0-255)"""
-        return int(255 * (self.life / self.max_life))
+        return int(255 * self.life_ratio)
 
     def get_color(self) -> Tuple[int, int, int]:
         """Get color (changes with lifecycle)
@@ -56,7 +56,7 @@ class ExplosionParticle:
         Transitions from orange-red to yellow for main particles.
         Sparks are brighter, debris is grayer.
         """
-        life_ratio = self.life / self.max_life
+        life_ratio = self.life_ratio
 
         if self.particle_type == "spark":
             r = 255

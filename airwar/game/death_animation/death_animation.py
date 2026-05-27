@@ -8,7 +8,7 @@ from airwar.config.design_tokens import Colors
 
 
 class SparkParticle:
-    """火花粒子类，用于死亡动画中的爆炸效果"""
+    """Spark particle used in the death explosion animation."""
 
     def __init__(
         self,
@@ -30,12 +30,12 @@ class SparkParticle:
 
 
 class DeathAnimation:
-    """玩家死亡动画组件
+    """Player death animation component.
 
-    管理死亡时的三种视觉效果：
-    1. 闪烁效果 (0-60帧)：战机位置的红白交替闪烁
-    2. 火花效果 (0-180帧)：从战机位置随机爆发的粒子
-    3. 光晕效果 (60-180帧)：从中心扩散到全屏的白色光晕
+    Manages three visual effects on death:
+    1. Flicker (0-60 frames): red-white alternating flash at the ship position
+    2. Spark (0-180 frames): particles bursting from the ship position
+    3. Glow (60-180 frames): white glow expanding from center to full screen
     """
 
     ANIMATION_DURATION = 200
@@ -80,12 +80,12 @@ class DeathAnimation:
         self._frame_since_last_spark = 0
 
     def trigger(self, x: int, y: int, screen_diagonal: int = 0) -> None:
-        """触发死亡动画
+        """Trigger the death animation.
 
         Args:
-            x: 死亡位置X坐标
-            y: 死亡位置Y坐标
-            screen_diagonal: 屏幕对角线长度，用于光晕效果渲染
+            x: Death position X coordinate.
+            y: Death position Y coordinate.
+            screen_diagonal: Screen diagonal length for glow effect rendering.
         """
         self._active = True
         self._timer = 0
@@ -96,10 +96,10 @@ class DeathAnimation:
         self._screen_diagonal = screen_diagonal
 
     def update(self) -> bool:
-        """更新动画状态
+        """Update animation state.
 
         Returns:
-            True 如果动画仍在进行，False 如果动画已结束
+            True if the animation is still running, False if it has ended.
         """
         if not self._active:
             return False
@@ -121,10 +121,10 @@ class DeathAnimation:
         return True
 
     def render(self, surface) -> None:
-        """渲染死亡动画效果
+        """Render death animation effects.
 
         Args:
-            surface: pygame渲染表面
+            surface: Pygame rendering surface.
         """
         if not self._active:
             return
@@ -150,11 +150,11 @@ class DeathAnimation:
         surface.blit(DeathAnimation._flicker_cache[cache_key], (int(self._center_x - 30), int(self._center_y - 30)))
 
     def is_active(self) -> bool:
-        """检查动画是否处于活跃状态"""
+        """Check whether the animation is currently active."""
         return self._active
 
     def _generate_sparks(self) -> None:
-        """生成新的火花粒子"""
+        """Generate new spark particles."""
         if len(self._sparks) >= self.SPARK_MAX_COUNT:
             return
 
@@ -177,7 +177,7 @@ class DeathAnimation:
             ))
 
     def _update_sparks(self) -> None:
-        """更新所有火花粒子的位置和生命周期"""
+        """Update position and lifetime of all spark particles."""
         for spark in self._sparks:
             spark.x += spark.vx
             spark.y += spark.vy
@@ -186,9 +186,9 @@ class DeathAnimation:
         self._sparks = [s for s in self._sparks if s.life > 0]
 
     def _render_sparks(self, surface) -> None:
-        """渲染火花粒子效果"""
+        """Render spark particle effects."""
         for spark in self._sparks:
-            life_ratio = spark.life / spark.max_life
+            life_ratio = spark.life / spark.max_life if spark.max_life > 0 else 0.0
             alpha = int(self.MAX_SPARK_ALPHA * life_ratio)
 
             if alpha < 10:
@@ -219,21 +219,21 @@ class DeathAnimation:
             )
 
     def _should_show_flicker(self) -> bool:
-        """检查当前帧是否应该显示闪烁效果"""
+        """Check whether the current frame should show a flicker."""
         return self.FLICKER_START_FRAME <= self._timer < self.FLICKER_END_FRAME
 
     def _should_show_glow(self) -> bool:
-        """检查当前帧是否应该显示光晕效果"""
+        """Check whether the current frame should show the glow effect."""
         return self._timer >= self.GLOW_START_FRAME and self._timer < self.GLOW_END_FRAME
 
     def _get_glow_progress(self) -> float:
-        """获取光晕扩散进度 (0.0 - 1.0)"""
+        """Get glow expansion progress (0.0 - 1.0)."""
         if self._timer < self.GLOW_START_FRAME or self._timer >= self.GLOW_END_FRAME:
             return 0.0
         return (self._timer - self.GLOW_START_FRAME) / (self.GLOW_END_FRAME - self.GLOW_START_FRAME)
 
     def _render_glow(self, surface) -> None:
-        """渲染扩散光晕效果"""
+        """Render the expanding glow effect."""
         if not self._should_show_glow():
             return
 

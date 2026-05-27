@@ -1,9 +1,11 @@
 """Give-up UI — surrender progress indicator overlay."""
-import pygame
-from airwar.utils.fonts import get_cjk_font
 import math
+
+import pygame
+
+from airwar.utils.fonts import get_cjk_font
 from airwar.config.design_tokens import get_design_tokens, SceneColors, SystemColors
-from airwar.ui.chamfered_panel import draw_chamfered_panel
+from .chamfered_panel import draw_chamfered_panel
 
 
 class GiveUpUI:

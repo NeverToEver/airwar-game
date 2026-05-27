@@ -1,7 +1,9 @@
 """Death screen — score summary and continue/quit options."""
-import pygame
-from airwar.utils.fonts import get_cjk_font
 import math
+
+import pygame
+
+from airwar.utils.fonts import get_cjk_font
 from .scene import Scene
 from airwar.utils.responsive import ResponsiveHelper
 from airwar.ui.menu_background import MenuBackground

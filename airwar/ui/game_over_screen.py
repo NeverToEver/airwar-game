@@ -4,8 +4,8 @@ from typing import Optional
 import pygame
 from airwar.utils.fonts import get_cjk_font
 from airwar.config.design_tokens import get_design_tokens, SceneColors, SystemUI
-from airwar.ui.chamfered_panel import draw_chamfered_panel
-from airwar.ui.scene_rendering_utils import fit_text_to_width
+from .chamfered_panel import draw_chamfered_panel
+from .scene_rendering_utils import fit_text_to_width
 
 
 class ScreenAction(Enum):

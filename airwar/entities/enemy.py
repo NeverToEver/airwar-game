@@ -1303,7 +1303,8 @@ class Boss(Entity):
         self._update_muzzle_flash()
 
         self._enrage_transition_timer -= 1
-        self._enrage_timer -= 1
+        if self._enrage_transition_timer <= 0:
+            self._enrage_timer -= 1
         if self._enrage_timer <= 0:
             self._enrage_transition_timer = 0
             self._move_behind_player_after_enrage(target)

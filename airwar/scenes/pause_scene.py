@@ -79,6 +79,9 @@ class PauseScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
     def exit(self) -> None:
         pass
 
+    def update(self, *args, **kwargs) -> None:
+        self.animation_time += 1
+
     def handle_events(self, event: pygame.event.Event) -> None:
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:

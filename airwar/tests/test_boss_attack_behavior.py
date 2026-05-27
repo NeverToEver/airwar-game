@@ -145,7 +145,7 @@ def test_boss_enrage_locks_health_at_thirty_percent_until_bullets_release():
     assert boss.health == 300
     assert boss.active is True
 
-    for _ in range(boss.ENRAGE_DURATION):
+    for _ in range(boss.ENRAGE_TRANSITION_DURATION + boss.ENRAGE_DURATION):
         boss.update(player_pos=(500, 400))
 
     assert boss.is_enrage_active() is False
@@ -162,7 +162,7 @@ def test_boss_enrage_reports_player_movement_lock_until_release():
 
     assert boss.should_lock_player_movement() is True
 
-    for _ in range(boss.ENRAGE_DURATION):
+    for _ in range(boss.ENRAGE_TRANSITION_DURATION + boss.ENRAGE_DURATION):
         boss.update(player_pos=(500, 400))
 
     assert boss.should_lock_player_movement() is False
@@ -180,7 +180,7 @@ def test_boss_enrage_release_hold_does_not_recenter_unlocked_player():
 
     player = Player()
     boss.take_damage(700)
-    for _ in range(boss.ENRAGE_DURATION + 1):
+    for _ in range(boss.ENRAGE_TRANSITION_DURATION + boss.ENRAGE_DURATION + 1):
         boss.update(player=player, player_pos=(player.rect.x + 34, player.rect.y + 41))
 
     player.rect.x = 220
@@ -199,7 +199,7 @@ def test_boss_enrage_finishes_at_players_six_oclock_release_anchor():
     boss.take_damage(700)
 
     player_center = (500, 400)
-    for _ in range(boss.ENRAGE_DURATION + 1):
+    for _ in range(boss.ENRAGE_TRANSITION_DURATION + boss.ENRAGE_DURATION + 1):
         boss.update(player_pos=player_center)
 
     assert boss.is_enrage_active() is False
@@ -247,7 +247,7 @@ def test_boss_enrage_releases_held_bullets_gradually_after_flow_finishes():
     boss.take_damage(700)
 
     player_center = (500, 400)
-    for _ in range(boss.ENRAGE_DURATION + 1):
+    for _ in range(boss.ENRAGE_TRANSITION_DURATION + boss.ENRAGE_DURATION + 1):
         boss.update(player_pos=player_center)
 
     held_bullets = [bullet for bullet in collector.bullets if getattr(bullet, "held", False)]
@@ -305,7 +305,7 @@ def test_boss_enrage_uses_snappier_snapshot_cadence_for_urgent_bursts():
     boss.take_damage(700)
 
     player_center = (600, 450)
-    for _ in range(boss.ENRAGE_DURATION + 1):
+    for _ in range(boss.ENRAGE_TRANSITION_DURATION + boss.ENRAGE_DURATION + 1):
         boss.update(player_pos=player_center)
 
     assert 0 < len(collector.bullets) <= 110
@@ -382,7 +382,7 @@ def test_boss_enrage_finish_clears_trail_artifacts():
     boss.take_damage(700)
 
     player_center = (500, 400)
-    for _ in range(boss.ENRAGE_DURATION + 1):
+    for _ in range(boss.ENRAGE_TRANSITION_DURATION + boss.ENRAGE_DURATION + 1):
         boss.update(player_pos=player_center)
 
     assert boss.is_enrage_active() is False
@@ -397,7 +397,7 @@ def test_boss_enrage_visuals_fade_through_release_hold_and_return_without_jump()
     boss.take_damage(700)
 
     player_center = (960, 540)
-    for _ in range(boss.ENRAGE_DURATION + 1):
+    for _ in range(boss.ENRAGE_TRANSITION_DURATION + boss.ENRAGE_DURATION + 1):
         boss.update(player_pos=player_center)
 
     release_center = boss.rect.center

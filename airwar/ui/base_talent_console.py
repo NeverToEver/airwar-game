@@ -5,9 +5,10 @@ import math
 
 import pygame
 
-from airwar.ui.chamfered_panel import draw_chamfered_panel
-from airwar.ui.scene_rendering_utils import fit_text_to_width
+from .chamfered_panel import draw_chamfered_panel
+from .scene_rendering_utils import fit_text_to_width
 from airwar.utils.fonts import get_cjk_font
+from airwar.game.constants import GAME_CONSTANTS
 
 
 BASE_MODULES = ("hangar", "loadout", "supply", "mission")
@@ -384,7 +385,6 @@ class BaseTalentConsole:
             self._draw_status_row(surface, left.x + 20, bar_y + index * row_step, left.w - 40, *row)
 
         # Right side: actionable repair/recharge buttons + info cards
-        from airwar.game.constants import GAME_CONSTANTS
         rp = requisition_points
         repair_cost = GAME_CONSTANTS.REQUISITION.REPAIR_COST
         recharge_cost = GAME_CONSTANTS.REQUISITION.RECHARGE_COST

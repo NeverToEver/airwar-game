@@ -191,7 +191,7 @@ class PersistenceManager(IPersistenceManager):
             return None
         except Exception as e:
             logger.critical(f"Unexpected error loading game: {e}")
-            self.delete_save()
+            return None
             return None
 
     def has_saved_game(self) -> bool:
