@@ -8,7 +8,7 @@ from airwar.game.systems.lock_manager import LockManager
 class _Player:
     def __init__(self):
         self.active = True
-        self.controls_locked = False
+        self.is_controls_locked = False
         self.bullet_damage = 50
         self.fire_interval = 8
         self.rect = SimpleNamespace(centerx=400, centery=500)
@@ -21,7 +21,7 @@ class _Player:
 
     def update(self):
         self.update_calls += 1
-        self.locked_seen_during_update.append(self.controls_locked)
+        self.locked_seen_during_update.append(self.is_controls_locked)
 
     def auto_fire(self):
         self.auto_fire_calls += 1
@@ -99,26 +99,26 @@ def test_game_loop_locks_player_controls_during_boss_enrage_update_only() -> Non
     loop.update_game(player)
 
     assert player.locked_seen_during_update[-1] is True
-    assert player.controls_locked is False
+    assert player.is_controls_locked is False
 
     boss.lock_player = False
     loop.update_game(player)
 
     assert player.locked_seen_during_update[-1] is False
-    assert player.controls_locked is False
+    assert player.is_controls_locked is False
 
 
 def test_game_loop_preserves_external_player_lock_after_boss_enrage_update() -> None:
     boss = _Boss()
     player = _Player()
-    player.controls_locked = True
+    player.is_controls_locked = True
     loop = _make_loop(boss)
 
     boss.lock_player = True
     loop.update_game(player)
 
     assert player.locked_seen_during_update[-1] is True
-    assert player.controls_locked is True
+    assert player.is_controls_locked is True
 
 
 def test_game_loop_makes_player_invincible_only_during_boss_enrage_transition() -> None:
@@ -133,14 +133,14 @@ def test_game_loop_makes_player_invincible_only_during_boss_enrage_transition() 
     boss._enrage_transition_timer = 1
     loop._sync_boss_enrage_lock()
 
-    assert player.controls_locked is True
-    assert state.player_invincible is True
+    assert player.is_controls_locked is True
+    assert state.is_player_invincible is True
 
     boss._enrage_transition_timer = 0
     loop._sync_boss_enrage_lock()
 
-    assert player.controls_locked is True
-    assert state.player_invincible is False
+    assert player.is_controls_locked is True
+    assert state.is_player_invincible is False
 
 
 def test_game_loop_balances_spawn_controller_from_current_player_dps() -> None:

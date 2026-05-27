@@ -103,7 +103,7 @@ class MilestoneManager:
             self._reward_system.unlocked_buffs
         )
         self._show_reward_selection(options, player)
-        self._game_controller.state.paused = True
+        self._game_controller.state.is_paused = True
 
     def _show_reward_selection(self, options: list, player) -> None:
         """Show the reward selector.

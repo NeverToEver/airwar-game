@@ -10,7 +10,7 @@ CURRENT_SAVE_VERSION = 2
 
 
 class SaveDataCorruptedError(Exception):
-    """存档数据损坏异常"""
+    """Raised when save data is corrupted or unreadable."""
     pass
 
 

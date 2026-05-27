@@ -60,7 +60,7 @@ def test_talent_loadout_reapplies_player_abilities_without_stacking() -> None:
     weapon_status = player.get_weapon_status()
     assert weapon_status["laser"] is True
     assert weapon_status["spread"] is False
-    assert player.phase_dash_enabled is False
+    assert player.is_phase_dash_enabled is False
     assert player.mothership_cooldown_mult == 0.5
     assert player.boost_recovery_rate == 1.5
     assert reward_system.locked_buffs == {"Spread Shot", "Phase Dash"}
@@ -214,5 +214,5 @@ def test_restore_from_save_rehydrates_base_talent_loadout_locks() -> None:
     assert scene.reward_system.buff_levels["Mothership Recall"] == 1
     assert scene.reward_system.buff_levels["Phase Dash"] == 0
     assert scene.reward_system.locked_buffs == {"Spread Shot", "Phase Dash"}
-    assert scene.player.phase_dash_enabled is False
+    assert scene.player.is_phase_dash_enabled is False
     assert scene.player.mothership_cooldown_mult == 0.5

@@ -57,6 +57,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
     DIFF_GAP = 8
     PANEL_GAP = 30
     STACKED_PANEL_GAP = 24
+    MESSAGE_DISPLAY_FRAMES = 120
 
     def __init__(self):
         Scene.__init__(self)
@@ -313,19 +314,19 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         else:
             self.message = "请先输入用户名"
             self._is_error = True
-            self.message_timer = 120
+            self.message_timer = self.MESSAGE_DISPLAY_FRAMES
 
     def _do_delete_user(self) -> None:
         if not self.delete_username:
             self.message = "请输入用户名"
             self._is_error = True
-            self.message_timer = 120
+            self.message_timer = self.MESSAGE_DISPLAY_FRAMES
             self.show_delete_confirm = False
             return
         if not self.password:
             self.message = "请输入当前密码后再删除"
             self._is_error = True
-            self.message_timer = 120
+            self.message_timer = self.MESSAGE_DISPLAY_FRAMES
             self.show_delete_confirm = False
             self.focus = 'password'
             return
@@ -335,27 +336,27 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             logger.warning("Failed to delete user account data", exc_info=True)
             self.message = "账户数据保存失败"
             self._is_error = True
-            self.message_timer = 120
+            self.message_timer = self.MESSAGE_DISPLAY_FRAMES
             self.show_delete_confirm = False
             return
         if deleted:
             self.message = f"用户 {self.delete_username} 已删除"
             self._is_error = False
-            self.message_timer = 120
+            self.message_timer = self.MESSAGE_DISPLAY_FRAMES
             self.username = ""
             self.password = ""
             self._load_known_usernames()
         else:
             self.message = "用户不存在或密码错误"
             self._is_error = True
-            self.message_timer = 120
+            self.message_timer = self.MESSAGE_DISPLAY_FRAMES
         self.show_delete_confirm = False
 
     def _do_login(self) -> None:
         if not self.username or not self.password:
             self.message = "请输入用户名和密码"
             self._is_error = True
-            self.message_timer = 120
+            self.message_timer = self.MESSAGE_DISPLAY_FRAMES
             return
         try:
             verified = self.db.verify_user(self.username, self.password)
@@ -363,7 +364,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             logger.warning("Failed to verify user credentials", exc_info=True)
             self.message = "账户数据读取失败"
             self._is_error = True
-            self.message_timer = 120
+            self.message_timer = self.MESSAGE_DISPLAY_FRAMES
             return
         if verified:
             try:
@@ -372,7 +373,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
                 logger.warning("Failed to record user login", exc_info=True)
                 self.message = "账户数据保存失败"
                 self._is_error = True
-                self.message_timer = 120
+                self.message_timer = self.MESSAGE_DISPLAY_FRAMES
                 return
             self.message = ""
             self._is_error = False
@@ -380,23 +381,23 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         else:
             self.message = "用户名或密码错误"
             self._is_error = True
-            self.message_timer = 120
+            self.message_timer = self.MESSAGE_DISPLAY_FRAMES
 
     def _do_register(self) -> None:
         if not self.username or not self.password:
             self.message = "请输入用户名和密码"
             self._is_error = True
-            self.message_timer = 120
+            self.message_timer = self.MESSAGE_DISPLAY_FRAMES
             return
         if len(self.username) < 3:
             self.message = "用户名至少3个字符"
             self._is_error = True
-            self.message_timer = 120
+            self.message_timer = self.MESSAGE_DISPLAY_FRAMES
             return
         if len(self.password) < 3:
             self.message = "密码至少3个字符"
             self._is_error = True
-            self.message_timer = 120
+            self.message_timer = self.MESSAGE_DISPLAY_FRAMES
             return
         try:
             created = self.db.create_user(self.username, self.password)
@@ -404,19 +405,19 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             logger.warning("Failed to create user account", exc_info=True)
             self.message = "账户数据保存失败"
             self._is_error = True
-            self.message_timer = 120
+            self.message_timer = self.MESSAGE_DISPLAY_FRAMES
             return
         if created:
             self.message = "注册成功！现在可以开始游戏了"
             self._is_error = False
-            self.message_timer = 120
+            self.message_timer = self.MESSAGE_DISPLAY_FRAMES
             self.mode = 'login'
             self.password = ""
             self._load_known_usernames()
         else:
             self.message = "用户名已存在"
             self._is_error = True
-            self.message_timer = 120
+            self.message_timer = self.MESSAGE_DISPLAY_FRAMES
 
     def _load_known_usernames(self) -> None:
         try:
@@ -915,11 +916,11 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             pygame.draw.line(surface, SC.GOLD_PRIMARY,
                              (cx, rect.y + 12), (cx, rect.y + rect.height - 12), 2)
 
-    def _draw_button(self, surface, rect, text, btn_name, color, is_primary=False,
+    def _draw_button(self, surface, rect, text, button_name, color, is_primary=False,
                      is_focused=False):
         SC = SceneColors
-        self.register_button(btn_name, rect)
-        hover = self.is_button_hovered(btn_name)
+        self.register_button(button_name, rect)
+        hover = self.is_button_hovered(button_name)
         active = hover or is_focused
 
         btn_color = tuple(min(c + 30, 255) for c in color) if active else color
@@ -938,11 +939,11 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         text_surf = fit_text_to_width(self.button_font, text, text_color, rect.width - 32)
         surface.blit(text_surf, text_surf.get_rect(center=rect.center))
 
-    def _draw_ghost_button(self, surface, rect, text, btn_name):
+    def _draw_ghost_button(self, surface, rect, text, button_name):
         """Ghost-style button — blends into panel, border highlights on hover."""
         SC = SceneColors
-        self.register_button(btn_name, rect)
-        hover = self.is_button_hovered(btn_name)
+        self.register_button(button_name, rect)
+        hover = self.is_button_hovered(button_name)
 
         fill = SC.BG_PANEL if hover else SC.BG_PANEL_LIGHT
         border = SC.GOLD_PRIMARY if hover else SC.BORDER_DIM

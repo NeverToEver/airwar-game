@@ -1,6 +1,6 @@
 """Collision detection between entities using spatial hashing."""
 from dataclasses import dataclass
-from typing import List, Tuple, Callable, Optional, TYPE_CHECKING
+from typing import Any, List, Tuple, Callable, Optional, TYPE_CHECKING
 
 from ..constants import GAME_CONSTANTS
 
@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from ...entities.player import Player
     from ...entities.enemy import Enemy
     from ...entities.enemy import Boss
-    from ...entities.bullet import Bullet, EnemyBullet
+    from ...entities.bullet import Bullet
 
 from airwar.core_bindings import (
     batch_collide_bullets_vs_entities,
@@ -30,8 +30,8 @@ class CollisionResult:
 class CollisionEvent:
     """Collision event dataclass — callback registration for collision handling."""
     type: str
-    source: any = None
-    target: any = None
+    source: Any = None
+    target: Any = None
     damage: int = 0
     score: int = 0
 
@@ -187,8 +187,8 @@ class CollisionController:
         player: 'Player',
         enemies: List['Enemy'],
         boss: Optional['Boss'],
-        enemy_bullets: List['EnemyBullet'],
-        reward_system: any,
+        enemy_bullets: List['Bullet'],
+        reward_system: Any,
         explosive_level: int = 0,
         piercing_level: int = 0,
         player_invincible: bool = False,
@@ -576,7 +576,7 @@ class CollisionController:
         calculate_damage_func: Callable,
         on_player_hit_func: Callable
     ) -> bool:
-        if boss and boss.active and not boss.is_entering():
+        if boss and boss.active and not boss.is_entering:
             player_hitbox = player.get_hitbox()
             if boss.get_hitbox().colliderect(player_hitbox):
                 damage = calculate_damage_func(GAME_CONSTANTS.DAMAGE.BOSS_COLLISION_DAMAGE)

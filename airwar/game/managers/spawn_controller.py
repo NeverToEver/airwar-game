@@ -1,9 +1,9 @@
 """Enemy and boss spawning controller with wave management."""
 import random
 from typing import List, Optional, TYPE_CHECKING
-from airwar.entities import Enemy, Boss, EnemySpawner, BossData, Bullet
+from airwar.entities import Enemy, Boss, EnemySpawner, BossData, Bullet, EnemyState
 from airwar.entities.interfaces import IBulletSpawner
-from airwar.config import get_screen_width, BASE_ENEMY_PARAMS
+from airwar.config import get_screen_width, BASE_ENEMY_PARAMS, DIFFICULTY_SETTINGS
 
 if TYPE_CHECKING:
     from airwar.game.systems.difficulty_manager import DifficultyManager
@@ -61,7 +61,7 @@ class SpawnController:
         self.boss_spawn_interval = settings.get('boss_spawn_interval', self.BOSS_SPAWN_INTERVAL)
         self._base_boss_spawn_interval = self.boss_spawn_interval
         self._escape_penalty_multiplier = settings.get('escape_penalty_multiplier', self.ESCAPE_PENALTY_MULT)
-        self.boss_killed = False
+        self.is_boss_killed = False
         self._bullet_spawner: Optional[IBulletSpawner] = None
         self._difficulty_manager: Optional['DifficultyManager'] = None
 
@@ -71,7 +71,6 @@ class SpawnController:
 
     def set_difficulty(self, difficulty: str) -> None:
         """Re-initialize spawn params from difficulty settings on restore."""
-        from airwar.config import DIFFICULTY_SETTINGS
         settings = DIFFICULTY_SETTINGS.get(difficulty, DIFFICULTY_SETTINGS['medium'])
         self._base_enemy_health = settings['enemy_health']
         self.enemy_spawner.set_params(
@@ -122,7 +121,7 @@ class SpawnController:
     def spawn_boss(self, boss_kill_count: int, bullet_damage: int, player_dps: float = None) -> Boss:
         # Force all existing enemies to exit when boss appears
         for enemy in self.enemies:
-            if enemy.active and getattr(enemy, '_state', None) == 'active':
+            if enemy.active and getattr(enemy, '_state', None) == EnemyState.ACTIVE:
                 enemy.begin_exit(
                     enemy.rect.x + random.choice(self.ENEMY_EXIT_X_OFFSETS),
                     self.ENEMY_EXIT_END_Y
@@ -183,5 +182,5 @@ class SpawnController:
 
     def _handle_boss_cleanup(self) -> None:
         if self.boss and not self.boss.active:
-            self.reset_boss_timer(penalty=self.boss.is_escaped())
+            self.reset_boss_timer(penalty=self.boss.is_escaped)
             self.boss = None

@@ -395,7 +395,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if self._warning_banner:
             self._warning_banner.update()
 
-        if self.game_controller.state.paused or self.reward_selector.visible:
+        if self.game_controller.state.is_paused or self.reward_selector.visible:
             return
 
         docked = False
@@ -512,7 +512,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             self._phase_dash_invincibility_active = True
             self._lock_manager.acquire(
                 LockLayer.PHASE_DASH,
-                LockRequest(invincible=True, silent_invincible=True, invincibility_duration=2),
+                LockRequest(invincible=True, is_silent_invincible=True, invincibility_duration=2),
             )
             return
 
@@ -529,7 +529,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             LockRequest(
                 invincible=True,
                 lock_controls=True,
-                silent_invincible=True,
+                is_silent_invincible=True,
                 invincibility_duration=1200,
             ),
         )
@@ -616,7 +616,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             return False
         if not self.game_controller.is_playing():
             return False
-        if self.game_controller.state.paused or self.reward_selector.visible:
+        if self.game_controller.state.is_paused or self.reward_selector.visible:
             return False
         if self._game_loop_manager and self._game_loop_manager.is_entrance_playing():
             return False
@@ -823,7 +823,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if not self.game_controller or not self.player:
             return
         state = self.game_controller.state
-        state.entrance_animation = True
+        state.is_entrance_playing = True
         state.entrance_timer = 0
         self._sync_lock_manager_targets()
         self._lock_manager.apply_transient_state(
@@ -852,8 +852,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
                 LockRequest(
                     invincible=True,
                     lock_controls=True,
-                    paused=True,
-                    silent_invincible=True,
+                    is_paused=True,
+                    is_silent_invincible=True,
                     invincibility_duration=self.HOMECOMING_LOCK_INVINCIBILITY_TIMER,
                 ),
             )
@@ -995,7 +995,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     def _render_aim_crosshair(self, surface: pygame.Surface) -> None:
         if not self.game_controller or not self.game_controller.is_playing():
             return
-        if self.game_controller.state.paused:
+        if self.game_controller.state.is_paused:
             return
         if self.reward_selector and self.reward_selector.visible:
             return
@@ -1014,7 +1014,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         Args:
             surface: pygame rendering surface.
         """
-        if not self.game_controller or self.game_controller.state.paused:
+        if not self.game_controller or self.game_controller.state.is_paused:
             return
         if self.reward_selector and self.reward_selector.visible:
             return
@@ -1081,14 +1081,14 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if self.is_homecoming_locked():
             return
         if self.game_controller and not self.reward_selector.visible:
-            self.game_controller.state.paused = True
+            self.game_controller.state.is_paused = True
 
     def resume(self) -> None:
         """Resume the game."""
         if self.is_homecoming_locked():
             return
         if self.game_controller:
-            self.game_controller.state.paused = False
+            self.game_controller.state.is_paused = False
 
     @property
     def paused(self) -> bool:
@@ -1097,7 +1097,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         Returns:
             True if the game is paused.
         """
-        return self.game_controller.state.paused if self.game_controller else False
+        return self.game_controller.state.is_paused if self.game_controller else False
 
     @property
     def unlocked_buffs(self) -> list:
@@ -1253,16 +1253,16 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
                     LockLayer.MOTHERSHIP,
                     LockRequest(
                         invincible=True,
-                        silent_invincible=silent,
+                        is_silent_invincible=silent,
                         invincibility_duration=timer,
                     ),
                 )
             else:
                 self._lock_manager.release(LockLayer.MOTHERSHIP)
             return
-        self.game_controller.state.player_invincible = invincible
+        self.game_controller.state.is_player_invincible = invincible
         self.game_controller.state.invincibility_timer = timer
-        self.game_controller.state.silent_invincible = silent
+        self.game_controller.state.is_silent_invincible = silent
 
     def get_score(self) -> int:
         """Get current score."""
@@ -1319,7 +1319,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     def set_paused(self, paused: bool) -> None:
         """Set game paused state."""
         if self.game_controller:
-            self.game_controller.state.paused = paused
+            self.game_controller.state.is_paused = paused
 
     def clear_ripple_effects(self) -> None:
         """Clear all ripple effects."""

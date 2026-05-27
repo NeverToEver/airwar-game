@@ -35,11 +35,11 @@ class Buff(ABC):
         return self.COLOR
 
     def get_notification(self, level: int) -> str:
-        return f'获得: {self.NAME}'
+        return f'Acquired: {self.NAME}'
 
-    @abstractmethod
     def apply(self, player) -> BuffResult:
-        pass
+        """Apply buff effect and return result. Override for custom logic."""
+        return BuffResult(name=self.NAME, notification=self.get_notification(1), color=self.COLOR)
 
     @abstractmethod
     def calculate_value(self, base_value: int, current_level: int) -> int:

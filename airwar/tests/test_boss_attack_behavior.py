@@ -30,7 +30,7 @@ def restore_screen_size():
 
 def test_boss_aim_attack_dashes_toward_player_before_snapshot_lasers():
     boss = Boss(400, 180, BossData(width=170, height=140))
-    boss.entering = False
+    boss.is_entering = False
     boss.attack_pattern = 1
     boss.attack_direction = "down"
     collector = BulletCollector()
@@ -64,7 +64,7 @@ def test_boss_aim_attack_dashes_toward_player_before_snapshot_lasers():
 
 def test_boss_aim_attack_does_not_home_after_fire():
     boss = Boss(400, 180, BossData(width=170, height=140))
-    boss.entering = False
+    boss.is_entering = False
     bullets = boss._aim_attack((650, 520))
 
     bullet = bullets[0]
@@ -77,7 +77,7 @@ def test_boss_aim_attack_does_not_home_after_fire():
 def test_boss_enrage_triggers_once_at_thirty_percent_and_pulls_player_to_center():
     set_display_size(1000, 800)
     boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
-    boss.entering = False
+    boss.is_entering = False
     collector = BulletCollector()
     boss.set_bullet_spawner(collector)
 
@@ -104,7 +104,7 @@ def test_boss_enrage_triggers_once_at_thirty_percent_and_pulls_player_to_center(
 def test_boss_enrage_transition_delays_snapshot_attacks_and_eases_to_release_anchor():
     set_display_size(1000, 800)
     boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
-    boss.entering = False
+    boss.is_entering = False
     collector = BulletCollector()
     boss.set_bullet_spawner(collector)
 
@@ -130,7 +130,7 @@ def test_boss_enrage_transition_delays_snapshot_attacks_and_eases_to_release_anc
 
 def test_boss_enrage_locks_health_at_thirty_percent_until_bullets_release():
     boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
-    boss.entering = False
+    boss.is_entering = False
     collector = BulletCollector()
     boss.set_bullet_spawner(collector)
 
@@ -155,7 +155,7 @@ def test_boss_enrage_locks_health_at_thirty_percent_until_bullets_release():
 
 def test_boss_enrage_reports_player_movement_lock_until_release():
     boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
-    boss.entering = False
+    boss.is_entering = False
     boss.set_bullet_spawner(BulletCollector())
     boss.take_damage(700)
     boss.update(player_pos=(500, 400))
@@ -171,7 +171,7 @@ def test_boss_enrage_reports_player_movement_lock_until_release():
 def test_boss_enrage_release_hold_does_not_recenter_unlocked_player():
     set_display_size(1000, 800)
     boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
-    boss.entering = False
+    boss.is_entering = False
     boss.set_bullet_spawner(BulletCollector())
 
     class Player:
@@ -194,7 +194,7 @@ def test_boss_enrage_release_hold_does_not_recenter_unlocked_player():
 def test_boss_enrage_finishes_at_players_six_oclock_release_anchor():
     set_display_size(1000, 800)
     boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
-    boss.entering = False
+    boss.is_entering = False
     boss.set_bullet_spawner(BulletCollector())
     boss.take_damage(700)
 
@@ -210,7 +210,7 @@ def test_boss_enrage_finishes_at_players_six_oclock_release_anchor():
 def test_boss_enrage_holds_snapshot_attacks_until_flow_finishes():
     set_display_size(1000, 800)
     boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
-    boss.entering = False
+    boss.is_entering = False
     collector = BulletCollector()
     boss.set_bullet_spawner(collector)
     boss.take_damage(700)
@@ -241,7 +241,7 @@ def test_boss_enrage_holds_snapshot_attacks_until_flow_finishes():
 def test_boss_enrage_releases_held_bullets_gradually_after_flow_finishes():
     set_display_size(1000, 800)
     boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
-    boss.entering = False
+    boss.is_entering = False
     collector = BulletCollector()
     boss.set_bullet_spawner(collector)
     boss.take_damage(700)
@@ -280,7 +280,7 @@ def test_boss_enrage_releases_held_bullets_gradually_after_flow_finishes():
 def test_boss_enrage_path_completes_one_square_and_one_circle():
     set_display_size(1200, 900)
     boss = Boss(500, 120, BossData(health=1000, width=170, height=140))
-    boss.entering = False
+    boss.is_entering = False
     boss.set_bullet_spawner(BulletCollector())
     boss.take_damage(700)
 
@@ -299,7 +299,7 @@ def test_boss_enrage_path_completes_one_square_and_one_circle():
 def test_boss_enrage_uses_snappier_snapshot_cadence_for_urgent_bursts():
     set_display_size(1200, 900)
     boss = Boss(500, 120, BossData(health=1000, width=170, height=140))
-    boss.entering = False
+    boss.is_entering = False
     collector = BulletCollector()
     boss.set_bullet_spawner(collector)
     boss.take_damage(700)
@@ -317,7 +317,7 @@ def test_boss_enrage_uses_snappier_snapshot_cadence_for_urgent_bursts():
 def test_boss_enrage_faces_player_and_aims_muzzles_during_all_direction_movement():
     set_display_size(1200, 900)
     boss = Boss(500, 120, BossData(health=1000, width=170, height=140))
-    boss.entering = False
+    boss.is_entering = False
     boss.set_bullet_spawner(BulletCollector())
     boss.take_damage(700)
 
@@ -351,7 +351,7 @@ def test_boss_enrage_faces_player_and_aims_muzzles_during_all_direction_movement
 
 def test_boss_enrage_trail_is_longer_and_half_resolution_blurred():
     boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
-    boss.entering = False
+    boss.is_entering = False
     boss.set_bullet_spawner(BulletCollector())
     boss.take_damage(700)
 
@@ -376,7 +376,7 @@ def test_boss_enrage_trail_is_longer_and_half_resolution_blurred():
 def test_boss_enrage_finish_clears_trail_artifacts():
     set_display_size(1000, 800)
     boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
-    boss.entering = False
+    boss.is_entering = False
     collector = BulletCollector()
     boss.set_bullet_spawner(collector)
     boss.take_damage(700)
@@ -392,7 +392,7 @@ def test_boss_enrage_finish_clears_trail_artifacts():
 def test_boss_enrage_visuals_fade_through_release_hold_and_return_without_jump():
     set_display_size(1000, 800)
     boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
-    boss.entering = False
+    boss.is_entering = False
     boss.set_bullet_spawner(BulletCollector())
     boss.take_damage(700)
 

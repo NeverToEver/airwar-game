@@ -16,8 +16,8 @@ class LockLayer(IntEnum):
 class LockRequest:
     invincible: bool = False
     lock_controls: bool = False
-    paused: bool = False
-    silent_invincible: bool = False
+    is_paused: bool = False
+    is_silent_invincible: bool = False
     invincibility_duration: int = 0
 
 
@@ -69,13 +69,13 @@ class LockManager:
         if not self._game_state:
             return
         if paused is not None:
-            self._game_state.paused = paused
+            self._game_state.is_paused = paused
         if invincible is not None:
-            self._game_state.player_invincible = invincible
+            self._game_state.is_player_invincible = invincible
         if invincibility_duration is not None:
             self._game_state.invincibility_timer = invincibility_duration
         if silent_invincible is not None:
-            self._game_state.silent_invincible = silent_invincible
+            self._game_state.is_silent_invincible = silent_invincible
 
     def _recompute(self):
         invincible = False
@@ -88,17 +88,17 @@ class LockManager:
             req = self._locks[layer]
             if req.invincible and not invincibility_applied:
                 invincible = True
-                silent = req.silent_invincible
+                silent = req.is_silent_invincible
                 timer = req.invincibility_duration
                 invincibility_applied = True
             if req.lock_controls:
                 lock_controls = True
-            if req.paused:
+            if req.is_paused:
                 paused = True
         if self._game_state:
-            self._game_state.player_invincible = invincible
+            self._game_state.is_player_invincible = invincible
             self._game_state.invincibility_timer = timer
-            self._game_state.silent_invincible = silent
-            self._game_state.paused = paused
+            self._game_state.is_silent_invincible = silent
+            self._game_state.is_paused = paused
         if self._player:
-            self._player.controls_locked = lock_controls
+            self._player.is_controls_locked = lock_controls

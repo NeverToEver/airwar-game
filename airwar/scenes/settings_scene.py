@@ -257,12 +257,12 @@ class SettingsScene(Scene, MouseInteractiveMixin):
         values = [('hold', hold_text), ('toggle', toggle_text)]
         for j, (val, text) in enumerate(values):
             bx = btn_x + j * (self.TOGGLE_BTN_W + 4)
-            btn_name = f'{key.split("_")[0]}_{val}'
+            button_name = f'{key.split("_")[0]}_{val}'
             btn_rect = pygame.Rect(bx, btn_y, self.TOGGLE_BTN_W, self.TOGGLE_BTN_H)
-            self.register_button(btn_name, btn_rect)
+            self.register_button(button_name, btn_rect)
 
             is_active = (current == val)
-            hover = self.is_button_hovered(btn_name)
+            hover = self.is_button_hovered(button_name)
 
             fill = (40, 60, 70) if is_active else SC.BG_PANEL
             if hover and not is_active:

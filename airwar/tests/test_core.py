@@ -94,7 +94,7 @@ class TestBoss:
     def test_boss_creation(self):
         from airwar.entities import Boss, BossData
         b = Boss(400, 200, BossData())
-        assert b.entering is True
+        assert b.is_entering is True
         assert b.health > 0
 
     def test_boss_take_damage_returns_score(self):
@@ -113,10 +113,10 @@ class TestBoss:
     def test_boss_enter_animation(self):
         from airwar.entities import Boss, BossData
         b = Boss(400, 0, BossData())
-        assert b.is_entering() is True
+        assert b.is_entering is True
         for _ in range(200):
             b.update()
-        assert b.is_entering() is False
+        assert b.is_entering is False
 
 
 class TestBullet:

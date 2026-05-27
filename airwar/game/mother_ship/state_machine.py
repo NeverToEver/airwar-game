@@ -195,7 +195,7 @@ class MotherShipStateMachine(IMotherShipStateMachine):
     def force_state(self, state: MotherShipState) -> None:
         """Force-set the state machine to a specific state.
 
-        仅在存档恢复场景使用，绕过常规转换验证。
+        Force-set state for save/restore, bypassing transition validation.
         """
         self._current_state = state
 

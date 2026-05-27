@@ -87,7 +87,7 @@ class TutorialBasePlayerStatus:
             "current": self.boost_current,
             "max": self.boost_max,
             "active": False,
-            "dash_enabled": self.phase_dash_enabled,
+            "dash_enabled": self.is_phase_dash_enabled,
             "dash_cooldown": 0,
         }
 
@@ -106,7 +106,7 @@ class TutorialBasePlayerStatus:
         self.weapon_explosive = True
 
     def activate_phase_dash(self) -> None:
-        self.phase_dash_enabled = True
+        self.is_phase_dash_enabled = True
 
 
 @dataclass

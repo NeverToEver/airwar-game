@@ -344,7 +344,7 @@ class RewardSystem:
             current_health = self._base_max_health
         player.health = min(current_health, player.max_health)
         player.boost_recovery_rate = self._base_boost_recovery_rate
-        player.phase_dash_enabled = False
+        player.is_phase_dash_enabled = False
         player.mothership_cooldown_mult = 1.0
         if hasattr(player, 'set_weapon_modifiers'):
             player.set_weapon_modifiers(spread=False, laser=False, explosive=False)

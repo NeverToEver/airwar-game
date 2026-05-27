@@ -125,7 +125,7 @@ class EntityRenderer:
         self._render_boss_body(surface, boss, health_ratio)
         self._render_muzzle_flash(surface, boss)
 
-        if boss.entering:
+        if boss.is_entering:
             pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() * 0.002)
             warning_surf = self._get_warning_font().render("! 警告 !", True, Colors.ACCENT_DANGER)
             warning_surf.set_alpha(int(150 + 35 * pulse))
@@ -139,7 +139,7 @@ class EntityRenderer:
             surface.blit(warning_surf, warning_surf.get_rect(center=(surface.get_width() // 2, 86)))
             self._render_enrage_transition_charge(surface, boss, intensity)
 
-        if boss._show_escape_warning and not boss.entering:
+        if boss._show_escape_warning and not boss.is_entering:
             pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() * 0.002)
             warning_surf = self._get_escape_font().render("逃跑中...", True, (255, 200, 50))
             warning_surf.set_alpha(int(145 + 36 * pulse))

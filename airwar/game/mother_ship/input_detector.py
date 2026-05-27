@@ -98,7 +98,7 @@ class InputDetector(IInputDetector):
         return self._exit_progress
 
     def reset_progress(self) -> None:
-        """Reset docking progress — 供存档恢复场景使用。"""
+        """Reset docking progress for save-restore scenarios."""
         self._progress.reset()
 
     def is_exiting(self) -> bool:

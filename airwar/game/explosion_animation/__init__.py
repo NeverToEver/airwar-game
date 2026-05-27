@@ -1,8 +1,8 @@
 """Explosion animation package — particle-based explosion effects."""
-from airwar.game.explosion_animation.explosion_particle import ExplosionParticle
-from airwar.game.explosion_animation.explosion_effect import ExplosionEffect
-from airwar.game.explosion_animation.explosion_pool import ExplosionPool
-from airwar.game.explosion_animation.explosion_manager import ExplosionManager
+from .explosion_particle import ExplosionParticle
+from .explosion_effect import ExplosionEffect
+from .explosion_pool import ExplosionPool
+from .explosion_manager import ExplosionManager
 
 __all__ = [
     'ExplosionParticle',

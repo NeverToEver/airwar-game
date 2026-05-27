@@ -64,7 +64,7 @@ def test_saved_score_below_refactored_threshold_does_not_loop_reward_selection()
 
     assert manager.check_and_trigger(player=object()) is False
     assert selector.visible is False
-    assert controller.state.paused is False
+    assert controller.state.is_paused is False
 
 
 def test_score_at_active_threshold_triggers_reward_selection() -> None:
@@ -76,7 +76,7 @@ def test_score_at_active_threshold_triggers_reward_selection() -> None:
 
     assert manager.check_and_trigger(player=object()) is True
     assert selector.visible is True
-    assert controller.state.paused is True
+    assert controller.state.is_paused is True
 
 
 def test_reward_selector_show_receives_current_buff_state() -> None:

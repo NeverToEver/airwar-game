@@ -14,9 +14,6 @@ class ExtraLifeBuff(Buff):
     def calculate_increment(self, base_value: int) -> int:
         return 50
 
-    def apply(self, player) -> BuffResult:
-        return BuffResult(name=self.NAME, notification=self.get_notification(1), color=self.COLOR)
-
 
 class RegenerationBuff(Buff):
     """Regeneration buff — passively heals HP per second."""
@@ -29,9 +26,6 @@ class RegenerationBuff(Buff):
     def calculate_increment(self, base_value: int) -> int:
         return 1
 
-    def apply(self, player) -> BuffResult:
-        return BuffResult(name=self.NAME, notification=self.get_notification(1), color=self.COLOR)
-
 
 class LifestealBuff(Buff):
     """Lifesteal buff — heals a percentage of damage dealt on kill."""
@@ -43,9 +37,6 @@ class LifestealBuff(Buff):
 
     def calculate_increment(self, base_value: int) -> int:
         return 1
-
-    def apply(self, player) -> BuffResult:
-        return BuffResult(name=self.NAME, notification=self.get_notification(1), color=self.COLOR)
 
 
 class ArmorBuff(Buff):
@@ -61,11 +52,8 @@ class ArmorBuff(Buff):
 
     def get_notification(self, level: int) -> str:
         if level == 1:
-            return '获得:Armor'
-        return f'升级:Armor (Lv.{level})'
-
-    def apply(self, player) -> BuffResult:
-        return BuffResult(name=self.NAME, notification=self.get_notification(1), color=self.COLOR)
+            return 'Acquired: Armor'
+        return f'Upgraded: Armor (Lv.{level})'
 
 
 class EvasionBuff(Buff):
@@ -81,11 +69,8 @@ class EvasionBuff(Buff):
 
     def get_notification(self, level: int) -> str:
         if level == 1:
-            return '获得:Evasion'
-        return f'升级:Evasion (Lv.{level})'
-
-    def apply(self, player) -> BuffResult:
-        return BuffResult(name=self.NAME, notification=self.get_notification(1), color=self.COLOR)
+            return 'Acquired: Evasion'
+        return f'Upgraded: Evasion (Lv.{level})'
 
 
 class PowerShotBuff(Buff):
@@ -101,11 +86,8 @@ class PowerShotBuff(Buff):
 
     def get_notification(self, level: int) -> str:
         if level == 1:
-            return '获得:Power Shot'
-        return f'升级:Power Shot (Lv.{level})'
-
-    def apply(self, player) -> BuffResult:
-        return BuffResult(name=self.NAME, notification=self.get_notification(1), color=self.COLOR)
+            return 'Acquired: Power Shot'
+        return f'Upgraded: Power Shot (Lv.{level})'
 
 
 class RapidFireBuff(Buff):
@@ -121,11 +103,8 @@ class RapidFireBuff(Buff):
 
     def get_notification(self, level: int) -> str:
         if level == 1:
-            return '获得:Rapid Fire'
-        return f'升级:Rapid Fire (Lv.{level})'
-
-    def apply(self, player) -> BuffResult:
-        return BuffResult(name=self.NAME, notification=self.get_notification(1), color=self.COLOR)
+            return 'Acquired: Rapid Fire'
+        return f'Upgraded: Rapid Fire (Lv.{level})'
 
 
 class PiercingBuff(Buff):
@@ -141,11 +120,8 @@ class PiercingBuff(Buff):
 
     def get_notification(self, level: int) -> str:
         if level == 1:
-            return '获得:Piercing'
-        return f'升级:Piercing (Lv.{level})'
-
-    def apply(self, player) -> BuffResult:
-        return BuffResult(name=self.NAME, notification=self.get_notification(1), color=self.COLOR)
+            return 'Acquired: Piercing'
+        return f'Upgraded: Piercing (Lv.{level})'
 
 
 class SpreadShotBuff(Buff):
@@ -161,11 +137,8 @@ class SpreadShotBuff(Buff):
 
     def get_notification(self, level: int) -> str:
         if level == 1:
-            return '获得:Spread Shot'
-        return f'升级:Spread Shot (Lv.{level})'
-
-    def apply(self, player) -> BuffResult:
-        return BuffResult(name=self.NAME, notification=self.get_notification(1), color=self.COLOR)
+            return 'Acquired: Spread Shot'
+        return f'Upgraded: Spread Shot (Lv.{level})'
 
 
 class ExplosiveBuff(Buff):
@@ -181,11 +154,8 @@ class ExplosiveBuff(Buff):
 
     def get_notification(self, level: int) -> str:
         if level == 1:
-            return '获得:Explosive'
-        return f'升级:Explosive (Lv.{level})'
-
-    def apply(self, player) -> BuffResult:
-        return BuffResult(name=self.NAME, notification=self.get_notification(1), color=self.COLOR)
+            return 'Acquired: Explosive'
+        return f'Upgraded: Explosive (Lv.{level})'
 
 
 class LaserBuff(Buff):
@@ -201,11 +171,8 @@ class LaserBuff(Buff):
 
     def get_notification(self, level: int) -> str:
         if level == 1:
-            return '获得:Laser Mode'
-        return f'升级:Laser (Lv.{level})'
-
-    def apply(self, player) -> BuffResult:
-        return BuffResult(name=self.NAME, notification=self.get_notification(1), color=self.COLOR)
+            return 'Acquired: Laser Mode'
+        return f'Upgraded: Laser (Lv.{level})'
 
 
 class SlowFieldBuff(Buff):
@@ -218,9 +185,6 @@ class SlowFieldBuff(Buff):
 
     def calculate_increment(self, base_value: int) -> int:
         return 1
-
-    def apply(self, player) -> BuffResult:
-        return BuffResult(name=self.NAME, notification=self.get_notification(1), color=self.COLOR)
 
 
 class BoostRecoveryBuff(Buff):

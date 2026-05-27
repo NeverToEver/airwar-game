@@ -3,11 +3,19 @@ import math
 import random
 from collections import deque
 from dataclasses import dataclass
+from enum import Enum
 from typing import Callable, List, Optional, Tuple, TYPE_CHECKING
 
 import pygame
 
 from .base import Entity, EnemyData, Vector2
+
+
+class EnemyState(Enum):
+    """Enemy lifecycle states."""
+    ENTERING = "entering"
+    ACTIVE = "active"
+    EXITING = "exiting"
 from .bullet import Bullet, BulletData
 from .interfaces import IBulletSpawner
 from airwar.config import (
@@ -61,6 +69,7 @@ class Enemy(Entity):
     ENTRY_SPEED = 0.04
     EXIT_SPEED = 0.03
     FIRE_RATE_MIN = 10
+    ENEMY_BULLET_SPEED = 5.0
 
     # --- Movement pattern range constants ---
     SINE_AMP_RANGE = (1.5, 3.0)
@@ -129,7 +138,7 @@ class Enemy(Entity):
         self._movement_enhancements = {}
 
         # Wave system: entry/exit states
-        self._state = 'entering'
+        self._state = EnemyState.ENTERING
         self._entry_progress = 0.0
         self._entry_start_x = x
         self._entry_start_y = y - self.ENTRY_START_Y  # Start above screen
@@ -175,11 +184,11 @@ class Enemy(Entity):
         if not self.active:
             return
 
-        if self._state == 'entering':
+        if self._state == EnemyState.ENTERING:
             self._update_entry_state()
             return
 
-        if self._state == 'exiting':
+        if self._state == EnemyState.EXITING:
             self._update_exit_state()
             return
 
@@ -203,7 +212,7 @@ class Enemy(Entity):
 
     def _finish_entry(self) -> None:
         self._entry_progress = 1.0
-        self._state = 'active'
+        self._state = EnemyState.ACTIVE
         self.rect.x = self._entry_target_x
         self.rect.y = self._entry_target_y
         self.sync_rects()
@@ -237,7 +246,7 @@ class Enemy(Entity):
         self._update_fire_timer()
 
     def _begin_lifetime_exit(self) -> None:
-        self._state = 'exiting'
+        self._state = EnemyState.EXITING
         self._exit_start_x = self.rect.x
         self._exit_start_y = self.rect.y
         self._exit_end_x = self.rect.x + random.choice(self.EXIT_X_OFFSETS)
@@ -353,14 +362,14 @@ class Enemy(Entity):
     def begin_exit(self, x_offset: float, end_y: float) -> None:
         """Begin the exit animation sequence.
 
-        Forces the enemy into 'exiting' state and sets the target
+        Forces the enemy into EnemyState.EXITING state and sets the target
         position for the exit animation curve.
 
         Args:
             x_offset: Target x-coordinate for exit end position.
             end_y: Target y-coordinate for exit end position.
         """
-        self._state = 'exiting'
+        self._state = EnemyState.EXITING
         self._exit_start_x = self.rect.x
         self._exit_start_y = self.rect.y
         self._exit_end_x = x_offset
@@ -368,10 +377,10 @@ class Enemy(Entity):
         self._exit_progress = 0.0
 
     def is_active_in_wave(self) -> bool:
-        return self.active and self._state != 'exiting'
+        return self.active and self._state != EnemyState.EXITING
 
     def is_ready_for_batch_movement(self) -> bool:
-        return self.active and self._state == 'active'
+        return self.active and self._state == EnemyState.ACTIVE
 
     def apply_batch_movement_result(self, result: tuple[float, float, float]) -> None:
         self._batch_result = result
@@ -560,7 +569,7 @@ class Enemy(Entity):
             for angle in self.SPREAD_FIRE_OFFSETS:
                 bullet_data = BulletData(
                     damage=self._get_damage(),
-                    speed=5.0,
+                    speed=self.ENEMY_BULLET_SPEED,
                     owner="enemy",
                     bullet_type="spread"
                 )
@@ -570,7 +579,7 @@ class Enemy(Entity):
         elif self.data.bullet_type == "laser":
             bullet_data = BulletData(
                 damage=self._get_damage(),
-                speed=5.0,
+                speed=self.ENEMY_BULLET_SPEED,
                 owner="enemy",
                 bullet_type="laser"
             )
@@ -580,7 +589,7 @@ class Enemy(Entity):
         else:
             bullet_data = BulletData(
                 damage=self._get_damage(),
-                speed=5.0,
+                speed=self.ENEMY_BULLET_SPEED,
                 owner="enemy",
                 bullet_type="single"
             )
@@ -911,7 +920,7 @@ class Boss(Entity):
         fire_timer: Timer for attack fire rate.
         attack_pattern: Current attack pattern index (0-2).
         survival_timer: Frames survived in battle.
-        escaped: Whether the boss has escaped.
+        is_escaped: Whether the boss has escaped.
         _bullet_spawner: Optional spawner for bullets.
     """
 
@@ -972,7 +981,7 @@ class Boss(Entity):
         self.phase_timer = 0
         self.attack_pattern = 0
         self.attack_direction = 'down'
-        self.entering = True
+        self.is_entering = True
         self.entry_y = y
         self.target_y = 180
         # Movement phase system
@@ -982,7 +991,7 @@ class Boss(Entity):
         self._target_x: float = float(x)
         self._target_y: float = 180.0
         self.survival_timer = 0
-        self.escaped = False
+        self.is_escaped = False
         self._show_escape_warning = False
         self.phase = data.phase
         self._bullet_spawner: Optional[IBulletSpawner] = None
@@ -1064,11 +1073,11 @@ class Boss(Entity):
             slow_factor: Time dilation factor from slow field buffs.
             player_pos: (x, y) of the player for aim attacks.
         """
-        if self.entering:
+        if self.is_entering:
             self.rect.y += self.ENTRY_SPEED * slow_factor
             if self.rect.y >= self.target_y:
                 self.rect.y = self.target_y
-                self.entering = False
+                self.is_entering = False
             return
 
         self._trigger_enrage_if_needed(player_pos, kwargs.get("player"))
@@ -1088,7 +1097,7 @@ class Boss(Entity):
         self.survival_timer += 1
 
         if self.survival_timer >= self.data.escape_time:
-            self.escaped = True
+            self.is_escaped = True
             self.active = False
             return
 
@@ -1837,12 +1846,6 @@ class Boss(Entity):
 
     def is_enrage_transitioning(self) -> bool:
         return self._enrage_transition_timer > 0
-
-    def is_entering(self) -> bool:
-        return self.entering
-
-    def is_escaped(self) -> bool:
-        return self.escaped
 
     def get_time_remaining(self) -> float:
         remaining = self.data.escape_time - self.survival_timer

@@ -81,7 +81,7 @@ class SaveRestoreManager:
             player.rect.x = max(0, min(save_data.player_x, sw - player.rect.width))
             player.rect.y = max(0, min(save_data.player_y, sh - player.rect.height))
 
-        game_controller.state.entrance_animation = False
+        game_controller.state.is_entrance_playing = False
         game_controller.state.entrance_timer = 0
 
     def _restore_buff_levels(self, buff_levels: dict) -> None:

@@ -347,10 +347,10 @@ def test_game_scene_homecoming_request_sets_safe_interface_state() -> None:
     scene._on_homecoming_requested()
 
     assert scene.is_homecoming_active() is True
-    assert scene.player.controls_locked is True
-    assert scene.game_controller.state.paused is True
-    assert scene.game_controller.state.player_invincible is True
-    assert scene.game_controller.state.silent_invincible is True
+    assert scene.player.is_controls_locked is True
+    assert scene.game_controller.state.is_paused is True
+    assert scene.game_controller.state.is_player_invincible is True
+    assert scene.game_controller.state.is_silent_invincible is True
     scene._bullet_manager.clear_enemy_bullets.assert_called_once()
 
 
@@ -360,12 +360,12 @@ def test_game_scene_homecoming_complete_keeps_scene_locked() -> None:
     scene.game_controller = GameController("medium", "pilot")
     scene.reward_system = scene.game_controller.reward_system
     scene._homecoming_base_pending = True
-    scene.game_controller.state.paused = True
+    scene.game_controller.state.is_paused = True
 
     scene.resume()
 
     assert scene.is_homecoming_locked() is True
-    assert scene.game_controller.state.paused is True
+    assert scene.game_controller.state.is_paused is True
     assert scene.consume_pause_request() is False
 
 
@@ -394,11 +394,11 @@ def test_game_scene_leaving_base_starts_departure_sequence() -> None:
     scene.game_controller = GameController("medium", "pilot")
     scene._homecoming_base_pending = True
     scene._pause_requested = True
-    scene.player.controls_locked = True
-    scene.game_controller.state.paused = True
-    scene.game_controller.state.player_invincible = True
+    scene.player.is_controls_locked = True
+    scene.game_controller.state.is_paused = True
+    scene.game_controller.state.is_player_invincible = True
     scene.game_controller.state.invincibility_timer = 999999
-    scene.game_controller.state.silent_invincible = True
+    scene.game_controller.state.is_silent_invincible = True
     scene._homecoming_sequence = HomecomingSequence()
     scene._homecoming_detector = SimpleNamespace(reset=MagicMock())
     scene._homecoming_ui = SimpleNamespace(hide=MagicMock())
@@ -409,11 +409,11 @@ def test_game_scene_leaving_base_starts_departure_sequence() -> None:
     assert scene.is_homecoming_locked() is True
     assert scene._homecoming_base_pending is False
     assert scene._pause_requested is False
-    assert scene.player.controls_locked is True
-    assert scene.game_controller.state.paused is True
-    assert scene.game_controller.state.player_invincible is True
+    assert scene.player.is_controls_locked is True
+    assert scene.game_controller.state.is_paused is True
+    assert scene.game_controller.state.is_player_invincible is True
     assert scene.game_controller.state.invincibility_timer == GameScene.HOMECOMING_LOCK_INVINCIBILITY_TIMER
-    assert scene.game_controller.state.silent_invincible is True
+    assert scene.game_controller.state.is_silent_invincible is True
     assert scene._homecoming_sequence.phase == HomecomingPhase.BASE_LAUNCH
     scene._homecoming_detector.reset.assert_not_called()
     scene._homecoming_ui.hide.assert_called_once()
@@ -428,21 +428,21 @@ def test_game_scene_homecoming_departure_complete_restores_play_state() -> None:
     scene._homecoming_detector = SimpleNamespace(reset=MagicMock())
     scene._homecoming_ui = SimpleNamespace(hide=MagicMock())
     scene.notification_manager = SimpleNamespace(show=MagicMock())
-    scene.player.controls_locked = True
-    scene.game_controller.state.paused = True
-    scene.game_controller.state.player_invincible = True
+    scene.player.is_controls_locked = True
+    scene.game_controller.state.is_paused = True
+    scene.game_controller.state.is_player_invincible = True
     scene.game_controller.state.invincibility_timer = 999999
-    scene.game_controller.state.silent_invincible = True
+    scene.game_controller.state.is_silent_invincible = True
 
     scene._on_homecoming_departure_complete()
 
     assert scene.is_homecoming_locked() is False
-    assert scene.player.controls_locked is False
-    assert scene.game_controller.state.paused is False
-    assert scene.game_controller.state.player_invincible is True
+    assert scene.player.is_controls_locked is False
+    assert scene.game_controller.state.is_paused is False
+    assert scene.game_controller.state.is_player_invincible is True
     assert scene.game_controller.state.invincibility_timer == GAME_CONSTANTS.PLAYER.INVINCIBILITY_DURATION
-    assert scene.game_controller.state.silent_invincible is False
-    assert scene.game_controller.state.entrance_animation is True
+    assert scene.game_controller.state.is_silent_invincible is False
+    assert scene.game_controller.state.is_entrance_playing is True
     assert scene.game_controller.state.entrance_timer == 0
     assert scene.player.rect.y == PlayerConstants.INITIAL_Y
     scene._homecoming_detector.reset.assert_called_once()
@@ -471,8 +471,8 @@ def test_game_scene_homecoming_update_does_not_relock_after_departure_complete()
     scene._update_homecoming()
 
     assert scene._homecoming_sequence.phase == HomecomingPhase.INACTIVE
-    assert scene.player.controls_locked is False
-    assert scene.game_controller.state.paused is False
+    assert scene.player.is_controls_locked is False
+    assert scene.game_controller.state.is_paused is False
 
 
 def test_game_scene_homecoming_orbital_strike_clears_hostiles() -> None:
@@ -646,9 +646,9 @@ def test_game_scene_homecoming_request_is_blocked_by_unsafe_states() -> None:
     assert scene._can_request_homecoming() is False
     scene.reward_selector.visible = False
 
-    scene.game_controller.state.paused = True
+    scene.game_controller.state.is_paused = True
     assert scene._can_request_homecoming() is False
-    scene.game_controller.state.paused = False
+    scene.game_controller.state.is_paused = False
 
     scene._mother_ship_integrator = SimpleNamespace(is_docked=lambda: True)
     assert scene._can_request_homecoming() is False

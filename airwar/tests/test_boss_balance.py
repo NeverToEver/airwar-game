@@ -79,7 +79,7 @@ def test_boss_enrage_duration_is_about_six_seconds():
 
 def test_boss_enrage_visual_intensity_eases_in_before_reaching_cap():
     boss = Boss(400, 120, BossData(health=1000, width=170, height=140))
-    boss.entering = False
+    boss.is_entering = False
     boss.set_bullet_spawner(BulletCollector())
 
     boss.take_damage(700)

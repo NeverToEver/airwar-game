@@ -142,7 +142,7 @@ class GameLoopManager:
         progress = state.entrance_timer / state.entrance_duration
 
         if progress >= 1.0:
-            state.entrance_animation = False
+            state.is_entrance_playing = False
             player.rect.y = get_screen_height() - PlayerConstants.SCREEN_BOTTOM_OFFSET
             return False
         else:
@@ -183,12 +183,12 @@ class GameLoopManager:
             player.update()
             player.auto_fire()
         else:
-            restore_controls_locked = player.controls_locked
+            restore_controls_locked = player.is_controls_locked
             if self._should_lock_player_for_boss_enrage():
-                player.controls_locked = True
+                player.is_controls_locked = True
             player.update()
             player.auto_fire()
-            player.controls_locked = restore_controls_locked
+            player.is_controls_locked = restore_controls_locked
 
         self._bullet_manager.update_all()
         self._update_enemy_spawning(player)
@@ -302,7 +302,7 @@ class GameLoopManager:
                 reward_system=self._reward_system,
                 explosive_level=self._reward_system.explosive_level,
                 piercing_level=self._reward_system.piercing_level,
-                player_invincible=self._game_controller.state.player_invincible,
+                player_invincible=self._game_controller.state.is_player_invincible,
                 score_multiplier=self._game_controller.state.score_multiplier,
                 on_enemy_killed=lambda score: self._game_controller.on_enemy_killed(score),
                 on_boss_killed=lambda score: (
@@ -318,7 +318,7 @@ class GameLoopManager:
             self._game_controller.state.running = False
 
     def is_entrance_playing(self) -> bool:
-        return self._game_controller.state.entrance_animation
+        return self._game_controller.state.is_entrance_playing
 
     def is_game_running(self) -> bool:
         return self._game_controller.state.running

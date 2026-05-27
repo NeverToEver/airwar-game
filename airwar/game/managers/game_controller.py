@@ -37,16 +37,16 @@ class GameState:
     username: str = 'Player'
     score: int = 0
     score_multiplier: float = 1.0
-    paused: bool = False
+    is_paused: bool = False
     running: bool = True
-    player_invincible: bool = False
+    is_player_invincible: bool = False
     invincibility_timer: int = 0
-    silent_invincible: bool = False
+    is_silent_invincible: bool = False
     ripple_effects: List[dict] = field(default_factory=list)
     notification: Optional[str] = None
     notification_timer: int = 0
     requisition_points: int = 0
-    entrance_animation: bool = True
+    is_entrance_playing: bool = True
     entrance_timer: int = 0
     entrance_duration: int = GAME_CONSTANTS.ANIMATION.ENTRANCE_DURATION
     kill_count: int = 0
@@ -179,11 +179,11 @@ class GameController:
         if player.health <= 0:
             self.state.gameplay_state = GameplayState.DYING
             self.state.death_timer = self.state.death_duration
-            self.state.player_invincible = True
+            self.state.is_player_invincible = True
             self.state.invincibility_timer = 0
             self._logger.warning(f"Player died: damage={damage}, health=0")
         else:
-            self.state.player_invincible = True
+            self.state.is_player_invincible = True
             self.state.invincibility_timer = GAME_CONSTANTS.PLAYER.INVINCIBILITY_DURATION
             self._logger.info(f"Player hit: damage={damage}, health={player.health}")
 
@@ -253,7 +253,7 @@ class GameController:
 
         self.state.notification = notification
         self.state.notification_timer = GAME_CONSTANTS.TIMING.NOTIFICATION_DURATION
-        self.state.paused = False
+        self.state.is_paused = False
 
     # 5. Private lifecycle methods
 
@@ -261,10 +261,10 @@ class GameController:
         if self.state.gameplay_state == GameplayState.DYING:
             return
 
-        if self.state.player_invincible:
+        if self.state.is_player_invincible:
             self.state.invincibility_timer -= 1
             if self.state.invincibility_timer <= 0:
-                self.state.player_invincible = False
+                self.state.is_player_invincible = False
 
     # 6. Private behavior methods
 

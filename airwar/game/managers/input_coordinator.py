@@ -70,7 +70,7 @@ class InputCoordinator:
 
     def _can_fire(self) -> bool:
         return (
-            not self._game_controller.state.paused
+            not self._game_controller.state.is_paused
             and not self._reward_selector.visible
         )
 
@@ -90,7 +90,7 @@ class InputCoordinator:
     def _can_use_give_up(self) -> bool:
         return (
             self._game_controller.is_playing()
-            and not self._game_controller.state.paused
+            and not self._game_controller.state.is_paused
             and not self._reward_selector.visible
         )
 

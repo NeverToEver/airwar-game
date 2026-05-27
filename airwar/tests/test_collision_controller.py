@@ -286,8 +286,9 @@ def test_boss_collision_applies_configured_damage_after_entering():
     player = FakePlayer(Rect(0, 0, 20, 20))
 
     class Boss(FakeEnemy):
-        def is_entering(self):
-            return False
+        def __init__(self, rect):
+            super().__init__(rect)
+            self.is_entering = False
 
     boss = Boss(Rect(0, 0, 20, 20))
 
@@ -310,9 +311,7 @@ def test_boss_collision_uses_boss_hitbox():
         def __init__(self):
             super().__init__(Rect(100, 100, 20, 20))
             self._hitbox = Rect(0, 0, 20, 20)
-
-        def is_entering(self):
-            return False
+            self.is_entering = False
 
     boss = Boss()
 

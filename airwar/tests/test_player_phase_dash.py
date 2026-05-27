@@ -1,7 +1,7 @@
 import pytest
 
 from airwar.entities.base import Vector2
-from airwar.entities.player import Player
+from airwar.entities.player import PhaseDashState, Player
 from airwar.game.managers.game_controller import GameController
 from airwar.input.input_handler import InputHandler, MockInputHandler
 from airwar.scenes.game_scene import GameScene
@@ -107,7 +107,7 @@ def test_phase_dash_reward_unlocks_player_ability():
     notification = controller.reward_system.apply_reward({"name": "Phase Dash"}, player)
 
     assert "Phase Dash" in notification
-    assert player.phase_dash_enabled is True
+    assert player.is_phase_dash_enabled is True
     assert controller.reward_system.buff_levels["Phase Dash"] == 1
 
 
@@ -115,18 +115,18 @@ def test_game_scene_syncs_phase_dash_invincibility_without_permanent_flag():
     scene = GameScene()
     player, _ = _make_player()
     player.activate_phase_dash()
-    player._phase_dash_state = "active"
+    player._phase_dash_state = PhaseDashState.ACTIVE
     player._phase_dash_timer = 1
     scene.player = player
     scene.game_controller = GameController("medium", "Test")
 
     scene._sync_player_phase_dash_invincibility()
 
-    assert scene.game_controller.state.player_invincible is True
-    assert scene.game_controller.state.silent_invincible is True
+    assert scene.game_controller.state.is_player_invincible is True
+    assert scene.game_controller.state.is_silent_invincible is True
 
-    player._phase_dash_state = "ready"
+    player._phase_dash_state = PhaseDashState.READY
     scene._sync_player_phase_dash_invincibility()
 
-    assert scene.game_controller.state.player_invincible is False
-    assert scene.game_controller.state.silent_invincible is False
+    assert scene.game_controller.state.is_player_invincible is False
+    assert scene.game_controller.state.is_silent_invincible is False

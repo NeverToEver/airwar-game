@@ -12,8 +12,8 @@ def _make_subject():
     game_state = SimpleNamespace(
         player_invincible=False,
         invincibility_timer=0,
-        silent_invincible=False,
-        paused=False,
+        is_silent_invincible=False,
+        is_paused=False,
     )
     player = SimpleNamespace(controls_locked=False)
     return LockManager(game_state, player), game_state, player
@@ -27,29 +27,29 @@ def test_single_system_acquire_and_release() -> None:
         LockRequest(
             invincible=True,
             lock_controls=True,
-            paused=True,
-            silent_invincible=True,
+            is_paused=True,
+            is_silent_invincible=True,
             invincibility_duration=HOMECOMING_LOCK_TIMER,
         ),
     )
 
     assert manager.is_locked(LockLayer.HOMECOMING) is True
     assert manager.has_locks() is True
-    assert game_state.player_invincible is True
+    assert game_state.is_player_invincible is True
     assert game_state.invincibility_timer == HOMECOMING_LOCK_TIMER
-    assert game_state.silent_invincible is True
-    assert game_state.paused is True
-    assert player.controls_locked is True
+    assert game_state.is_silent_invincible is True
+    assert game_state.is_paused is True
+    assert player.is_controls_locked is True
 
     manager.release(LockLayer.HOMECOMING)
 
     assert manager.is_locked(LockLayer.HOMECOMING) is False
     assert manager.has_locks() is False
-    assert game_state.player_invincible is False
+    assert game_state.is_player_invincible is False
     assert game_state.invincibility_timer == 0
-    assert game_state.silent_invincible is False
-    assert game_state.paused is False
-    assert player.controls_locked is False
+    assert game_state.is_silent_invincible is False
+    assert game_state.is_paused is False
+    assert player.is_controls_locked is False
 
 
 def test_higher_priority_layer_overrides_lower_priority_invincibility_mode() -> None:
@@ -57,21 +57,21 @@ def test_higher_priority_layer_overrides_lower_priority_invincibility_mode() -> 
 
     manager.acquire(
         LockLayer.MOTHERSHIP,
-        LockRequest(invincible=True, silent_invincible=True, invincibility_duration=1200),
+        LockRequest(invincible=True, is_silent_invincible=True, invincibility_duration=1200),
     )
     manager.acquire(
         LockLayer.HOMECOMING,
-        LockRequest(invincible=True, silent_invincible=False, invincibility_duration=900),
+        LockRequest(invincible=True, is_silent_invincible=False, invincibility_duration=900),
     )
 
-    assert game_state.player_invincible is True
-    assert game_state.silent_invincible is False
+    assert game_state.is_player_invincible is True
+    assert game_state.is_silent_invincible is False
     assert game_state.invincibility_timer == 900
 
     manager.release(LockLayer.HOMECOMING)
 
-    assert game_state.player_invincible is True
-    assert game_state.silent_invincible is True
+    assert game_state.is_player_invincible is True
+    assert game_state.is_silent_invincible is True
     assert game_state.invincibility_timer == 1200
 
 
@@ -82,7 +82,7 @@ def test_homecoming_release_preserves_mothership_lock() -> None:
         LockRequest(
             invincible=True,
             lock_controls=True,
-            silent_invincible=True,
+            is_silent_invincible=True,
             invincibility_duration=1200,
         ),
     )
@@ -91,8 +91,8 @@ def test_homecoming_release_preserves_mothership_lock() -> None:
         LockRequest(
             invincible=True,
             lock_controls=True,
-            paused=True,
-            silent_invincible=True,
+            is_paused=True,
+            is_silent_invincible=True,
             invincibility_duration=HOMECOMING_LOCK_TIMER,
         ),
     )
@@ -100,11 +100,11 @@ def test_homecoming_release_preserves_mothership_lock() -> None:
     manager.release(LockLayer.HOMECOMING)
 
     assert manager.is_locked(LockLayer.MOTHERSHIP) is True
-    assert game_state.player_invincible is True
+    assert game_state.is_player_invincible is True
     assert game_state.invincibility_timer == 1200
-    assert game_state.silent_invincible is True
-    assert game_state.paused is False
-    assert player.controls_locked is True
+    assert game_state.is_silent_invincible is True
+    assert game_state.is_paused is False
+    assert player.is_controls_locked is True
 
 
 def test_lock_layer_priority_order_is_explicit() -> None:
@@ -128,49 +128,49 @@ def test_each_lock_layer_can_win_invincibility_mode_by_priority(winner: LockLaye
             layer,
             LockRequest(
                 invincible=True,
-                silent_invincible=layer is not winner,
+                is_silent_invincible=layer is not winner,
                 invincibility_duration=duration,
             ),
         )
 
-    assert game_state.player_invincible is True
-    assert game_state.silent_invincible is False
+    assert game_state.is_player_invincible is True
+    assert game_state.is_silent_invincible is False
     assert game_state.invincibility_timer == winner.value
 
 
 def test_all_lock_layers_combine_independent_state_flags() -> None:
     manager, game_state, player = _make_subject()
 
-    manager.acquire(LockLayer.GIVE_UP, LockRequest(paused=True))
+    manager.acquire(LockLayer.GIVE_UP, LockRequest(is_paused=True))
     manager.acquire(LockLayer.PHASE_DASH, LockRequest(invincible=True, invincibility_duration=40))
     manager.acquire(LockLayer.BOSS_ENRAGE, LockRequest(lock_controls=True))
     manager.acquire(
         LockLayer.MOTHERSHIP,
-        LockRequest(invincible=True, lock_controls=True, silent_invincible=True, invincibility_duration=1200),
+        LockRequest(invincible=True, lock_controls=True, is_silent_invincible=True, invincibility_duration=1200),
     )
     manager.acquire(
         LockLayer.HOMECOMING,
-        LockRequest(invincible=True, paused=True, silent_invincible=False, invincibility_duration=900),
+        LockRequest(invincible=True, is_paused=True, is_silent_invincible=False, invincibility_duration=900),
     )
 
-    assert game_state.player_invincible is True
+    assert game_state.is_player_invincible is True
     assert game_state.invincibility_timer == 900
-    assert game_state.silent_invincible is False
-    assert game_state.paused is True
-    assert player.controls_locked is True
+    assert game_state.is_silent_invincible is False
+    assert game_state.is_paused is True
+    assert player.is_controls_locked is True
 
     manager.clear()
 
-    assert game_state.player_invincible is False
+    assert game_state.is_player_invincible is False
     assert game_state.invincibility_timer == 0
-    assert game_state.silent_invincible is False
-    assert game_state.paused is False
-    assert player.controls_locked is False
+    assert game_state.is_silent_invincible is False
+    assert game_state.is_paused is False
+    assert player.is_controls_locked is False
 
 
 def test_transient_state_can_apply_short_invincibility_without_registering_lock() -> None:
     manager, game_state, player = _make_subject()
-    player.controls_locked = True
+    player.is_controls_locked = True
 
     manager.apply_transient_state(
         paused=False,
@@ -180,8 +180,8 @@ def test_transient_state_can_apply_short_invincibility_without_registering_lock(
     )
 
     assert manager.has_locks() is False
-    assert game_state.paused is False
-    assert game_state.player_invincible is True
+    assert game_state.is_paused is False
+    assert game_state.is_player_invincible is True
     assert game_state.invincibility_timer == 120
-    assert game_state.silent_invincible is False
-    assert player.controls_locked is True
+    assert game_state.is_silent_invincible is False
+    assert player.is_controls_locked is True

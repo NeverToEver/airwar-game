@@ -3,16 +3,17 @@ import pygame
 from airwar.utils.fonts import get_cjk_font
 import math
 from .scene import Scene, ExitConfirmAction
+from .themed_scene_mixin import ThemedSceneMixin
 from airwar.utils.responsive import ResponsiveHelper
 from airwar.ui.menu_background import MenuBackground
 from airwar.ui.particles import ParticleSystem
 from airwar.ui.effects import EffectsRenderer
 from airwar.config.design_tokens import get_design_tokens, SceneColors
 from airwar.utils.mouse_interaction import MouseSelectableMixin
-from airwar.ui.scene_rendering_utils import SceneRenderingUtils, draw_themed_title, draw_themed_decorations, draw_themed_option_box
+from airwar.ui.scene_rendering_utils import SceneRenderingUtils
 
 
-class ExitConfirmScene(Scene, MouseSelectableMixin):
+class ExitConfirmScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
     """Exit confirmation scene -- dialog confirming player wants to quit."""
     def __init__(self):
         Scene.__init__(self)
@@ -109,16 +110,6 @@ class ExitConfirmScene(Scene, MouseSelectableMixin):
         elif effective == 2:
             self.result = ExitConfirmAction.QUIT_GAME
 
-    def update(self, *args, **kwargs) -> None:
-        self.animation_time += 1
-        self.glow_offset = math.sin(self.animation_time * self._tokens.animation.GLOW_SPEED) * 8
-
-        self._background_renderer._animation_time = self.animation_time
-        self._background_renderer.update()
-
-        self._particle_system._animation_time = self.animation_time
-        self._particle_system.update(direction=-1)
-
     def _draw_success_indicator(self, surface: pygame.Surface, center_x: int, y: int, scale: float = 1.0) -> None:
         if self.saved:
             check_text = "[OK] 游戏已保存"
@@ -203,14 +194,6 @@ class ExitConfirmScene(Scene, MouseSelectableMixin):
         esc_hint = self.desc_font.render("ESC 返回菜单", True, controls_color)
         surface.blit(esc_hint, esc_hint.get_rect(center=(center_x, height - ResponsiveHelper.scale(50, scale))))
 
-    def _draw_themed_title(self, surface: pygame.Surface, text: str, font: pygame.font.Font, pos: tuple) -> None:
-        """Draw title in military style with amber glow."""
-        draw_themed_title(surface, text, font, pos)
-
-    def _draw_themed_decorations(self, surface: pygame.Surface, width: int, height: int) -> None:
-        """Draw military style decorations."""
-        draw_themed_decorations(surface, width, height)
-
     def _draw_themed_success_indicator(self, surface: pygame.Surface, center_x: int, y: int, scale: float = 1.0) -> None:
         if self.saved:
             check_text = ">> 游戏已保存 <<"
@@ -220,13 +203,6 @@ class ExitConfirmScene(Scene, MouseSelectableMixin):
             alpha = int(200 + 55 * pulse)
             check_surface.set_alpha(alpha)
             surface.blit(check_surface, check_rect)
-
-    def _draw_themed_option_box(self, surface: pygame.Surface, text: str, y: int, is_selected: bool, scale: float = 1.0) -> None:
-        """Draw option box in military style with chamfered corners."""
-        draw_themed_option_box(
-            surface, text, y, is_selected, self.option_font, self._option_rects,
-            self.base_box_width, self.base_box_height, scale,
-        )
 
     def get_result(self) -> ExitConfirmAction:
         return self.result

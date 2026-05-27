@@ -1,6 +1,6 @@
 import pygame
 
-from airwar.entities.player import Player
+from airwar.entities.player import PhaseDashState, Player
 from airwar.input.input_handler import MockInputHandler
 from airwar.utils._sprites_ships import (
     PLAYER_SPRITE_CACHE_MAX,
@@ -83,7 +83,7 @@ def test_phase_dash_render_does_not_mutate_cached_rotated_sprite_alpha():
     cached = player._rotated_ship_sprite()
     original_alpha = cached.get_alpha()
 
-    player._phase_dash_state = "active"
+    player._phase_dash_state = PhaseDashState.ACTIVE
     player.render(surface)
 
     assert cached.get_alpha() == original_alpha

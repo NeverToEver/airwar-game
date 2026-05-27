@@ -6,6 +6,7 @@ movement, weapon firing, health and shield systems.
 
 # === Standard library ===
 import math
+from enum import Enum
 from typing import List, Optional, Tuple
 
 # === Third-party ===
@@ -28,6 +29,14 @@ from airwar.config import (
 )
 from airwar.utils.sprites import get_player_sprite
 from airwar.config.constants_access import get_game_constants
+
+
+class PhaseDashState(Enum):
+    """Phase dash ability lifecycle states."""
+    READY = "ready"
+    WINDUP = "windup"
+    ACTIVE = "active"
+    RECOVERY = "recovery"
 
 
 class Player(Entity):
@@ -88,14 +97,14 @@ class Player(Entity):
         self.speed = self.base_speed
         self.bullet_damage = constants.PLAYER.BULLET_DAMAGE
         # Boost system
-        self.boost_active: bool = False
+        self.is_boost_active: bool = False
         self.boost_max: float = self.DEFAULT_BOOST_MAX
         self.boost_current: float = self.DEFAULT_BOOST_MAX
         self.boost_recovery_rate: float = self.DEFAULT_RECOVERY_RATE
         self.boost_speed_mult: float = self.DEFAULT_SPEED_MULT
         self.boost_recovery_delay: int = self.DEFAULT_BOOST_RECOVERY_DELAY
         self.boost_recovery_ramp: int = self.DEFAULT_BOOST_RECOVERY_RAMP
-        self.phase_dash_enabled: bool = False
+        self.is_phase_dash_enabled: bool = False
         self.ctrl_mode: str = "hold"
         self.shift_boost_mode: str = "hold"
         self._precision_toggle_active: bool = False
@@ -113,13 +122,13 @@ class Player(Entity):
         self._bullets: List = []
         self.is_shielded = False
         self._shield_duration = 0
-        self.controls_locked = False
+        self.is_controls_locked = False
         self.hitbox_width = self.PLAYER_HITBOX_W
         self.hitbox_height = self.PLAYER_HITBOX_H
         self._hitbox_timer = 0
         self._render_hitbox = False
         self._hitbox_glow_surf = None
-        self._phase_dash_state = "ready"
+        self._phase_dash_state = PhaseDashState.READY
         self._phase_dash_timer = 0
         self._phase_dash_cooldown = 0
         self._phase_dash_start = (0.0, 0.0)
@@ -222,7 +231,7 @@ class Player(Entity):
         Used by the game loop for continuous firing without returning
         the created bullets.
         """
-        if self.controls_locked:
+        if self.is_controls_locked:
             return
         if self._fire_cooldown <= 0:
             self._fire_cooldown = self._fire_interval
@@ -260,7 +269,7 @@ class Player(Entity):
 
     def activate_phase_dash(self) -> None:
         """Enable boost-fueled invincible phase dash."""
-        self.phase_dash_enabled = True
+        self.is_phase_dash_enabled = True
 
     def take_damage(self, damage: int) -> None:
         """Apply damage to the player.
@@ -305,10 +314,10 @@ class Player(Entity):
         return {
             'current': self.boost_current,
             'max': self.boost_max,
-            'active': self.boost_active,
+            'active': self.is_boost_active,
             'dash_cooldown': self._phase_dash_cooldown,
             'dash_cooldown_max': self.PHASE_DASH_COOLDOWN_FRAMES,
-            'dash_enabled': self.phase_dash_enabled,
+            'dash_enabled': self.is_phase_dash_enabled,
             'dash_active': self.is_phase_dashing(),
             'dash_ready': self.can_phase_dash(),
         }
@@ -322,22 +331,22 @@ class Player(Entity):
     def cleanup_inactive_bullets(self) -> None:
         if not self._bullets:
             return
-        # 原地过滤以避免每次创建新列表
+        # Filter in-place to avoid creating a new list each frame
         self._bullets[:] = [b for b in self._bullets if b.active]
 
     def is_colliding_with(self, other) -> bool:
         return self.get_hitbox().colliderect(other.rect)
 
     def is_phase_dashing(self) -> bool:
-        return self._phase_dash_state in {"windup", "active", "recovery"}
+        return self._phase_dash_state in {PhaseDashState.WINDUP, PhaseDashState.ACTIVE, PhaseDashState.RECOVERY}
 
     def is_phase_dash_invincible(self) -> bool:
-        return self._phase_dash_state in {"windup", "active", "recovery"}
+        return self._phase_dash_state in {PhaseDashState.WINDUP, PhaseDashState.ACTIVE, PhaseDashState.RECOVERY}
 
     def can_phase_dash(self) -> bool:
         return (
-            self.phase_dash_enabled
-            and self._phase_dash_state == "ready"
+            self.is_phase_dash_enabled
+            and self._phase_dash_state == PhaseDashState.READY
             and self._phase_dash_cooldown <= 0
             and self.boost_current >= self._phase_dash_cost()
         )
@@ -361,7 +370,7 @@ class Player(Entity):
     # 5. Private lifecycle methods
 
     def _update_movement(self) -> None:
-        if self.controls_locked:
+        if self.is_controls_locked:
             return
 
         if self.is_phase_dashing():
@@ -387,9 +396,9 @@ class Player(Entity):
         if self.shift_boost_mode == "toggle":
             if boost_just_pressed:
                 self._boost_toggle_active = not self._boost_toggle_active
-            self.boost_active = self._boost_toggle_active and self.boost_current > 0
+            self.is_boost_active = self._boost_toggle_active and self.boost_current > 0
         else:
-            self.boost_active = boost_pressed and self.boost_current > 0
+            self.is_boost_active = boost_pressed and self.boost_current > 0
 
         # Precision mode (hold vs toggle)
         ctrl_pressed = self._input_handler.is_precision_pressed()
@@ -403,9 +412,9 @@ class Player(Entity):
 
         if precision:
             self.speed = self.base_speed * self.PRECISION_SPEED_MULT
-            self.boost_active = False
+            self.is_boost_active = False
             self._update_boost_recovery()
-        elif self.boost_active:
+        elif self.is_boost_active:
             self._boost_idle_frames = 0
             self.boost_current = max(0, self.boost_current - 1)
             self.speed = self.base_speed * self.boost_speed_mult
@@ -445,7 +454,7 @@ class Player(Entity):
 
     def _update_boost_recovery(self, active_blocked: bool = False) -> None:
         if active_blocked:
-            self.boost_active = False
+            self.is_boost_active = False
         self._boost_idle_frames += 1
         if self._boost_idle_frames > self.boost_recovery_delay:
             ramp_frames = self._boost_idle_frames - self.boost_recovery_delay
@@ -469,7 +478,7 @@ class Player(Entity):
         else:
             dx, dy = dx / length, dy / length
         self._phase_dash_direction = (dx, dy)
-        self._phase_dash_state = "windup"
+        self._phase_dash_state = PhaseDashState.WINDUP
         self._phase_dash_timer = self.PHASE_DASH_WINDUP_FRAMES
         self._phase_dash_start = (self.rect.x, self.rect.y)
         target_x = self.rect.x + dx * self.PHASE_DASH_DISTANCE
@@ -484,34 +493,34 @@ class Player(Entity):
         self._phase_dash_target = (target_x, target_y)
 
     def _update_phase_dash_motion(self) -> None:
-        if self._phase_dash_state == "windup":
+        if self._phase_dash_state == PhaseDashState.WINDUP:
             self._phase_dash_timer -= 1
             if self._phase_dash_timer <= 0:
-                self._phase_dash_state = "active"
+                self._phase_dash_state = PhaseDashState.ACTIVE
                 self._phase_dash_timer = 0
             return
 
-        if self._phase_dash_state == "active":
+        if self._phase_dash_state == PhaseDashState.ACTIVE:
             self._phase_dash_timer += 1
             progress = min(1.0, self._phase_dash_timer / self.PHASE_DASH_ACTIVE_FRAMES)
             eased = 1 - (1 - progress) * (1 - progress)
             self.rect.x = self._phase_dash_start[0] + (self._phase_dash_target[0] - self._phase_dash_start[0]) * eased
             self.rect.y = self._phase_dash_start[1] + (self._phase_dash_target[1] - self._phase_dash_start[1]) * eased
             if progress >= 1.0:
-                self._phase_dash_state = "recovery"
+                self._phase_dash_state = PhaseDashState.RECOVERY
                 self._phase_dash_timer = self.PHASE_DASH_RECOVERY_FRAMES
             return
 
-        if self._phase_dash_state == "recovery":
+        if self._phase_dash_state == PhaseDashState.RECOVERY:
             self._phase_dash_timer -= 1
             if self._phase_dash_timer <= 0:
-                self._phase_dash_state = "ready"
+                self._phase_dash_state = PhaseDashState.READY
                 self._phase_dash_cooldown = self.PHASE_DASH_COOLDOWN_FRAMES
 
     def _phase_dash_alpha(self) -> int:
-        if self._phase_dash_state == "windup":
+        if self._phase_dash_state == PhaseDashState.WINDUP:
             return 210
-        if self._phase_dash_state == "recovery":
+        if self._phase_dash_state == PhaseDashState.RECOVERY:
             progress = 1 - max(0, self._phase_dash_timer) / self.PHASE_DASH_RECOVERY_FRAMES
             return int(self.PHASE_DASH_ALPHA_MAX + (255 - self.PHASE_DASH_ALPHA_MAX) * progress)
         pulse = abs(math.sin(self._hitbox_timer * 0.8))

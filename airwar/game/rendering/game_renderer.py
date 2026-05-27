@@ -1,7 +1,7 @@
 """Game renderer — entity rendering, background, and death animation."""
 import pygame
 from dataclasses import dataclass
-from typing import List
+from typing import Any, List
 from .hud_renderer import HUDRenderer
 from .integrated_hud import IntegratedHUD
 from .entity_renderer import EntityRenderer
@@ -13,9 +13,9 @@ from ..death_animation import DeathAnimation
 @dataclass
 class GameEntities:
     """Game entities container dataclass — player, enemies, boss."""
-    player: any
+    player: Any
     enemies: List
-    boss: any
+    boss: Any
 
 
 class GameRenderer:
@@ -61,7 +61,7 @@ class GameRenderer:
             else:
                 surface.fill((10, 10, 30))
 
-        if state.entrance_animation:
+        if state.is_entrance_playing:
             self._render_entrance(surface, state, entities)
         else:
             self._render_game(surface, state, entities)
@@ -117,7 +117,7 @@ class GameRenderer:
         if not player:
             return
         player.render(surface)
-        if state.player_invincible and not state.silent_invincible:
+        if state.is_player_invincible and not state.is_silent_invincible:
             self._render_invincibility_aura(surface, player)
 
     def _render_invincibility_aura(self, surface, player) -> None:

@@ -211,8 +211,8 @@ class GameIntegrator:
         if not self._game_scene or not self._game_scene.spawn_controller:
             return
 
-        # 帧计数而非 delta-time：与项目其他开火逻辑一致，假定稳定 60fps。
-        # 帧率下降时开火速度随之下降，可接受的 trade-off。
+        # Frame-based timing (not delta-time): consistent with other firing logic, assumes stable 60fps.
+        # Fire rate drops when framerate drops — an acceptable trade-off.
         self._mothership_fire_timer += 1
         if self._mothership_fire_timer >= self.MOTHERSHIP_FIRE_RATE:
             self._mothership_fire_timer = 0
@@ -410,7 +410,7 @@ class GameIntegrator:
 
         self._game_scene.add_score(reduced_score)
         self._game_scene.add_kill()
-        self._game_scene.show_notification(f"+{reduced_score} (母舰)")
+        self._game_scene.show_notification(f"+{reduced_score} (mothership)")
 
     def _on_mothership_kill_boss(self, boss) -> None:
         if not self._game_scene:
@@ -430,7 +430,7 @@ class GameIntegrator:
         if hasattr(self._game_scene, 'trigger_boss_death_explosion'):
             self._game_scene.trigger_boss_death_explosion(boss)
         self._game_scene.clear_boss()
-        self._game_scene.show_notification(f"BOSS +{reduced_score} (母舰)")
+        self._game_scene.show_notification(f"BOSS +{reduced_score} (mothership)")
 
     def _on_state_changed(self, state, **kwargs) -> None:
         if state == MotherShipState.PRESSING:
@@ -467,7 +467,7 @@ class GameIntegrator:
                 LockRequest(
                     invincible=True,
                     lock_controls=True,
-                    silent_invincible=True,
+                    is_silent_invincible=True,
                     invincibility_duration=1200,
                 ),
             )
@@ -475,7 +475,7 @@ class GameIntegrator:
             if hasattr(self._game_scene, "set_player_invincible"):
                 self._game_scene.set_player_invincible(True, 1200, silent=True)
             if getattr(self._game_scene, "player", None):
-                self._game_scene.player.controls_locked = True
+                self._game_scene.player.is_controls_locked = True
 
     def _on_cooldown_started(self, **kwargs) -> None:
         self._deactivate_invincibility()
@@ -506,7 +506,7 @@ class GameIntegrator:
             if hasattr(self._game_scene, "set_player_invincible"):
                 self._game_scene.set_player_invincible(False, 0, silent=False)
             if getattr(self._game_scene, "player", None):
-                self._game_scene.player.controls_locked = False
+                self._game_scene.player.is_controls_locked = False
 
     def _apply_cooldown_multiplier_from_player(self) -> None:
         """Read player's Mothership Recall buff and apply to cooldown."""
