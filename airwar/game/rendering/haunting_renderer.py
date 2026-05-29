@@ -91,6 +91,7 @@ class HauntingRenderer:
 
     def render_world_styles(self, surface: pygame.Surface, player: Any, enemies: Iterable, boss: Any = None) -> None:
         """Intentional no-op — flashback does not replace world entities."""
+        pass
 
     def distort_world(self, surface: pygame.Surface) -> None:
         """Single-band CRT glitch displacement — small reusable buffer."""
@@ -128,12 +129,15 @@ class HauntingRenderer:
         self, surface: pygame.Surface, player_bullets: Iterable, enemy_bullets: Iterable
     ) -> None:
         """Intentional no-op — flashback does not replace projectile visuals."""
+        pass
 
     def render_foreground_distortion(self, surface: pygame.Surface, state: Any = None, player: Any = None) -> None:
         """Intentional no-op — flashback does not corrupt UI text."""
+        pass
 
     def render_hud_corruption(self, surface: pygame.Surface) -> None:
         """Intentional no-op — HUD darkening is merged into render_atmosphere_overlay."""
+        pass
 
     def render_transition_flicker(self, surface: pygame.Surface) -> None:
         """Brief white flash on flashback enter/exit — dedicated overlay."""

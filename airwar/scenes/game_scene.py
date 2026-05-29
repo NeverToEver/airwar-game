@@ -15,7 +15,7 @@ from airwar.game.systems.notification_manager import NotificationManager
 from airwar.game.managers.game_controller import GameController, GameplayState
 from airwar.game.managers.spawn_controller import SpawnController
 from airwar.game.managers.collision_controller import CollisionController
-from airwar.game.managers.game_controller import normalize_score
+from airwar.game.constants import normalize_score
 from airwar.game.rendering.game_renderer import GameRenderer
 from airwar.ui.reward_selector import RewardSelector
 from airwar.ui.boost_gauge import BoostGauge
@@ -76,7 +76,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     AIM_ASSIST_DIRECTION_CONE_DOT = AimAssistSystem.AIM_ASSIST_DIRECTION_CONE_DOT
     AIM_INPUT_DELAY_BLEND = AimAssistSystem.AIM_INPUT_DELAY_BLEND
     AIM_INPUT_SNAP_DISTANCE = AimAssistSystem.AIM_INPUT_SNAP_DISTANCE
-    HOMECOMING_LOCK_INVINCIBILITY_TIMER = 999999
+    PERMANENT_INVINCIBILITY_FRAMES = 999999  # Sentinel: effectively infinite invincibility
+    DOCKING_INVINCIBILITY_FRAMES = 1200  # 20 seconds at 60fps
 
     AUTO_SAVE_INTERVAL = 1800  # 30 seconds at 60fps
 
@@ -392,8 +393,6 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
         if is_dying:
             self._game_loop_manager.update_game(self.player)
-            if self._mother_ship_integrator:
-                self._mother_ship_integrator.update()
             return
 
         if self.game_controller.state.is_paused or self.reward_selector.visible:
@@ -531,7 +530,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
                 invincible=True,
                 lock_controls=True,
                 is_silent_invincible=True,
-                invincibility_duration=1200,
+                invincibility_duration=self.PERMANENT_INVINCIBILITY_FRAMES,
             ),
         )
 

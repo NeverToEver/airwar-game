@@ -83,6 +83,7 @@ class GameIntegrator:
     MOTHERSHIP_GATLING_BULLET_TYPE = "mothership_gatling"
     MOTHERSHIP_BULLET_DESPAWN_MARGIN = 80
     AMMO_CELL_COUNT = 10.0
+    DOCKING_INVINCIBILITY_FRAMES = 1200  # 20 seconds at 60fps
 
     BAR_TYPE_HOLD = "hold"
     BAR_TYPE_COOLDOWN = "cooldown"
@@ -470,7 +471,7 @@ class GameIntegrator:
                     invincible=True,
                     lock_controls=True,
                     is_silent_invincible=True,
-                    invincibility_duration=1200,
+                    invincibility_duration=999999,  # Permanent until explicitly released on undock
                 ),
             )
         elif self._game_scene:
@@ -780,6 +781,7 @@ class GameIntegrator:
         state = self._state_machine.current_state
         cd = self._state_machine.cooldown
         stay = self._state_machine.stay_progress
+        stay.update_stay(pygame.time.get_ticks() / 1000.0)  # Ensure progress is fresh
 
         # Compute ammo count based on state
         is_present = state in (MotherShipState.PRESSING, MotherShipState.ENTERING,

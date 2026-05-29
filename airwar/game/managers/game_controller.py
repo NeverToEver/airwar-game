@@ -4,7 +4,7 @@ from typing import List, Optional
 from enum import Enum
 import logging
 from airwar.config import VALID_DIFFICULTIES, RIPPLE_FADE_SPEED
-from ..constants import GAME_CONSTANTS
+from ..constants import GAME_CONSTANTS, normalize_score
 from ..death_animation import DeathAnimation
 from ..systems.health_system import HealthSystem
 from ..systems.reward_system import RewardSystem
@@ -12,15 +12,6 @@ from ..systems.notification_manager import NotificationManager
 from ..systems.difficulty_manager import DifficultyManager
 
 
-def normalize_score(value) -> int:
-    """Return a non-negative integer score from numeric game state values."""
-    if isinstance(value, bool):
-        return 0
-    if isinstance(value, int):
-        return max(0, value)
-    if isinstance(value, float) and value.is_integer():
-        return max(0, int(value))
-    return max(0, int(round(value)))
 
 
 class GameplayState(Enum):

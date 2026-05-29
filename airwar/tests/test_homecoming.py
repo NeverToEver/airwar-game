@@ -437,7 +437,7 @@ def test_game_scene_leaving_base_starts_departure_sequence() -> None:
     assert scene.player.is_controls_locked is True
     assert scene.game_controller.state.is_paused is True
     assert scene.game_controller.state.is_player_invincible is True
-    assert scene.game_controller.state.invincibility_timer == GameScene.HOMECOMING_LOCK_INVINCIBILITY_TIMER
+    assert scene.game_controller.state.invincibility_timer == GameScene.PERMANENT_INVINCIBILITY_FRAMES
     assert scene.game_controller.state.is_silent_invincible is True
     assert scene._homecoming_sequence.phase == HomecomingPhase.BASE_LAUNCH
     scene._homecoming_detector.reset.assert_not_called()

@@ -12,7 +12,7 @@ from airwar.game.systems.lock_manager import LockLayer, LockRequest
 class HomecomingCoordinator:
     """Coordinates homecoming detection, base operations, and departure."""
 
-    HOMECOMING_LOCK_INVINCIBILITY_TIMER = 999999
+    PERMANENT_INVINCIBILITY_FRAMES = 999999  # Sentinel: effectively infinite invincibility
 
     def __init__(
         self,
@@ -308,7 +308,7 @@ class HomecomingCoordinator:
                     lock_controls=True,
                     is_paused=True,
                     is_silent_invincible=True,
-                    invincibility_duration=self.HOMECOMING_LOCK_INVINCIBILITY_TIMER,
+                    invincibility_duration=self.PERMANENT_INVINCIBILITY_FRAMES,
                 ),
             )
         else:

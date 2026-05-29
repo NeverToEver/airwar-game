@@ -241,7 +241,8 @@ class CollisionController:
             player_hit_handler
         ):
             self._events.append(CollisionEvent(type='player_hit'))
-        
+            player_invincible = True  # Prevent double-hit this frame
+
         if not player_invincible and self.check_player_vs_enemies(
             player.get_hitbox(),
             enemies,
@@ -249,6 +250,7 @@ class CollisionController:
             player_hit_handler
         ):
             self._events.append(CollisionEvent(type='player_hit'))
+            player_invincible = True  # Prevent double-hit this frame
         
         if boss:
             boss_score, boss_killed = self.check_player_bullets_vs_boss(
@@ -563,6 +565,7 @@ class CollisionController:
             if eb.active and not getattr(eb, "held", False) and eb.rect.colliderect(player_hitbox):
                 damage = calculate_damage_func(eb.data.damage)
                 on_player_hit_func(damage, player)
+                eb.active = False  # Deactivate bullet so it doesn't re-hit next frame
                 return True
 
         return False

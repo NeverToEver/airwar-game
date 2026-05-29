@@ -21,6 +21,17 @@ from dataclasses import dataclass, field
 from typing import Tuple
 
 
+def normalize_score(value) -> int:
+    """Return a non-negative integer score from numeric game state values."""
+    if isinstance(value, bool):
+        return 0
+    if isinstance(value, int):
+        return max(0, value)
+    if isinstance(value, float) and value.is_integer():
+        return max(0, int(value))
+    return max(0, int(round(value)))
+
+
 @dataclass(frozen=True)
 class PlayerConstants:
     """Player-related constants.

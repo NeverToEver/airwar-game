@@ -31,6 +31,7 @@ class LockManager:
         self._game_state = game_state
         self._player = player
         self._locks: dict[LockLayer, LockRequest] = {}
+        self._force_timer_update = False
 
     def set_game_state(self, game_state) -> None:
         self._game_state = game_state
@@ -44,14 +45,17 @@ class LockManager:
 
     def acquire(self, layer: LockLayer, request: LockRequest):
         self._locks[layer] = request
+        self._force_timer_update = True
         self._recompute()
 
     def release(self, layer: LockLayer):
         self._locks.pop(layer, None)
+        self._force_timer_update = True
         self._recompute()
 
     def clear(self) -> None:
         self._locks.clear()
+        self._force_timer_update = True
         self._recompute()
 
     def is_locked(self, layer: LockLayer) -> bool:
@@ -101,8 +105,17 @@ class LockManager:
             if req.is_paused:
                 paused = True
         if self._game_state:
+            was_invincible = getattr(self._game_state, 'is_player_invincible', False)
             self._game_state.is_player_invincible = invincible
-            self._game_state.invincibility_timer = timer
+            # Only update timer from lock duration when:
+            # 1. A new lock was just acquired (_force_timer_update)
+            # 2. Invincibility is newly activated (wasn't active before)
+            # 3. Lock defines permanent invincibility (timer >= 999999)
+            # Otherwise preserve the current countdown so _update_invincibility
+            # can decrement it each frame.
+            if self._force_timer_update or not (invincible and was_invincible) or timer >= 999999:
+                self._game_state.invincibility_timer = timer
+            self._force_timer_update = False
             self._game_state.is_silent_invincible = silent
             self._game_state.is_paused = paused
         if self._player:

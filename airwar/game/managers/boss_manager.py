@@ -18,7 +18,7 @@ Usage:
 
 from typing import TYPE_CHECKING
 
-from .game_controller import normalize_score
+from ..constants import normalize_score
 
 if TYPE_CHECKING:
     from .bullet_manager import BulletManager
@@ -105,7 +105,8 @@ class BossManager:
         if not boss or boss.active:
             return
 
-        if boss.is_escaped:
+        if boss.is_escaped and not getattr(boss, '_escape_notified', False):
+            boss._escape_notified = True
             self._game_controller.show_notification("BOSS 逃跑! (+0)")
 
     def on_boss_hit(self, score: int) -> None:
