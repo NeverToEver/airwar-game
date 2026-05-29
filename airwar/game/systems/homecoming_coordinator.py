@@ -7,7 +7,6 @@ from airwar.config import get_screen_width, get_screen_height
 from airwar.game.constants import PlayerConstants, GAME_CONSTANTS
 from airwar.game.systems.talent_balance_manager import TalentBalanceManager
 from airwar.game.systems.lock_manager import LockLayer, LockRequest
-from airwar.game.mother_ship.persistence_manager import PersistenceManager
 
 
 class HomecomingCoordinator:
