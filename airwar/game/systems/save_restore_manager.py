@@ -38,8 +38,8 @@ class SaveRestoreManager:
         game_controller.state.kill_count = max(0, save_data.kill_count)
         game_controller.state.boss_kill_count = max(0, save_data.boss_kill_count)
         game_controller.state.requisition_points = max(0, getattr(save_data, 'requisition_points', 0))
-        game_controller.milestone_index = save_data.cycle_count
-        game_controller.cycle_count = save_data.cycle_count
+        game_controller.state.milestone_index = save_data.cycle_count
+        game_controller.state.cycle_count = save_data.cycle_count
 
         # Sync difficulty BEFORE buff re-apply so base stats match the saved difficulty
         saved_diff = save_data.difficulty if save_data.difficulty in VALID_DIFFICULTIES else 'medium'

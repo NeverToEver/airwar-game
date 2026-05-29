@@ -53,8 +53,8 @@ def test_game_controller_uses_design_threshold_curve() -> None:
 def test_saved_score_below_refactored_threshold_does_not_loop_reward_selection() -> None:
     controller = GameController("medium", "pilot")
     controller.state.score = 100300
-    controller.milestone_index = 238
-    controller.cycle_count = 238
+    controller.state.milestone_index = 238
+    controller.state.cycle_count = 238
     selector = _make_selector()
     manager = MilestoneManager(controller, controller.reward_system)
     manager.set_reward_selector(selector)

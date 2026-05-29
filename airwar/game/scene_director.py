@@ -56,22 +56,37 @@ class SceneDirector:
     def stop(self) -> None:
         self._running = False
 
+    def _run_scene_loop(self, scene, *, escape_handled: bool = False) -> str:
+        """Run the standard poll→update→render loop until scene exits or user quits.
+
+        Args:
+            scene: The scene instance to run.
+            escape_handled: If True, skip ESC key in event dispatch.
+
+        Returns:
+            "quit" if the user closed the window, "ended" if the scene exited normally.
+        """
+        while self._running and scene.is_running():
+            events = self._poll_events()
+            if not self._check_quit(events):
+                return "quit"
+            self._handle_resize_if_needed(events)
+            self._handle_scene_events(events, escape_handled)
+            scene.update()
+            self._render_scene(scene)
+            self._window.flip()
+            self._window.tick(FPS)
+        return "quit" if not self._running else "ended"
+
     def _run_welcome_flow(self) -> tuple:
         """Single-page beginner interface: login + difficulty + controls in one screen."""
         while self._running:
             self._scene_manager.switch("welcome", viewport=self._viewport)
             welcome = self._scene_manager.get_current_scene()
 
-            while self._running and welcome.is_running():
-                events = self._poll_events()
-                if not self._check_quit(events):
-                    return (False, None)
-                self._handle_resize_if_needed(events)
-                self._handle_scene_events(events)
-                self._scene_manager.update()
-                self._render_current_scene()
-                self._window.flip()
-                self._window.tick(FPS)
+            result = self._run_scene_loop(welcome)
+            if result == "quit":
+                return (False, None)
 
             if hasattr(welcome, 'should_quit') and welcome.should_quit():
                 return (False, None)
@@ -101,18 +116,8 @@ class SceneDirector:
         self._scene_manager.switch("tutorial", viewport=self._viewport)
         tutorial = self._scene_manager.get_current_scene()
 
-        while self._running and tutorial.is_running():
-            events = self._poll_events()
-            if not self._check_quit(events):
-                return "quit"
-            self._handle_resize_if_needed(events)
-            self._handle_scene_events(events)
-            self._scene_manager.update()
-            self._render_current_scene()
-            self._window.flip()
-            self._window.tick(FPS)
-
-        return "main_menu"
+        result = self._run_scene_loop(tutorial)
+        return "quit" if result == "quit" else "main_menu"
 
     def _run_game_flow(self) -> str:
         self._logger.info(f"Starting game flow: difficulty={self._selected_difficulty}, user={self._current_user}")
@@ -278,27 +283,9 @@ class SceneDirector:
             username=self._current_user,
             settings_ref=self._settings_ref,
         )
-        while settings_scene.is_running():
-            events = self._poll_events()
-            quit_seen = False
-            for event in events:
-                if event.type == pygame.QUIT:
-                    self._running = False
-                    settings_scene.running = False
-                    quit_seen = True
-                    break
-                if event.type == pygame.VIDEORESIZE:
-                    self._window.resize(event.w, event.h)
-                    self._handle_resize(event.w, event.h)
-                settings_scene.handle_events(event)
-            if quit_seen:
-                break
-            settings_scene.update()
-            self._render_scene(settings_scene)
-            self._window.flip()
-            self._window.tick(FPS)
+        result = self._run_scene_loop(settings_scene)
         settings_scene.exit()
-        if not self._running:
+        if result == "quit":
             return False
         if game_scene and hasattr(game_scene, 'player') and game_scene.player:
             self._apply_settings_to_player(game_scene.player)
@@ -311,21 +298,9 @@ class SceneDirector:
                 return PauseAction.QUIT
             pause_scene.enter()
 
-            while pause_scene.running:
-                events = self._poll_events()
-                for event in events:
-                    if event.type == pygame.QUIT:
-                        self._running = False
-                        return PauseAction.QUIT
-                    if event.type == pygame.VIDEORESIZE:
-                        self._window.resize(event.w, event.h)
-                        self._handle_resize(event.w, event.h)
-                for event in events:
-                    pause_scene.handle_events(event)
-                pause_scene.update()
-                self._render_scene(pause_scene)
-                self._window.flip()
-                self._window.tick(FPS)
+            result = self._run_scene_loop(pause_scene)
+            if result == "quit":
+                return PauseAction.QUIT
 
             result = pause_scene.get_result()
             pause_scene.exit()
@@ -355,20 +330,9 @@ class SceneDirector:
 
         exit_scene.enter(saved=saved, difficulty=self._selected_difficulty)
 
-        while exit_scene.is_running():
-            events = self._poll_events()
-            for event in events:
-                if event.type == pygame.QUIT:
-                    self._running = False
-                    return "quit"
-                if event.type == pygame.VIDEORESIZE:
-                    self._window.resize(event.w, event.h)
-                    self._handle_resize(event.w, event.h)
-                exit_scene.handle_events(event)
-            exit_scene.update()
-            self._render_scene(exit_scene)
-            self._window.flip()
-            self._window.tick(FPS)
+        loop_result = self._run_scene_loop(exit_scene)
+        if loop_result == "quit":
+            return "quit"
 
         result = exit_scene.get_result()
         exit_scene.exit()
@@ -396,22 +360,7 @@ class SceneDirector:
 
         death_scene.enter(score=final_score, kills=kills, boss_kills=boss_kills, username=self._current_user)
 
-        while death_scene.is_running():
-            events = self._poll_events()
-            for event in events:
-                if event.type == pygame.QUIT:
-                    self._running = False
-                    death_scene.running = False
-                    break
-                if event.type == pygame.VIDEORESIZE:
-                    self._window.resize(event.w, event.h)
-                    self._handle_resize(event.w, event.h)
-                death_scene.handle_events(event)
-
-            death_scene.update()
-            self._render_scene(death_scene)
-            self._window.flip()
-            self._window.tick(FPS)
+        self._run_scene_loop(death_scene)
 
         result = death_scene.get_result()
         death_scene.exit()

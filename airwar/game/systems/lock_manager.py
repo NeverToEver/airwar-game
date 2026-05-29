@@ -12,6 +12,7 @@ class LockLayer(IntEnum):
     BOSS_ENRAGE = 60
     PHASE_DASH = 40
     GIVE_UP = 20
+    GAME_PAUSE = 10
 
 
 @dataclass

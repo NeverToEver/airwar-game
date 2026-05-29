@@ -88,22 +88,8 @@ class IMotherShipStateMachine(ABC):
         pass
 
 
-class IGameScene(ABC):
-    """Interface for game scene access from GameIntegrator.
-
-    Defines the contract for GameIntegrator to access GameScene
-    without violating layer boundaries.
-    """
-
-    @abstractmethod
-    def set_player_position(self, x: float, y: float) -> None:
-        """Set player rect center position."""
-        pass
-
-    @abstractmethod
-    def set_player_position_topleft(self, x: float, y: float) -> None:
-        """Set player rect top-left position."""
-        pass
+class IScoreProvider(ABC):
+    """Interface for score and kill tracking from GameIntegrator."""
 
     @abstractmethod
     def add_score(self, amount: int) -> None:
@@ -112,7 +98,7 @@ class IGameScene(ABC):
 
     @abstractmethod
     def add_kill(self) -> None:
-        """Increment kill count and update score."""
+        """Increment kill count."""
         pass
 
     @abstractmethod
@@ -123,26 +109,6 @@ class IGameScene(ABC):
     @abstractmethod
     def show_notification(self, message: str) -> None:
         """Show a notification message."""
-        pass
-
-    @abstractmethod
-    def get_enemies(self) -> List:
-        """Get current enemy list."""
-        pass
-
-    @abstractmethod
-    def get_boss(self):
-        """Get current boss or None."""
-        pass
-
-    @abstractmethod
-    def clear_boss(self) -> None:
-        """Clear the current boss."""
-        pass
-
-    @abstractmethod
-    def set_player_invincible(self, invincible: bool, timer: int, silent: bool = False) -> None:
-        """Set player invincibility state."""
         pass
 
     @abstractmethod
@@ -164,6 +130,73 @@ class IGameScene(ABC):
     def get_boss_kill_count(self) -> int:
         """Get boss kill count."""
         pass
+
+
+class IEntityProvider(ABC):
+    """Interface for entity access from GameIntegrator."""
+
+    @abstractmethod
+    def get_enemies(self) -> List:
+        """Get current enemy list."""
+        pass
+
+    @abstractmethod
+    def get_boss(self):
+        """Get current boss or None."""
+        pass
+
+    @abstractmethod
+    def clear_boss(self) -> None:
+        """Clear the current boss."""
+        pass
+
+    @abstractmethod
+    def trigger_explosion(self, x: float, y: float, radius: int) -> None:
+        """Trigger explosion visual effect at given position."""
+        pass
+
+    @abstractmethod
+    def trigger_boss_death_explosion(self, boss) -> None:
+        """Play a boss wreck explosion without keeping the boss entity alive."""
+        pass
+
+
+class IPlayerControl(ABC):
+    """Interface for player position and invincibility from GameIntegrator."""
+
+    @abstractmethod
+    def set_player_position(self, x: float, y: float) -> None:
+        """Set player rect center position."""
+        pass
+
+    @abstractmethod
+    def set_player_position_topleft(self, x: float, y: float) -> None:
+        """Set player rect top-left position."""
+        pass
+
+    @abstractmethod
+    def set_player_invincible(self, invincible: bool, timer: int, silent: bool = False) -> None:
+        """Set player invincibility state."""
+        pass
+
+    @abstractmethod
+    def acquire_lock(self, layer, request) -> None:
+        """Acquire a lock layer via the centralized LockManager."""
+        pass
+
+    @abstractmethod
+    def release_lock(self, layer) -> None:
+        """Release a lock layer via the centralized LockManager."""
+        pass
+
+
+class IGameScene(IScoreProvider, IEntityProvider, IPlayerControl):
+    """Composite interface for full game scene access from GameIntegrator.
+
+    Combines IScoreProvider, IEntityProvider, and IPlayerControl.
+    GameScene implements this interface; GameIntegrator should depend
+    on the narrower sub-interfaces where possible.
+    """
 
     @abstractmethod
     def get_unlocked_buffs(self) -> List:

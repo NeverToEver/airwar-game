@@ -79,6 +79,10 @@ class PauseScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
     def exit(self) -> None:
         pass
 
+    def is_running(self) -> bool:
+        """Check if the pause scene is still active."""
+        return self.running
+
     def update(self, *args, **kwargs) -> None:
         self.animation_time += 1
 

@@ -94,6 +94,10 @@ class BaseTalentConsole:
             {"name": "主宰之战", "desc": "击杀Boss", "target": "boss_kills", "goal": 1, "progress": 0, "done": False, "claimed": False},
         ]
 
+    def get_missions(self) -> list[dict]:
+        """Return the mission list (read-only view for external consumers)."""
+        return self._missions
+
     def update(self) -> None:
         self._frame += 1
 

@@ -51,6 +51,8 @@ class GameState:
     entrance_duration: int = GAME_CONSTANTS.ANIMATION.ENTRANCE_DURATION
     kill_count: int = 0
     boss_kill_count: int = 0
+    cycle_count: int = 0
+    milestone_index: int = 0
     gameplay_state: GameplayState = GameplayState.PLAYING
     death_timer: int = 0
     death_duration: int = DeathAnimation.ANIMATION_DURATION
@@ -87,8 +89,41 @@ class GameController:
         self.notification_manager = NotificationManager()
         self.difficulty_manager = DifficultyManager(difficulty)
 
-        self.cycle_count = 0
-        self.milestone_index = 0
+        self._lock_manager = None
+
+    def set_lock_manager(self, lock_manager) -> None:
+        """Set the LockManager for centralized state arbitration."""
+        self._lock_manager = lock_manager
+
+    def set_invincible(self, invincible: bool, timer: int = 0, silent: bool = False) -> None:
+        """Set player invincibility, routing through LockManager if available."""
+        from ..systems.lock_manager import LockLayer, LockRequest
+        if self._lock_manager:
+            if invincible:
+                self._lock_manager.acquire(
+                    LockLayer.MOTHERSHIP,
+                    LockRequest(invincible=True, is_silent_invincible=silent, invincibility_duration=timer),
+                )
+            else:
+                self._lock_manager.release(LockLayer.MOTHERSHIP)
+        else:
+            self.state.is_player_invincible = invincible
+            self.state.invincibility_timer = timer
+            self.state.is_silent_invincible = silent
+
+    def set_paused(self, paused: bool) -> None:
+        """Set game paused state, routing through LockManager if available."""
+        from ..systems.lock_manager import LockLayer, LockRequest
+        if self._lock_manager:
+            if paused:
+                self._lock_manager.acquire(
+                    LockLayer.GAME_PAUSE,
+                    LockRequest(is_paused=True),
+                )
+            else:
+                self._lock_manager.release(LockLayer.GAME_PAUSE)
+        else:
+            self.state.is_paused = paused
 
     # 3. Public lifecycle methods
 
@@ -131,20 +166,20 @@ class GameController:
         return self._get_threshold_for_index(index)
 
     def get_previous_threshold(self) -> float:
-        if self.milestone_index > 0:
-            return self._get_threshold_for_index(self.milestone_index - 1)
+        if self.state.milestone_index > 0:
+            return self._get_threshold_for_index(self.state.milestone_index - 1)
         return 0.0
 
     def get_next_progress(self) -> int:
         previous = self.get_previous_threshold()
-        next_threshold = self._get_threshold_for_index(self.milestone_index)
+        next_threshold = self._get_threshold_for_index(self.state.milestone_index)
         if next_threshold == previous:
             return 0
         progress = (self.state.score - previous) / (next_threshold - previous) * 100
         return max(0, min(100, int(progress)))
 
     def get_next_threshold(self) -> float:
-        return self._get_threshold_for_index(self.milestone_index)
+        return self._get_threshold_for_index(self.state.milestone_index)
 
     def has_next_reward_milestone(self) -> bool:
         return self.get_next_threshold() > self.get_previous_threshold()
@@ -179,12 +214,10 @@ class GameController:
         if player.health <= 0:
             self.state.gameplay_state = GameplayState.DYING
             self.state.death_timer = self.state.death_duration
-            self.state.is_player_invincible = True
-            self.state.invincibility_timer = 0
+            self.set_invincible(True, timer=0)
             self._logger.warning(f"Player died: damage={damage}, health=0")
         else:
-            self.state.is_player_invincible = True
-            self.state.invincibility_timer = GAME_CONSTANTS.PLAYER.INVINCIBILITY_DURATION
+            self.set_invincible(True, timer=GAME_CONSTANTS.PLAYER.INVINCIBILITY_DURATION)
             self._logger.info(f"Player hit: damage={damage}, health={player.health}")
 
     def on_enemy_killed(self, score_gained: int) -> None:
@@ -248,12 +281,12 @@ class GameController:
         player: Player entity to apply the reward to.
         """
         notification = self.reward_system.apply_reward(reward, player)
-        self.milestone_index += 1
-        self.cycle_count = self.milestone_index
+        self.state.milestone_index += 1
+        self.state.cycle_count = self.state.milestone_index
 
         self.state.notification = notification
         self.state.notification_timer = GAME_CONSTANTS.TIMING.NOTIFICATION_DURATION
-        self.state.is_paused = False
+        self.set_paused(False)
 
     # 5. Private lifecycle methods
 

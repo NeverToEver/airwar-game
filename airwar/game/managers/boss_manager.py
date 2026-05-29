@@ -135,6 +135,10 @@ class BossManager:
             self._reward_system.apply_lifesteal(self._player, boss.data.score)
         self._bullet_manager.clear_enemy_bullets(include_clear_immune=True)
 
+    def clear_boss(self) -> None:
+        """Remove the current boss from the spawn controller."""
+        self._spawn_controller.boss = None
+
     @property
     def has_boss(self) -> bool:
         """Check if there is an active boss.

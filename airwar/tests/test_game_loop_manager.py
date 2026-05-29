@@ -70,6 +70,10 @@ def _make_loop(boss, spawn=None):
         state=SimpleNamespace(
             gameplay_state=GameplayState.PLAYING,
             running=True,
+            score=0,
+            boss_kill_count=0,
+            score_multiplier=1.0,
+            is_player_invincible=False,
         ),
         update=lambda player, has_regen: None,
         show_notification=lambda message: None,

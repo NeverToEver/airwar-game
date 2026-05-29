@@ -334,15 +334,25 @@ def test_homecoming_departure_renders_launch_and_orbital_strike_pixels() -> None
 
 
 def test_game_scene_homecoming_request_sets_safe_interface_state() -> None:
+    from airwar.game.systems.homecoming_coordinator import HomecomingCoordinator
     scene = GameScene()
     scene.player = _make_player()
     scene.game_controller = GameController("medium", "pilot")
+    scene.game_controller.set_lock_manager(scene._lock_manager)
+    scene._lock_manager.set_game_state(scene.game_controller.state)
+    scene._lock_manager.set_player(scene.player)
     scene.reward_selector.visible = False
     scene._mother_ship_integrator = SimpleNamespace(is_docked=lambda: False)
     scene._homecoming_sequence = HomecomingSequence()
     scene._homecoming_ui = SimpleNamespace(hide=MagicMock())
     scene._bullet_manager = SimpleNamespace(clear_enemy_bullets=MagicMock())
     scene.notification_manager = SimpleNamespace(show=MagicMock())
+    scene._homecoming_coordinator = HomecomingCoordinator(
+        detector=scene._homecoming_detector,
+        sequence=scene._homecoming_sequence,
+        ui=scene._homecoming_ui,
+        base_talent_console=scene._base_talent_console,
+    )
 
     scene._on_homecoming_requested()
 

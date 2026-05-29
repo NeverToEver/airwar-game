@@ -1,49 +1,8 @@
 """UI coordination — manages rendering delegation and overlay display."""
-from typing import Protocol, List
 import pygame
 from ..buffs.buff_registry import get_buff_color
 from ..rendering.entity_renderer import EntityRenderer
-
-
-class GameRendererProtocol(Protocol):
-    """Protocol for game renderer dependency injection."""
-    def render(self, surface, state, entities) -> None: ...
-    def render_hud(
-        self, surface, score, difficulty, player_health, player_max_health,
-        kills, next_progress: int, boss_kills=0, unlocked_buffs=None, get_buff_color=None
-    ) -> None: ...
-    def render_notification(self, surface, notification, timer) -> None: ...
-    def render_buff_stats_panel(self, surface, reward_system, player) -> None: ...
-    def update_death_animation(self) -> None: ...
-
-
-class RewardSystemProtocol(Protocol):
-    """Protocol for reward system dependency injection."""
-    @property
-    def unlocked_buffs(self) -> List[str]: ...
-
-
-class GameControllerProtocol(Protocol):
-    """Protocol for game controller dependency injection."""
-    @property
-    def state(self): ...
-    def get_next_threshold(self) -> float: ...
-    def get_next_progress(self) -> int: ...
-    @property
-    def cycle_count(self) -> int: ...
-    @property
-    def milestone_index(self) -> int: ...
-    @property
-    def difficulty_manager(self): ...
-
-
-class PlayerProtocol(Protocol):
-    """Protocol for player dependency injection."""
-    @property
-    def health(self) -> int: ...
-    @property
-    def max_health(self) -> int: ...
-    def get_bullets(self): ...
+from ..protocols import GameRendererProtocol, RewardSystemProtocol, GameControllerProtocol
 
 
 class GameEntities:
@@ -75,6 +34,10 @@ class UIManager:
         self._game_controller = game_controller
         self._reward_system = reward_system
         self._entity_renderer = EntityRenderer()
+
+    def set_player_docked(self, docked: bool) -> None:
+        """Set the player-docked visual state for entity rendering."""
+        self._entity_renderer.player_docked = docked
 
     def render_game(
         self,

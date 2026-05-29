@@ -16,25 +16,10 @@ Usage:
     bullet_manager.update_all()
 """
 
-from typing import Protocol
-
 from airwar.core_bindings import batch_update_bullets
 
 from airwar.config import get_screen_height, get_screen_width
-
-
-class PlayerProtocol(Protocol):
-    """Player protocol - defines the bullet-related interface a player must provide."""
-
-    def get_bullets(self) -> list: ...
-    def remove_bullet(self, bullet) -> None: ...
-
-
-class SpawnControllerProtocol(Protocol):
-    """Spawn controller protocol - defines the bullet-related interface a spawner must provide."""
-
-    @property
-    def enemy_bullets(self) -> list: ...
+from ..protocols import PlayerProtocol, SpawnControllerProtocol
 
 
 class BulletManager:

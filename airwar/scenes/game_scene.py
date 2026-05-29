@@ -111,6 +111,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._aim_crosshair = AimCrosshair()
         self._give_up_detector = None
         self._give_up_ui = None
+        self._homecoming_coordinator = None
         self._homecoming_detector = None
         self._homecoming_sequence = None
         self._homecoming_ui = None
@@ -172,6 +173,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         settings = DIFFICULTY_SETTINGS[difficulty]
 
         self.game_controller = GameController(difficulty, username)
+        self.game_controller.set_lock_manager(self._lock_manager)
         self._lock_manager.set_game_state(self.game_controller.state)
         self.game_renderer = GameRenderer()
         self.game_renderer.init_background(screen_width, screen_height)
@@ -276,10 +278,16 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._give_up_ui = GiveUpUI(screen_width, screen_height)
 
     def _init_homecoming_system(self, screen_width: int, screen_height: int) -> None:
-        self._homecoming_detector = HomecomingDetector(self._on_homecoming_requested)
-        self._homecoming_sequence = HomecomingSequence(self._on_homecoming_complete)
-        self._homecoming_ui = HomecomingUI(screen_width, screen_height)
-        self._base_talent_console = BaseTalentConsole(screen_width, screen_height)
+        from airwar.game.systems.homecoming_coordinator import HomecomingCoordinator
+        detector = HomecomingDetector(self._on_homecoming_requested)
+        sequence = HomecomingSequence(self._on_homecoming_complete)
+        ui = HomecomingUI(screen_width, screen_height)
+        console = BaseTalentConsole(screen_width, screen_height)
+        self._homecoming_coordinator = HomecomingCoordinator(detector, sequence, ui, console)
+        self._homecoming_detector = detector
+        self._homecoming_sequence = sequence
+        self._homecoming_ui = ui
+        self._base_talent_console = console
         self._talent_balance_manager = None
         self._homecoming_base_pending = False
 
@@ -352,15 +360,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         4. Game logic update (if not paused).
         """
         self.reward_selector.update()
-        if self._homecoming_base_pending and self._base_talent_console:
-            self._base_talent_console.update()
-            # Claim completed mission rewards in update, not render
-            for mission in self._base_talent_console._missions:
-                if mission["done"] and not mission["claimed"]:
-                    self.game_controller.state.requisition_points += GAME_CONSTANTS.REQUISITION.MISSION_REWARD
-                    mission["claimed"] = True
-                    if self.notification_manager:
-                        self.notification_manager.show(f"任务完成: {mission['name']} (+{GAME_CONSTANTS.REQUISITION.MISSION_REWARD}RP)")
+        if self._homecoming_coordinator:
+            self._homecoming_coordinator.update_base(self.game_controller, self.notification_manager)
         self._aim_assist.update(self.spawn_controller, self._get_logical_mouse_pos())
         self._sync_player_aim_target()
         self._aim_crosshair.update()
@@ -451,7 +452,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         """Suppress haunting visuals when player is inside or near mothership."""
         if not self._mother_ship_integrator:
             return False
-        state = self._mother_ship_integrator._state_machine.current_state
+        state = self._mother_ship_integrator.get_current_state()
         return state in (
             MotherShipState.ENTERING, MotherShipState.DOCKING,
             MotherShipState.DOCKED, MotherShipState.UNDOCKING,
@@ -590,18 +591,22 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self.game_controller.on_player_hit(GAME_CONSTANTS.DAMAGE.INSTANT_KILL, self.player)
 
     def _update_homecoming(self) -> None:
+        if self._homecoming_coordinator:
+            self._homecoming_coordinator.update(
+                self.game_controller, self.player, self._lock_manager,
+                self._bullet_manager, self.spawn_controller,
+                self._game_loop_manager, self.notification_manager,
+            )
+            return
         if not self._homecoming_detector or not self._homecoming_sequence:
             return
-
         if self._homecoming_sequence.is_active():
             self._homecoming_sequence.update(self.player)
             if self.player and self._homecoming_sequence.is_active():
                 self._set_homecoming_protection(locked=True)
             return
-
         can_use = self._can_request_homecoming()
         self._homecoming_detector.update(GAME_CONSTANTS.TIMING.FIXED_DELTA_TIME, enabled=can_use)
-
         if self._homecoming_ui:
             if self._homecoming_detector.is_active():
                 self._homecoming_ui.show()
@@ -625,51 +630,34 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         return not (self._homecoming_sequence and self._homecoming_sequence.is_active())
 
     def _on_homecoming_requested(self) -> None:
-        if not self._can_request_homecoming():
-            return
-
-        if self._homecoming_ui:
-            self._homecoming_ui.hide()
-
-        if self._bullet_manager:
-            self._bullet_manager.clear_enemy_bullets(include_clear_immune=True)
-        if self.player:
-            for bullet in self.player.get_bullets():
-                bullet.active = False
-            self.player.cleanup_inactive_bullets()
-
-        self._set_homecoming_protection(locked=True)
-
-        started = self._homecoming_sequence.start(self.player, get_screen_width(), get_screen_height())
-        if started and self.notification_manager:
-            self.notification_manager.show("返航航线已锁定")
+        if self._homecoming_coordinator:
+            self._homecoming_coordinator.on_requested(
+                self.game_controller, self.player, self._lock_manager,
+                self._bullet_manager, self.notification_manager,
+            )
 
     def _on_homecoming_complete(self) -> None:
-        self._homecoming_base_pending = True
-        self._ensure_talent_balance_manager()
-        self._set_homecoming_protection(locked=True)
-        if self.notification_manager:
-            self.notification_manager.show("已进入基地整备")
-
-    def _ensure_talent_balance_manager(self) -> None:
-        if not self.reward_system:
-            return
-        self.reward_system.ensure_earned_levels()
-        self._talent_balance_manager = TalentBalanceManager(
-            self.reward_system.get_earned_buff_levels(),
-            self.reward_system.talent_loadout,
-        )
-        self._apply_base_talent_loadout(show_notification=False)
-
-    def _apply_base_talent_loadout(self, show_notification: bool = True) -> None:
-        if not self._talent_balance_manager or not self.reward_system or not self.player:
-            return
-        self._talent_balance_manager.apply_to_reward_system(self.reward_system, self.player)
-        self._save_base_loadout()
-        if show_notification and self.notification_manager:
-            self.notification_manager.show("基地天赋配置已同步")
+        if self._homecoming_coordinator:
+            self._homecoming_coordinator.on_complete(
+                self.game_controller, self.player, self._lock_manager,
+                self.notification_manager, self.reward_system,
+            )
+            self._homecoming_base_pending = self._homecoming_coordinator.is_base_pending()
+            self._talent_balance_manager = self._homecoming_coordinator.get_talent_balance_manager()
+        else:
+            self._homecoming_base_pending = True
+            self._ensure_talent_balance_manager()
+            self._set_homecoming_protection(locked=True)
+            if self.notification_manager:
+                self.notification_manager.show("已进入基地整备")
 
     def _handle_base_console_click(self, pos: tuple[int, int]) -> bool:
+        if self._homecoming_coordinator:
+            return self._homecoming_coordinator.handle_console_click(
+                pos, self.game_controller, self.player, self._lock_manager,
+                self.spawn_controller, self._game_loop_manager,
+                self.notification_manager, self.reward_system,
+            )
         if not self._base_talent_console or not self._talent_balance_manager:
             return False
         action = self._base_talent_console.handle_mouse_click(pos)
@@ -694,8 +682,16 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if action.kind == BaseTalentConsoleAction.SELECT_MODULE:
             return
         if action.kind == BaseTalentConsoleAction.SELECT_ROUTE and action.route:
-            if self._talent_balance_manager.next_option(action.route) is not None:
+            if self._talent_balance_manager and self._talent_balance_manager.next_option(action.route) is not None:
                 self._apply_base_talent_loadout()
+
+    def _apply_base_talent_loadout(self, show_notification: bool = True) -> None:
+        if not self._talent_balance_manager or not self.reward_system or not self.player:
+            return
+        self._talent_balance_manager.apply_to_reward_system(self.reward_system, self.player)
+        self._save_base_loadout()
+        if show_notification and self.notification_manager:
+            self.notification_manager.show("基地天赋配置已同步")
 
     def _repair_at_base(self) -> None:
         cost = GAME_CONSTANTS.REQUISITION.REPAIR_COST
@@ -753,71 +749,46 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             self.notification_manager.show(f"基地全面补给完成 (-{actual_cost}RP)")
 
     def _leave_homecoming_base(self) -> None:
-        self._save_base_loadout()
-        self._homecoming_base_pending = False
-        self._pause_requested = False
-        if self._homecoming_ui:
-            self._homecoming_ui.hide()
-        self._set_homecoming_protection(locked=True)
-        started = False
-        if self._homecoming_sequence:
-            started = self._homecoming_sequence.start_departure(
-                self.player,
-                get_screen_width(),
-                get_screen_height(),
-                on_complete_callback=self._on_homecoming_departure_complete,
-                on_orbital_strike_callback=self._on_homecoming_orbital_strike,
+        if self._homecoming_coordinator:
+            self._homecoming_coordinator.leave_base(
+                self.game_controller, self.player, self._lock_manager,
+                self.spawn_controller, self._game_loop_manager, self.notification_manager,
             )
-        if not started:
-            self._on_homecoming_departure_complete()
-            return
-        if self.notification_manager:
-            self.notification_manager.show("基地弹射程序启动")
-
-    def _on_homecoming_orbital_strike(self) -> None:
-        self._clear_hostiles_for_homecoming_return()
-        if self.notification_manager:
-            self.notification_manager.show("轨道导弹清场完成")
-
-    def _on_homecoming_departure_complete(self) -> None:
-        if self._homecoming_sequence:
-            self._homecoming_sequence.reset()
-        if self._homecoming_detector:
-            self._homecoming_detector.reset()
-        if self._homecoming_ui:
-            self._homecoming_ui.hide()
-        self._set_homecoming_protection(locked=False)
-        self._start_homecoming_return_entrance()
-        if self.notification_manager:
-            self.notification_manager.show("已返回战场")
-
-    def _clear_hostiles_for_homecoming_return(self) -> None:
-        if not self.spawn_controller:
-            return
-
-        for enemy in self.spawn_controller.enemies:
-            if getattr(enemy, "active", False):
-                self.trigger_explosion(enemy.rect.centerx, enemy.rect.centery, max(28, int(enemy.rect.width * 0.7)))
-            enemy.active = False
-        self.spawn_controller.enemies.clear()
-
-        boss = self.spawn_controller.boss
-        if boss:
-            self.trigger_boss_death_explosion(boss)
-            boss.active = False
-            self.spawn_controller.boss = None
-            if hasattr(self.spawn_controller, "reset_boss_timer"):
-                self.spawn_controller.reset_boss_timer()
-
-        if self._bullet_manager:
-            self._bullet_manager.clear_enemy_bullets(include_clear_immune=True)
+            self._homecoming_base_pending = self._homecoming_coordinator.is_base_pending()
+            self._pause_requested = False
         else:
-            self.spawn_controller.enemy_bullets.clear()
+            self._save_base_loadout()
+            self._homecoming_base_pending = False
+            self._pause_requested = False
+            if self._homecoming_ui:
+                self._homecoming_ui.hide()
+            self._set_homecoming_protection(locked=True)
+            started = False
+            if self._homecoming_sequence:
+                started = self._homecoming_sequence.start_departure(
+                    self.player,
+                    get_screen_width(),
+                    get_screen_height(),
+                    on_complete_callback=self._on_homecoming_departure_complete,
+                    on_orbital_strike_callback=self._on_homecoming_orbital_strike,
+                )
+            if not started:
+                self._on_homecoming_departure_complete()
+                return
+            if self.notification_manager:
+                self.notification_manager.show("基地弹射程序启动")
 
-        if self.player:
-            for bullet in self.player.get_bullets():
-                bullet.active = False
-            self.player.cleanup_inactive_bullets()
+    def _ensure_talent_balance_manager(self) -> None:
+        if not self.reward_system:
+            return
+        self.reward_system.ensure_earned_levels()
+        self._talent_balance_manager = TalentBalanceManager(
+            self.reward_system.get_earned_buff_levels(),
+            self.reward_system.talent_loadout,
+        )
+        if self._talent_balance_manager and self.reward_system and self.player:
+            self._talent_balance_manager.apply_to_reward_system(self.reward_system, self.player)
+            self._save_base_loadout()
 
     def _start_homecoming_return_entrance(self) -> None:
         if not self.game_controller or not self.player:
@@ -834,6 +805,59 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         )
         self.player.rect.x = get_screen_width() // 2 - PlayerConstants.INITIAL_X_OFFSET
         self.player.rect.y = PlayerConstants.INITIAL_Y
+
+    def _on_homecoming_orbital_strike(self) -> None:
+        if self._homecoming_coordinator:
+            self._homecoming_coordinator.on_orbital_strike(
+                self.spawn_controller, self._game_loop_manager, self.player, self.notification_manager,
+            )
+        else:
+            self._clear_hostiles_for_homecoming_return()
+            if self.notification_manager:
+                self.notification_manager.show("轨道导弹清场完成")
+
+    def _clear_hostiles_for_homecoming_return(self) -> None:
+        if not self.spawn_controller:
+            return
+        for enemy in self.spawn_controller.enemies:
+            if getattr(enemy, "active", False):
+                self.trigger_explosion(enemy.rect.centerx, enemy.rect.centery, max(28, int(enemy.rect.width * 0.7)))
+            enemy.active = False
+        self.spawn_controller.enemies.clear()
+        boss = self.spawn_controller.boss
+        if boss:
+            self.trigger_boss_death_explosion(boss)
+            boss.active = False
+            self.spawn_controller.boss = None
+            if hasattr(self.spawn_controller, "reset_boss_timer"):
+                self.spawn_controller.reset_boss_timer()
+        if self._bullet_manager:
+            self._bullet_manager.clear_enemy_bullets(include_clear_immune=True)
+        else:
+            self.spawn_controller.enemy_bullets.clear()
+        if self.player:
+            for bullet in self.player.get_bullets():
+                bullet.active = False
+            self.player.cleanup_inactive_bullets()
+
+    def _on_homecoming_departure_complete(self) -> None:
+        if self._homecoming_coordinator:
+            self._homecoming_coordinator.on_departure_complete(
+                self.game_controller, self.player, self._lock_manager,
+                self.spawn_controller, self._game_loop_manager, self.notification_manager,
+            )
+            self._homecoming_base_pending = self._homecoming_coordinator.is_base_pending()
+        else:
+            if self._homecoming_sequence:
+                self._homecoming_sequence.reset()
+            if self._homecoming_detector:
+                self._homecoming_detector.reset()
+            if self._homecoming_ui:
+                self._homecoming_ui.hide()
+            self._set_homecoming_protection(locked=False)
+            self._start_homecoming_return_entrance()
+            if self.notification_manager:
+                self.notification_manager.show("已返回战场")
 
     def _save_base_loadout(self) -> bool:
         if not self._mother_ship_integrator:
@@ -866,16 +890,32 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if self.player:
             self._lock_manager.set_player(self.player)
 
+    def acquire_lock(self, layer: LockLayer, request: LockRequest) -> None:
+        """Acquire a lock layer via the centralized LockManager."""
+        self._sync_lock_manager_targets()
+        self._lock_manager.acquire(layer, request)
+
+    def release_lock(self, layer: LockLayer) -> None:
+        """Release a lock layer via the centralized LockManager."""
+        self._sync_lock_manager_targets()
+        self._lock_manager.release(layer)
+
     def _is_homecoming_active(self) -> bool:
+        if self._homecoming_coordinator:
+            return self._homecoming_coordinator.is_active()
         return bool(self._homecoming_sequence and self._homecoming_sequence.is_active())
 
     def is_homecoming_active(self) -> bool:
         return self._is_homecoming_active()
 
     def is_homecoming_locked(self) -> bool:
+        if self._homecoming_coordinator:
+            return self._homecoming_coordinator.is_locked()
         return self._is_homecoming_active() or self._homecoming_base_pending
 
     def is_homecoming_complete(self) -> bool:
+        if self._homecoming_coordinator:
+            return self._homecoming_coordinator.is_base_pending()
         return bool(self._homecoming_base_pending)
 
     def render(self, surface: pygame.Surface) -> None:
@@ -887,7 +927,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         is_docked_render = self._mother_ship_integrator and self._mother_ship_integrator.is_docked()
         if self.game_renderer:
             self.game_renderer.entity_renderer.player_docked = is_docked_render
-        self._ui_manager._entity_renderer.player_docked = is_docked_render
+        if self._ui_manager:
+            self._ui_manager.set_player_docked(is_docked_render)
 
         self._ui_manager.render_game(
             surface,
@@ -963,18 +1004,11 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
                 game_controller=self.game_controller,
                 mothership_status=mothership_status,
                 requisition_points=self.game_controller.state.requisition_points if self.game_controller else 0,
-                missions=self._base_talent_console._missions if self._base_talent_console else None,
+                missions=self._base_talent_console.get_missions() if self._base_talent_console else None,
             )
             # Keep mission progress in sync with actual game state
-            if self._base_talent_console and self.game_controller:
-                for mission in self._base_talent_console._missions:
-                    if mission["target"] == "kills":
-                        mission["progress"] = self.game_controller.state.kill_count
-                    elif mission["target"] == "survival_time":
-                        mission["progress"] = self._survival_frames // 60
-                    elif mission["target"] == "boss_kills":
-                        mission["progress"] = self.game_controller.state.boss_kill_count
-                    mission["done"] = mission["progress"] >= mission["goal"]
+            if self._homecoming_coordinator:
+                self._homecoming_coordinator.sync_mission_progress(self.game_controller, self._survival_frames)
 
         # Reward selector must render above game elements. Homecoming blocks
         # reward selection, but keep the normal layering contract intact.
@@ -1049,7 +1083,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         Returns:
             Number of completed boss cycles.
         """
-        return self.game_controller.cycle_count if self.game_controller else 0
+        return self.game_controller.state.cycle_count if self.game_controller else 0
 
     @cycle_count.setter
     def cycle_count(self, value: int) -> None:
@@ -1059,7 +1093,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             value: New cycle count value.
         """
         if self.game_controller:
-            self.game_controller.cycle_count = value
+            self.game_controller.state.cycle_count = value
 
     def is_game_over(self) -> bool:
         """Check if the game is over.
@@ -1081,14 +1115,14 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if self.is_homecoming_locked():
             return
         if self.game_controller and not self.reward_selector.visible:
-            self.game_controller.state.is_paused = True
+            self.game_controller.set_paused(True)
 
     def resume(self) -> None:
         """Resume the game."""
         if self.is_homecoming_locked():
             return
         if self.game_controller:
-            self.game_controller.state.is_paused = False
+            self.game_controller.set_paused(False)
 
     @property
     def paused(self) -> bool:
@@ -1195,7 +1229,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     def trigger_boss_death_explosion(self, boss) -> None:
         """Play a boss wreck explosion without keeping the boss entity alive."""
         if self._game_loop_manager and boss:
-            self._game_loop_manager._explosion_manager.trigger_boss_death(
+            self._game_loop_manager.trigger_boss_death_explosion(
                 boss.rect.centerx,
                 boss.rect.centery,
                 boss.rect.width,
@@ -1236,7 +1270,9 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
     def clear_boss(self) -> None:
         """Clear the current boss."""
-        if self.spawn_controller:
+        if self._boss_manager:
+            self._boss_manager.clear_boss()
+        elif self.spawn_controller:
             self.spawn_controller.boss = None
 
     def set_player_invincible(self, invincible: bool, timer: int, silent: bool = False) -> None:
@@ -1319,7 +1355,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     def set_paused(self, paused: bool) -> None:
         """Set game paused state."""
         if self.game_controller:
-            self.game_controller.state.is_paused = paused
+            self.game_controller.set_paused(paused)
 
     def clear_ripple_effects(self) -> None:
         """Clear all ripple effects."""

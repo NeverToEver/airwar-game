@@ -1,86 +1,20 @@
 """Game loop orchestration — coordinates all per-frame update logic."""
 import logging
-from typing import Protocol, Callable, List
+from typing import Callable, List
 from ..constants import PlayerConstants
 from airwar.config import get_screen_width, get_screen_height
 from ..explosion_animation import ExplosionManager
 from .game_controller import GameplayState
 from ..systems.lock_manager import LockLayer, LockRequest
+from ..protocols import (
+    PlayerProtocol, GameControllerProtocol, GameRendererProtocol,
+    SpawnControllerProtocol, RewardSystemProtocol, BulletManagerProtocol,
+    BossManagerProtocol, CollisionControllerProtocol,
+)
 
 from airwar.core_bindings import batch_update_movements
 
-_HAS_BATCH_MOVE = True
-
-
 logger = logging.getLogger(__name__)
-
-
-class GameControllerProtocol(Protocol):
-    """Protocol for game controller dependency injection."""
-    @property
-    def state(self): ...
-    def update(self, player, has_regen: bool) -> None: ...
-    def on_enemy_killed(self, score: int) -> None: ...
-    def on_boss_killed(self, score: int) -> None: ...
-
-
-class GameRendererProtocol(Protocol):
-    """Protocol for game renderer dependency injection."""
-    def update_death_animation(self) -> None: ...
-
-
-class SpawnControllerProtocol(Protocol):
-    """Protocol for spawn controller dependency injection."""
-    def update(self, score: int, slow_factor: float) -> bool: ...
-    def balance_for_player_dps(self, player_dps: float) -> None: ...
-    def spawn_boss(self, cycle_count: int, bullet_damage: float, player_dps: float = None): ...
-    def cleanup(self) -> None: ...
-    @property
-    def enemies(self) -> List: ...
-    @property
-    def boss(self): ...
-    def show_notification(self, message: str) -> None: ...
-
-
-class RewardSystemProtocol(Protocol):
-    """Protocol for reward system dependency injection."""
-    @property
-    def slow_factor(self) -> float: ...
-    def apply_lifesteal(self, player, score: int) -> None: ...
-
-
-class BulletManagerProtocol(Protocol):
-    """Protocol for bullet manager dependency injection."""
-    def update_all(self) -> None: ...
-    def cleanup(self) -> None: ...
-    def clear_enemy_bullets(self, include_clear_immune: bool = False) -> None: ...
-
-
-class BossManagerProtocol(Protocol):
-    """Protocol for boss manager dependency injection."""
-    def update(self, player) -> None: ...
-    def on_boss_hit(self, score: int) -> None: ...
-    def on_boss_killed(self) -> None: ...
-    @property
-    def boss(self): ...
-
-
-class PlayerProtocol(Protocol):
-    """Protocol for player dependency injection."""
-    def update(self) -> None: ...
-    def auto_fire(self) -> None: ...
-    def cleanup_inactive_bullets(self) -> None: ...
-    bullet_damage: float
-    fire_interval: int
-    controls_locked: bool
-    def get_weapon_status(self) -> dict: ...
-    @property
-    def active(self) -> bool: ...
-
-
-class CollisionControllerProtocol(Protocol):
-    """Protocol for collision controller dependency injection."""
-    def check_all_collisions(self, **kwargs) -> None: ...
 
 
 class GameLoopManager:
@@ -156,15 +90,8 @@ class GameLoopManager:
         player.rect.y = int(start_y + (target_y - start_y) * progress)
         player.rect.x = screen_width // 2 - PlayerConstants.INITIAL_X_OFFSET
 
-    def update_game(self, player: PlayerProtocol) -> bool:
-        try:
-            self._update_core(player)
-            return True
-        except Exception as e:
-            logging.error(f"Game update error: {e}", exc_info=True)
-            self._game_controller.show_notification("游戏错误 - 请查看日志")
-            self._game_controller.state.running = False
-            return False
+    def update_game(self, player: PlayerProtocol) -> None:
+        self._update_core(player)
 
     def _update_core(self, player: PlayerProtocol) -> None:
         has_regen = 'Regeneration' in self._reward_system.unlocked_buffs
@@ -293,29 +220,25 @@ class GameLoopManager:
         enemy_bullets: List,
         on_player_hit: Callable,
     ) -> None:
-        try:
-            self._collision_controller.check_all_collisions(
-                player=player,
-                enemies=self._spawn_controller.enemies,
-                boss=self._spawn_controller.boss,
-                enemy_bullets=enemy_bullets,
-                reward_system=self._reward_system,
-                explosive_level=self._reward_system.explosive_level,
-                piercing_level=self._reward_system.piercing_level,
-                player_invincible=self._game_controller.state.is_player_invincible,
-                score_multiplier=self._game_controller.state.score_multiplier,
-                on_enemy_killed=lambda score: self._game_controller.on_enemy_killed(score),
-                on_boss_killed=lambda score: (
-                    self._on_boss_destroyed(),
-                    self._game_controller.on_boss_killed(score),
-                ),
-                on_boss_hit=lambda score: self._boss_manager.on_boss_hit(score),
-                on_player_hit=on_player_hit,
-                on_lifesteal=lambda player, score: self._reward_system.apply_lifesteal(player, score),
-            )
-        except Exception as e:
-            logging.critical(f"Collision detection error: {e}", exc_info=True)
-            self._game_controller.state.running = False
+        self._collision_controller.check_all_collisions(
+            player=player,
+            enemies=self._spawn_controller.enemies,
+            boss=self._spawn_controller.boss,
+            enemy_bullets=enemy_bullets,
+            reward_system=self._reward_system,
+            explosive_level=self._reward_system.explosive_level,
+            piercing_level=self._reward_system.piercing_level,
+            player_invincible=self._game_controller.state.is_player_invincible,
+            score_multiplier=self._game_controller.state.score_multiplier,
+            on_enemy_killed=lambda score: self._game_controller.on_enemy_killed(score),
+            on_boss_killed=lambda score: (
+                self._on_boss_destroyed(),
+                self._game_controller.on_boss_killed(score),
+            ),
+            on_boss_hit=lambda score: self._boss_manager.on_boss_hit(score),
+            on_player_hit=on_player_hit,
+            on_lifesteal=lambda player, score: self._reward_system.apply_lifesteal(player, score),
+        )
 
     def is_entrance_playing(self) -> bool:
         return self._game_controller.state.is_entrance_playing
@@ -338,3 +261,7 @@ class GameLoopManager:
             dict: Statistics about the explosion system
         """
         return self._explosion_manager.get_stats()
+
+    def trigger_boss_death_explosion(self, centerx: int, centery: int, width: int, height: int) -> None:
+        """Trigger a boss death explosion at the given position."""
+        self._explosion_manager.trigger_boss_death(centerx, centery, width, height)

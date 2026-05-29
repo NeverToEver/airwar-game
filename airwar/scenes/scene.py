@@ -83,6 +83,15 @@ class Scene(ABC):
         """
         pass
 
+    def is_running(self) -> bool:
+        """Check if the scene is still active.
+
+        Returns:
+            True if the scene should continue running. Override in subclasses
+            to implement custom exit conditions.
+        """
+        return True
+
 
 class SceneManager:
     """Manages scene registration and switching.

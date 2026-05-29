@@ -114,6 +114,7 @@ def test_lock_layer_priority_order_is_explicit() -> None:
         LockLayer.BOSS_ENRAGE,
         LockLayer.PHASE_DASH,
         LockLayer.GIVE_UP,
+        LockLayer.GAME_PAUSE,
     ]
 
 

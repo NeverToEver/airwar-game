@@ -189,9 +189,12 @@ class PersistenceManager(IPersistenceManager):
         except OSError as e:
             logger.error(f"IO error while loading game: {e}")
             return None
+        except (TypeError, KeyError, AttributeError, ValueError) as e:
+            logger.critical(f"Save data structure corrupted: {e}")
+            self.delete_save()
+            return None
         except Exception as e:
             logger.critical(f"Unexpected error loading game: {e}")
-            return None
             return None
 
     def has_saved_game(self) -> bool:

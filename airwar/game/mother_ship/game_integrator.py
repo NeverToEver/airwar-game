@@ -463,8 +463,8 @@ class GameIntegrator:
             self._clear_ripple_effects()
 
     def _activate_invincibility(self) -> None:
-        if self._game_scene and hasattr(self._game_scene, "_lock_manager"):
-            self._game_scene._lock_manager.acquire(
+        if self._game_scene and hasattr(self._game_scene, "acquire_lock"):
+            self._game_scene.acquire_lock(
                 LockLayer.MOTHERSHIP,
                 LockRequest(
                     invincible=True,
@@ -502,8 +502,8 @@ class GameIntegrator:
         self._progress_bar_ui.hide()
 
     def _deactivate_invincibility(self) -> None:
-        if self._game_scene and hasattr(self._game_scene, "_lock_manager"):
-            self._game_scene._lock_manager.release(LockLayer.MOTHERSHIP)
+        if self._game_scene and hasattr(self._game_scene, "release_lock"):
+            self._game_scene.release_lock(LockLayer.MOTHERSHIP)
         elif self._game_scene:
             if hasattr(self._game_scene, "set_player_invincible"):
                 self._game_scene.set_player_invincible(False, 0, silent=False)
@@ -839,6 +839,10 @@ class GameIntegrator:
 
     def is_docked(self) -> bool:
         return self._state_machine.current_state == MotherShipState.DOCKED
+
+    def get_current_state(self) -> MotherShipState:
+        """Return the current mothership state machine state."""
+        return self._state_machine.current_state
 
     def is_in_cooldown(self) -> bool:
         return self._state_machine.is_in_cooldown()
