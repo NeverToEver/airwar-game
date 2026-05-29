@@ -137,6 +137,7 @@ class HomecomingCoordinator:
             notification_manager.show("轨道导弹清场完成")
 
     def on_departure_complete(self, game_controller, player, lock_manager, spawn_controller, game_loop_manager, notification_manager):
+        self._base_pending = False
         if self._sequence:
             self._sequence.reset()
         if self._detector:
@@ -260,11 +261,19 @@ class HomecomingCoordinator:
         )
         self._apply_talent_loadout(reward_system, None, show_notification=False)
 
-    def _apply_talent_loadout(self, reward_system, player, show_notification=True):
-        if not self._talent_balance_manager or not reward_system or not player:
+    def _apply_talent_loadout(self, reward_system, player, show_notification=True, notification_manager=None):
+        if not self._talent_balance_manager or not reward_system:
             return
-        self._talent_balance_manager.apply_to_reward_system(reward_system, player)
+        reward_system.apply_effective_levels(
+            self._talent_balance_manager.effective_levels(),
+            locked_buffs=self._talent_balance_manager.locked_buffs(),
+            talent_loadout=self._talent_balance_manager._loadout,
+        )
+        if player:
+            reward_system.reapply_all_effects(player)
         self._save_base_loadout()
+        if show_notification and notification_manager:
+            notification_manager.show("基地天赋配置已同步")
 
     def _handle_action(self, action, game_controller, player, lock_manager, spawn_controller, game_loop_manager, notification_manager, reward_system):
         from airwar.ui.base_talent_console import BaseTalentConsoleAction
@@ -284,7 +293,7 @@ class HomecomingCoordinator:
             return
         if action.kind == BaseTalentConsoleAction.SELECT_ROUTE and action.route:
             if self._talent_balance_manager and self._talent_balance_manager.next_option(action.route) is not None:
-                self._apply_talent_loadout(reward_system, player)
+                self._apply_talent_loadout(reward_system, player, notification_manager=notification_manager)
 
     def _set_protection(self, locked, lock_manager, game_controller):
         if not lock_manager:

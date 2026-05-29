@@ -297,7 +297,7 @@ class GameController:
         if self.state.is_player_invincible:
             self.state.invincibility_timer -= 1
             if self.state.invincibility_timer <= 0:
-                self.state.is_player_invincible = False
+                self.set_invincible(False)
 
     # 6. Private behavior methods
 

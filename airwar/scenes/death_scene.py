@@ -104,10 +104,10 @@ class DeathScene(Scene, MouseSelectableMixin):
         self.animation_time += 1
         self.glow_offset = math.sin(self.animation_time * self._tokens.animation.GLOW_SPEED * 0.6) * 10
 
-        self._background_renderer._animation_time = self.animation_time
+        self._background_renderer.set_animation_time(self.animation_time)
         self._background_renderer.update()
 
-        self._particle_system._animation_time = self.animation_time
+        self._particle_system.set_animation_time(self.animation_time)
         self._particle_system.update(direction=-1)
 
         for ripple in self.ripples[:]:

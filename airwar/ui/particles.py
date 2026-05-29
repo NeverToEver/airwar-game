@@ -24,6 +24,10 @@ class ParticleSystem:
         self._tokens = get_design_tokens()
         self._init_cache()
 
+    def set_animation_time(self, time: int) -> None:
+        """Set the animation time counter for external synchronization."""
+        self._animation_time = time
+
     def _init_cache(self) -> None:
         """Pre-create particle textures for common sizes."""
         colors_config = self._tokens.colors

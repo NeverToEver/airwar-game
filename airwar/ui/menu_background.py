@@ -60,6 +60,10 @@ class MenuBackground:
         self._light_spots = []
         self._init_light_spots()
 
+    def set_animation_time(self, time: int) -> None:
+        """Set the animation time counter for external synchronization."""
+        self._animation_time = time
+
     def _ensure_cached_surfaces(self, width: int, height: int):
         """Ensure cached surfaces match the current screen size."""
         if self._screen_size == (width, height):
