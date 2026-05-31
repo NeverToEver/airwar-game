@@ -10,8 +10,8 @@ from airwar.entities.bullet import Bullet
 from airwar.entities.enemy import Boss, BossData
 from airwar.game.managers.bullet_manager import BulletManager
 from airwar.game.managers.collision_controller import CollisionController
-from airwar.game.rendering.entity_renderer import EntityRenderer
 from airwar.game.rendering.boss_enrage_renderer import BossEnrageRenderer
+from airwar.game.rendering.entity_renderer import EntityRenderer
 
 
 class BulletCollector:
@@ -450,7 +450,8 @@ def test_held_enemy_bullets_do_not_damage_player_until_released():
     )
     hits = []
 
-    on_hit = lambda damage, target: hits.append((damage, target))
+    def on_hit(damage, target):
+        return hits.append((damage, target))
 
     assert controller.check_enemy_bullets_vs_player([held], player, lambda damage: damage, on_hit) is False
     assert hits == []

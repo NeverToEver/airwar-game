@@ -32,7 +32,7 @@ class Window:
 
     def init(self, width: int | None = None, height: int | None = None) -> None:
         pygame.init()
-        
+
         if width is not None and height is not None:
             self._width = width
             self._height = height

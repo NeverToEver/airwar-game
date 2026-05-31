@@ -12,23 +12,23 @@ from typing import List, Optional, Tuple
 # === Third-party ===
 import pygame
 
-# === Local: same package ===
-from .base import Entity
-from .base import Vector2
-from .bullet import Bullet, BulletData
+from airwar.config import (
+    HITBOX_INDICATOR_ALPHA_MAX,
+    HITBOX_INDICATOR_ALPHA_MIN,
+    HITBOX_INDICATOR_FREQUENCY,
+    HITBOX_INDICATOR_PADDING,
+    get_screen_height,
+    get_screen_width,
+)
+from airwar.config.constants_access import get_game_constants
 
 # === Local: different package in airwar ===
 from airwar.input.input_handler import InputHandler
-from airwar.config import (
-    get_screen_width,
-    get_screen_height,
-    HITBOX_INDICATOR_PADDING,
-    HITBOX_INDICATOR_FREQUENCY,
-    HITBOX_INDICATOR_ALPHA_MIN,
-    HITBOX_INDICATOR_ALPHA_MAX,
-)
 from airwar.utils.sprites import get_player_sprite
-from airwar.config.constants_access import get_game_constants
+
+# === Local: same package ===
+from .base import Entity, Vector2
+from .bullet import Bullet, BulletData
 
 
 class PhaseDashState(Enum):
@@ -280,6 +280,8 @@ class Player(Entity):
         Args:
             damage: Amount of damage to apply.
         """
+        if damage is None or damage < 0:
+            return
         if self.is_shielded:
             return
         self.health -= damage
@@ -294,6 +296,8 @@ class Player(Entity):
         Args:
             amount: Health points to restore.
         """
+        if amount is None or amount < 0:
+            return
         self.health = min(self.max_health, self.health + amount)
 
     def activate_shield(self, duration: int) -> None:

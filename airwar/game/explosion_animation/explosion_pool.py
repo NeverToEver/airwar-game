@@ -1,5 +1,5 @@
 """Explosion pool — object pool for reusing explosion effects."""
-from typing import List, Dict
+from typing import Dict, List
 
 from .explosion_effect import ExplosionEffect
 

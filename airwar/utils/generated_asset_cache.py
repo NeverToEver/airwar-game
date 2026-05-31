@@ -10,7 +10,6 @@ import pygame
 
 from airwar.utils.platform_paths import generated_asset_cache_dir as _platform_generated_asset_cache_dir
 
-
 logger = logging.getLogger(__name__)
 
 ASSET_CACHE_VERSION = 1

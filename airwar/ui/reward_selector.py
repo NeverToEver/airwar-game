@@ -1,23 +1,24 @@
 """Reward selector — buff selection interface at milestones."""
 import math
 import random
-from typing import List, Callable, Optional
+from typing import Callable, List, Optional
 
 import pygame
 
+from airwar.config.design_tokens import SceneColors, SystemUI, get_design_tokens
 from airwar.utils.fonts import get_cjk_font
 from airwar.utils.mouse_interaction import MouseSelectableMixin
-from airwar.config.design_tokens import SceneColors, SystemUI, get_design_tokens
+
 from .chamfered_panel import draw_chamfered_panel
 from .scene_rendering_utils import fit_text_to_width, wrap_text
 
 
 class RewardSelector(MouseSelectableMixin):
     """Reward selector — buff selection interface displayed at milestones.
-    
+
         Shows 3 buff options in a horizontal layout, handles keyboard
         navigation and selection, and triggers the chosen reward callback.
-    
+
         Attributes:
             visible: Whether the selector is currently displayed.
             options: List of reward dicts to display.
@@ -308,12 +309,12 @@ class RewardSelector(MouseSelectableMixin):
 
     def _draw_panel(self, surface: pygame.Surface) -> None:
         width, height = surface.get_size()
-        
+
         panel_width = 480
         panel_height = 320
         panel_x = width // 2 - panel_width // 2
         panel_y = height // 2 - panel_height // 2 + self.glow_offset * 0.3
-        
+
         panel_rect = pygame.Rect(panel_x, panel_y, panel_width, panel_height)
 
         for i in range(3, 0, -1):
@@ -337,7 +338,7 @@ class RewardSelector(MouseSelectableMixin):
         option_height = 84
         option_gap = 14
         y = start_y + index * (option_height + option_gap)
-        
+
         box_height = option_height
         box_rect = pygame.Rect(center_x - box_width // 2, y, box_width, box_height)
         self.append_option_rect(box_rect)
@@ -376,14 +377,14 @@ class RewardSelector(MouseSelectableMixin):
         surface.blit(border_surf, box_rect.topleft)
 
         arrow = ">" if is_selected else " "
-        
+
         if is_upgraded:
             name_text = f"{arrow} {buff_name} [Lv.{level}]"
             text_color = self.colors['upgraded'] if is_selected else self.colors['unselected']
         else:
             name_text = f"{arrow} {buff_name}"
             text_color = self.colors['selected'] if is_selected else self.colors['unselected']
-        
+
         text = fit_text_to_width(self.option_font, name_text, text_color, box_width - 50)
         text_rect = text.get_rect(topleft=(box_rect.x + 25, box_rect.y + 10))
         surface.blit(text, text_rect)
@@ -397,7 +398,7 @@ class RewardSelector(MouseSelectableMixin):
 
     def _draw_title(self, surface: pygame.Surface) -> None:
         width, height = surface.get_size()
-        
+
         title_y = 130 + self.glow_offset * 0.5
         self._draw_glow_text(surface, "选择奖励", self.title_font,
                            (width // 2, title_y), self.colors['title'], self.colors['title_glow'], 3)

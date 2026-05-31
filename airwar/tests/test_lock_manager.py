@@ -4,7 +4,6 @@ import pytest
 
 from airwar.game.systems.lock_manager import LockLayer, LockManager, LockRequest
 
-
 HOMECOMING_LOCK_TIMER = 999999
 
 

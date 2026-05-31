@@ -1,6 +1,7 @@
 """Mouse interaction — mixins for clickable and hoverable UI elements."""
+from typing import Callable, Dict, List, Optional
+
 import pygame
-from typing import List, Optional, Callable, Dict
 
 
 class MouseSelectableMixin:

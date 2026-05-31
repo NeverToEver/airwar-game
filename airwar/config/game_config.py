@@ -1,11 +1,12 @@
 """Game config — singleton configuration with fixed logical sizing."""
 from typing import Tuple
+
 import pygame
 
 
 class GameConfig:
     """Game config singleton — manages logical and display dimensions.
-    
+
         Game logic always uses the fixed logical size. The physical display
         size is tracked separately for the window and scaled rendering.
         """

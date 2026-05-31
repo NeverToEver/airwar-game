@@ -1,6 +1,8 @@
 """Health and regeneration system for player entities."""
 from typing import TYPE_CHECKING
+
 from airwar.config import HEALTH_REGEN
+
 from ..constants import GAME_CONSTANTS
 
 if TYPE_CHECKING:
@@ -9,10 +11,10 @@ if TYPE_CHECKING:
 
 class HealthSystem:
     """Health system — manages player health regeneration and invincibility.
-    
+
         Handles periodic health regen ticks and invincibility timer management
         after the player takes damage.
-    
+
         Attributes:
             _regen_timer: Frames since last regen tick.
             _regen_active: Whether regen is currently enabled.

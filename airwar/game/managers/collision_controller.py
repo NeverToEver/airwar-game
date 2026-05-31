@@ -1,17 +1,17 @@
 """Collision detection between entities using spatial hashing."""
 from dataclasses import dataclass
-from typing import Any, List, Tuple, Callable, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple
 
 from ..constants import GAME_CONSTANTS
 
 if TYPE_CHECKING:
-    from airwar.entities.player import Player
-    from airwar.entities.enemy import Enemy, Boss
     from airwar.entities.bullet import Bullet
+    from airwar.entities.enemy import Boss, Enemy
+    from airwar.entities.player import Player
 
 from airwar.core_bindings import (
-    batch_collide_bullets_vs_entities,
     PersistentSpatialHash,
+    batch_collide_bullets_vs_entities,
 )
 
 
@@ -124,7 +124,10 @@ class CollisionController:
         rect = self._make_query_rect(x, y, radius)
         return self._get_entities_in_cells(self._enemy_grid_cells, rect)
 
-    def _get_potential_boss_bullets(self, player_bullets: List['Bullet'], boss_hitbox, active_count: int) -> list['Bullet']:
+    def _get_potential_boss_bullets(
+        self, player_bullets: List['Bullet'], boss_hitbox,
+        active_count: int
+    ) -> list['Bullet']:
         if active_count < 32:
             return [bullet for bullet in player_bullets if bullet.active]
 
@@ -180,7 +183,7 @@ class CollisionController:
             callback: Callback function with signature (x, y, radius) -> None
         """
         self._explosion_callback = callback
-    
+
     def check_all_collisions(
         self,
         player: 'Player',
@@ -199,6 +202,8 @@ class CollisionController:
         on_lifesteal: Callable = None,
         on_clear_bullets: Callable = None,
     ) -> None:
+        if player is None:
+            return
         self._events.clear()
         player_hit_handler = self._make_player_hit_handler(
             player,
@@ -226,14 +231,14 @@ class CollisionController:
             explosive_level,
             piercing_level,
         )
-        
+
         if enemies_killed > 0:
             self._events.append(CollisionEvent(type='enemy_killed', score=score_gained))
             if on_enemy_killed:
                 on_enemy_killed(score_gained)
             if on_lifesteal:
                 on_lifesteal(player, score_gained)
-        
+
         if not player_invincible and self.check_enemy_bullets_vs_player(
             enemy_bullets,
             player,
@@ -251,14 +256,14 @@ class CollisionController:
         ):
             self._events.append(CollisionEvent(type='player_hit'))
             player_invincible = True  # Prevent double-hit this frame
-        
+
         if boss:
             boss_score, boss_killed = self.check_player_bullets_vs_boss(
                 player.get_bullets(),
                 boss,
                 reward_system.piercing_level
             )
-            
+
             if boss_killed:
                 self._events.append(CollisionEvent(type='boss_killed', score=boss_score))
                 if on_boss_killed:
@@ -267,7 +272,7 @@ class CollisionController:
                 self._events.append(CollisionEvent(type='boss_hit', score=boss_score))
                 if on_boss_hit:
                     on_boss_hit(boss_score)
-            
+
             if not player_invincible and self.check_boss_vs_player(
                 boss,
                 player,

@@ -14,10 +14,10 @@ class BuffResult:
 
 class Buff(ABC):
     """Abstract base class for all player buffs.
-    
+
         Each buff type extends this class and provides calculate_value()
         to compute the buff effect based on current level.
-    
+
         Attributes:
             name: Display name of the buff.
             description: Human-readable effect description.

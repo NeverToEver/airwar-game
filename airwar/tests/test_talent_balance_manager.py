@@ -1,12 +1,12 @@
+import pygame
+
 from airwar.entities.player import Player
+from airwar.game.mother_ship.mother_ship_state import GameSaveData
 from airwar.game.systems.reward_system import RewardSystem
 from airwar.game.systems.talent_balance_manager import TalentBalanceManager
-from airwar.game.mother_ship.mother_ship_state import GameSaveData
 from airwar.input.input_handler import MockInputHandler
 from airwar.scenes.game_scene import GameScene
 from airwar.ui.base_talent_console import BaseTalentConsole, BaseTalentConsoleAction
-
-import pygame
 
 
 def _make_player() -> Player:

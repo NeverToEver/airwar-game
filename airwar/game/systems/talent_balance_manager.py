@@ -3,7 +3,6 @@
 from dataclasses import dataclass
 from typing import Dict, Iterable
 
-
 OFFENSE_ROUTE = "offense"
 SUPPORT_ROUTE = "support"
 LOADOUT_ROUTES = {

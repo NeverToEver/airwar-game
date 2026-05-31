@@ -1,6 +1,7 @@
 """Save restore orchestration for GameScene dependencies."""
 
 from airwar.config import BOOST_CONFIG, VALID_DIFFICULTIES, get_screen_height, get_screen_width
+
 from ..constants import GAME_CONSTANTS, normalize_score
 from .talent_balance_manager import TalentBalanceManager
 

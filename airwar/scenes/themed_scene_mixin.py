@@ -1,7 +1,9 @@
 """Mixin for scenes with themed military-style rendering."""
 import math
+
 import pygame
-from airwar.ui.scene_rendering_utils import draw_themed_title, draw_themed_decorations, draw_themed_option_box
+
+from airwar.ui.scene_rendering_utils import draw_themed_decorations, draw_themed_option_box, draw_themed_title
 
 
 class ThemedSceneMixin:
@@ -15,7 +17,10 @@ class ThemedSceneMixin:
         """Draw military style decorations."""
         draw_themed_decorations(surface, width, height)
 
-    def _draw_themed_option_box(self, surface: pygame.Surface, text: str, y: int, is_selected: bool, scale: float = 1.0) -> None:
+    def _draw_themed_option_box(
+        self, surface: pygame.Surface, text: str, y: int,
+        is_selected: bool, scale: float = 1.0
+    ) -> None:
         """Draw option box in military style with chamfered corners."""
         draw_themed_option_box(
             surface, text, y, is_selected, self.option_font, self._option_rects,

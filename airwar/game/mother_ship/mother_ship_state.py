@@ -1,10 +1,10 @@
 """Mothership state — docking progress, player save data structures."""
-from dataclasses import dataclass, field
-from typing import List, Dict
-from enum import Enum
 import time
-import pygame
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Dict, List
 
+import pygame
 
 CURRENT_SAVE_VERSION = 2
 

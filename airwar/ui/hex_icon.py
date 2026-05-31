@@ -1,9 +1,10 @@
 """Hexagonal icon component — military HUD style."""
-import pygame
 import math
 from typing import Tuple
-from airwar.config.design_tokens import SystemColors, SystemUI
 
+import pygame
+
+from airwar.config.design_tokens import SystemColors, SystemUI
 
 # Icon types as constants
 ICON_POWER = "power"

@@ -1,6 +1,7 @@
 """Buff implementations — 12 buff types for player power-ups."""
-from .base_buff import Buff, BuffResult
 from airwar.config.design_tokens import Colors
+
+from .base_buff import Buff, BuffResult
 
 
 class ExtraLifeBuff(Buff):

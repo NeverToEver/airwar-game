@@ -4,6 +4,7 @@ import random
 from typing import List
 
 import pygame
+
 from airwar.config.design_tokens import Colors
 
 
@@ -209,7 +210,10 @@ class DeathAnimation:
                         glow_radius
                     )
                     DeathAnimation._spark_glow_cache[cache_key] = glow_surf
-                surface.blit(DeathAnimation._spark_glow_cache[cache_key], (int(spark.x) - glow_radius, int(spark.y) - glow_radius))
+                surface.blit(
+                    DeathAnimation._spark_glow_cache[cache_key],
+                    (int(spark.x) - glow_radius, int(spark.y) - glow_radius)
+                )
 
             pygame.draw.circle(
                 surface,

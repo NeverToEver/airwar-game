@@ -1,6 +1,7 @@
 """Event bus — publish/subscribe messaging for mothership events."""
 import logging
-from typing import Dict, List, Callable
+from typing import Callable, Dict, List
+
 from .interfaces import IEventBus
 
 logger = logging.getLogger(__name__)
@@ -34,7 +35,7 @@ EVENT_DOCKING_COMPLETE = 'DOCKING_COMPLETE'
 
 class EventBus(IEventBus):
     """Event bus — publish/subscribe messaging for mothership events.
-    
+
         Decouples mothership components by providing typed event channels
         for docking progress, state changes, and save completion.
         """

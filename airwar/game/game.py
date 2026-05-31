@@ -1,11 +1,20 @@
 """Game bootstrap -- window creation, scene registration, and main loop."""
-from ..scenes import SceneManager, GameScene, TutorialScene, WelcomeScene, PauseScene, DeathScene, ExitConfirmScene, SettingsScene
+from ..config import SCREEN_HEIGHT, SCREEN_WIDTH
+from ..scenes import (
+    DeathScene,
+    ExitConfirmScene,
+    GameScene,
+    PauseScene,
+    SceneManager,
+    SettingsScene,
+    TutorialScene,
+    WelcomeScene,
+)
 from ..utils.database import UserDB
-from ..window import create_window
-from .scene_director import SceneDirector
-from ..config import SCREEN_WIDTH, SCREEN_HEIGHT
 from ..utils.sprites import prewarm_glow_caches, prewarm_ship_sprite_caches
+from ..window import create_window
 from .scaled_viewport import ScaledViewport
+from .scene_director import SceneDirector
 
 
 class Game:

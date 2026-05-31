@@ -3,16 +3,17 @@ import math
 
 import pygame
 
-from airwar.utils.fonts import get_cjk_font
-from .scene import Scene, ExitConfirmAction
-from .themed_scene_mixin import ThemedSceneMixin
-from airwar.utils.responsive import ResponsiveHelper
+from airwar.config.design_tokens import SceneColors, get_design_tokens
+from airwar.ui.effects import EffectsRenderer
 from airwar.ui.menu_background import MenuBackground
 from airwar.ui.particles import ParticleSystem
-from airwar.ui.effects import EffectsRenderer
-from airwar.config.design_tokens import get_design_tokens, SceneColors
-from airwar.utils.mouse_interaction import MouseSelectableMixin
 from airwar.ui.scene_rendering_utils import SceneRenderingUtils
+from airwar.utils.fonts import get_cjk_font
+from airwar.utils.mouse_interaction import MouseSelectableMixin
+from airwar.utils.responsive import ResponsiveHelper
+
+from .scene import ExitConfirmAction, Scene
+from .themed_scene_mixin import ThemedSceneMixin
 
 
 class ExitConfirmScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
@@ -157,7 +158,10 @@ class ExitConfirmScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
 
         if self.saved:
             if self.use_themed_style:
-                self._draw_themed_success_indicator(surface, center_x, title_y + ResponsiveHelper.scale(50, scale), scale)
+                indicator_y = title_y + ResponsiveHelper.scale(50, scale)
+                self._draw_themed_success_indicator(
+                    surface, center_x, indicator_y, scale
+                )
             else:
                 self._draw_success_indicator(surface, center_x, title_y + ResponsiveHelper.scale(50, scale), scale)
 
@@ -199,7 +203,10 @@ class ExitConfirmScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
         esc_hint = self.desc_font.render("ESC 返回菜单", True, controls_color)
         surface.blit(esc_hint, esc_hint.get_rect(center=(center_x, height - ResponsiveHelper.scale(50, scale))))
 
-    def _draw_themed_success_indicator(self, surface: pygame.Surface, center_x: int, y: int, scale: float = 1.0) -> None:
+    def _draw_themed_success_indicator(
+        self, surface: pygame.Surface, center_x: int,
+        y: int, scale: float = 1.0
+    ) -> None:
         if self.saved:
             check_text = ">> 游戏已保存 <<"
             check_surface = self.hint_font.render(check_text, True, SceneColors.FOREST_GREEN)

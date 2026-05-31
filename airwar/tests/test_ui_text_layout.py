@@ -1,12 +1,12 @@
-import pytest
 import pygame
+import pytest
 
-from airwar.utils.fonts import get_cjk_font
 from airwar.ui.scene_rendering_utils import (
     adaptive_box_width,
     fit_string_to_width,
     wrap_text,
 )
+from airwar.utils.fonts import get_cjk_font
 
 
 @pytest.fixture(scope="module", autouse=True)

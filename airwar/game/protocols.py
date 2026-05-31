@@ -4,7 +4,7 @@ Canonical Protocols for dependency injection across BulletManager,
 BossManager, MilestoneManager, UIManager, GameLoopManager, etc.
 Each file should import from here instead of defining its own copy.
 """
-from typing import Protocol, List
+from typing import List, Protocol
 
 
 class PlayerProtocol(Protocol):

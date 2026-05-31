@@ -1,12 +1,13 @@
 """Reward generation and application — buffs unlocked at score milestones."""
 import logging
 import random
-from typing import List, Dict, Callable
-from ..buffs.buff_registry import create_buff
-from ..buffs.base_buff import Buff
-from ..constants import GAME_CONSTANTS
+from typing import Callable, Dict, List
+
 from airwar.config import DIFFICULTY_SETTINGS
 
+from ..buffs.base_buff import Buff
+from ..buffs.buff_registry import create_buff
+from ..constants import GAME_CONSTANTS
 
 logger = logging.getLogger(__name__)
 
@@ -398,12 +399,16 @@ class RewardSystem:
         return bool('Evasion' in self.unlocked_buffs and random.random() < self.EVASION_CHANCE)
 
     def apply_lifesteal(self, player, kill_value: int) -> None:
+        if player is None:
+            return
         if 'Lifesteal' in self.unlocked_buffs:
             heal = int(player.max_health * self.LIFESTEAL_FRACTION)
             player.health = min(player.health + heal, player.max_health)
 
     def do_explosive_damage(self, enemies: list, x: int, y: int, damage: int) -> None:
         if self.explosive_level <= 0:
+            return
+        if not enemies:
             return
 
         for enemy in enemies:

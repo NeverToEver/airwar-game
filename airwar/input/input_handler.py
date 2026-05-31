@@ -1,7 +1,9 @@
 """Input handler — pygame input processing with mock support for testing."""
 from abc import ABC, abstractmethod
 from typing import Dict, Optional
+
 import pygame
+
 from airwar.entities.base import Vector2
 
 
@@ -48,7 +50,7 @@ class InputHandler(ABC):
 
 class PygameInputHandler(InputHandler):
     """Pygame input handler — reads keyboard input from pygame events.
-    
+
         Provides movement direction, fire state, and action button state
         based on current pygame key presses.
         """
@@ -106,7 +108,7 @@ class PygameInputHandler(InputHandler):
 
 class MockInputHandler(InputHandler):
     """Mock input handler — programmable input for testing.
-    
+
         Accepts preset movement directions and button states, allowing
         tests to simulate player input without pygame events.
         """

@@ -197,7 +197,10 @@ class WarningBanner:
             pygame.draw.rect(surface, (0, 0, 0, dim_alpha), dim_rect)
 
         # Glow bar at bottom edge
-        glow_alpha = int(self.GLOW_ALPHA_BASE + self.GLOW_ALPHA_RANGE * math.sin(self._pulse_phase * self.GLOW_FREQUENCY))
+        glow_phase = self._pulse_phase * self.GLOW_FREQUENCY
+        glow_alpha = int(
+            self.GLOW_ALPHA_BASE + self.GLOW_ALPHA_RANGE * math.sin(glow_phase)
+        )
         pygame.draw.rect(surface, (*self.GLOW_BAR_COLOR, glow_alpha),
                          (0, banner_y + self.BANNER_HEIGHT - self.GLOW_BAR_HEIGHT, screen_w, self.GLOW_BAR_HEIGHT))
 

@@ -1,8 +1,11 @@
 """On-screen notification display and lifecycle management."""
 import logging
-import pygame
-from airwar.utils.fonts import get_cjk_font
 from typing import Optional
+
+import pygame
+
+from airwar.utils.fonts import get_cjk_font
+
 from ..constants import GAME_CONSTANTS
 
 logger = logging.getLogger(__name__)
@@ -10,10 +13,10 @@ logger = logging.getLogger(__name__)
 
 class NotificationManager:
     """Notification manager — on-screen message display and lifecycle.
-    
+
         Manages timed notification messages that appear during gameplay
         (score popups, boss warnings, reward notifications).
-    
+
         Attributes:
             current_notification: Currently displayed notification text.
             timer: Frames remaining for the current notification.

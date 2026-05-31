@@ -1,9 +1,11 @@
 """UI effects — visual feedback effects for the interface."""
 import pygame
-from airwar.config.design_tokens import get_design_tokens, SystemColors, SystemUI
-from .chamfered_panel import draw_chamfered_panel
+
+from airwar.config.design_tokens import SystemColors, SystemUI, get_design_tokens
 from airwar.utils.fonts import get_cjk_font
 from airwar.utils.responsive import ResponsiveHelper
+
+from .chamfered_panel import draw_chamfered_panel
 from .scene_rendering_utils import draw_centered_option_box
 
 

@@ -5,8 +5,8 @@ from typing import Any, Dict
 
 import pygame
 
-from .explosion_pool import ExplosionPool
 from ..constants import GAME_CONSTANTS
+from .explosion_pool import ExplosionPool
 
 
 @dataclass

@@ -1,13 +1,24 @@
 """Buff registry — centralized buff metadata and factory functions."""
-from typing import Type, Dict
+from typing import Dict, Type
+
 from .base_buff import Buff
 from .buffs import (
-    ExtraLifeBuff, RegenerationBuff, LifestealBuff,
-    ArmorBuff, EvasionBuff,
-    PowerShotBuff, RapidFireBuff, PiercingBuff, SpreadShotBuff, ExplosiveBuff, LaserBuff,
-    SlowFieldBuff, BoostRecoveryBuff, PhaseDashBuff, MothershipRecallBuff,
+    ArmorBuff,
+    BoostRecoveryBuff,
+    EvasionBuff,
+    ExplosiveBuff,
+    ExtraLifeBuff,
+    LaserBuff,
+    LifestealBuff,
+    MothershipRecallBuff,
+    PhaseDashBuff,
+    PiercingBuff,
+    PowerShotBuff,
+    RapidFireBuff,
+    RegenerationBuff,
+    SlowFieldBuff,
+    SpreadShotBuff,
 )
-
 
 BUFF_REGISTRY: Dict[str, Type[Buff]] = {
     'Extra Life': ExtraLifeBuff,

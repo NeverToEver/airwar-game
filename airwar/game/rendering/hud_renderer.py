@@ -2,14 +2,17 @@
 import logging
 import math
 from typing import List
+
 import pygame
-from airwar.config.design_tokens import get_design_tokens, SystemColors, SystemUI
-from airwar.utils.fonts import get_cjk_font
-from airwar.ui.buff_stats_panel import BuffStatsPanel, AttackModePanel
+
+from airwar.config.design_tokens import SystemColors, SystemUI, get_design_tokens
+from airwar.ui.buff_stats_panel import AttackModePanel, BuffStatsPanel
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.ui.scene_rendering_utils import render_cached_text
 from airwar.ui.segmented_bar import BossHealthBar
+from airwar.utils.fonts import get_cjk_font
 from airwar.utils.sprites import draw_ripple
+
 from ..constants import GAME_CONSTANTS
 
 logger = logging.getLogger(__name__)
@@ -129,7 +132,15 @@ class HUDRenderer:
         y = surface.get_height() - 50
         shown = set()
 
-        pygame.draw.rect(surface, (20, 20, 40), (x - self.BUFF_BAR_X_OFFSET, y - self.BUFF_BAR_Y_OFFSET, self.BUFF_BAR_WIDTH, self.BUFF_BAR_HEIGHT), border_radius=8)
+        buff_bar_rect = (
+            x - self.BUFF_BAR_X_OFFSET,
+            y - self.BUFF_BAR_Y_OFFSET,
+            self.BUFF_BAR_WIDTH,
+            self.BUFF_BAR_HEIGHT
+        )
+        pygame.draw.rect(
+            surface, (20, 20, 40), buff_bar_rect, border_radius=8
+        )
 
         for buff in reversed(list(unlocked_buffs)[:self.MAX_VISIBLE_BUFFS]):
             if buff in shown:
@@ -177,11 +188,18 @@ class HUDRenderer:
         x = (surface.get_width() - bar_width) // 2
         y = 15
 
-        pygame.draw.rect(surface, (40, 40, 60), (x - 3, y - 3, bar_width + 6, bar_height + 6), border_radius=8)
-        pygame.draw.rect(surface, (55, 55, 75), (x, y, bar_width, bar_height), border_radius=6)
+        outer_rect = (x - 3, y - 3, bar_width + 6, bar_height + 6)
+        pygame.draw.rect(surface, (40, 40, 60), outer_rect, border_radius=8)
+        inner_rect = (x, y, bar_width, bar_height)
+        pygame.draw.rect(surface, (55, 55, 75), inner_rect, border_radius=6)
 
         health_ratio = boss.health / boss.max_health if boss.max_health > 0 else 0.0
-        bar_color = colors.BOSS_HEALTH_HIGH if health_ratio > 0.5 else colors.BOSS_HEALTH_MED if health_ratio > 0.25 else colors.BOSS_HEALTH_LOW
+        if health_ratio > 0.5:
+            bar_color = colors.BOSS_HEALTH_HIGH
+        elif health_ratio > 0.25:
+            bar_color = colors.BOSS_HEALTH_MED
+        else:
+            bar_color = colors.BOSS_HEALTH_LOW
         pygame.draw.rect(surface, bar_color, (x, y, int(bar_width * health_ratio), bar_height), border_radius=6)
 
         font = self._boss_small_font
@@ -211,9 +229,11 @@ class HUDRenderer:
             t = (progress - self.TIMER_WARN_THRESHOLD_1) / (self.TIMER_WARN_THRESHOLD_2 - self.TIMER_WARN_THRESHOLD_1)
         else:
             t = 1.0
-        r = int(self.TIMER_COLOR_SAFE[0] + (self.TIMER_COLOR_URGENT[0] - self.TIMER_COLOR_SAFE[0]) * t)
-        g = int(self.TIMER_COLOR_SAFE[1] + (self.TIMER_COLOR_URGENT[1] - self.TIMER_COLOR_SAFE[1]) * t)
-        b = int(self.TIMER_COLOR_SAFE[2] + (self.TIMER_COLOR_URGENT[2] - self.TIMER_COLOR_SAFE[2]) * t)
+        safe = self.TIMER_COLOR_SAFE
+        urgent = self.TIMER_COLOR_URGENT
+        r = int(safe[0] + (urgent[0] - safe[0]) * t)
+        g = int(safe[1] + (urgent[1] - safe[1]) * t)
+        b = int(safe[2] + (urgent[2] - safe[2]) * t)
         timer_color = (r, g, b)
 
         secs = int(time_remaining)
@@ -223,7 +243,8 @@ class HUDRenderer:
 
         # HURRY warning — pulsing red above the timer panel when urgent
         if progress > self.HURRY_PROGRESS_THRESHOLD:
-            pulse = abs(math.sin(pygame.time.get_ticks() * self.HURRY_PULSE_SPEED)) * self.HURRY_PULSE_AMP + self.HURRY_PULSE_BASE
+            tick = pygame.time.get_ticks() * self.HURRY_PULSE_SPEED
+            pulse = abs(math.sin(tick)) * self.HURRY_PULSE_AMP + self.HURRY_PULSE_BASE
             alpha = int(200 * pulse)
             hurry_text = self._boss_hurry_font.render("逃跑中!", True,
                                                        self.HURRY_COLOR)

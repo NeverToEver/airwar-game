@@ -1,8 +1,10 @@
 """Menu background — animated background rendering for menu scenes."""
-import pygame
 import math
 import random
-from airwar.config.design_tokens import get_design_tokens, SceneColors
+
+import pygame
+
+from airwar.config.design_tokens import SceneColors, get_design_tokens
 
 
 class _ScanBeam:

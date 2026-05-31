@@ -1,11 +1,11 @@
 """Difficulty progression — scales enemy stats and spawn rates over time."""
-from typing import List, Dict, Optional
 import logging
+from typing import Dict, List, Optional
 
+from ...config.difficulty_config import BASE_ENEMY_PARAMS
 from .difficulty_strategies import (
     DifficultyStrategyFactory,
 )
-from ...config.difficulty_config import BASE_ENEMY_PARAMS
 
 
 class DifficultyListener:
@@ -16,10 +16,10 @@ class DifficultyListener:
 
 class DifficultyManager:
     """Difficulty manager — progressive scaling of enemy stats over time.
-    
+
         Increases difficulty based on boss kill count using strategy-specific
         growth curves. Notifies registered listeners when difficulty changes.
-    
+
         Attributes:
             _boss_kill_count: Number of bosses killed this session.
             _current_multiplier: Current difficulty multiplier value.
@@ -135,7 +135,10 @@ class DifficultyManager:
             'speed': BASE_ENEMY_PARAMS['speed'] * speed_mult,
             'fire_rate': max(self.MIN_FIRE_RATE, int(BASE_ENEMY_PARAMS['fire_rate'] / fire_mult)),
             'aggression': min(1.0, BASE_ENEMY_PARAMS['aggression'] * aggro_mult),
-            'spawn_rate': max(self.MIN_SPAWN_RATE, int(BASE_ENEMY_PARAMS['spawn_rate'] / (1 + speed_mult * self.SPAWN_SCALE))),
+            'spawn_rate': max(
+                self.MIN_SPAWN_RATE,
+                int(BASE_ENEMY_PARAMS['spawn_rate'] / (1 + speed_mult * self.SPAWN_SCALE))
+            ),
             'multiplier': self._current_multiplier,
             'boss_kills': self._boss_kill_count,
             'complexity': self.get_movement_complexity(),

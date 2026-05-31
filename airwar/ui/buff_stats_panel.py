@@ -1,18 +1,18 @@
 """Buff stats panel — displays active buffs and attack mode info."""
-from typing import Dict, List, Tuple, Optional
-from dataclasses import dataclass
 import logging
 import math
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple
 
 import pygame
 
+from airwar.config.design_tokens import Colors, SystemColors, SystemUI, get_design_tokens
+from airwar.game.buffs.buff_registry import create_buff
 from airwar.utils.fonts import get_cjk_font
 
-from airwar.game.buffs.buff_registry import create_buff
-from airwar.config.design_tokens import Colors, SystemColors, SystemUI, get_design_tokens
 from .buff_display import get_buff_display_name
 from .chamfered_panel import draw_chamfered_panel
-from .hex_icon import HexIcon, ICON_POWER, ICON_DEFENSE, ICON_SPEED
+from .hex_icon import ICON_DEFENSE, ICON_POWER, ICON_SPEED, HexIcon
 from .scene_rendering_utils import fit_text_to_width
 
 logger = logging.getLogger(__name__)

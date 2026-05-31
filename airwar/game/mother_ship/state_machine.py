@@ -1,37 +1,38 @@
 """Mothership state machine — docking flow and state transitions."""
 import pygame
-from .interfaces import IMotherShipStateMachine
-from .mother_ship_state import MotherShipState, MotherShipCooldown, DockedStayProgress
+
 from .event_bus import (
-    EventBus,
-    EVENT_STATE_CHANGED,
+    EVENT_COOLDOWN_COMPLETE,
+    EVENT_COOLDOWN_STARTED,
+    EVENT_DOCKING_ANIMATION_COMPLETE,
+    EVENT_ENTERING_COMPLETE,
+    EVENT_EXIT_CANCELLED,
+    EVENT_EXIT_COMPLETE,
+    EVENT_EXIT_PROGRESS_UPDATE,
+    EVENT_EXIT_STARTED,
+    EVENT_GAME_RESUME,
     EVENT_H_PRESSED,
     EVENT_H_RELEASED,
     EVENT_H_RELEASED_EARLY,
     EVENT_PROGRESS_COMPLETE,
-    EVENT_DOCKING_ANIMATION_COMPLETE,
-    EVENT_UNDOCKING_ANIMATION_COMPLETE,
-    EVENT_STAY_EXPIRED,
-    EVENT_ENTERING_COMPLETE,
-    EVENT_UNDOCK_REQUESTED,
-    EVENT_EXIT_COMPLETE,
-    EVENT_EXIT_PROGRESS_UPDATE,
-    EVENT_EXIT_CANCELLED,
-    EVENT_EXIT_STARTED,
-    EVENT_START_UNDOCKING_ANIMATION,
-    EVENT_UNDOCK_CANCELLED,
-    EVENT_START_ENTERING_ANIMATION,
     EVENT_START_DOCKING_ANIMATION,
+    EVENT_START_ENTERING_ANIMATION,
+    EVENT_START_UNDOCKING_ANIMATION,
+    EVENT_STATE_CHANGED,
+    EVENT_STAY_EXPIRED,
     EVENT_STAY_STARTED,
-    EVENT_COOLDOWN_STARTED,
-    EVENT_GAME_RESUME,
-    EVENT_COOLDOWN_COMPLETE,
+    EVENT_UNDOCK_CANCELLED,
+    EVENT_UNDOCK_REQUESTED,
+    EVENT_UNDOCKING_ANIMATION_COMPLETE,
+    EventBus,
 )
+from .interfaces import IMotherShipStateMachine
+from .mother_ship_state import DockedStayProgress, MotherShipCooldown, MotherShipState
 
 
 class MotherShipStateMachine(IMotherShipStateMachine):
     """Mothership state machine — manages docking flow and state transitions.
-    
+
         Handles the full docking lifecycle: approaching → docking → saving →
         completion, with support for cancellation and error states.
         """

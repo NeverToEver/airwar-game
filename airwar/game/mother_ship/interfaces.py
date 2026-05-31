@@ -1,7 +1,8 @@
 """Mothership interfaces — protocols for input, UI, events, persistence."""
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, List, Optional
-from .mother_ship_state import MotherShipState, DockingProgress, GameSaveData
+
+from .mother_ship_state import DockingProgress, GameSaveData, MotherShipState
 
 
 class IInputDetector(ABC):

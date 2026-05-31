@@ -5,13 +5,13 @@ from typing import List
 
 import pygame
 
-from .explosion_particle import ExplosionParticle
 from airwar.core_bindings import (
-    generate_explosion_particles,
     batch_update_particles,
+    generate_explosion_particles,
 )
-from ..constants import GAME_CONSTANTS
 
+from ..constants import GAME_CONSTANTS
+from .explosion_particle import ExplosionParticle
 
 # Pre-rendered glow texture cache — avoids per-frame pygame.draw.circle() loops
 # 限制缓存大小防止内存泄漏
@@ -231,7 +231,10 @@ class ExplosionEffect:
         results = batch_update_particles(particle_data, dt)
         original_particles = self._particles
         self._particles = []
-        for i, ((x, y, vx, vy, life, size, is_alive), original_max_life) in enumerate(zip(results, max_lives, strict=False)):
+        for i, (result, original_max_life) in enumerate(
+            zip(results, max_lives, strict=False)
+        ):
+            x, y, vx, vy, life, size, is_alive = result
             if is_alive:
                 self._particles.append(self._acquire_particle(
                     x, y, vx, vy, life, original_max_life, size

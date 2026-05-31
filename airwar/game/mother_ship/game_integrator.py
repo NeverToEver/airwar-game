@@ -1,40 +1,43 @@
 """Game integrator — bridges mothership state with game systems."""
-from typing import Dict, List, NamedTuple, TYPE_CHECKING
-import pygame
 import math
-from .mother_ship_state import MotherShipState, GameSaveData
-from .progress_bar_ui import ProgressBarUI
-from .event_bus import (
-    EVENT_STATE_CHANGED,
-    EVENT_H_RELEASED_EARLY,
-    EVENT_ENTERING_COMPLETE,
-    EVENT_DOCKING_ANIMATION_COMPLETE,
-    EVENT_UNDOCKING_ANIMATION_COMPLETE,
-    EVENT_UNDOCK_REQUESTED,
-    EVENT_START_ENTERING_ANIMATION,
-    EVENT_START_DOCKING_ANIMATION,
-    EVENT_UNDOCK_CANCELLED,
-    EVENT_START_UNDOCKING_ANIMATION,
-    EVENT_COOLDOWN_STARTED,
-    EVENT_STAY_STARTED,
-    EVENT_GAME_RESUME,
-    EVENT_SAVE_GAME_REQUEST,
-    EVENT_EXIT_STARTED,
-    EVENT_EXIT_PROGRESS_UPDATE,
-    EVENT_EXIT_CANCELLED,
-)
-from airwar.entities.bullet import Bullet
+from typing import TYPE_CHECKING, Dict, List, NamedTuple
+
+import pygame
+
+from airwar.config import get_screen_height, get_screen_width
 from airwar.entities.base import BulletData
-from airwar.config import get_screen_width, get_screen_height
+from airwar.entities.bullet import Bullet
+
 from ..rendering.entity_renderer import EntityRenderer
 from ..systems.lock_manager import LockLayer, LockRequest
+from .event_bus import (
+    EVENT_COOLDOWN_STARTED,
+    EVENT_DOCKING_ANIMATION_COMPLETE,
+    EVENT_ENTERING_COMPLETE,
+    EVENT_EXIT_CANCELLED,
+    EVENT_EXIT_PROGRESS_UPDATE,
+    EVENT_EXIT_STARTED,
+    EVENT_GAME_RESUME,
+    EVENT_H_RELEASED_EARLY,
+    EVENT_SAVE_GAME_REQUEST,
+    EVENT_START_DOCKING_ANIMATION,
+    EVENT_START_ENTERING_ANIMATION,
+    EVENT_START_UNDOCKING_ANIMATION,
+    EVENT_STATE_CHANGED,
+    EVENT_STAY_STARTED,
+    EVENT_UNDOCK_CANCELLED,
+    EVENT_UNDOCK_REQUESTED,
+    EVENT_UNDOCKING_ANIMATION_COMPLETE,
+)
+from .mother_ship_state import GameSaveData, MotherShipState
+from .progress_bar_ui import ProgressBarUI
 
 if TYPE_CHECKING:
     from .event_bus import EventBus
     from .input_detector import InputDetector
-    from .state_machine import MotherShipStateMachine
-    from .persistence_manager import PersistenceManager
     from .mother_ship import MotherShip
+    from .persistence_manager import PersistenceManager
+    from .state_machine import MotherShipStateMachine
 
 
 class GatlingTurretSpec(NamedTuple):
@@ -50,7 +53,7 @@ class GatlingTurretSpec(NamedTuple):
 
 class GameIntegrator:
     """Game integrator — bridges mothership state with game systems.
-    
+
         Coordinates between game state and mothership docking flow,
         updating entity states and UI during the docking process.
         """
@@ -558,7 +561,10 @@ class GameIntegrator:
             player_y=player.rect.y if player else 0,
             is_in_mothership=is_docked,
             username=self._game_scene.get_username(),
-            requisition_points=self._game_scene.game_controller.state.requisition_points if self._game_scene.game_controller else 0,
+            requisition_points=(
+                self._game_scene.game_controller.state.requisition_points
+                if self._game_scene.game_controller else 0
+            ),
         )
 
     def _on_game_resume(self, **kwargs) -> None:
@@ -813,9 +819,16 @@ class GameIntegrator:
             'cooldown_base_duration': cd.BASE_COOLDOWN,
             'cooldown_multiplier': cd.cooldown_multiplier,
             'cooldown_reduction': max(0.0, 1.0 - cd.cooldown_multiplier),
-            'hold_progress': self._input_detector.get_progress().current_progress if state == MotherShipState.PRESSING else 0.0,
+            'hold_progress': (
+                self._input_detector.get_progress().current_progress
+                if state == MotherShipState.PRESSING else 0.0
+            ),
             'stay_progress': stay.stay_progress,
-            'stay_remaining': max(0.0, stay.stay_duration - (pygame.time.get_ticks() / 1000.0 - stay.stay_start_time)) if stay.is_staying else 0.0,
+            'stay_remaining': (
+                max(0.0, stay.stay_duration - (
+                    pygame.time.get_ticks() / 1000.0 - stay.stay_start_time
+                )) if stay.is_staying else 0.0
+            ),
             'stay_duration': stay.stay_duration,
             'ammo_count': ammo_count,
             'ammo_max': self.AMMO_CELL_COUNT,

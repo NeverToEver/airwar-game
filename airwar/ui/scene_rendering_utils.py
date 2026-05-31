@@ -4,11 +4,14 @@ Consolidates duplicated rendering code across death_scene.py, pause_scene.py,
 and exit_confirm_scene.py into a single utility class.
 """
 
-import pygame
 from typing import List, Optional, Tuple
-from .chamfered_panel import draw_chamfered_panel
+
+import pygame
+
 from airwar.config.design_tokens import SceneColors
 from airwar.utils.responsive import ResponsiveHelper
+
+from .chamfered_panel import draw_chamfered_panel
 
 
 def draw_centered_option_box(

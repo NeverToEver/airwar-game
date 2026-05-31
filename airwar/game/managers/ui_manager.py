@@ -1,8 +1,9 @@
 """UI coordination — manages rendering delegation and overlay display."""
 import pygame
+
 from ..buffs.buff_registry import get_buff_color
+from ..protocols import GameControllerProtocol, GameRendererProtocol, RewardSystemProtocol
 from ..rendering.entity_renderer import EntityRenderer
-from ..protocols import GameRendererProtocol, RewardSystemProtocol, GameControllerProtocol
 
 
 class GameEntities:
@@ -15,10 +16,10 @@ class GameEntities:
 
 class UIManager:
     """UI manager — coordinates rendering delegation and overlay display.
-    
+
         Routes rendering calls to the appropriate renderer (GameRenderer,
         HUDRenderer) and manages UI overlay state (reward selector, pause).
-    
+
         Attributes:
             _game_renderer: GameRenderer for entity and background rendering.
             _reward_system: RewardSystem for buff stats display.

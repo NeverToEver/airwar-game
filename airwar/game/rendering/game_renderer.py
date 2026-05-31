@@ -1,13 +1,15 @@
 """Game renderer — entity rendering, background, and death animation."""
-import pygame
 from dataclasses import dataclass
 from typing import Any, List
+
+import pygame
+
+from ..death_animation import DeathAnimation
+from ..managers.game_controller import GameplayState, GameState
+from .entity_renderer import EntityRenderer
+from .game_rendering_background import SpaceBackground
 from .hud_renderer import HUDRenderer
 from .integrated_hud import IntegratedHUD
-from .entity_renderer import EntityRenderer
-from ..managers.game_controller import GameState, GameplayState
-from .game_rendering_background import SpaceBackground
-from ..death_animation import DeathAnimation
 
 
 @dataclass
@@ -20,11 +22,11 @@ class GameEntities:
 
 class GameRenderer:
     """Game renderer — entity rendering, background, and death animation.
-    
+
         Handles the main game rendering pipeline: background → entities →
         effects → HUD. Supports entrance animation zoom effect and death
         animation transitions.
-    
+
         Attributes:
             hud_renderer: HUDRenderer for heads-up display.
             background_renderer: SpaceBackground for parallax starfield.

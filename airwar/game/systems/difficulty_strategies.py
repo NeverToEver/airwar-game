@@ -1,6 +1,6 @@
 """Difficulty strategy implementations — Easy, Medium, Hard progression."""
-from abc import ABC
 import logging
+from abc import ABC
 
 
 class DifficultyStrategy(ABC):

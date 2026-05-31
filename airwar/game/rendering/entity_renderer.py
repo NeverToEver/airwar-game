@@ -147,7 +147,10 @@ class EntityRenderer:
 
     def _render_boss_body(self, surface: pygame.Surface, boss: "Boss", health_ratio: float) -> None:
         if boss.enrage_visual_intensity() <= 0:
-            draw_boss_ship(surface, boss.rect.centerx, boss.rect.centery, boss.rect.width, boss.rect.height, health_ratio)
+            draw_boss_ship(
+                surface, boss.rect.centerx, boss.rect.centery,
+                boss.rect.width, boss.rect.height, health_ratio
+            )
             return
 
         self._render_enrage_body_aura(surface, boss)

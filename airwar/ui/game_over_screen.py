@@ -1,9 +1,12 @@
 """Game over screen — post-death options and score display."""
 from enum import Enum
 from typing import Optional
+
 import pygame
+
+from airwar.config.design_tokens import SceneColors, SystemUI, get_design_tokens
 from airwar.utils.fonts import get_cjk_font
-from airwar.config.design_tokens import get_design_tokens, SceneColors, SystemUI
+
 from .chamfered_panel import draw_chamfered_panel
 from .scene_rendering_utils import fit_text_to_width
 
@@ -167,7 +170,11 @@ class GameOverScreen:
                 for offset_x in range(-blur, blur + 1, 2):
                     for offset_y in range(-blur, blur + 1, 2):
                         if offset_x * offset_x + offset_y * offset_y <= blur * blur:
-                            glow_rect = glow_surf.get_rect(center=(screen_width // 2 + offset_x, int(150 * scale) + offset_y))
+                            glow_center = (
+                                screen_width // 2 + offset_x,
+                                int(150 * scale) + offset_y
+                            )
+                            glow_rect = glow_surf.get_rect(center=glow_center)
                             surface.blit(glow_surf, glow_rect)
 
             title = font_large.render(title_text, True, SceneColors.DANGER_RED)

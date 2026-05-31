@@ -3,10 +3,10 @@
 Extracted from GameScene to reduce god-class responsibilities.
 Handles detection, sequence, base console, talent management, departure.
 """
-from airwar.config import get_screen_width, get_screen_height
-from airwar.game.constants import PlayerConstants, GAME_CONSTANTS
-from airwar.game.systems.talent_balance_manager import TalentBalanceManager
+from airwar.config import get_screen_height, get_screen_width
+from airwar.game.constants import GAME_CONSTANTS, PlayerConstants
 from airwar.game.systems.lock_manager import LockLayer, LockRequest
+from airwar.game.systems.talent_balance_manager import TalentBalanceManager
 
 
 class HomecomingCoordinator:
@@ -61,7 +61,11 @@ class HomecomingCoordinator:
 
     # --- Update ---
 
-    def update(self, game_controller, player, lock_manager, bullet_manager, spawn_controller, game_loop_manager, notification_manager, save_fn=None):
+    def update(
+        self, game_controller, player, lock_manager,
+        bullet_manager, spawn_controller, game_loop_manager,
+        notification_manager, save_fn=None
+    ):
         if not self._detector or not self._sequence:
             return
 
@@ -91,7 +95,10 @@ class HomecomingCoordinator:
                 game_controller.state.requisition_points += GAME_CONSTANTS.REQUISITION.MISSION_REWARD
                 mission["claimed"] = True
                 if notification_manager:
-                    notification_manager.show(f"任务完成: {mission['name']} (+{GAME_CONSTANTS.REQUISITION.MISSION_REWARD}RP)")
+                    reward = GAME_CONSTANTS.REQUISITION.MISSION_REWARD
+                    notification_manager.show(
+                        f"任务完成: {mission['name']} (+{reward}RP)"
+                    )
 
     def sync_mission_progress(self, game_controller, survival_frames):
         """Keep mission progress in sync with actual game state."""
@@ -136,7 +143,10 @@ class HomecomingCoordinator:
         if notification_manager:
             notification_manager.show("轨道导弹清场完成")
 
-    def on_departure_complete(self, game_controller, player, lock_manager, spawn_controller, game_loop_manager, notification_manager):
+    def on_departure_complete(
+        self, game_controller, player, lock_manager,
+        spawn_controller, game_loop_manager, notification_manager
+    ):
         self._base_pending = False
         if self._sequence:
             self._sequence.reset()
@@ -206,16 +216,27 @@ class HomecomingCoordinator:
         if notification_manager:
             notification_manager.show(f"基地全面补给完成 (-{actual_cost}RP)")
 
-    def handle_console_click(self, pos, game_controller, player, lock_manager, spawn_controller, game_loop_manager, notification_manager, reward_system):
+    def handle_console_click(
+        self, pos, game_controller, player, lock_manager,
+        spawn_controller, game_loop_manager, notification_manager,
+        reward_system
+    ):
         if not self._base_talent_console or not self._talent_balance_manager:
             return False
         action = self._base_talent_console.handle_mouse_click(pos)
         if action is None:
             return False
-        self._handle_action(action, game_controller, player, lock_manager, spawn_controller, game_loop_manager, notification_manager, reward_system)
+        self._handle_action(
+            action, game_controller, player, lock_manager,
+            spawn_controller, game_loop_manager, notification_manager,
+            reward_system
+        )
         return True
 
-    def leave_base(self, game_controller, player, lock_manager, spawn_controller, game_loop_manager, notification_manager):
+    def leave_base(
+        self, game_controller, player, lock_manager,
+        spawn_controller, game_loop_manager, notification_manager
+    ):
         self._save_base_loadout()
         self._base_pending = False
         if self._ui:
@@ -228,12 +249,20 @@ class HomecomingCoordinator:
                 get_screen_width(),
                 get_screen_height(),
                 on_complete_callback=lambda: self.on_departure_complete(
-                    game_controller, player, lock_manager, spawn_controller, game_loop_manager, notification_manager),
+                    game_controller, player, lock_manager,
+                    spawn_controller, game_loop_manager,
+                    notification_manager
+                ),
                 on_orbital_strike_callback=lambda: self.on_orbital_strike(
-                    spawn_controller, game_loop_manager, player, notification_manager),
+                    spawn_controller, game_loop_manager,
+                    player, notification_manager
+                ),
             )
         if not started:
-            self.on_departure_complete(game_controller, player, lock_manager, spawn_controller, game_loop_manager, notification_manager)
+            self.on_departure_complete(
+                game_controller, player, lock_manager,
+                spawn_controller, game_loop_manager, notification_manager
+            )
             return
         if notification_manager:
             notification_manager.show("基地弹射程序启动")
@@ -261,7 +290,10 @@ class HomecomingCoordinator:
         )
         self._apply_talent_loadout(reward_system, None, show_notification=False)
 
-    def _apply_talent_loadout(self, reward_system, player, show_notification=True, notification_manager=None):
+    def _apply_talent_loadout(
+        self, reward_system, player,
+        show_notification=True, notification_manager=None
+    ):
         if not self._talent_balance_manager or not reward_system:
             return
         reward_system.apply_effective_levels(
@@ -275,10 +307,17 @@ class HomecomingCoordinator:
         if show_notification and notification_manager:
             notification_manager.show("基地天赋配置已同步")
 
-    def _handle_action(self, action, game_controller, player, lock_manager, spawn_controller, game_loop_manager, notification_manager, reward_system):
+    def _handle_action(
+        self, action, game_controller, player, lock_manager,
+        spawn_controller, game_loop_manager, notification_manager,
+        reward_system
+    ):
         from airwar.ui.base_talent_console import BaseTalentConsoleAction
         if action.kind == BaseTalentConsoleAction.CONTINUE:
-            self.leave_base(game_controller, player, lock_manager, spawn_controller, game_loop_manager, notification_manager)
+            self.leave_base(
+                game_controller, player, lock_manager,
+                spawn_controller, game_loop_manager, notification_manager
+            )
             return
         if action.kind == BaseTalentConsoleAction.RESUPPLY:
             self.resupply_at_base(game_controller, player, notification_manager)

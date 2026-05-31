@@ -3,9 +3,9 @@ from unittest.mock import MagicMock
 
 import pygame
 
-from airwar.game.scene_director import SceneDirector
 from airwar.game.mother_ship.mother_ship_state import GameSaveData
 from airwar.game.mother_ship.persistence_manager import PersistenceManager
+from airwar.game.scene_director import SceneDirector
 from airwar.scenes.scene import ExitConfirmAction, PauseAction
 from airwar.utils.database import DatabaseError
 

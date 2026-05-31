@@ -93,13 +93,24 @@ class TutorialSceneRenderer:
         )
         if render_hostiles:
             for bullet in s._bullets:
-                draw_bullet(surface, bullet.rect.x, bullet.rect.y, bullet.rect.width, bullet.rect.height, "single", "player")
+                draw_bullet(
+                    surface, bullet.rect.x, bullet.rect.y,
+                    bullet.rect.width, bullet.rect.height,
+                    "single", "player"
+                )
             for bullet in s._enemy_bullets:
-                draw_bullet(surface, bullet.rect.x, bullet.rect.y, bullet.rect.width, bullet.rect.height, bullet.bullet_type, "enemy")
+                draw_bullet(
+                    surface, bullet.rect.x, bullet.rect.y,
+                    bullet.rect.width, bullet.rect.height,
+                    bullet.bullet_type, "enemy"
+                )
 
             for enemy in s._enemies:
                 health_ratio = max(0.0, enemy.health / enemy.max_health)
-                draw_enemy_ship(surface, enemy.rect.centerx, enemy.rect.centery, enemy.rect.width, enemy.rect.height, health_ratio)
+                draw_enemy_ship(
+                    surface, enemy.rect.centerx, enemy.rect.centery,
+                    enemy.rect.width, enemy.rect.height, health_ratio
+                )
                 self._draw_entity_health_bar(surface, enemy.rect, health_ratio)
 
         if s._boss is not None:
@@ -107,7 +118,10 @@ class TutorialSceneRenderer:
             health_ratio = max(0.0, boss.health / boss.max_health)
             if boss.enraged:
                 self._render_boss_enrage_aura(surface, boss)
-            draw_boss_ship(surface, boss.rect.centerx, boss.rect.centery, boss.rect.width, boss.rect.height, health_ratio)
+            draw_boss_ship(
+                surface, boss.rect.centerx, boss.rect.centery,
+                boss.rect.width, boss.rect.height, health_ratio
+            )
             self._draw_boss_health(surface, boss)
             if boss.enraged:
                 self._render_boss_enrage_warning(surface, boss)
@@ -187,7 +201,11 @@ class TutorialSceneRenderer:
 
         panel_tint = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
         panel_tint.fill((0, 0, 0, 28))
-        pygame.draw.line(panel_tint, (*SceneColors.ACCENT_TEAL_BRIGHT, 80), (24, panel_h - 36), (panel_w - 24, panel_h - 36), 1)
+        line_color = (*SceneColors.ACCENT_TEAL_BRIGHT, 80)
+        pygame.draw.line(
+            panel_tint, line_color,
+            (24, panel_h - 36), (panel_w - 24, panel_h - 36), 1
+        )
         surface.blit(panel_tint, (x, y))
 
         badge_rect = pygame.Rect(0, 0, badge_size, badge_size)
@@ -366,7 +384,8 @@ class TutorialSceneRenderer:
         total_w = score_text.get_width() + metric_gap + kills_text.get_width()
         start_x = panel.centerx - total_w // 2
         surface.blit(score_text, score_text.get_rect(midleft=(start_x, panel.centery)))
-        surface.blit(kills_text, kills_text.get_rect(midleft=(start_x + score_text.get_width() + metric_gap, panel.centery)))
+        kills_x = start_x + score_text.get_width() + metric_gap
+        surface.blit(kills_text, kills_text.get_rect(midleft=(kills_x, panel.centery)))
 
     def _render_health_battery(self, surface: pygame.Surface) -> None:
         s = self._scene
@@ -582,7 +601,8 @@ class TutorialSceneRenderer:
             y += 36
 
         wrap_y = y + 10
-        for line in wrap_text("进入正式战斗后，优先保持移动，适时使用加速、母舰停靠和基地返航。", s._small_font, panel.width - 112, max_lines=3):
+        tip_text = "进入正式战斗后，优先保持移动，适时使用加速、母舰停靠和基地返航。"
+        for line in wrap_text(tip_text, s._small_font, panel.width - 112, max_lines=3):
             surface.blit(s._small_font.render(line, True, SceneColors.TEXT_DIM), (panel.x + 56, wrap_y))
             wrap_y += 26
 

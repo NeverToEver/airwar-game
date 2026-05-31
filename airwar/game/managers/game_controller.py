@@ -1,17 +1,17 @@
 """Game controller — state management, scoring, and milestone progression."""
-from dataclasses import dataclass, field
-from typing import List, Optional
-from enum import Enum
 import logging
-from airwar.config import VALID_DIFFICULTIES, RIPPLE_FADE_SPEED
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import List, Optional
+
+from airwar.config import RIPPLE_FADE_SPEED, VALID_DIFFICULTIES
+
 from ..constants import GAME_CONSTANTS, normalize_score
 from ..death_animation import DeathAnimation
-from ..systems.health_system import HealthSystem
-from ..systems.reward_system import RewardSystem
-from ..systems.notification_manager import NotificationManager
 from ..systems.difficulty_manager import DifficultyManager
-
-
+from ..systems.health_system import HealthSystem
+from ..systems.notification_manager import NotificationManager
+from ..systems.reward_system import RewardSystem
 
 
 class GameplayState(Enum):
@@ -51,11 +51,11 @@ class GameState:
 
 class GameController:
     """Game controller — manages game state, scoring, and milestone progression.
-    
+
         Coordinates player health, enemy kill scoring, difficulty thresholds,
         and delegates reward selection to RewardSystem. Acts as the central
         game logic hub during gameplay.
-    
+
         Attributes:
             state: Current GameState snapshot.
             health_system: HealthSystem for player health and regen.

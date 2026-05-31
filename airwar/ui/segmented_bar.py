@@ -1,6 +1,8 @@
 """Segmented progress bar component — military HUD style."""
-import pygame
 from typing import Tuple
+
+import pygame
+
 from airwar.config.design_tokens import SystemColors, SystemUI
 from airwar.utils.fonts import get_cjk_font
 

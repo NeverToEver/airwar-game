@@ -9,7 +9,6 @@ import pygame
 
 from airwar.config.design_tokens import get_design_tokens
 
-
 PARTICLE_TEXTURE_SIZES = (2, 3, 4, 6, 8, 12, 16, 20)
 
 

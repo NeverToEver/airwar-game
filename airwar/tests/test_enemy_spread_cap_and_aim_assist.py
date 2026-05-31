@@ -2,9 +2,9 @@ from types import SimpleNamespace
 
 import pygame
 
+from airwar.config import DIFFICULTY_SETTINGS
 from airwar.entities.base import Rect
 from airwar.entities.enemy import Enemy, EnemySpawner
-from airwar.config import DIFFICULTY_SETTINGS
 from airwar.game.managers.spawn_controller import SpawnController
 from airwar.game.systems.aim_assist_system import AimAssistSystem
 

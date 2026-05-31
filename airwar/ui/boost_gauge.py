@@ -4,8 +4,8 @@ import math
 
 import pygame
 
+from airwar.config.design_tokens import SystemColors, get_design_tokens
 from airwar.utils.fonts import get_cjk_font
-from airwar.config.design_tokens import get_design_tokens, SystemColors
 
 
 class BoostGauge:

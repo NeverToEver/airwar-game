@@ -301,7 +301,11 @@ def test_homecoming_launch_corridor_uses_slow_low_contrast_pulse(monkeypatch) ->
             sign_changes += 1
         previous_sign = sign
 
-    assert max(line_alphas) <= HomecomingUI.LAUNCH_CORRIDOR_LINE_ALPHA_BASE + HomecomingUI.LAUNCH_CORRIDOR_LINE_ALPHA_RANGE
+    max_alpha = (
+        HomecomingUI.LAUNCH_CORRIDOR_LINE_ALPHA_BASE
+        + HomecomingUI.LAUNCH_CORRIDOR_LINE_ALPHA_RANGE
+    )
+    assert max(line_alphas) <= max_alpha
     assert max(abs(delta) for delta in deltas) <= 3
     assert sign_changes <= 4
 
@@ -447,7 +451,7 @@ def test_game_scene_leaving_base_starts_departure_sequence() -> None:
 
 def test_game_scene_homecoming_departure_complete_restores_play_state() -> None:
     from airwar.game.systems.homecoming_coordinator import HomecomingCoordinator
-    from airwar.game.systems.lock_manager import LockManager, LockLayer, LockRequest
+    from airwar.game.systems.lock_manager import LockLayer, LockManager, LockRequest
     scene = GameScene()
     scene.player = _make_player()
     scene.game_controller = GameController("medium", "pilot")
@@ -493,7 +497,7 @@ def test_game_scene_homecoming_departure_complete_restores_play_state() -> None:
 
 def test_game_scene_homecoming_update_does_not_relock_after_departure_complete() -> None:
     from airwar.game.systems.homecoming_coordinator import HomecomingCoordinator
-    from airwar.game.systems.lock_manager import LockManager, LockLayer, LockRequest
+    from airwar.game.systems.lock_manager import LockLayer, LockManager, LockRequest
     scene = GameScene()
     scene.player = _make_player()
     scene.game_controller = GameController("medium", "pilot")
@@ -763,8 +767,8 @@ def test_game_scene_base_module_action_does_not_change_loadout() -> None:
 
 
 def test_game_scene_homecoming_request_is_blocked_by_unsafe_states() -> None:
-    from airwar.game.systems.homecoming_coordinator import HomecomingCoordinator
     from airwar.game.managers.game_controller import GameplayState
+    from airwar.game.systems.homecoming_coordinator import HomecomingCoordinator
     scene = GameScene()
     scene.player = _make_player()
     scene.game_controller = GameController("medium", "pilot")

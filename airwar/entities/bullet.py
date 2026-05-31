@@ -9,8 +9,10 @@ from collections import deque
 from typing import List
 
 import pygame
-from .base import Entity, BulletData, Vector2
-from airwar.config import get_screen_width, get_screen_height
+
+from airwar.config import get_screen_height, get_screen_width
+
+from .base import BulletData, Entity, Vector2
 
 
 class Bullet(Entity):

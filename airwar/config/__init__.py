@@ -1,5 +1,6 @@
 """Config package — game settings, design tokens, and difficulty configuration."""
-from .settings import *
+from .design_tokens import get_colors, get_design_tokens
+from .difficulty_config import BASE_ENEMY_PARAMS, DIFFICULTY_CONFIGS, MOVEMENT_PATTERNS
 from .game_config import (
     GameConfig,
     get_display_height,
@@ -8,9 +9,8 @@ from .game_config import (
     get_screen_width,
     set_display_size,
 )
-from .difficulty_config import DIFFICULTY_CONFIGS, MOVEMENT_PATTERNS, BASE_ENEMY_PARAMS
+from .settings import *
 from .tutorial import TUTORIAL_PAGES, TUTORIAL_STAGES, TutorialStage
-from .design_tokens import get_design_tokens, get_colors
 
 __all__ = [
     'SCREEN_WIDTH', 'SCREEN_HEIGHT', 'FPS',

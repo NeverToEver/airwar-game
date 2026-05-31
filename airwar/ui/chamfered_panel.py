@@ -1,8 +1,9 @@
 """Chamfered (cut-corner) panel component for military UI style."""
-import pygame
 from typing import Tuple
-from airwar.config.design_tokens import SystemUI
 
+import pygame
+
+from airwar.config.design_tokens import SystemUI
 
 # Cache for rendered panels
 _panel_surface_cache = {}

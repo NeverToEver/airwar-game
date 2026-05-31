@@ -6,12 +6,10 @@ from dataclasses import dataclass
 
 import pygame
 
-from .scene import Scene
-from .tutorial_scene_renderer import TutorialSceneRenderer
-from airwar.config import TUTORIAL_STAGES, TutorialStage, get_screen_width, get_screen_height
+from airwar.config import TUTORIAL_STAGES, TutorialStage, get_screen_height, get_screen_width
 from airwar.config.design_tokens import SceneColors, get_design_tokens
-from airwar.game.mother_ship import MotherShip
 from airwar.game.constants import GAME_CONSTANTS
+from airwar.game.mother_ship import MotherShip
 from airwar.game.rendering import GameRenderer
 from airwar.game.systems.reward_system import RewardSystem
 from airwar.game.systems.talent_balance_manager import TalentBalanceManager
@@ -23,6 +21,9 @@ from airwar.ui.discrete_battery import DiscreteBatteryIndicator
 from airwar.ui.warning_banner import WarningBanner
 from airwar.utils.fonts import get_cjk_font
 from airwar.utils.mouse_interaction import MouseInteractiveMixin
+
+from .scene import Scene
+from .tutorial_scene_renderer import TutorialSceneRenderer
 
 
 @dataclass
@@ -805,7 +806,10 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         candidates: list[TutorialEnemy | TutorialBoss],
         movement: tuple[float, float],
     ) -> TutorialEnemy | TutorialBoss | None:
-        origin = self._aim_assist_target.rect.center if self._aim_assist_target in candidates else self._raw_aim_position
+        if self._aim_assist_target in candidates:
+            origin = self._aim_assist_target.rect.center
+        else:
+            origin = self._raw_aim_position
         movement_len = math.hypot(movement[0], movement[1])
         if movement_len <= 0:
             return None

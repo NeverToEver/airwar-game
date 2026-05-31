@@ -178,7 +178,10 @@ class StarLayer:
             x = int(star['x'] * self._screen_width)
             y_pos = int(y * self._screen_height)
 
-            idx = int((time * star['twinkle_speed'] + star['twinkle_offset']) * (self._sin_table_size / math.tau)) & self._sin_table_mask
+            twinkle_phase = (
+                time * star['twinkle_speed'] + star['twinkle_offset']
+            ) * (self._sin_table_size / math.tau)
+            idx = int(twinkle_phase) & self._sin_table_mask
             twinkle = self._sin_table[idx]
             brightness = int(star['brightness'] * (0.5 + 0.5 * twinkle) * 255)
 

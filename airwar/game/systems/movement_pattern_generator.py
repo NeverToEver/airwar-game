@@ -7,7 +7,7 @@ from airwar.config.difficulty_config import MOVEMENT_PATTERNS
 
 class MovementPatternGenerator:
     """Procedural movement pattern generator for enemy entities.
-    
+
         Generates randomized movement parameters for enemy movement types
         based on difficulty complexity level.
         """

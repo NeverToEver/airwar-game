@@ -1,28 +1,34 @@
 """Game loop orchestration — coordinates all per-frame update logic."""
 import logging
 from typing import Callable, List
-from ..constants import PlayerConstants
-from airwar.config import get_screen_width, get_screen_height
-from ..explosion_animation import ExplosionManager
-from .game_controller import GameplayState
-from ..systems.lock_manager import LockLayer, LockRequest
-from ..protocols import (
-    PlayerProtocol, GameControllerProtocol, GameRendererProtocol,
-    SpawnControllerProtocol, RewardSystemProtocol, BulletManagerProtocol,
-    BossManagerProtocol, CollisionControllerProtocol,
-)
 
+from airwar.config import get_screen_height, get_screen_width
 from airwar.core_bindings import batch_update_movements
+
+from ..constants import PlayerConstants
+from ..explosion_animation import ExplosionManager
+from ..protocols import (
+    BossManagerProtocol,
+    BulletManagerProtocol,
+    CollisionControllerProtocol,
+    GameControllerProtocol,
+    GameRendererProtocol,
+    PlayerProtocol,
+    RewardSystemProtocol,
+    SpawnControllerProtocol,
+)
+from ..systems.lock_manager import LockLayer, LockRequest
+from .game_controller import GameplayState
 
 logger = logging.getLogger(__name__)
 
 
 class GameLoopManager:
     """Game loop manager — orchestrates all per-frame update logic.
-    
+
         Coordinates the update order of all managers and systems each frame:
         input → player update → spawn controller → boss → collision → UI.
-    
+
         Attributes:
             _controllers: Ordered list of per-frame update callables.
         """
@@ -69,6 +75,18 @@ class GameLoopManager:
                 boss.rect.height,
             )
         self._boss_manager.on_boss_killed()
+
+    def _handle_boss_killed(self, score: int) -> None:
+        """Handle boss killed event with proper error handling.
+
+        Args:
+            score: Score gained from killing the boss.
+        """
+        try:
+            self._on_boss_destroyed()
+        except Exception:
+            logger.exception("Error in _on_boss_destroyed")
+        self._game_controller.on_boss_killed(score)
 
     def update_entrance(self, player: PlayerProtocol) -> bool:
         state = self._game_controller.state
@@ -178,7 +196,10 @@ class GameLoopManager:
         weapon_status = player.get_weapon_status() if hasattr(player, "get_weapon_status") else {}
         bullets_per_shot = 6 if weapon_status.get("spread") else 2
         fire_interval = max(1, int(getattr(player, "fire_interval", PlayerConstants.FIRE_COOLDOWN)))
-        return float(getattr(player, "bullet_damage", PlayerConstants.BULLET_DAMAGE)) * bullets_per_shot / fire_interval * 60
+        damage = float(getattr(
+            player, "bullet_damage", PlayerConstants.BULLET_DAMAGE
+        ))
+        return damage * bullets_per_shot / fire_interval * 60
 
     def _update_entities(self) -> None:
         enemies = self._spawn_controller.enemies
@@ -231,10 +252,7 @@ class GameLoopManager:
             player_invincible=self._game_controller.state.is_player_invincible,
             score_multiplier=self._game_controller.state.score_multiplier,
             on_enemy_killed=lambda score: self._game_controller.on_enemy_killed(score),
-            on_boss_killed=lambda score: (
-                self._on_boss_destroyed(),
-                self._game_controller.on_boss_killed(score),
-            ),
+            on_boss_killed=lambda score: self._handle_boss_killed(score),
             on_boss_hit=lambda score: self._boss_manager.on_boss_hit(score),
             on_player_hit=on_player_hit,
             on_lifesteal=lambda player, score: self._reward_system.apply_lifesteal(player, score),

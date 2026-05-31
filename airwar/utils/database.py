@@ -1,14 +1,13 @@
 """Database — SimpleDB and UserDB for player statistics persistence."""
-import logging
-import json
-import os
 import hashlib
+import json
+import logging
+import os
 import secrets
 import shutil
 from typing import Optional
 
 from airwar.utils.platform_paths import user_data_dir
-
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +70,10 @@ class SimpleDB:
             raise DatabaseError(f"Failed to save account database: {self.db_path}") from e
 
     def _hash_password(self, password: str, salt: str) -> str:
+        if not isinstance(password, str) or not isinstance(salt, str):
+            raise TypeError("password and salt must be strings")
+        if not password or not salt:
+            raise ValueError("password and salt cannot be empty")
         return hashlib.pbkdf2_hmac(
             "sha256", password.encode(), salt.encode(),
             _HASH_ITERATIONS,
@@ -79,7 +82,7 @@ class SimpleDB:
 
 class UserDB(SimpleDB):
     """User database — persists player stats (high score, kills, games played).
-    
+
         Wraps SimpleDB with user-specific operations for tracking statistics
         across game sessions.
         """

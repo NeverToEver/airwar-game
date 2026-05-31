@@ -1,23 +1,23 @@
 """Game engine package — scene management, game loop, and rendering."""
 
 # Systems modules
-from .systems.health_system import HealthSystem
-from .systems.reward_system import RewardSystem
-from .systems.notification_manager import NotificationManager
-
-# Rendering modules (includes HUD)
-from .rendering import HUDRenderer
+from .managers.collision_controller import CollisionController
 
 # Controller modules (migrated to managers)
 from .managers.game_controller import GameController, GameState
 from .managers.spawn_controller import SpawnController
-from .managers.collision_controller import CollisionController
+
+# Rendering modules (includes HUD)
+from .rendering import HUDRenderer
 
 # Rendering modules
-from .rendering.game_renderer import GameRenderer, GameEntities
+from .rendering.game_renderer import GameEntities, GameRenderer
 
 # Spawners
 from .spawners.enemy_bullet_spawner import EnemyBulletSpawner
+from .systems.health_system import HealthSystem
+from .systems.notification_manager import NotificationManager
+from .systems.reward_system import RewardSystem
 
 __all__ = [
     'HealthSystem', 'RewardSystem', 'HUDRenderer', 'NotificationManager',

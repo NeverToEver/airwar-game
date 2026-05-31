@@ -16,9 +16,9 @@ Usage:
     bullet_manager.update_all()
 """
 
+from airwar.config import get_screen_height, get_screen_width
 from airwar.core_bindings import batch_update_bullets
 
-from airwar.config import get_screen_height, get_screen_width
 from ..protocols import PlayerProtocol, SpawnControllerProtocol
 
 

@@ -7,39 +7,39 @@ import random
 
 try:
     from airwar_core import (
-        # Vector2 functions
-        vec2_length,
-        vec2_normalize,
-        vec2_add,
-        vec2_sub,
-        vec2_dot,
-        vec2_scale,
-        vec2_distance,
-        vec2_angle,
-        vec2_from_angle,
-        vec2_lerp,
-        vec2_clamp_length,
+        PersistentSpatialHash,
         # Collision functions
         batch_collide_bullets_vs_entities,
-        PersistentSpatialHash,
-        # Movement functions
-        update_movement,
-        batch_update_movements,
-        compute_boss_attack,
         batch_hallucinated_enemy_centers,
-        find_nearest_target,
-        find_target_in_direction,
+        # Bullet functions
+        batch_update_bullets,
+        batch_update_movements,
         # Particle functions
         batch_update_particles,
-        generate_explosion_particles,
+        compute_boss_attack,
+        create_explosive_missile_glow,
+        create_glow_circle,
+        create_laser_bullet_glow,
         # Sprite functions
         create_single_bullet_glow,
         create_spread_bullet_glow,
-        create_laser_bullet_glow,
-        create_explosive_missile_glow,
-        create_glow_circle,
-        # Bullet functions
-        batch_update_bullets,
+        find_nearest_target,
+        find_target_in_direction,
+        generate_explosion_particles,
+        # Movement functions
+        update_movement,
+        vec2_add,
+        vec2_angle,
+        vec2_clamp_length,
+        vec2_distance,
+        vec2_dot,
+        vec2_from_angle,
+        # Vector2 functions
+        vec2_length,
+        vec2_lerp,
+        vec2_normalize,
+        vec2_scale,
+        vec2_sub,
     )
 
     RUST_AVAILABLE = True
@@ -82,7 +82,7 @@ except (ImportError, OSError):
     def vec2_clamp_length(x: float, y: float, max_length: float) -> tuple[float, float]:
         length_sq = x * x + y * y
         max_sq = max_length * max_length
-        if length_sq > max_sq:
+        if length_sq > max_sq and length_sq > 0:
             length = math.sqrt(length_sq)
             return x / length * max_length, y / length * max_length
         return x, y

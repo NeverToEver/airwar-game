@@ -3,8 +3,8 @@
 Extracts movement pattern logic into strategy classes to improve maintainability
 and reduce complexity in Enemy.update(). Each strategy handles one movement type.
 """
-from abc import ABC, abstractmethod
 import math
+from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -102,8 +102,12 @@ class NoiseMovement(MovementStrategy):
 
     def update(self, enemy: 'Enemy') -> None:
         enemy.noise_timer += enemy.noise_speed
-        noise_x = _smooth_noise(enemy.noise_timer * enemy.noise_scale_x, enemy.noise_seed) * enemy.noise_amplitude_x
-        noise_y = _smooth_noise(enemy.noise_timer * enemy.noise_scale_y, enemy.noise_seed + 500) * enemy.noise_amplitude_y
+        noise_x = _smooth_noise(
+            enemy.noise_timer * enemy.noise_scale_x, enemy.noise_seed
+        ) * enemy.noise_amplitude_x
+        noise_y = _smooth_noise(
+            enemy.noise_timer * enemy.noise_scale_y, enemy.noise_seed + 500
+        ) * enemy.noise_amplitude_y
 
         new_x = enemy.active_position_x + noise_x * 80
         new_y = enemy.active_position_y + noise_y * 50

@@ -2,7 +2,9 @@
 import functools
 import hashlib
 import inspect
+
 import pygame
+
 from ._sprites_common import draw_glow_circle
 from .generated_asset_cache import load_or_build_generated_surface
 
@@ -392,13 +394,19 @@ def _build_enemy_sprite(width: float = 50, height: float = 50, health_ratio: flo
     return surf
 
 
-def draw_enemy_ship(surface: pygame.Surface, x: float, y: float, width: float = 50, height: float = 50, health_ratio: float = 1.0) -> None:
+def draw_enemy_ship(
+    surface: pygame.Surface, x: float, y: float,
+    width: float = 50, height: float = 50, health_ratio: float = 1.0
+) -> None:
     sprite = get_enemy_sprite(width, height, health_ratio)
     size = sprite.get_width()
     surface.blit(sprite, (round(x) - size // 2, round(y) - size // 2))
 
 
-def _draw_enemy_ship(surface: pygame.Surface, x: float, y: float, width: float = 50, height: float = 50, health_ratio: float = 1.0) -> None:
+def _draw_enemy_ship(
+    surface: pygame.Surface, x: float, y: float,
+    width: float = 50, height: float = 50, health_ratio: float = 1.0
+) -> None:
     """Alien mecha combat drone — angular armor plating, red optical sensors, energy thrusters."""
     center_x = x + width / 2
     armor_dark, armor_mid, armor_light, sensor_red, sensor_glow = _enemy_colors(health_ratio)
@@ -609,13 +617,19 @@ def _build_elite_enemy_sprite(width: float = 65, height: float = 65, health_rati
     return surf
 
 
-def draw_elite_enemy_ship(surface: pygame.Surface, x: float, y: float, width: float = 65, height: float = 65, health_ratio: float = 1.0) -> None:
+def draw_elite_enemy_ship(
+    surface: pygame.Surface, x: float, y: float,
+    width: float = 65, height: float = 65, health_ratio: float = 1.0
+) -> None:
     sprite = get_elite_enemy_sprite(width, height, health_ratio)
     size = sprite.get_width()
     surface.blit(sprite, (round(x) - size // 2, round(y) - size // 2))
 
 
-def _draw_elite_enemy_ship(surface: pygame.Surface, x: float, y: float, width: float = 65, height: float = 65, health_ratio: float = 1.0) -> None:
+def _draw_elite_enemy_ship(
+    surface: pygame.Surface, x: float, y: float,
+    width: float = 65, height: float = 65, health_ratio: float = 1.0
+) -> None:
     """Elite Commander — reinforced angular armor with golden trim and amber energy core."""
     center_x = x + width / 2
     armor_dark, armor_mid, armor_light, gold_trim, amber_core, amber_glow = _elite_colors(health_ratio)
@@ -865,13 +879,19 @@ def _build_boss_sprite(width: float = 120, height: float = 100, health_ratio: fl
     return surf
 
 
-def draw_boss_ship(surface: pygame.Surface, x: float, y: float, width: float = 120, height: float = 100, health_ratio: float = 1.0) -> None:
+def draw_boss_ship(
+    surface: pygame.Surface, x: float, y: float,
+    width: float = 120, height: float = 100, health_ratio: float = 1.0
+) -> None:
     sprite = get_boss_sprite(width, height, health_ratio)
     size = sprite.get_width()
     surface.blit(sprite, (round(x) - size // 2, round(y) - size // 2))
 
 
-def _draw_boss_ship(surface: pygame.Surface, x: float, y: float, width: float = 120, height: float = 100, health_ratio: float = 1.0) -> None:
+def _draw_boss_ship(
+    surface: pygame.Surface, x: float, y: float,
+    width: float = 120, height: float = 100, health_ratio: float = 1.0
+) -> None:
     """Armored alien dreadnought with a heavy hull, siege wings, and toxic energy cores."""
     center_x = x + width / 2
     hull_dark, hull_mid, hull_light, hull_highlight, bio_green, bio_bright = _boss_colors(health_ratio)

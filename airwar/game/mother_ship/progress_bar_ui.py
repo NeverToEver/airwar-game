@@ -1,6 +1,8 @@
 """Progress bar UI — visual docking progress indicator."""
 import pygame
+
 from airwar.utils.fonts import get_cjk_font
+
 from .interfaces import IMotherShipUI
 
 

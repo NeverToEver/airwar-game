@@ -16,12 +16,12 @@ Usage:
     milestone_manager.check_and_trigger(player)
 """
 
-from typing import TYPE_CHECKING, Optional, Callable
+from typing import TYPE_CHECKING, Callable, Optional
 
 if TYPE_CHECKING:
-    from .game_controller import GameController
-    from ..systems.reward_system import RewardSystem
     from ...ui.reward_selector import RewardSelector
+    from ..systems.reward_system import RewardSystem
+    from .game_controller import GameController
 
 from .game_controller import GameplayState
 

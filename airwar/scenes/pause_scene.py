@@ -1,20 +1,22 @@
 """Pause menu overlay with resume, restart, and quit options."""
 import pygame
-from airwar.utils.fonts import get_cjk_font
-from .scene import Scene, PauseAction
-from .themed_scene_mixin import ThemedSceneMixin
-from airwar.utils.responsive import ResponsiveHelper
+
+from airwar.config.design_tokens import SceneColors, get_design_tokens
+from airwar.ui.effects import EffectsRenderer
 from airwar.ui.menu_background import MenuBackground
 from airwar.ui.particles import ParticleSystem
-from airwar.ui.effects import EffectsRenderer
-from airwar.config.design_tokens import get_design_tokens, SceneColors
-from airwar.utils.mouse_interaction import MouseSelectableMixin
 from airwar.ui.scene_rendering_utils import SceneRenderingUtils
+from airwar.utils.fonts import get_cjk_font
+from airwar.utils.mouse_interaction import MouseSelectableMixin
+from airwar.utils.responsive import ResponsiveHelper
+
+from .scene import PauseAction, Scene
+from .themed_scene_mixin import ThemedSceneMixin
 
 
 class PauseScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
     """Pause scene — overlay menu with resume, restart, and quit options.
-    
+
         Shown as an overlay on top of GameScene when the player presses ESC.
         """
     def __init__(self):

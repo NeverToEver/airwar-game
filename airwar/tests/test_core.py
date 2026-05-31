@@ -1,7 +1,8 @@
 """Core smoke tests — entity lifecycle, collision, buffs, config, game state."""
-import pytest
 from unittest.mock import MagicMock
+
 import pygame
+import pytest
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -22,7 +23,7 @@ class TestConfig:
             assert s['bullet_damage'] > 0
 
     def test_screen_dimensions(self):
-        from airwar.config import SCREEN_WIDTH, SCREEN_HEIGHT
+        from airwar.config import SCREEN_HEIGHT, SCREEN_WIDTH
         assert SCREEN_WIDTH == 1920
         assert SCREEN_HEIGHT == 1080
 
@@ -179,8 +180,8 @@ class TestGameState:
 
     def test_game_state_transitions_to_dying(self):
         from airwar.entities import Player
-        from airwar.input import PygameInputHandler
         from airwar.game.managers.game_controller import GameController, GameplayState
+        from airwar.input import PygameInputHandler
         gc = GameController('medium', 'test')
         p = Player(400, 900, PygameInputHandler())
         gc.on_player_hit(p.health, p)

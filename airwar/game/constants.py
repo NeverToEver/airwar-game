@@ -248,7 +248,7 @@ class GameConstants:
     ENEMY: EnemyConstants = field(default_factory=EnemyConstants)
     REWARD: RewardConstants = field(default_factory=RewardConstants)
     REQUISITION: RequisitionConstants = field(default_factory=RequisitionConstants)
-    
+
     def get_difficulty_multiplier(self, difficulty: str) -> float:
         """Returns the score multiplier for the given difficulty.
 
@@ -264,7 +264,7 @@ class GameConstants:
             'hard': self.BALANCE.DIFFICULTY_MULTIPLIERS[2],
         }
         return multipliers.get(difficulty, 1.0)
-    
+
     def get_next_threshold(self, milestone_index: int, difficulty: str) -> float:
         """Calculates the next milestone threshold.
 

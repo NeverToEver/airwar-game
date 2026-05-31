@@ -21,10 +21,10 @@ from typing import TYPE_CHECKING
 from ..constants import normalize_score
 
 if TYPE_CHECKING:
-    from .bullet_manager import BulletManager
-    from .spawn_controller import SpawnController
-    from .game_controller import GameController
     from ..systems.reward_system import RewardSystem
+    from .bullet_manager import BulletManager
+    from .game_controller import GameController
+    from .spawn_controller import SpawnController
 
 
 class BossManager:
@@ -74,6 +74,8 @@ class BossManager:
         Args:
             player: Player object for tracking position.
         """
+        if player is None:
+            return
         self._player = player
         boss = self._spawn_controller.boss
         if not boss:

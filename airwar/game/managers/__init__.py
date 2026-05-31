@@ -19,16 +19,15 @@ Usage:
     bullet_manager.update_all()
 """
 
-from .bullet_manager import BulletManager
 from .boss_manager import BossManager
-from .milestone_manager import MilestoneManager
-from .input_coordinator import InputCoordinator
-from .ui_manager import UIManager
-from .game_loop_manager import GameLoopManager
-
-from .game_controller import GameController, GameState
-from .spawn_controller import SpawnController
+from .bullet_manager import BulletManager
 from .collision_controller import CollisionController, CollisionResult
+from .game_controller import GameController, GameState
+from .game_loop_manager import GameLoopManager
+from .input_coordinator import InputCoordinator
+from .milestone_manager import MilestoneManager
+from .spawn_controller import SpawnController
+from .ui_manager import UIManager
 
 __all__ = [
     'BulletManager', 'BossManager', 'MilestoneManager',

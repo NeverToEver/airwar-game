@@ -3,18 +3,19 @@ import logging
 import math
 
 import pygame
-from airwar.utils.fonts import get_cjk_font
-from .scene import Scene
-from airwar.utils.database import DatabaseError, UserDB
-from airwar.utils.responsive import ResponsiveHelper
+
+from airwar.config.design_tokens import SceneColors, get_design_tokens
+from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.ui.menu_background import MenuBackground
 from airwar.ui.particles import ParticleSystem
-from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.ui.scene_rendering_utils import fit_text_to_width, wrap_text
-from airwar.config.design_tokens import get_design_tokens, SceneColors
-from airwar.window.window import get_window
+from airwar.utils.database import DatabaseError, UserDB
+from airwar.utils.fonts import get_cjk_font
 from airwar.utils.mouse_interaction import MouseInteractiveMixin
+from airwar.utils.responsive import ResponsiveHelper
+from airwar.window.window import get_window
 
+from .scene import Scene
 
 logger = logging.getLogger(__name__)
 

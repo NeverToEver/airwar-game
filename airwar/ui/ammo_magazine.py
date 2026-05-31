@@ -4,8 +4,8 @@ import math
 
 import pygame
 
-from airwar.utils.fonts import get_cjk_font
 from airwar.config.design_tokens import SystemColors
+from airwar.utils.fonts import get_cjk_font
 
 
 class AmmoMagazine:
@@ -257,8 +257,9 @@ class AmmoMagazine:
 
             if i < full_cells:
                 # Fully filled
-                cell_color = self._cell_warning if (is_warning and i < self.WARNING_CELL_THRESHOLD) else self._cell_filled
-                glow_color = self._cell_warning_glow if (is_warning and i < self.WARNING_CELL_THRESHOLD) else self._cell_glow
+                is_warning_cell = is_warning and i < self.WARNING_CELL_THRESHOLD
+                cell_color = self._cell_warning if is_warning_cell else self._cell_filled
+                glow_color = self._cell_warning_glow if is_warning_cell else self._cell_glow
                 if is_cooldown:
                     pulse = self.PULSE_BASE + self.PULSE_AMPLITUDE * math.sin(self._pulse_phase * self.PULSE_FREQUENCY)
                     alpha = int(self.PULSE_ALPHA_BASE + self.PULSE_ALPHA_AMPLITUDE * pulse)

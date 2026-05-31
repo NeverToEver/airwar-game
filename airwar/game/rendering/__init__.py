@@ -1,9 +1,9 @@
 """Rendering package — game renderer, HUD, and visual effects."""
-from .game_renderer import GameRenderer, GameEntities
-from .game_rendering_background import SpaceBackground
-from .hud_renderer import HUDRenderer, HUDLayout
-from .integrated_hud import IntegratedHUD
 from .entity_renderer import EntityRenderer
+from .game_renderer import GameEntities, GameRenderer
+from .game_rendering_background import SpaceBackground
+from .hud_renderer import HUDLayout, HUDRenderer
+from .integrated_hud import IntegratedHUD
 
 __all__ = [
     'GameRenderer', 'GameEntities',

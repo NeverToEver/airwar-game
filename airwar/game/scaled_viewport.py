@@ -18,6 +18,10 @@ class ScaledViewport:
         self._logical_surface = pygame.Surface((logical_w, logical_h), pygame.SRCALPHA)
 
     def update(self, display_w: int, display_h: int) -> None:
+        if display_w <= 0 or display_h <= 0:
+            self._scale = 0.0
+            self._offset = (0.0, 0.0)
+            return
         self._scale = min(
             display_w / self.logical_size[0],
             display_h / self.logical_size[1],

@@ -1,9 +1,10 @@
 """Difficulty coefficient panel — visual indicator of current difficulty."""
+from typing import TYPE_CHECKING, List, Tuple
+
 import pygame
-from airwar.utils.fonts import get_cjk_font
-from typing import TYPE_CHECKING, Tuple, List
 
 from airwar.config.design_tokens import Colors, SystemColors
+from airwar.utils.fonts import get_cjk_font
 
 if TYPE_CHECKING:
     from airwar.game.systems.difficulty_manager import DifficultyManager
@@ -11,7 +12,7 @@ if TYPE_CHECKING:
 
 class DifficultyCoefficientPanel:
     """Difficulty coefficient panel — visual indicator of current difficulty multiplier.
-    
+
         Shows a stacked bar chart comparing initial vs current difficulty
         across speed, fire rate, and aggression dimensions.
         """
@@ -66,14 +67,24 @@ class DifficultyCoefficientPanel:
             DifficultyCoefficientPanel._bg_surface_cache = bg_surface
         surface.blit(DifficultyCoefficientPanel._bg_surface_cache, (panel_x, panel_y))
 
-        pygame.draw.rect(surface, SystemColors.COEFFICIENT_BAR_BG, (panel_x + 2, panel_y + 2, self.PANEL_WIDTH - 4, self.PANEL_HEIGHT - 4), 1)
+        bar_bg_rect = (
+            panel_x + 2, panel_y + 2,
+            self.PANEL_WIDTH - 4, self.PANEL_HEIGHT - 4
+        )
+        pygame.draw.rect(
+            surface, SystemColors.COEFFICIENT_BAR_BG, bar_bg_rect, 1
+        )
 
         bar_width = self.PANEL_WIDTH - 24
         bar_height = 10
         bar_x = panel_x + 12
         bar_y = panel_y + self.PANEL_HEIGHT - 28
 
-        pygame.draw.rect(surface, SystemColors.COEFFICIENT_BAR_FILL, (bar_x, bar_y, bar_width, bar_height), border_radius=3)
+        bar_rect = (bar_x, bar_y, bar_width, bar_height)
+        pygame.draw.rect(
+            surface, SystemColors.COEFFICIENT_BAR_FILL,
+            bar_rect, border_radius=3
+        )
         fill_width = int(bar_width * min(current / max_mult, 1.0))
         color = self._get_color_for_multiplier(current)
         if fill_width > 0:
@@ -115,7 +126,11 @@ class DifficultyCoefficientPanel:
                 glow_surface = pygame.Surface((self.PANEL_WIDTH + i * 2, self.PANEL_HEIGHT + i * 2), pygame.SRCALPHA)
                 glow_surface.fill((*glow_color[:3], alpha))
                 DifficultyCoefficientPanel._glow_surface_cache[cache_key] = glow_surface
-            surface.blit(DifficultyCoefficientPanel._glow_surface_cache[cache_key], (x - i, y - i), special_flags=pygame.BLEND_RGBA_ADD)
+            glow_surf = DifficultyCoefficientPanel._glow_surface_cache[cache_key]
+            surface.blit(
+                glow_surf, (x - i, y - i),
+                special_flags=pygame.BLEND_RGBA_ADD
+            )
 
     def _get_color_for_multiplier(self, multiplier: float) -> Tuple[int, int, int]:
         return self._get_color_by_index(multiplier, 1)

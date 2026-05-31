@@ -6,8 +6,8 @@ used by all game entities (Player, Enemy, Boss, Bullet).
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 import math
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Optional
 
@@ -51,7 +51,7 @@ class Vector2:
         if length > 0:
             return Vector2(self.x / length, self.y / length)
         return Vector2(0, 0)
-    
+
     def to_tuple(self) -> tuple[float, float]:
         return (self.x, self.y)
 
@@ -83,11 +83,11 @@ class Rect:
     @property
     def right(self) -> float:
         return self.x + self.width
-    
+
     @property
     def left(self) -> float:
         return self.x
-    
+
     @property
     def top(self) -> float:
         return self.y

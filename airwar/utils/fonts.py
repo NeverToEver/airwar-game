@@ -7,8 +7,9 @@ Priority chain:
 4. pygame default font (freesansbold — basic CJK support)
 """
 import os
-import pygame
 from functools import lru_cache
+
+import pygame
 
 # Possible paths for a bundled CJK font, relative to this file's package
 _BUNDLED_CANDIDATES = [

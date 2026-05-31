@@ -1,16 +1,17 @@
 """Input detector — detects docking key combination from player."""
 import pygame
-from .interfaces import IInputDetector
-from .mother_ship_state import DockingProgress
+
 from .event_bus import (
+    EVENT_DOCKING_COMPLETE,
+    EVENT_EXIT_CANCELLED,
+    EVENT_EXIT_COMPLETE,
+    EVENT_EXIT_PROGRESS_UPDATE,
     EVENT_H_PRESSED,
     EVENT_H_RELEASED,
     EVENT_PROGRESS_COMPLETE,
-    EVENT_EXIT_PROGRESS_UPDATE,
-    EVENT_EXIT_COMPLETE,
-    EVENT_EXIT_CANCELLED,
-    EVENT_DOCKING_COMPLETE,
 )
+from .interfaces import IInputDetector
+from .mother_ship_state import DockingProgress
 
 
 class InputDetector(IInputDetector):

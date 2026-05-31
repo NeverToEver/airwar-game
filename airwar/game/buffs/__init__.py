@@ -2,10 +2,20 @@
 from .base_buff import Buff, BuffResult
 from .buff_registry import BUFF_REGISTRY, create_buff
 from .buffs import (
-    ExtraLifeBuff, RegenerationBuff, LifestealBuff,
-    ArmorBuff, EvasionBuff,
-    PowerShotBuff, RapidFireBuff, PiercingBuff, SpreadShotBuff, ExplosiveBuff, LaserBuff,
-    SlowFieldBuff, BoostRecoveryBuff, MothershipRecallBuff,
+    ArmorBuff,
+    BoostRecoveryBuff,
+    EvasionBuff,
+    ExplosiveBuff,
+    ExtraLifeBuff,
+    LaserBuff,
+    LifestealBuff,
+    MothershipRecallBuff,
+    PiercingBuff,
+    PowerShotBuff,
+    RapidFireBuff,
+    RegenerationBuff,
+    SlowFieldBuff,
+    SpreadShotBuff,
 )
 
 __all__ = [

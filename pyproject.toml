@@ -41,7 +41,7 @@ extend-exclude = [
 ]
 
 [tool.ruff.lint]
-select = ["E9", "F", "B", "SIM"]
+select = ["E", "W", "F", "B", "I", "SIM"]
 ignore = ["SIM102"]
 
 [tool.ruff.lint.per-file-ignores]

@@ -3,11 +3,11 @@ from typing import List
 
 import pygame
 
-from airwar.utils.fonts import get_cjk_font
 from airwar.config.design_tokens import get_design_tokens
 from airwar.ui.buff_display import get_buff_display_name
 from airwar.ui.discrete_battery import DiscreteBatteryIndicator
 from airwar.ui.scene_rendering_utils import fit_text_to_width, render_cached_text
+from airwar.utils.fonts import get_cjk_font
 
 
 class IntegratedHUD:
@@ -291,7 +291,7 @@ class IntegratedHUD:
     def _render_coefficient_module(self, surface, current, initial, colors, x, y):
         components = self._tokens.components
         content_x = x + self.padding
-        
+
         label = self._cached_label(self.label_font_size, "系数", colors.TEXT_MUTED)
         surface.blit(label, (content_x, y))
 
@@ -335,7 +335,7 @@ class IntegratedHUD:
 
     def _render_difficulty_module(self, surface, difficulty, colors, x, y):
         content_x = x + self.padding
-        
+
         label = self._cached_label(self.label_font_size, "模式", colors.TEXT_MUTED)
         surface.blit(label, (content_x, y))
 
@@ -354,7 +354,7 @@ class IntegratedHUD:
 
     def _render_progress_module(self, surface, progress, colors, x, y):
         content_x = x + self.padding
-        
+
         label = self._cached_label(self.label_font_size, "进度", colors.TEXT_MUTED)
         surface.blit(label, (content_x, y))
 
@@ -440,7 +440,7 @@ class IntegratedHUD:
 
     def _render_boss_module(self, surface, boss_kills, colors, x, y):
         content_x = x + self.padding
-        
+
         label = self._cached_label(self.label_font_size, "BOSS", colors.TEXT_MUTED)
         surface.blit(label, (content_x, y))
 
@@ -453,7 +453,7 @@ class IntegratedHUD:
     def _render_buffs_module(self, surface, buffs, get_buff_color, colors, panel_x, start_y):
         components = self._tokens.components
         content_x = panel_x + self.padding
-        
+
         label = self._cached_label(self.label_font_size, "增益", colors.TEXT_MUTED)
         surface.blit(label, (content_x, start_y))
 
@@ -528,10 +528,10 @@ class IntegratedHUD:
 
         total_buffs = len(buffs)
         start_idx = int(self._buff_scroll_offset) % total_buffs
-        
+
         visible = []
         for i in range(self._buff_visible_count):
             idx = (start_idx + i) % total_buffs
             visible.append(buffs[idx])
-        
+
         return visible

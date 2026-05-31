@@ -1,14 +1,19 @@
 """Shared sprite utilities — caches, glow effects, gradients, and ripples."""
-import pygame
 import math
+
+import pygame
+
 from airwar.config.design_tokens import Colors
 from airwar.core_bindings import (
-    create_single_bullet_glow,
-    create_spread_bullet_glow,
-    create_laser_bullet_glow,
     create_explosive_missile_glow,
     create_glow_circle,
+    create_laser_bullet_glow,
+    create_single_bullet_glow,
+    create_spread_bullet_glow,
 )
+
+# Maximum cache size to prevent unbounded memory growth
+_MAX_CACHE_SIZE = 128
 
 # Glow caches shared across modules
 _glow_circle_cache = {}
@@ -18,6 +23,12 @@ _laser_bullet_glow_cache = {}
 _ripple_surface_cache = {}
 _explosive_missile_cache = {}
 _glow_caches_prewarmed = False
+
+
+def _evict_cache_if_needed(cache: dict) -> None:
+    """Evict oldest entry from cache if it exceeds maximum size."""
+    if len(cache) >= _MAX_CACHE_SIZE:
+        cache.pop(next(iter(cache)))
 
 
 def _bytes_to_surface(data: bytes, width: int, height: int) -> pygame.Surface:
@@ -76,7 +87,10 @@ def prewarm_glow_caches(force: bool = False) -> None:
     _glow_caches_prewarmed = True
 
 
-def create_gradient_surface(width: int, height: int, color1: tuple, color2: tuple, vertical: bool = True) -> pygame.Surface:
+def create_gradient_surface(
+    width: int, height: int, color1: tuple, color2: tuple,
+    vertical: bool = True
+) -> pygame.Surface:
     surface = pygame.Surface((width, height), pygame.SRCALPHA)
     for i in range(height if vertical else width):
         ratio = i / (height if vertical else width)
@@ -95,6 +109,7 @@ def draw_glow_circle(surface: pygame.Surface, center: tuple, radius: int, color:
     if glow_radius > 0:
         cache_key = (radius, color[:3], glow_radius)
         if cache_key not in _glow_circle_cache:
+            _evict_cache_if_needed(_glow_circle_cache)
             glow_surf = pygame.Surface((glow_radius * 2 + 4, glow_radius * 2 + 4), pygame.SRCALPHA)
             for i in range(glow_radius, 0, -2):
                 alpha = int(80 * (1 - i / glow_radius))
@@ -164,6 +179,7 @@ def draw_ripple(surface: pygame.Surface, x: float, y: float, radius: float, alph
                 interference_thickness,
             )
 
+        _evict_cache_if_needed(_ripple_surface_cache)
         _ripple_surface_cache[cache_key] = ripple_surface
     else:
         ripple_surface = _ripple_surface_cache[cache_key]

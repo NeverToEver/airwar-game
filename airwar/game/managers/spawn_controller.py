@@ -1,9 +1,10 @@
 """Enemy and boss spawning controller with wave management."""
 import random
-from typing import List, Optional, TYPE_CHECKING
-from airwar.entities import Enemy, Boss, EnemySpawner, BossData, Bullet, EnemyState
+from typing import TYPE_CHECKING, List, Optional
+
+from airwar.config import BASE_ENEMY_PARAMS, DIFFICULTY_SETTINGS, get_screen_width
+from airwar.entities import Boss, BossData, Bullet, Enemy, EnemySpawner, EnemyState
 from airwar.entities.interfaces import IBulletSpawner
-from airwar.config import get_screen_width, BASE_ENEMY_PARAMS, DIFFICULTY_SETTINGS
 
 if TYPE_CHECKING:
     from airwar.game.systems.difficulty_manager import DifficultyManager
@@ -156,8 +157,12 @@ class SpawnController:
         return int(base_health * (1 + boss_kill_count * self.BOSS_HEALTH_SCALING))
 
     def _calculate_escape_time(self, boss_health: int, bullet_damage: int, player_dps: float = None) -> int:
+        if boss_health <= 0:
+            boss_health = 1
+        if bullet_damage <= 0:
+            bullet_damage = 1
         damage_per_frame = (
-            max(1.0, float(player_dps)) / 60
+            max(1.0, abs(float(player_dps))) / 60
             if player_dps is not None
             else max(1, bullet_damage) * self.PLAYER_BULLETS_PER_SHOT / self.PLAYER_FIRE_INTERVAL
         )

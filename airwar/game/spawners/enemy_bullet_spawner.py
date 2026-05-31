@@ -1,12 +1,13 @@
 """Enemy bullet spawner — creates and manages enemy bullet entities."""
 from typing import List
-from airwar.entities.interfaces import IBulletSpawner
+
 from airwar.entities.bullet import Bullet
+from airwar.entities.interfaces import IBulletSpawner
 
 
 class EnemyBulletSpawner(IBulletSpawner):
     """Enemy bullet spawner — creates and manages enemy bullet entities.
-    
+
         Implements IBulletSpawner to spawn enemy bullets from various
         attack patterns (single, spread, laser, wave).
         """

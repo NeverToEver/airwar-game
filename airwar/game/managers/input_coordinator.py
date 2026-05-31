@@ -1,6 +1,8 @@
 """Input routing — coordinates player input with current game state."""
 from typing import Protocol
+
 import pygame
+
 from ..constants import GAME_CONSTANTS
 
 
@@ -42,10 +44,10 @@ class GiveUpUIProtocol:
 
 class InputCoordinator:
     """Input coordinator — routes player input to the active game subsystem.
-    
+
         Disambiguates input between gameplay, reward selection, and give-up
         states. Uses protocol-based dependency injection for all subsystems.
-    
+
         Attributes:
             _player: Player instance for movement/fire input.
             _game_controller: GameController for state queries.

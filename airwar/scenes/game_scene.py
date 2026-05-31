@@ -1,58 +1,60 @@
 """Main game scene -- gameplay loop, entity coordination, and rendering."""
 
-import pygame
 from typing import Dict
-from .scene import Scene
+
+import pygame
+
+from airwar.config import BOOST_CONFIG, DIFFICULTY_SETTINGS, get_screen_height, get_screen_width
+from airwar.config.design_tokens import get_design_tokens
 from airwar.entities import Player
-from airwar.game.systems.reward_system import RewardSystem
-from airwar.game.systems.aim_assist_system import AimAssistSystem
-from airwar.game.systems.lock_manager import LockLayer, LockManager, LockRequest
-from airwar.game.rendering.hud_renderer import HUDRenderer
-from airwar.game.rendering.boss_enrage_renderer import BossEnrageRenderer
-from airwar.game.rendering.haunting_renderer import HauntingRenderer
-from airwar.game.systems.save_restore_manager import SaveRestoreManager
-from airwar.game.systems.notification_manager import NotificationManager
+from airwar.game.constants import GAME_CONSTANTS, PlayerConstants, normalize_score
+from airwar.game.give_up import GiveUpDetector
+from airwar.game.homecoming import HomecomingDetector, HomecomingSequence
+from airwar.game.managers import (
+    BossManager,
+    BulletManager,
+    GameLoopManager,
+    InputCoordinator,
+    MilestoneManager,
+    UIManager,
+)
+from airwar.game.managers.collision_controller import CollisionController
 from airwar.game.managers.game_controller import GameController, GameplayState
 from airwar.game.managers.spawn_controller import SpawnController
-from airwar.game.managers.collision_controller import CollisionController
-from airwar.game.constants import normalize_score
-from airwar.game.rendering.game_renderer import GameRenderer
-from airwar.ui.reward_selector import RewardSelector
-from airwar.ui.boost_gauge import BoostGauge
-from airwar.ui.ammo_magazine import AmmoMagazine
-from airwar.ui.warning_banner import WarningBanner
-from airwar.ui.aim_crosshair import AimCrosshair
-from airwar.ui.base_talent_console import BaseTalentConsole
-from airwar.ui.homecoming_ui import HomecomingUI
-from airwar.ui.pause_button import PauseButtonComponent
 from airwar.game.mother_ship import (
     EventBus,
+    GameIntegrator,
     InputDetector,
+    MotherShip,
     MotherShipState,
     MotherShipStateMachine,
     PersistenceManager,
     ProgressBarUI,
-    MotherShip,
-    GameIntegrator,
 )
 from airwar.game.mother_ship.interfaces import IGameScene
-from airwar.game.constants import PlayerConstants, GAME_CONSTANTS
-from airwar.ui.give_up_ui import GiveUpUI
-from airwar.game.give_up import GiveUpDetector
-from airwar.game.homecoming import HomecomingDetector, HomecomingSequence
-from airwar.game.managers import (
-    BulletManager,
-    BossManager,
-    MilestoneManager,
-    InputCoordinator,
-    UIManager,
-    GameLoopManager,
-)
-from airwar.config import DIFFICULTY_SETTINGS, BOOST_CONFIG, get_screen_width, get_screen_height
+from airwar.game.rendering.boss_enrage_renderer import BossEnrageRenderer
+from airwar.game.rendering.game_renderer import GameRenderer
+from airwar.game.rendering.haunting_renderer import HauntingRenderer
+from airwar.game.rendering.hud_renderer import HUDRenderer
+from airwar.game.systems.aim_assist_system import AimAssistSystem
+from airwar.game.systems.lock_manager import LockLayer, LockManager, LockRequest
+from airwar.game.systems.notification_manager import NotificationManager
+from airwar.game.systems.reward_system import RewardSystem
+from airwar.game.systems.save_restore_manager import SaveRestoreManager
 from airwar.input import PygameInputHandler
+from airwar.ui.aim_crosshair import AimCrosshair
+from airwar.ui.ammo_magazine import AmmoMagazine
+from airwar.ui.base_talent_console import BaseTalentConsole
+from airwar.ui.boost_gauge import BoostGauge
+from airwar.ui.give_up_ui import GiveUpUI
+from airwar.ui.homecoming_ui import HomecomingUI
+from airwar.ui.pause_button import PauseButtonComponent
+from airwar.ui.reward_selector import RewardSelector
+from airwar.ui.warning_banner import WarningBanner
 from airwar.utils.mouse_interaction import MouseInteractiveMixin
-from airwar.config.design_tokens import get_design_tokens
 from airwar.utils.sprites import prewarm_glow_caches, prewarm_ship_sprite_caches
+
+from .scene import Scene
 
 
 class GameScene(Scene, MouseInteractiveMixin, IGameScene):

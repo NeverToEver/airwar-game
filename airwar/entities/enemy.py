@@ -4,11 +4,25 @@ import random
 from collections import deque
 from dataclasses import dataclass
 from enum import Enum
-from typing import Callable, List, Optional, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, List, Optional, Tuple
 
 import pygame
 
-from .base import Entity, EnemyData, Vector2
+from airwar.config import (
+    ENEMY_COLLISION_SCALE,
+    ENEMY_HITBOX_PADDING,
+    ENEMY_HITBOX_SIZE,
+    ENEMY_VISUAL_SCALE,
+    get_screen_height,
+    get_screen_width,
+)
+from airwar.config.constants_access import get_game_constants
+from airwar.core_bindings import update_movement as rust_update_movement
+
+from .base import EnemyData, Entity, Vector2
+from .bullet import Bullet, BulletData
+from .interfaces import IBulletSpawner
+from .movement_strategies import get_movement_strategy
 
 
 class EnemyState(Enum):
@@ -16,17 +30,6 @@ class EnemyState(Enum):
     ENTERING = "entering"
     ACTIVE = "active"
     EXITING = "exiting"
-from .bullet import Bullet, BulletData
-from .interfaces import IBulletSpawner
-from airwar.config import (
-    ENEMY_HITBOX_SIZE, ENEMY_HITBOX_PADDING, ENEMY_VISUAL_SCALE, ENEMY_COLLISION_SCALE,
-    get_screen_width, get_screen_height,
-)
-
-from airwar.config.constants_access import get_game_constants
-from .movement_strategies import get_movement_strategy
-
-from airwar.core_bindings import update_movement as rust_update_movement
 
 # Movement type string to Rust enum mapping
 MOVEMENT_TYPE_MAP = {
@@ -304,7 +307,8 @@ class Enemy(Entity):
 
     def _update_fire_timer(self) -> None:
         self.fire_timer += 1
-        fire_threshold = max(self.FIRE_RATE_MIN, int(self.data.fire_rate / self._fire_rate_modifier))
+        modifier = max(0.01, self._fire_rate_modifier)
+        fire_threshold = max(self.FIRE_RATE_MIN, int(self.data.fire_rate / modifier))
         if self.fire_timer >= fire_threshold:
             self.fire_timer = 0
             self._fire()
@@ -352,8 +356,8 @@ class Enemy(Entity):
         fire_rate_modifier: float,
         movement_enhancements: dict = None
     ) -> None:
-        self._difficulty_multiplier = speed_mult
-        self._fire_rate_modifier = fire_rate_modifier
+        self._difficulty_multiplier = max(0.01, speed_mult)
+        self._fire_rate_modifier = max(0.01, fire_rate_modifier)
         self._movement_enhancements = movement_enhancements or {}
 
     def set_sprite(self, sprite: pygame.Surface) -> None:
@@ -502,7 +506,10 @@ class Enemy(Entity):
             'noise_scale_y': self._rust_noise_param('scale_y'),
             'noise_amplitude_x': self._rust_noise_param('amplitude_x'),
             'noise_amplitude_y': self._rust_noise_param('amplitude_y'),
-            'noise_seed': getattr(self, 'agg_seed', 0) if self.move_type == "aggressive" else getattr(self, 'noise_seed', 0),
+            'noise_seed': (
+                getattr(self, 'agg_seed', 0) if self.move_type == "aggressive"
+                else getattr(self, 'noise_seed', 0)
+            ),
         }
         if self.move_type == "hover":
             self._timer_attr = "hover_timer"

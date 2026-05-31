@@ -3,8 +3,10 @@
 Capital carrier design: layered cold-steel armor, broad weapon sponsons,
 recessed underside docking bay, and cyan command lighting.
 """
-import pygame
 import math
+
+import pygame
+
 from airwar.utils._sprites_common import draw_glow_circle
 
 

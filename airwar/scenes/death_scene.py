@@ -3,20 +3,21 @@ import math
 
 import pygame
 
-from airwar.utils.fonts import get_cjk_font
-from .scene import Scene
-from airwar.utils.responsive import ResponsiveHelper
+from airwar.config.design_tokens import SceneColors, get_design_tokens
+from airwar.ui.effects import EffectsRenderer
 from airwar.ui.menu_background import MenuBackground
 from airwar.ui.particles import ParticleSystem
-from airwar.ui.effects import EffectsRenderer
-from airwar.config.design_tokens import get_design_tokens, SceneColors
-from airwar.utils.mouse_interaction import MouseSelectableMixin
 from airwar.ui.scene_rendering_utils import SceneRenderingUtils
+from airwar.utils.fonts import get_cjk_font
+from airwar.utils.mouse_interaction import MouseSelectableMixin
+from airwar.utils.responsive import ResponsiveHelper
+
+from .scene import Scene
 
 
 class DeathScene(Scene, MouseSelectableMixin):
     """Death scene — post-death score summary and continue options.
-    
+
         Displays final score, kills, and boss kills. Offers options to
         continue (return to menu) or quit.
         """
@@ -147,18 +148,27 @@ class DeathScene(Scene, MouseSelectableMixin):
             line_width=250, alpha_base=25, alpha_decrement=6,
         )
 
-        score_text = self.score_font.render(f"分数: {self.score}", True, self.colors['score'])
-        surface.blit(score_text, score_text.get_rect(center=(width // 2, height // 2 - ResponsiveHelper.scale(45, scale))))
+        score_text = self.score_font.render(
+            f"分数: {self.score}", True, self.colors['score']
+        )
+        score_y = height // 2 - ResponsiveHelper.scale(45, scale)
+        surface.blit(score_text, score_text.get_rect(center=(width // 2, score_y)))
 
-        kills_text = self.score_font.render(f"击杀: {self.kills}", True, self.colors['kills'])
-        surface.blit(kills_text, kills_text.get_rect(center=(width // 2, height // 2 + ResponsiveHelper.scale(5, scale))))
+        kills_text = self.score_font.render(
+            f"击杀: {self.kills}", True, self.colors['kills']
+        )
+        kills_y = height // 2 + ResponsiveHelper.scale(5, scale)
+        surface.blit(kills_text, kills_text.get_rect(center=(width // 2, kills_y)))
 
-        boss_text = self.desc_font.render(f"BOSS击杀: {self.boss_kills}", True, self.colors['hint'])
-        surface.blit(boss_text, boss_text.get_rect(center=(width // 2, height // 2 + ResponsiveHelper.scale(40, scale))))
+        boss_text = self.desc_font.render(
+            f"BOSS击杀: {self.boss_kills}", True, self.colors['hint']
+        )
+        boss_y = height // 2 + ResponsiveHelper.scale(40, scale)
+        surface.blit(boss_text, boss_text.get_rect(center=(width // 2, boss_y)))
 
         option_spacing = ResponsiveHelper.scale(self.base_option_spacing, scale)
         start_y = height // 2 + ResponsiveHelper.scale(100, scale)
-        
+
         self.clear_option_rects()
         effective_index = self.get_effective_selected_index(self.selected_index)
         colors = self._tokens.colors
