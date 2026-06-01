@@ -27,10 +27,12 @@ def test_tutorial_aim_assist_releases_on_large_mouse_movement() -> None:
 
     scene._set_raw_aim_position(scene._enemies[0].rect.center)
     scene._update_aim_assist()
-    scene._set_raw_aim_position((
-        scene._raw_aim_position[0] + scene.AIM_ASSIST_RELEASE_DISTANCE + 20,
-        scene._raw_aim_position[1],
-    ))
+    scene._set_raw_aim_position(
+        (
+            scene._raw_aim_position[0] + scene.AIM_ASSIST_RELEASE_DISTANCE + 20,
+            scene._raw_aim_position[1],
+        )
+    )
     scene._update_aim_assist()
 
     assert scene._aim_assist_target is None

@@ -1,10 +1,12 @@
 """Enemy and Boss entities with movement patterns and attack behaviors."""
+
 import math
 import random
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Callable, List, Optional, Tuple
+from typing import TYPE_CHECKING
 
 import pygame
 
@@ -27,9 +29,11 @@ from .movement_strategies import get_movement_strategy
 
 class EnemyState(Enum):
     """Enemy lifecycle states."""
+
     ENTERING = "entering"
     ACTIVE = "active"
     EXITING = "exiting"
+
 
 # Movement type string to Rust enum mapping
 MOVEMENT_TYPE_MAP = {
@@ -123,7 +127,7 @@ class Enemy(Entity):
             x - (collision_size - render_size) // 2,
             y - (collision_size - render_size) // 2,
             collision_size,
-            collision_size
+            collision_size,
         )
 
         super().__init__(x, y, render_size, render_size)
@@ -132,7 +136,7 @@ class Enemy(Entity):
         self.health = data.health
         self.max_health = data.health
         self.fire_timer = 0
-        self._bullet_spawner: Optional[IBulletSpawner] = None
+        self._bullet_spawner: IBulletSpawner | None = None
         self.entity_id = id(self)
         self._init_movement(data.enemy_type)
         self.sync_rects()
@@ -265,7 +269,7 @@ class Enemy(Entity):
         return self.move_type in MOVEMENT_TYPE_MAP
 
     def _update_rust_movement(self) -> None:
-        batch_result = getattr(self, '_batch_result', None)
+        batch_result = getattr(self, "_batch_result", None)
         if batch_result is not None:
             self._apply_rust_movement_result(batch_result)
             del self._batch_result
@@ -277,15 +281,26 @@ class Enemy(Entity):
 
         params = self._rust_params
         new_x, new_y, new_timer = rust_update_movement(
-            self._rust_move_type_code, timer,
-            self.active_position_x, self.active_position_y,
-            self._move_range_x, self._move_range_y,
-            params['offset'], params['amplitude'], params['frequency'], params['speed'], params['direction'],
-            params['zigzag_interval'], params['spiral_radius'],
-            self.rect.x, self.rect.y,
-            params['noise_scale_x'], params['noise_scale_y'],
-            params['noise_amplitude_x'], params['noise_amplitude_y'],
-            params['noise_seed'],
+            self._rust_move_type_code,
+            timer,
+            self.active_position_x,
+            self.active_position_y,
+            self._move_range_x,
+            self._move_range_y,
+            params["offset"],
+            params["amplitude"],
+            params["frequency"],
+            params["speed"],
+            params["direction"],
+            params["zigzag_interval"],
+            params["spiral_radius"],
+            self.rect.x,
+            self.rect.y,
+            params["noise_scale_x"],
+            params["noise_scale_y"],
+            params["noise_amplitude_x"],
+            params["noise_amplitude_y"],
+            params["noise_seed"],
         )
         self._apply_rust_movement_result((new_x, new_y, new_timer))
 
@@ -314,7 +329,6 @@ class Enemy(Entity):
             self._fire()
 
     def render(self, surface: pygame.Surface) -> None:
-
         """Render the enemy sprite with health-based coloring.
 
         Args:
@@ -326,7 +340,6 @@ class Enemy(Entity):
     # 4. Public behavior methods
 
     def take_damage(self, damage: int) -> None:
-
         """Apply damage to the enemy.
 
         Reduces health by the damage amount. If health reaches 0,
@@ -351,10 +364,7 @@ class Enemy(Entity):
         self._bullet_spawner = spawner
 
     def set_difficulty(
-        self,
-        speed_mult: float,
-        fire_rate_modifier: float,
-        movement_enhancements: dict = None
+        self, speed_mult: float, fire_rate_modifier: float, movement_enhancements: dict | None = None
     ) -> None:
         self._difficulty_multiplier = max(0.01, speed_mult)
         self._fire_rate_modifier = max(0.01, fire_rate_modifier)
@@ -391,7 +401,7 @@ class Enemy(Entity):
 
     def get_rust_batch_params(self):
         """Return (base_tuple, extra_tuple) for batch Rust movement, or (None, None)."""
-        if not hasattr(self, '_rust_move_type_code'):
+        if not hasattr(self, "_rust_move_type_code"):
             return None, None
         p = self._rust_params
         timer = getattr(self, self._timer_attr, 0.0)
@@ -399,17 +409,28 @@ class Enemy(Entity):
             timer /= self.HOVER_TIMER_RUST_SCALE
         c = get_game_constants()
         base = (
-            self._rust_move_type_code, timer,
-            self.active_position_x, self.active_position_y,
-            float(c.ENEMY.MOVE_RANGE_X), float(c.ENEMY.MOVE_RANGE_Y),
-            p['offset'], p['amplitude'], p['frequency'], p['speed'], p['direction'],
-            p['zigzag_interval'],
+            self._rust_move_type_code,
+            timer,
+            self.active_position_x,
+            self.active_position_y,
+            float(c.ENEMY.MOVE_RANGE_X),
+            float(c.ENEMY.MOVE_RANGE_Y),
+            p["offset"],
+            p["amplitude"],
+            p["frequency"],
+            p["speed"],
+            p["direction"],
+            p["zigzag_interval"],
         )
         extra = (
-            p['spiral_radius'], self.rect.x, self.rect.y,
-            p['noise_scale_x'], p['noise_scale_y'],
-            p['noise_amplitude_x'], p['noise_amplitude_y'],
-            p['noise_seed'],
+            p["spiral_radius"],
+            self.rect.x,
+            self.rect.y,
+            p["noise_scale_x"],
+            p["noise_scale_y"],
+            p["noise_amplitude_x"],
+            p["noise_amplitude_y"],
+            p["noise_seed"],
         )
         return base, extra
 
@@ -495,20 +516,19 @@ class Enemy(Entity):
     def _configure_rust_movement(self) -> None:
         self._rust_move_type_code = MOVEMENT_TYPE_MAP.get(self.move_type, 0)
         self._rust_params = {
-            'offset': getattr(self, 'move_offset', 0.0),
-            'amplitude': getattr(self, 'move_amplitude', self.DEFAULT_MOVE_AMPLITUDE),
-            'frequency': self._rust_frequency_param(),
-            'speed': self._rust_speed_param(),
-            'direction': getattr(self, 'direction', 1.0),
-            'zigzag_interval': getattr(self, 'zigzag_interval', self.DEFAULT_ZIGZAG_INTERVAL),
-            'spiral_radius': getattr(self, 'spiral_radius', self.DEFAULT_SPIRAL_RADIUS),
-            'noise_scale_x': self._rust_noise_param('scale_x'),
-            'noise_scale_y': self._rust_noise_param('scale_y'),
-            'noise_amplitude_x': self._rust_noise_param('amplitude_x'),
-            'noise_amplitude_y': self._rust_noise_param('amplitude_y'),
-            'noise_seed': (
-                getattr(self, 'agg_seed', 0) if self.move_type == "aggressive"
-                else getattr(self, 'noise_seed', 0)
+            "offset": getattr(self, "move_offset", 0.0),
+            "amplitude": getattr(self, "move_amplitude", self.DEFAULT_MOVE_AMPLITUDE),
+            "frequency": self._rust_frequency_param(),
+            "speed": self._rust_speed_param(),
+            "direction": getattr(self, "direction", 1.0),
+            "zigzag_interval": getattr(self, "zigzag_interval", self.DEFAULT_ZIGZAG_INTERVAL),
+            "spiral_radius": getattr(self, "spiral_radius", self.DEFAULT_SPIRAL_RADIUS),
+            "noise_scale_x": self._rust_noise_param("scale_x"),
+            "noise_scale_y": self._rust_noise_param("scale_y"),
+            "noise_amplitude_x": self._rust_noise_param("amplitude_x"),
+            "noise_amplitude_y": self._rust_noise_param("amplitude_y"),
+            "noise_seed": (
+                getattr(self, "agg_seed", 0) if self.move_type == "aggressive" else getattr(self, "noise_seed", 0)
             ),
         }
         if self.move_type == "hover":
@@ -520,33 +540,33 @@ class Enemy(Entity):
 
     def _rust_frequency_param(self) -> float:
         if self.move_type == "spiral":
-            return getattr(self, 'spiral_frequency', self.DEFAULT_MOVE_FREQUENCY)
-        return getattr(self, 'move_frequency', self.DEFAULT_MOVE_FREQUENCY)
+            return getattr(self, "spiral_frequency", self.DEFAULT_MOVE_FREQUENCY)
+        return getattr(self, "move_frequency", self.DEFAULT_MOVE_FREQUENCY)
 
     def _rust_speed_param(self) -> float:
         if self.move_type == "zigzag":
-            return getattr(self, 'zigzag_speed', self.DEFAULT_MOVE_SPEED)
+            return getattr(self, "zigzag_speed", self.DEFAULT_MOVE_SPEED)
         if self.move_type == "noise":
-            return getattr(self, 'noise_speed', self.DEFAULT_NOISE_SPEED)
+            return getattr(self, "noise_speed", self.DEFAULT_NOISE_SPEED)
         if self.move_type == "aggressive":
-            return getattr(self, 'agg_speed', self.DEFAULT_AGGRESSIVE_SPEED)
-        return getattr(self, 'spiral_speed', self.DEFAULT_MOVE_SPEED)
+            return getattr(self, "agg_speed", self.DEFAULT_AGGRESSIVE_SPEED)
+        return getattr(self, "spiral_speed", self.DEFAULT_MOVE_SPEED)
 
     def _rust_noise_param(self, name: str) -> float:
         if self.move_type == "aggressive":
             defaults = {
-                'scale_x': self.DEFAULT_NOISE_SCALE_X,
-                'scale_y': self.DEFAULT_NOISE_SCALE_Y,
-                'amplitude_x': self.DEFAULT_AGGRESSIVE_AMPLITUDE_X,
-                'amplitude_y': self.DEFAULT_AGGRESSIVE_AMPLITUDE_Y,
+                "scale_x": self.DEFAULT_NOISE_SCALE_X,
+                "scale_y": self.DEFAULT_NOISE_SCALE_Y,
+                "amplitude_x": self.DEFAULT_AGGRESSIVE_AMPLITUDE_X,
+                "amplitude_y": self.DEFAULT_AGGRESSIVE_AMPLITUDE_Y,
             }
             return getattr(self, f"agg_{name}", defaults[name])
 
         defaults = {
-            'scale_x': self.DEFAULT_NOISE_SCALE_X,
-            'scale_y': self.DEFAULT_NOISE_SCALE_Y,
-            'amplitude_x': self.DEFAULT_NOISE_AMPLITUDE_X,
-            'amplitude_y': self.DEFAULT_NOISE_AMPLITUDE_Y,
+            "scale_x": self.DEFAULT_NOISE_SCALE_X,
+            "scale_y": self.DEFAULT_NOISE_SCALE_Y,
+            "amplitude_x": self.DEFAULT_NOISE_AMPLITUDE_X,
+            "amplitude_y": self.DEFAULT_NOISE_AMPLITUDE_Y,
         }
         return getattr(self, f"noise_{name}", defaults[name])
 
@@ -568,37 +588,28 @@ class Enemy(Entity):
             for bullet in bullets:
                 self._bullet_spawner.spawn_bullet(bullet)
 
-    def _create_bullets(self) -> List[Bullet]:
+    def _create_bullets(self) -> list[Bullet]:
         bullets = []
         center_x = self.rect.centerx
 
         if self.data.bullet_type == "spread":
             for angle in self.SPREAD_FIRE_OFFSETS:
                 bullet_data = BulletData(
-                    damage=self._get_damage(),
-                    speed=self.ENEMY_BULLET_SPEED,
-                    owner="enemy",
-                    bullet_type="spread"
+                    damage=self._get_damage(), speed=self.ENEMY_BULLET_SPEED, owner="enemy", bullet_type="spread"
                 )
                 bullet = Bullet(center_x + angle, self.rect.bottom, bullet_data)
                 bullet.velocity = Vector2(angle * 0.15, 5)
                 bullets.append(bullet)
         elif self.data.bullet_type == "laser":
             bullet_data = BulletData(
-                damage=self._get_damage(),
-                speed=self.ENEMY_BULLET_SPEED,
-                owner="enemy",
-                bullet_type="laser"
+                damage=self._get_damage(), speed=self.ENEMY_BULLET_SPEED, owner="enemy", bullet_type="laser"
             )
             bullet = Bullet(center_x, self.rect.bottom, bullet_data)
             bullet.velocity = Vector2(0, 8)
             bullets.append(bullet)
         else:
             bullet_data = BulletData(
-                damage=self._get_damage(),
-                speed=self.ENEMY_BULLET_SPEED,
-                owner="enemy",
-                bullet_type="single"
+                damage=self._get_damage(), speed=self.ENEMY_BULLET_SPEED, owner="enemy", bullet_type="single"
             )
             bullet = Bullet(center_x, self.rect.bottom, bullet_data)
             bullet.velocity = Vector2(0, 5)
@@ -644,7 +655,7 @@ class EnemySpawner:
         self.speed = self.DEFAULT_SPEED
         self.spawn_rate = self.DEFAULT_SPAWN_RATE
         self.bullet_type = "single"
-        self._bullet_spawner: Optional[IBulletSpawner] = None
+        self._bullet_spawner: IBulletSpawner | None = None
         self._enemy_type_distribution = {
             "straight": 0.10,
             "sine": 0.10,
@@ -699,8 +710,7 @@ class EnemySpawner:
     def set_bullet_spawner(self, spawner: IBulletSpawner) -> None:
         self._bullet_spawner = spawner
 
-    def update(self, enemies: List[Enemy], slow_factor: float = 1.0,
-               player_pos: tuple = None) -> None:
+    def update(self, enemies: list[Enemy], slow_factor: float = 1.0, player_pos: tuple | None = None) -> None:
         # Count active enemies (not exiting or dead)
         active_enemies = 0
         for e in enemies:
@@ -727,7 +737,7 @@ class EnemySpawner:
             self._spawn_one(enemies, spawn_data)
             self._wave_enemies_spawned += 1
 
-    def _prepare_wave_data(self, player_pos: tuple = None) -> deque:
+    def _prepare_wave_data(self, player_pos: tuple | None = None) -> deque:
         """Precompute spawn descriptors for a V-formation wave.
 
         Returns a list of (x, y, bullet_type, enemy_type) tuples.
@@ -763,23 +773,29 @@ class EnemySpawner:
         elite_count = min(self.ELITES_PER_WAVE, len(positions))
         elite_indices = set(random.sample(range(len(positions)), elite_count))
 
-        for i, (px, py) in enumerate(positions):
-            px = max(collision_size // 2, min(px, screen_width - collision_size // 2))
-            py = max(self.MIN_SPAWN_Y, min(py, int(screen_height * self.MAX_SPAWN_Y_FRACTION)))
+        for i, (raw_px, raw_py) in enumerate(positions):
+            px = max(collision_size // 2, min(raw_px, screen_width - collision_size // 2))
+            py = max(self.MIN_SPAWN_Y, min(raw_py, int(screen_height * self.MAX_SPAWN_Y_FRACTION)))
             if i in elite_indices:
-                spawn_data.append((
-                    px, py,
-                    random.choice(elite_bullet_types),
-                    self._select_elite_type(),
-                    True,  # is_elite flag
-                ))
+                spawn_data.append(
+                    (
+                        px,
+                        py,
+                        random.choice(elite_bullet_types),
+                        self._select_elite_type(),
+                        True,  # is_elite flag
+                    )
+                )
             else:
-                spawn_data.append((
-                    px, py,
-                    random.choice(bullet_types),
-                    self._select_enemy_type(),
-                    False,
-                ))
+                spawn_data.append(
+                    (
+                        px,
+                        py,
+                        random.choice(bullet_types),
+                        self._select_enemy_type(),
+                        False,
+                    )
+                )
         return deque(self._limit_spread_bullet_types(spawn_data))
 
     def _limit_spread_bullet_types(self, spawn_data: list) -> list:
@@ -795,7 +811,7 @@ class EnemySpawner:
             limited.append((px, py, next_type, enemy_type, is_elite))
         return limited
 
-    def _spawn_one(self, enemies: List[Enemy], data: tuple) -> None:
+    def _spawn_one(self, enemies: list[Enemy], data: tuple) -> None:
         """Create a single enemy from precomputed spawn tuple and add to list."""
         px, py, bullet_type, enemy_type, is_elite = data
         if is_elite:
@@ -813,7 +829,7 @@ class EnemySpawner:
                 speed=self.speed,
                 bullet_type=bullet_type,
                 fire_rate=self.LASER_FIRE_RATE if bullet_type == "laser" else self.NORMAL_FIRE_RATE,
-                enemy_type=enemy_type
+                enemy_type=enemy_type,
             )
             enemy = Enemy(px, py, enemy_data)
         enemy._entry_start_y = self.ENTRY_SPAWN_Y
@@ -839,6 +855,7 @@ class EliteEnemyData:
         fire_rate: Frames between shots (40% faster than base).
         bullet_type: Type of bullet fired ("spread" or "laser").
     """
+
     health: int = 250
     speed: float = 3.9
     score: int = 300
@@ -881,8 +898,14 @@ class EliteEnemy(Enemy):
         self._shield_pulse: float = 0.0
         self._is_elite = True
 
-    def update(self, enemies: List['Enemy'] = None, slow_factor: float = 1.0,
-               player_pos: Tuple[int, int] = None, *args, **kwargs) -> None:
+    def update(
+        self,
+        enemies: list["Enemy"] | None = None,
+        slow_factor: float = 1.0,
+        player_pos: tuple[int, int] | None = None,
+        *args,
+        **kwargs,
+    ) -> None:
         self._shield_pulse += 0.08
         super().update(enemies, slow_factor, player_pos, *args, **kwargs)
 
@@ -931,7 +954,7 @@ class Boss(Entity):
         _bullet_spawner: Optional spawner for bullets.
     """
 
-    ATTACK_DIRECTIONS = ['down', 'left', 'right', 'up']
+    ATTACK_DIRECTIONS = ["down", "left", "right", "up"]
     DEFAULT_PHASE_DURATION = 120
     ENTRY_SPEED = 2
     ESCAPE_DRIFT = 0.5
@@ -987,7 +1010,7 @@ class Boss(Entity):
         self.fire_timer = 0
         self.phase_timer = 0
         self.attack_pattern = 0
-        self.attack_direction = 'down'
+        self.attack_direction = "down"
         self.is_entering = True
         self.entry_y = y
         self.target_y = 180
@@ -1001,7 +1024,7 @@ class Boss(Entity):
         self.is_escaped = False
         self._show_escape_warning = False
         self.phase = data.phase
-        self._bullet_spawner: Optional[IBulletSpawner] = None
+        self._bullet_spawner: IBulletSpawner | None = None
         self.entity_id = id(self)
         self._hitbox = pygame.Rect(0, 0, 0, 0)
         self._aim_dash_elapsed = 0
@@ -1010,12 +1033,12 @@ class Boss(Entity):
         self._aim_dash_start_y = 0.0
         self._aim_dash_target_x = 0.0
         self._aim_dash_target_y = 0.0
-        self._aim_fire_target: Optional[Tuple[float, float]] = None
+        self._aim_fire_target: tuple[float, float] | None = None
         self._enraged = False
         self._enrage_timer = 0
         self._enrage_bullets_released = False
-        self._enrage_snapshot_target: Tuple[float, float] | None = None
-        self._enrage_trail: List[Tuple[float, float]] = []
+        self._enrage_snapshot_target: tuple[float, float] | None = None
+        self._enrage_trail: list[tuple[float, float]] = []
         self._enrage_trail_ghost = None
         self._enrage_trail_ghost_key = None
         self._enrage_health_lock_active = False
@@ -1023,15 +1046,15 @@ class Boss(Entity):
         self._enrage_attack_timer = 0
         self._enrage_attack_index = 0
         self._enrage_transition_timer = 0
-        self._enrage_transition_origin: Tuple[float, float] | None = None
+        self._enrage_transition_origin: tuple[float, float] | None = None
         self._facing_angle = 90.0
         self._muzzle_flash_timer = 0
-        self._muzzle_flash_positions: List[Tuple[float, float]] = []
+        self._muzzle_flash_positions: list[tuple[float, float]] = []
         self._enrage_release_hold_timer = 0
-        self._enrage_release_anchor: Tuple[float, float] | None = None
+        self._enrage_release_anchor: tuple[float, float] | None = None
         self._enrage_return_timer = 0
-        self._enrage_return_origin: Tuple[float, float] | None = None
-        self._enrage_return_target: Tuple[float, float] | None = None
+        self._enrage_return_origin: tuple[float, float] | None = None
+        self._enrage_return_target: tuple[float, float] | None = None
         self.sync_hitbox()
 
     def sync_hitbox(self) -> None:
@@ -1045,31 +1068,32 @@ class Boss(Entity):
 
     def _get_direction_offsets(self) -> dict:
         return {
-            'down': (-90, self.rect.bottom),
-            'left': (180, self.rect.centery),
-            'right': (0, self.rect.centery),
-            'up': (90, self.rect.y)
+            "down": (-90, self.rect.bottom),
+            "left": (180, self.rect.centery),
+            "right": (0, self.rect.centery),
+            "up": (90, self.rect.y),
         }
 
     def _get_direction_sources(self) -> dict:
         return {
-            'down': (self.rect.centerx, self.rect.bottom),
-            'left': (self.rect.left, self.rect.centery),
-            'right': (self.rect.right, self.rect.centery),
-            'up': (self.rect.centerx, self.rect.y)
+            "down": (self.rect.centerx, self.rect.bottom),
+            "left": (self.rect.left, self.rect.centery),
+            "right": (self.rect.right, self.rect.centery),
+            "up": (self.rect.centerx, self.rect.y),
         }
 
     def _get_target_offsets(self) -> dict:
         d = get_game_constants().BOSS.ATTACK_DISTANCE
-        return {
-            'down': (0, d),
-            'left': (-d, 0),
-            'right': (d, 0),
-            'up': (0, -d)
-        }
+        return {"down": (0, d), "left": (-d, 0), "right": (d, 0), "up": (0, -d)}
 
-    def update(self, enemies: List['Enemy'] = None, slow_factor: float = 1.0,
-              player_pos: Tuple[int, int] = None, *args, **kwargs) -> None:
+    def update(
+        self,
+        enemies: list["Enemy"] | None = None,
+        slow_factor: float = 1.0,
+        player_pos: tuple[int, int] | None = None,
+        *args,
+        **kwargs,
+    ) -> None:
         """Update boss state each frame.
 
         Handles entrance animation, survival timer, horizontal movement,
@@ -1143,7 +1167,7 @@ class Boss(Entity):
     def _clamp_to_arena(self) -> None:
         self.rect.x, self.rect.y = self._clamped_arena_position(self.rect.x, self.rect.y)
 
-    def _clamped_arena_position(self, x: float, y: float) -> Tuple[float, float]:
+    def _clamped_arena_position(self, x: float, y: float) -> tuple[float, float]:
         screen_w = get_screen_width()
         screen_h = get_screen_height()
         return (
@@ -1185,26 +1209,20 @@ class Boss(Entity):
         elif phase == 2:
             # HOVER: local repositioning with gentle drift
             self._target_x = random.randint(
-                int(max(margin, self.rect.x - 130)),
-                int(min(screen_w - self.rect.width - margin, self.rect.x + 130))
+                int(max(margin, self.rect.x - 130)), int(min(screen_w - self.rect.width - margin, self.rect.x + 130))
             )
-            self._target_y = random.randint(
-                int(max(y_min, self.rect.y - 80)),
-                int(min(y_max, self.rect.y + 80))
-            )
+            self._target_y = random.randint(int(max(y_min, self.rect.y - 80)), int(min(y_max, self.rect.y + 80)))
 
         else:
             # CHASE: drift toward player area with random offset
             if player_pos:
-                self._target_x = max(x_min,
-                    min(player_pos[0] + random.randint(-60, 60), x_max))
-                self._target_y = max(y_min,
-                    min(player_pos[1] - random.randint(80, 160), y_max))
+                self._target_x = max(x_min, min(player_pos[0] + random.randint(-60, 60), x_max))
+                self._target_y = max(y_min, min(player_pos[1] - random.randint(80, 160), y_max))
             else:
                 self._target_x = random.randint(x_min, x_max)
                 self._target_y = random.randint(y_min, y_max)
 
-    def _fire(self, player_pos: Tuple[float, float] = None) -> None:
+    def _fire(self, player_pos: tuple[float, float] | None = None) -> None:
         bullets = []
 
         self.attack_direction = random.choice(self.ATTACK_DIRECTIONS)
@@ -1223,12 +1241,12 @@ class Boss(Entity):
 
         self.attack_pattern = (self.attack_pattern + 1) % 3
 
-    def _spawn_bullets(self, bullets: List[Bullet]) -> None:
+    def _spawn_bullets(self, bullets: list[Bullet]) -> None:
         if self._bullet_spawner:
             for bullet in bullets:
                 self._bullet_spawner.spawn_bullet(bullet)
 
-    def _trigger_enrage_if_needed(self, player_pos: Tuple[int, int] = None, player=None) -> None:
+    def _trigger_enrage_if_needed(self, player_pos: tuple[int, int] | None = None, player=None) -> None:
         if self._enraged or self.max_health <= 0:
             return
         if self.health / self.max_health > self.ENRAGE_TRIGGER_RATIO:
@@ -1257,7 +1275,7 @@ class Boss(Entity):
         self._muzzle_flash_timer = 0
         self._muzzle_flash_positions = []
 
-    def _center_player_for_enrage(self, player=None, player_pos: Tuple[int, int] = None) -> Tuple[float, float]:
+    def _center_player_for_enrage(self, player=None, player_pos: tuple[int, int] | None = None) -> tuple[float, float]:
         target = (get_screen_width() / 2, get_screen_height() / 2)
         if player is not None:
             player.rect.x = target[0] - player.rect.width / 2
@@ -1265,7 +1283,7 @@ class Boss(Entity):
             return target
         return (float(player_pos[0]), float(player_pos[1])) if player_pos else target
 
-    def _update_enrage(self, player_pos: Tuple[int, int] = None, player=None) -> None:
+    def _update_enrage(self, player_pos: tuple[int, int] | None = None, player=None) -> None:
         target = self._center_player_for_enrage(player, self._enrage_snapshot_target or player_pos)
         self._enrage_snapshot_target = target
         self._record_enrage_trail()
@@ -1286,7 +1304,7 @@ class Boss(Entity):
             self._move_behind_player_after_enrage(target)
             self._release_enrage_bullets(target)
 
-    def _update_enrage_transition(self, player_pos: Tuple[int, int] = None, player=None) -> None:
+    def _update_enrage_transition(self, player_pos: tuple[int, int] | None = None, player=None) -> None:
         target = self._center_player_for_enrage(player, self._enrage_snapshot_target or player_pos)
         self._enrage_snapshot_target = target
 
@@ -1323,10 +1341,14 @@ class Boss(Entity):
     def _enrage_progress(self) -> float:
         return max(0.0, min(1.0, 1.0 - self._enrage_timer / self.ENRAGE_DURATION))
 
-    def _update_enrage_release_hold(self, player_pos: Tuple[int, int] = None, player=None) -> None:
-        target = self._current_player_target(player, player_pos) or self._enrage_snapshot_target or (
-            get_screen_width() / 2,
-            get_screen_height() / 2,
+    def _update_enrage_release_hold(self, player_pos: tuple[int, int] | None = None, player=None) -> None:
+        target = (
+            self._current_player_target(player, player_pos)
+            or self._enrage_snapshot_target
+            or (
+                get_screen_width() / 2,
+                get_screen_height() / 2,
+            )
         )
         anchor = self._enrage_release_anchor or self._enrage_path_center(target, 1.0)
         self.rect.x = anchor[0] - self.rect.width / 2
@@ -1347,7 +1369,7 @@ class Boss(Entity):
         target_x, target_y = self._clamped_arena_position(self.rect.x, self.rect.y)
         self._enrage_return_target = (target_x, target_y)
 
-    def _update_enrage_return(self, player_pos: Tuple[int, int] = None, player=None) -> None:
+    def _update_enrage_return(self, player_pos: tuple[int, int] | None = None, player=None) -> None:
         target = self._current_player_target(player, player_pos) or self._enrage_snapshot_target
         elapsed = self.ENRAGE_RETURN_DURATION - self._enrage_return_timer
         progress = max(0.0, min(1.0, elapsed / max(1, self.ENRAGE_RETURN_DURATION)))
@@ -1368,7 +1390,9 @@ class Boss(Entity):
             self._enrage_return_origin = None
             self._enrage_return_target = None
 
-    def _current_player_target(self, player=None, player_pos: Tuple[int, int] = None) -> Tuple[float, float] | None:
+    def _current_player_target(
+        self, player=None, player_pos: tuple[int, int] | None = None
+    ) -> tuple[float, float] | None:
         if player is not None:
             rect = player.rect
             if hasattr(rect, "centerx") and hasattr(rect, "centery"):
@@ -1379,7 +1403,7 @@ class Boss(Entity):
             return (float(player_pos[0]), float(player_pos[1]))
         return None
 
-    def _enrage_path_radius(self, target: Tuple[float, float]) -> float:
+    def _enrage_path_radius(self, target: tuple[float, float]) -> float:
         base_radius = max(self.rect.width, self.rect.height) * self.ENRAGE_PATH_RADIUS_SCALE
         max_radius = max(
             24.0,
@@ -1392,7 +1416,7 @@ class Boss(Entity):
         )
         return min(base_radius, max_radius)
 
-    def _enrage_path_center(self, target: Tuple[float, float], progress: float) -> Tuple[float, float]:
+    def _enrage_path_center(self, target: tuple[float, float], progress: float) -> tuple[float, float]:
         progress = max(0.0, min(1.0, progress))
         radius = self._enrage_path_radius(target)
         if progress <= self.ENRAGE_SQUARE_PATH_RATIO:
@@ -1407,10 +1431,10 @@ class Boss(Entity):
 
     def _enrage_square_path_center(
         self,
-        target: Tuple[float, float],
+        target: tuple[float, float],
         radius: float,
         progress: float,
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         progress = max(0.0, min(1.0, progress))
         segment = min(3, int(progress * 4))
         local = progress * 4 - segment
@@ -1436,13 +1460,13 @@ class Boss(Entity):
         if len(self._enrage_trail) > max_trail:
             self._enrage_trail = self._enrage_trail[-max_trail:]
 
-    def _clamped_enrage_position(self, x: float, y: float) -> Tuple[float, float]:
+    def _clamped_enrage_position(self, x: float, y: float) -> tuple[float, float]:
         return (
             max(0, min(x, get_screen_width() - self.rect.width)),
             max(self.MIN_Y, min(y, get_screen_height() - self.rect.height)),
         )
 
-    def _update_enrage_snapshot_attacks(self, target: Tuple[float, float], progress: float) -> None:
+    def _update_enrage_snapshot_attacks(self, target: tuple[float, float], progress: float) -> None:
         if not self._bullet_spawner or self._enrage_timer <= 1:
             return
         self._enrage_attack_timer -= 1
@@ -1452,7 +1476,7 @@ class Boss(Entity):
         self._enrage_attack_timer = self.ENRAGE_ATTACK_INTERVAL
         self._enrage_attack_index += 1
 
-    def _create_enrage_snapshot_attack(self, target: Tuple[float, float], progress: float) -> List[Bullet]:
+    def _create_enrage_snapshot_attack(self, target: tuple[float, float], progress: float) -> list[Bullet]:
         bullets = []
         source = self._primary_boss_muzzle_position()
         bullets.extend(self._create_enrage_snapshot_lasers(source, target, progress))
@@ -1466,10 +1490,10 @@ class Boss(Entity):
 
     def _create_enrage_snapshot_lasers(
         self,
-        source: Tuple[float, float],
-        target: Tuple[float, float],
+        source: tuple[float, float],
+        target: tuple[float, float],
         progress: float,
-    ) -> List[Bullet]:
+    ) -> list[Bullet]:
         aim = Vector2(target[0] - source[0], target[1] - source[1])
         if aim.length() <= 0:
             aim = Vector2(0, 1)
@@ -1501,7 +1525,7 @@ class Boss(Entity):
             self._trigger_muzzle_flash((bullet_x, bullet_y))
         return bullets
 
-    def _create_enrage_snapshot_ring_bullets(self, target: Tuple[float, float], progress: float) -> List[Bullet]:
+    def _create_enrage_snapshot_ring_bullets(self, target: tuple[float, float], progress: float) -> list[Bullet]:
         cx, cy = target
         bullet_data = BulletData(
             damage=get_game_constants().BOSS.WAVE_BULLET_DAMAGE,
@@ -1531,7 +1555,7 @@ class Boss(Entity):
             self._trigger_muzzle_flash(muzzles[(len(bullets) - 1) % len(muzzles)])
         return bullets
 
-    def _release_enrage_bullets(self, target: Tuple[float, float]) -> None:
+    def _release_enrage_bullets(self, target: tuple[float, float]) -> None:
         for bullet in self._enrage_spawned_bullets():
             if not getattr(bullet, "clear_immune", False) or not getattr(bullet, "held", False):
                 continue
@@ -1550,7 +1574,7 @@ class Boss(Entity):
         self._enrage_trail_ghost = None
         self._enrage_trail_ghost_key = None
 
-    def _move_behind_player_after_enrage(self, target: Tuple[float, float]) -> None:
+    def _move_behind_player_after_enrage(self, target: tuple[float, float]) -> None:
         behind_center_x, behind_center_y = self._enrage_path_center(target, 1.0)
         self._enrage_release_anchor = (behind_center_x, behind_center_y)
         self.rect.x = behind_center_x - self.rect.width / 2
@@ -1560,7 +1584,7 @@ class Boss(Entity):
         self.sync_hitbox()
         self._face_target(target)
 
-    def _face_target(self, target: Tuple[float, float]) -> None:
+    def _face_target(self, target: tuple[float, float]) -> None:
         dx = target[0] - self.rect.centerx
         dy = target[1] - self.rect.centery
         if dx == 0 and dy == 0:
@@ -1571,7 +1595,7 @@ class Boss(Entity):
         radians = math.radians(self._facing_angle)
         return Vector2(math.cos(radians), math.sin(radians))
 
-    def _boss_muzzle_positions(self) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+    def _boss_muzzle_positions(self) -> tuple[tuple[float, float], tuple[float, float]]:
         forward = self._facing_vector().normalize()
         if forward.length() <= 0:
             forward = Vector2(0, 1)
@@ -1584,14 +1608,14 @@ class Boss(Entity):
             (muzzle_center_x - side_axis.x * side_offset, muzzle_center_y - side_axis.y * side_offset),
         )
 
-    def _primary_boss_muzzle_position(self) -> Tuple[float, float]:
+    def _primary_boss_muzzle_position(self) -> tuple[float, float]:
         muzzles = self._boss_muzzle_positions()
         return (
             (muzzles[0][0] + muzzles[1][0]) / 2,
             (muzzles[0][1] + muzzles[1][1]) / 2,
         )
 
-    def _trigger_muzzle_flash(self, position: Tuple[float, float] | None = None) -> None:
+    def _trigger_muzzle_flash(self, position: tuple[float, float] | None = None) -> None:
         self._muzzle_flash_timer = self.ENRAGE_MUZZLE_FLASH_DURATION
         if position is None:
             self._muzzle_flash_positions = list(self._boss_muzzle_positions())
@@ -1605,7 +1629,7 @@ class Boss(Entity):
         if self._muzzle_flash_timer <= 0:
             self._muzzle_flash_positions = []
 
-    def _enrage_spawned_bullets(self) -> List[Bullet]:
+    def _enrage_spawned_bullets(self) -> list[Bullet]:
         if hasattr(self._bullet_spawner, "get_bullets"):
             return self._bullet_spawner.get_bullets()
         if hasattr(self._bullet_spawner, "bullets"):
@@ -1617,7 +1641,7 @@ class Boss(Entity):
     def _is_aim_dashing(self) -> bool:
         return self._aim_dash_duration > 0
 
-    def _start_aim_dash(self, player_pos: Tuple[float, float]) -> None:
+    def _start_aim_dash(self, player_pos: tuple[float, float]) -> None:
         if not player_pos:
             return
 
@@ -1668,15 +1692,15 @@ class Boss(Entity):
         self._spawn_bullets(bullets)
         self.attack_pattern = (self.attack_pattern + 1) % 3
 
-    def _select_attack_direction_for_target(self, player_pos: Tuple[float, float]) -> None:
+    def _select_attack_direction_for_target(self, player_pos: tuple[float, float]) -> None:
         dx = player_pos[0] - self.rect.centerx
         dy = player_pos[1] - self.rect.centery
         if abs(dx) > abs(dy) * 1.2:
-            self.attack_direction = 'right' if dx > 0 else 'left'
+            self.attack_direction = "right" if dx > 0 else "left"
         else:
-            self.attack_direction = 'down' if dy >= 0 else 'up'
+            self.attack_direction = "down" if dy >= 0 else "up"
 
-    def _spread_attack(self) -> List[Bullet]:
+    def _spread_attack(self) -> list[Bullet]:
         B = get_game_constants().BOSS
         bullets = []
 
@@ -1687,7 +1711,7 @@ class Boss(Entity):
         bullet_count = B.SPREAD_BULLET_COUNT_BASE + self.phase
 
         for i in range(bullet_count):
-            if self.attack_direction == 'left' or self.attack_direction == 'right':
+            if self.attack_direction == "left" or self.attack_direction == "right":
                 angle = base_angle + (B.SIDE_ANGLE_RANGE / (bullet_count - 1)) * i - B.SIDE_ANGLE_OFFSET
             else:
                 angle = base_angle + (B.SPREAD_ANGLE_RANGE / (bullet_count - 1)) * i
@@ -1701,7 +1725,7 @@ class Boss(Entity):
                 damage=B.BULLET_DAMAGE_BASE + self.phase * self.SPREAD_DAMAGE_INCREMENT,
                 speed=B.SPREAD_SPEED,
                 owner="enemy",
-                bullet_type="spread"
+                bullet_type="spread",
             )
             bullet = Bullet(center_x, y_pos, bullet_data)
             bullet.velocity = Vector2(vx, vy)
@@ -1709,7 +1733,7 @@ class Boss(Entity):
 
         return bullets
 
-    def _aim_attack(self, player_pos: Tuple[float, float] = None) -> List[Bullet]:
+    def _aim_attack(self, player_pos: tuple[float, float] | None = None) -> list[Bullet]:
         bullets = []
 
         if player_pos:
@@ -1736,7 +1760,7 @@ class Boss(Entity):
             damage=get_game_constants().BOSS.AIM_BULLET_DAMAGE_BASE + self.phase * self.AIM_DAMAGE_INCREMENT,
             speed=get_game_constants().BOSS.AIM_SPEED,
             owner="enemy",
-            bullet_type="laser"
+            bullet_type="laser",
         )
 
         for i in range(self.AIM_BULLET_COUNT):
@@ -1754,7 +1778,7 @@ class Boss(Entity):
 
         return bullets
 
-    def _wave_attack(self) -> List[Bullet]:
+    def _wave_attack(self) -> list[Bullet]:
         bullets = []
 
         direction_sources = self._get_direction_sources()
@@ -1762,11 +1786,11 @@ class Boss(Entity):
         center_x, center_y = direction_sources.get(self.attack_direction, (self.rect.centerx, self.rect.centery))
 
         for i in range(self.WAVE_BULLET_COUNT):
-            if self.attack_direction == 'left':
+            if self.attack_direction == "left":
                 angle = 180 + get_game_constants().BOSS.WAVE_ANGLE_INTERVAL * i
-            elif self.attack_direction == 'right':
+            elif self.attack_direction == "right":
                 angle = 0 + get_game_constants().BOSS.WAVE_ANGLE_INTERVAL * i
-            elif self.attack_direction == 'up':
+            elif self.attack_direction == "up":
                 angle = 90 + get_game_constants().BOSS.WAVE_ANGLE_INTERVAL * i
             else:
                 angle = -90 + get_game_constants().BOSS.WAVE_ANGLE_INTERVAL * i
@@ -1775,10 +1799,7 @@ class Boss(Entity):
             speed = get_game_constants().BOSS.WAVE_SPEED
 
             bullet_data = BulletData(
-                damage=get_game_constants().BOSS.WAVE_BULLET_DAMAGE,
-                speed=speed,
-                owner="enemy",
-                bullet_type="single"
+                damage=get_game_constants().BOSS.WAVE_BULLET_DAMAGE, speed=speed, owner="enemy", bullet_type="single"
             )
             bullet = Bullet(center_x, center_y, bullet_data)
             bullet.velocity = Vector2(math.cos(rad) * speed, math.sin(rad) * speed)
@@ -1794,7 +1815,6 @@ class Boss(Entity):
             surface.blit(self._sprite, self.get_rect())
 
     def take_damage(self, damage: int) -> int:
-
         """Apply damage to the boss.
 
         Reduces health and returns the score value if the boss is killed.

@@ -1,4 +1,5 @@
 """Progress bar UI — visual docking progress indicator."""
+
 import pygame
 
 from airwar.utils.fonts import get_cjk_font
@@ -8,6 +9,7 @@ from .interfaces import IMotherShipUI
 
 class ProgressBarUI(IMotherShipUI):
     """Progress bar UI — visual docking progress indicator."""
+
     BAR_TYPE_HOLD = "hold"
     BAR_TYPE_COOLDOWN = "cooldown"
     BAR_TYPE_STAY = "stay"
@@ -84,17 +86,16 @@ class ProgressBarUI(IMotherShipUI):
 
         bg_surface = pygame.Surface((self._bar_width, self._bar_height), pygame.SRCALPHA)
         pygame.draw.rect(
-            bg_surface, self._bg_color,
-            (0, 0, self._bar_width, self._bar_height),
-            border_radius=self._corner_radius
+            bg_surface, self._bg_color, (0, 0, self._bar_width, self._bar_height), border_radius=self._corner_radius
         )
         surface.blit(bg_surface, (bar_x, bar_y))
 
         pygame.draw.rect(
-            surface, self._border_color,
+            surface,
+            self._border_color,
             (bar_x, bar_y, self._bar_width, self._bar_height),
             self._border_width,
-            border_radius=self._corner_radius
+            border_radius=self._corner_radius,
         )
 
         progress_width = int(self._bar_width * self._progress)
@@ -103,9 +104,10 @@ class ProgressBarUI(IMotherShipUI):
             pygame.Rect(bar_x, bar_y, progress_width, self._bar_height)
             progress_surface = pygame.Surface((progress_width, self._bar_height), pygame.SRCALPHA)
             pygame.draw.rect(
-                progress_surface, (*progress_color, 200),
+                progress_surface,
+                (*progress_color, 200),
                 (0, 0, progress_width, self._bar_height),
-                border_radius=self._corner_radius
+                border_radius=self._corner_radius,
             )
             surface.blit(progress_surface, (bar_x, bar_y))
 
@@ -146,16 +148,17 @@ class ProgressBarUI(IMotherShipUI):
         ]
 
         mothership_surface = pygame.Surface((60, 50), pygame.SRCALPHA)
-        pygame.draw.polygon(mothership_surface, (180, 180, 220, 200), [
-            (p[0] - center_x + 30, p[1] - center_y + 25) for p in points
-        ])
-        pygame.draw.polygon(mothership_surface, (100, 100, 140, 255), [
-            (p[0] - center_x + 30, p[1] - center_y + 25) for p in points
-        ], 2)
+        pygame.draw.polygon(
+            mothership_surface, (180, 180, 220, 200), [(p[0] - center_x + 30, p[1] - center_y + 25) for p in points]
+        )
+        pygame.draw.polygon(
+            mothership_surface, (100, 100, 140, 255), [(p[0] - center_x + 30, p[1] - center_y + 25) for p in points], 2
+        )
         surface.blit(mothership_surface, (center_x - 30, center_y - 25))
 
-    def _render_complete_animation(self, surface: pygame.Surface, center_x: int, center_y: int,
-                                   bar_x: int, bar_y: int) -> None:
+    def _render_complete_animation(
+        self, surface: pygame.Surface, center_x: int, center_y: int, bar_x: int, bar_y: int
+    ) -> None:
         self._completion_animation_progress += 0.05
 
         if self._completion_animation_progress >= 1.0:
@@ -176,9 +179,10 @@ class ProgressBarUI(IMotherShipUI):
 
         progress_surface = pygame.Surface((scaled_bar_width, scaled_bar_height), pygame.SRCALPHA)
         pygame.draw.rect(
-            progress_surface, (*self._progress_color_complete, alpha),
+            progress_surface,
+            (*self._progress_color_complete, alpha),
             (0, 0, scaled_bar_width, scaled_bar_height),
-            border_radius=self._corner_radius
+            border_radius=self._corner_radius,
         )
         surface.blit(progress_surface, (scaled_x, scaled_y))
 

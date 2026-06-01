@@ -18,7 +18,6 @@ Usage:
 """
 
 from dataclasses import dataclass, field
-from typing import Tuple
 
 
 def normalize_score(value) -> int:
@@ -29,7 +28,7 @@ def normalize_score(value) -> int:
         return max(0, value)
     if isinstance(value, float) and value.is_integer():
         return max(0, int(value))
-    return max(0, int(round(value)))
+    return max(0, round(value))
 
 
 @dataclass(frozen=True)
@@ -49,6 +48,7 @@ class PlayerConstants:
         BULLET_DAMAGE: Player bullet damage.
         FIRE_COOLDOWN: Fire cooldown in frames.
     """
+
     INITIAL_X_OFFSET: int = 25
     INITIAL_Y: int = -80
     FINAL_Y: int = -100
@@ -75,6 +75,7 @@ class DamageConstants:
         REGEN_THRESHOLD: Health threshold for regeneration.
         INSTANT_KILL: Instant kill damage value (used for surrender).
     """
+
     BOSS_COLLISION_DAMAGE: int = 30
     ENEMY_COLLISION_DAMAGE: int = 20
     EXPLOSIVE_DAMAGE: int = 30
@@ -92,6 +93,7 @@ class TimingConstants:
         NOTIFICATION_DURATION: Notification display duration in frames.
         NOTIFICATION_ALPHA_THRESHOLD: Alpha threshold for notification color change.
     """
+
     FIXED_DELTA_TIME: float = 1 / 60
     NOTIFICATION_DURATION: int = 90
     NOTIFICATION_ALPHA_THRESHOLD: int = 150
@@ -108,6 +110,7 @@ class AnimationConstants:
         NOTIFICATION_DECAY_RATE: Notification decay rate.
         PARTICLE_ALPHA_VISIBILITY_THRESHOLD: Minimum alpha for particle visibility.
     """
+
     ENTRANCE_DURATION: int = 60
     RIPPLE_INITIAL_RADIUS: int = 15
     RIPPLE_INITIAL_ALPHA: int = 350
@@ -127,9 +130,10 @@ class GameBalanceConstants:
         WAVE_SIZE: Number of enemies per wave.
         EXPLOSION_RADIUS: Explosion radius.
     """
-    BASE_THRESHOLDS: Tuple[int, ...] = (3000, 6000, 10000, 16000, 25000, 38000, 55000, 80000)
+
+    BASE_THRESHOLDS: tuple[int, ...] = (3000, 6000, 10000, 16000, 25000, 38000, 55000, 80000)
     CYCLE_MULTIPLIER: float = 1.35
-    DIFFICULTY_MULTIPLIERS: Tuple[float, float, float] = (1.0, 2.0, 3.0)
+    DIFFICULTY_MULTIPLIERS: tuple[float, float, float] = (1.0, 2.0, 3.0)
     WAVE_SIZE: int = 11
     EXPLOSION_RADIUS: int = 50
 
@@ -156,6 +160,7 @@ class BossConstants:
         SPREAD_BULLET_COUNT_BASE: Base number of spread bullets.
         BULLET_DAMAGE_MAP: Damage map by bullet type.
     """
+
     BULLET_DAMAGE_BASE: int = 12
     AIM_BULLET_DAMAGE_BASE: int = 18
     WAVE_BULLET_DAMAGE: int = 12
@@ -171,11 +176,13 @@ class BossConstants:
     FIRE_RATE_BASE: int = 60
     PHASE_INTERVAL: int = 300
     SPREAD_BULLET_COUNT_BASE: int = 5
-    BULLET_DAMAGE_MAP: dict = field(default_factory=lambda: {
-        'spread': 12,
-        'laser': 35,
-        'single': 20,
-    })
+    BULLET_DAMAGE_MAP: dict = field(
+        default_factory=lambda: {
+            "spread": 12,
+            "laser": 35,
+            "single": 20,
+        }
+    )
 
 
 @dataclass(frozen=True)
@@ -189,6 +196,7 @@ class EnemyConstants:
         MOVE_TIMER: Enemy movement pattern timer threshold.
         ESCAPE_WARNING: Escape warning time before boss escapes.
     """
+
     LIFETIME: int = 900  # 15 seconds * 60 fps
     MOVE_RANGE_X: int = 80
     MOVE_RANGE_Y: int = 50
@@ -204,12 +212,14 @@ class RewardConstants:
         LASER_DURATION: Laser buff duration in frames.
         EXPLOSION_RADIUS: Explosion effect radius.
     """
+
     LASER_DURATION: int = 180
     EXPLOSION_RADIUS: int = 60
 
 
 class RequisitionConstants:
     """Requisition point costs and rewards for base operations."""
+
     BOSS_KILL_POINTS = 5
     REPAIR_COST = 2
     RECHARGE_COST = 2
@@ -239,6 +249,7 @@ class GameConstants:
         get_next_threshold(milestone_index: int, difficulty: str) -> float:
             Calculates the next milestone threshold.
     """
+
     PLAYER: PlayerConstants = field(default_factory=PlayerConstants)
     DAMAGE: DamageConstants = field(default_factory=DamageConstants)
     ANIMATION: AnimationConstants = field(default_factory=AnimationConstants)
@@ -259,9 +270,9 @@ class GameConstants:
             Score multiplier (easy=1.0, medium=2.0, hard=3.0).
         """
         multipliers = {
-            'easy': self.BALANCE.DIFFICULTY_MULTIPLIERS[0],
-            'medium': self.BALANCE.DIFFICULTY_MULTIPLIERS[1],
-            'hard': self.BALANCE.DIFFICULTY_MULTIPLIERS[2],
+            "easy": self.BALANCE.DIFFICULTY_MULTIPLIERS[0],
+            "medium": self.BALANCE.DIFFICULTY_MULTIPLIERS[1],
+            "hard": self.BALANCE.DIFFICULTY_MULTIPLIERS[2],
         }
         return multipliers.get(difficulty, 1.0)
 
@@ -292,9 +303,9 @@ class GameConstants:
         # BASE_THRESHOLDS describes the first cycle as absolute milestones.
         # Later cycles scale the interval deltas so thresholds never reset.
         for cycle in range(cycle_index + 1):
-            cycle_multiplier = self.BALANCE.CYCLE_MULTIPLIER ** cycle
+            cycle_multiplier = self.BALANCE.CYCLE_MULTIPLIER**cycle
             last_step = step_index if cycle == cycle_index else cycle_length - 1
-            for delta in base_deltas[:last_step + 1]:
+            for delta in base_deltas[: last_step + 1]:
                 threshold += delta * cycle_multiplier
 
         return threshold * difficulty_mult

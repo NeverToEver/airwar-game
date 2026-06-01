@@ -107,7 +107,7 @@ def test_homecoming_release_preserves_mothership_lock() -> None:
 
 
 def test_lock_layer_priority_order_is_explicit() -> None:
-    assert list(sorted(LockLayer, reverse=True)) == [
+    assert sorted(LockLayer, reverse=True) == [
         LockLayer.HOMECOMING,
         LockLayer.MOTHERSHIP,
         LockLayer.BOSS_ENRAGE,

@@ -3,6 +3,7 @@
 Extracts movement pattern logic into strategy classes to improve maintainability
 and reduce complexity in Enemy.update(). Each strategy handles one movement type.
 """
+
 import math
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
@@ -15,7 +16,7 @@ class MovementStrategy(ABC):
     """Abstract base class for enemy movement strategies."""
 
     @abstractmethod
-    def update(self, enemy: 'Enemy') -> None:
+    def update(self, enemy: "Enemy") -> None:
         """Update enemy position based on movement pattern.
 
         Args:
@@ -27,7 +28,7 @@ class MovementStrategy(ABC):
 class StraightMovement(MovementStrategy):
     """Straight movement with small vertical oscillation."""
 
-    def update(self, enemy: 'Enemy') -> None:
+    def update(self, enemy: "Enemy") -> None:
         enemy.rect.x = enemy.active_position_x
         enemy.rect.y = enemy.active_position_y + math.sin(enemy.lifetime * 0.05) * 15
         enemy.sync_rects()
@@ -36,30 +37,25 @@ class StraightMovement(MovementStrategy):
 class SineMovement(MovementStrategy):
     """Sine wave movement pattern."""
 
-    def update(self, enemy: 'Enemy') -> None:
+    def update(self, enemy: "Enemy") -> None:
         enemy.move_timer += 1
-        enemy.rect.x = enemy.active_position_x + math.sin(
-            enemy.move_timer * enemy.move_frequency + enemy.move_offset
-        ) * 80
-        enemy.rect.y = enemy.active_position_y + math.sin(
-            enemy.move_timer * enemy.move_frequency * 0.5
-        ) * 50
+        enemy.rect.x = (
+            enemy.active_position_x + math.sin(enemy.move_timer * enemy.move_frequency + enemy.move_offset) * 80
+        )
+        enemy.rect.y = enemy.active_position_y + math.sin(enemy.move_timer * enemy.move_frequency * 0.5) * 50
         enemy.sync_rects()
 
 
 class ZigzagMovement(MovementStrategy):
     """Zigzag movement with direction changes at intervals."""
 
-    def update(self, enemy: 'Enemy') -> None:
+    def update(self, enemy: "Enemy") -> None:
         enemy.zigzag_timer += 1
         if enemy.zigzag_timer >= enemy.zigzag_interval:
             enemy.zigzag_timer = 0
             enemy.direction *= -1
         new_x = enemy.rect.x + enemy.direction * enemy.zigzag_speed
-        enemy.rect.x = max(
-            enemy.active_position_x - 80,
-            min(new_x, enemy.active_position_x + 80)
-        )
+        enemy.rect.x = max(enemy.active_position_x - 80, min(new_x, enemy.active_position_x + 80))
         enemy.rect.y = enemy.active_position_y + math.sin(enemy.lifetime * 0.1) * 25
         enemy.sync_rects()
 
@@ -67,7 +63,7 @@ class ZigzagMovement(MovementStrategy):
 class DiveMovement(MovementStrategy):
     """Dive movement with wave-based patterns."""
 
-    def update(self, enemy: 'Enemy') -> None:
+    def update(self, enemy: "Enemy") -> None:
         enemy.dive_timer += 1
         wave = math.sin(enemy.dive_timer * 0.05) * 24
         enemy.rect.x = enemy.active_position_x + wave
@@ -78,7 +74,7 @@ class DiveMovement(MovementStrategy):
 class HoverMovement(MovementStrategy):
     """Hover movement with smooth sin-based oscillation."""
 
-    def update(self, enemy: 'Enemy') -> None:
+    def update(self, enemy: "Enemy") -> None:
         enemy.hover_timer += 0.08
         enemy.rect.x = enemy.active_position_x + math.sin(enemy.hover_timer) * 80
         enemy.rect.y = enemy.active_position_y + math.sin(enemy.hover_timer * 0.7) * 25
@@ -88,7 +84,7 @@ class HoverMovement(MovementStrategy):
 class SpiralMovement(MovementStrategy):
     """Spiral movement pattern."""
 
-    def update(self, enemy: 'Enemy') -> None:
+    def update(self, enemy: "Enemy") -> None:
         enemy.spiral_timer += 1
         spiral_x = math.cos(enemy.spiral_timer * enemy.spiral_frequency) * 40
         spiral_y = math.sin(enemy.spiral_timer * enemy.spiral_frequency * 2) * 15
@@ -100,14 +96,12 @@ class SpiralMovement(MovementStrategy):
 class NoiseMovement(MovementStrategy):
     """Organic noise-based movement with smooth transitions."""
 
-    def update(self, enemy: 'Enemy') -> None:
+    def update(self, enemy: "Enemy") -> None:
         enemy.noise_timer += enemy.noise_speed
-        noise_x = _smooth_noise(
-            enemy.noise_timer * enemy.noise_scale_x, enemy.noise_seed
-        ) * enemy.noise_amplitude_x
-        noise_y = _smooth_noise(
-            enemy.noise_timer * enemy.noise_scale_y, enemy.noise_seed + 500
-        ) * enemy.noise_amplitude_y
+        noise_x = _smooth_noise(enemy.noise_timer * enemy.noise_scale_x, enemy.noise_seed) * enemy.noise_amplitude_x
+        noise_y = (
+            _smooth_noise(enemy.noise_timer * enemy.noise_scale_y, enemy.noise_seed + 500) * enemy.noise_amplitude_y
+        )
 
         new_x = enemy.active_position_x + noise_x * 80
         new_y = enemy.active_position_y + noise_y * 50
@@ -128,7 +122,7 @@ class NoiseMovement(MovementStrategy):
 class AggressiveMovement(MovementStrategy):
     """Aggressive noise movement with downward drift toward player."""
 
-    def update(self, enemy: 'Enemy') -> None:
+    def update(self, enemy: "Enemy") -> None:
         enemy.agg_timer += enemy.agg_speed
         noise_x = _smooth_noise(enemy.agg_timer * enemy.agg_scale_x, enemy.agg_seed) * enemy.agg_amplitude_x
         noise_y = _smooth_noise(enemy.agg_timer * enemy.agg_scale_y, enemy.agg_seed + 500) * enemy.agg_amplitude_y

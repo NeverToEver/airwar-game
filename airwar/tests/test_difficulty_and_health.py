@@ -36,7 +36,7 @@ def test_difficulty_manager_caps_boss_kill_count():
 def test_difficulty_manager_rejects_negative_boss_kill_count():
     manager = DifficultyManager("medium")
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="boss_kill_count"):
         manager.set_boss_kill_count(-1)
 
 

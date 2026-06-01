@@ -1,4 +1,5 @@
 """Input detector — detects docking key combination from player."""
+
 import pygame
 
 from .event_bus import (
@@ -16,6 +17,7 @@ from .mother_ship_state import DockingProgress
 
 class InputDetector(IInputDetector):
     """Input detector — detects docking key combination from player input."""
+
     H_KEY = pygame.K_h
 
     def __init__(self, event_bus):

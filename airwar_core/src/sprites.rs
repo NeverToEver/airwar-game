@@ -129,17 +129,7 @@ pub fn create_single_bullet_glow(width: f32, height: f32) -> Vec<u8> {
         let rx = width / 2.0 + (i as f32) * 1.0 - 3.0;
         let ry = height / 2.0 + (i as f32) * 0.5 - 1.0;
         let glow_color = RgbaColor(255, 200, 50);
-        fill_glow_ellipse(
-            &mut data,
-            surf_w,
-            surf_h,
-            cx,
-            cy + 2.0,
-            rx,
-            ry,
-            glow_color,
-            alpha,
-        );
+        fill_glow_ellipse(&mut data, surf_w, surf_h, cx, cy + 2.0, rx, ry, glow_color, alpha);
     }
 
     data

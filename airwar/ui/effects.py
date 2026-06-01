@@ -1,4 +1,5 @@
 """UI effects — visual feedback effects for the interface."""
+
 import pygame
 
 from airwar.config.design_tokens import SystemColors, SystemUI, get_design_tokens
@@ -29,9 +30,9 @@ class EffectsRenderer:
         y: int,
         is_selected: bool,
         colors: dict,
-        option_width: int = None,
-        option_height: int = None,
-        scale: float = 1.0
+        option_width: int | None = None,
+        option_height: int | None = None,
+        scale: float = 1.0,
     ):
         """Render an option selection box."""
         if option_width is None:
@@ -53,12 +54,12 @@ class EffectsRenderer:
             box_width,
             box_height,
             colors_config.BUTTON_SELECTED_BG,
-            colors.get('selected', colors_config.HUD_AMBER),
+            colors.get("selected", colors_config.HUD_AMBER),
             colors_config.BUTTON_UNSELECTED_BG,
-            colors.get('unselected', colors_config.TEXT_MUTED),
-            colors.get('selected_glow', colors_config.HUD_AMBER_BRIGHT),
-            colors.get('selected', colors_config.HUD_AMBER),
-            colors.get('unselected', colors_config.TEXT_MUTED),
+            colors.get("unselected", colors_config.TEXT_MUTED),
+            colors.get("selected_glow", colors_config.HUD_AMBER_BRIGHT),
+            colors.get("selected", colors_config.HUD_AMBER),
+            colors.get("unselected", colors_config.TEXT_MUTED),
             glow_layers=self.OPTION_GLOW_LAYERS,
             glow_alpha_divisor=self.OPTION_GLOW_ALPHA_DIVISOR,
             border_radius=self.OPTION_BORDER_RADIUS,
@@ -71,10 +72,10 @@ class EffectsRenderer:
         y: int,
         width: int,
         height: int,
-        bg_color: tuple = None,
-        border_color: tuple = None,
-        glow_color: tuple = None,
-        glow_intensity: float = 1.0
+        bg_color: tuple | None = None,
+        border_color: tuple | None = None,
+        glow_color: tuple | None = None,
+        glow_intensity: float = 1.0,
     ):
         """Render a chamfered rectangle panel (military style).
 
@@ -122,8 +123,8 @@ class EffectsRenderer:
         font: pygame.font.Font,
         x: int,
         y: int,
-        color: tuple = None,
-        glow: bool = True
+        color: tuple | None = None,
+        glow: bool = True,
     ):
         """Render military-style text with optional glow.
 
@@ -153,12 +154,7 @@ class EffectsRenderer:
         text_rect = main_text.get_rect(center=(x, y))
         surface.blit(main_text, text_rect)
 
-    def render_scanline_overlay(
-        self,
-        surface: pygame.Surface,
-        rect: pygame.Rect = None,
-        alpha: int = None
-    ):
+    def render_scanline_overlay(self, surface: pygame.Surface, rect: pygame.Rect = None, alpha: int | None = None):
         """Render a scanline overlay effect.
 
         Args:
@@ -173,9 +169,4 @@ class EffectsRenderer:
 
         # 每隔 SCANLINE_SPACING 像素画一条线
         for ly in range(rect.top, rect.bottom, SystemUI.SCANLINE_SPACING):
-            pygame.draw.line(
-                surface,
-                (*SystemColors.AMBER_PRIMARY[:3], alpha),
-                (rect.left, ly),
-                (rect.right, ly)
-            )
+            pygame.draw.line(surface, (*SystemColors.AMBER_PRIMARY[:3], alpha), (rect.left, ly), (rect.right, ly))

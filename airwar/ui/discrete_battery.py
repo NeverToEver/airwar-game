@@ -1,4 +1,5 @@
 """Discrete segmented health indicator — fine-grained segments, no shell."""
+
 import pygame
 
 
@@ -25,9 +26,8 @@ class DiscreteBatteryIndicator:
     VERT_BORDER_DIVISOR = 4
     HORZ_BORDER_DIVISOR = 5
 
-    def __init__(self, width: int, height: int, num_segments: int = 20,
-                 orientation: str = 'vertical'):
-        if orientation not in ('vertical', 'horizontal'):
+    def __init__(self, width: int, height: int, num_segments: int = 20, orientation: str = "vertical"):
+        if orientation not in ("vertical", "horizontal"):
             raise ValueError(f"orientation must be 'vertical' or 'horizontal', got '{orientation}'")
         self._w = width
         self._h = height
@@ -51,7 +51,7 @@ class DiscreteBatteryIndicator:
             return self.HEALTH_RED
 
     def render(self, surface: pygame.Surface, x: int, y: int) -> None:
-        if self._orientation == 'vertical':
+        if self._orientation == "vertical":
             self._render_vertical(surface, x, y)
         else:
             self._render_horizontal(surface, x, y)

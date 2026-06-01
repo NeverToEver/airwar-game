@@ -1,4 +1,5 @@
 """Playable tutorial scene -- controlled lessons for the core game mechanics."""
+
 from __future__ import annotations
 
 import math
@@ -204,7 +205,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         pygame.font.init()
         self.running = True
         self.skipped = False
-        self._viewport = kwargs.get('viewport')
+        self._viewport = kwargs.get("viewport")
         self.clear_hover()
         self.clear_buttons()
 
@@ -389,9 +390,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         self._stage_completed = False
         self._completion_delay = 0
         self._stage_card_timer = (
-            self.STAGE_CARD_SLIDE_FRAMES
-            + self.STAGE_CARD_HOLD_FRAMES
-            + self.STAGE_CARD_FADE_FRAMES
+            self.STAGE_CARD_SLIDE_FRAMES + self.STAGE_CARD_HOLD_FRAMES + self.STAGE_CARD_FADE_FRAMES
         )
         self._hold_h_frames = 0
         self._hold_b_frames = 0
@@ -914,10 +913,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
     def _update_docking_stage(self) -> None:
         if self._mothership:
             sw, sh = get_screen_width(), get_screen_height()
-            mothership_departing = (
-                self._dock_sub_phase == "eject_player"
-                and self._dock_undock_phase == "mothership"
-            )
+            mothership_departing = self._dock_sub_phase == "eject_player" and self._dock_undock_phase == "mothership"
             if not mothership_departing:
                 self._mothership.show()
             self._mothership.set_player_input(0, 0)
@@ -986,10 +982,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
             self._mothership_destroy_nearest_enemy()
 
         self._mothership_ammo = max(0.0, self._mothership_ammo - self.MOTHERSHIP_AMMO_DRAIN)
-        if (
-            not self._ammo_warning_triggered
-            and self._mothership_ammo < self.WARNING_CELL_THRESHOLD
-        ):
+        if not self._ammo_warning_triggered and self._mothership_ammo < self.WARNING_CELL_THRESHOLD:
             self._ammo_warning_triggered = True
             if self._warning_banner:
                 self._warning_banner.activate()
@@ -1157,13 +1150,8 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         target = min(
             active_enemies,
             key=lambda enemy: (
-                enemy.rect.centerx - origin[0]
-            ) * (
-                enemy.rect.centerx - origin[0]
-            ) + (
-                enemy.rect.centery - origin[1]
-            ) * (
-                enemy.rect.centery - origin[1]
+                (enemy.rect.centerx - origin[0]) * (enemy.rect.centerx - origin[0])
+                + (enemy.rect.centery - origin[1]) * (enemy.rect.centery - origin[1])
             ),
         )
         target.health -= 50
@@ -1188,9 +1176,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
     def _update_tutorial_effects(self) -> None:
         for explosion in self._tutorial_explosions:
             explosion.timer -= 1
-        self._tutorial_explosions[:] = [
-            explosion for explosion in self._tutorial_explosions if explosion.timer > 0
-        ]
+        self._tutorial_explosions[:] = [explosion for explosion in self._tutorial_explosions if explosion.timer > 0]
 
     def _update_enemies(self) -> None:
         for enemy in self._enemies:

@@ -1,4 +1,5 @@
 """Bullet sprite rendering — single, spread, laser, and explosive missile."""
+
 import pygame
 
 from ._sprites_common import (
@@ -15,9 +16,13 @@ from ._sprites_common import (
 
 
 def draw_bullet(
-    surface: pygame.Surface, x: float, y: float,
-    width: float = 8, height: float = 16,
-    bullet_type: str = "single", owner: str = "player"
+    surface: pygame.Surface,
+    x: float,
+    y: float,
+    width: float = 8,
+    height: float = 16,
+    bullet_type: str = "single",
+    owner: str = "player",
 ) -> None:
     if bullet_type == "spread" or bullet_type == "spread_laser":
         draw_spread_bullet(surface, x, y, width, height, owner)
@@ -28,8 +33,7 @@ def draw_bullet(
 
 
 def draw_single_bullet(
-    surface: pygame.Surface, x: float, y: float,
-    width: float, height: float, owner: str = "player"
+    surface: pygame.Surface, x: float, y: float, width: float, height: float, owner: str = "player"
 ) -> None:
     center_x = x + width / 2
     top_y = y
@@ -99,8 +103,7 @@ def draw_single_bullet(
 
 
 def draw_spread_bullet(
-    surface: pygame.Surface, x: float, y: float,
-    width: float, height: float, owner: str = "player"
+    surface: pygame.Surface, x: float, y: float, width: float, height: float, owner: str = "player"
 ) -> None:
     center = (int(x + width / 2), int(y + height / 2))
     radius = int(width / 2)
@@ -125,8 +128,7 @@ def draw_spread_bullet(
 
 
 def draw_laser_bullet(
-    surface: pygame.Surface, x: float, y: float,
-    width: float, height: float, owner: str = "player"
+    surface: pygame.Surface, x: float, y: float, width: float, height: float, owner: str = "player"
 ) -> None:
     center_x = x + width / 2
     # Player: green laser, Enemy: red/orange laser for distinction
@@ -180,16 +182,12 @@ def draw_explosive_missile(surface: pygame.Surface, x: float, y: float, width: f
     flame_h = int(height * 0.25)
     flame_w = int(width * 0.45)
     flame_y = ty
-    flame_points = [
-        (cx, flame_y - flame_h),
-        (cx - flame_w, flame_y + flame_h),
-        (cx + flame_w, flame_y + flame_h)
-    ]
+    flame_points = [(cx, flame_y - flame_h), (cx - flame_w, flame_y + flame_h), (cx + flame_w, flame_y + flame_h)]
     pygame.draw.polygon(surface, (255, 200, 30), flame_points)
     inner_flame = [
         (cx, flame_y - flame_h + 2),
         (cx - flame_w + 3, flame_y + flame_h - 1),
-        (cx + flame_w - 3, flame_y + flame_h - 1)
+        (cx + flame_w - 3, flame_y + flame_h - 1),
     ]
     pygame.draw.polygon(surface, (255, 255, 150), inner_flame)
 
@@ -202,32 +200,16 @@ def draw_explosive_missile(surface: pygame.Surface, x: float, y: float, width: f
 
     # Nose cone
     nose_base_y = body_top + bh
-    nose_points = [
-        (cx, nose_base_y + nh),
-        (cx - nw_half, nose_base_y),
-        (cx + nw_half, nose_base_y)
-    ]
+    nose_points = [(cx, nose_base_y + nh), (cx - nw_half, nose_base_y), (cx + nw_half, nose_base_y)]
     pygame.draw.polygon(surface, (255, 60, 10), nose_points)
-    inner_nose = [
-        (cx, nose_base_y + nh - 2),
-        (cx - nw_half + 3, nose_base_y + 1),
-        (cx + nw_half - 3, nose_base_y + 1)
-    ]
+    inner_nose = [(cx, nose_base_y + nh - 2), (cx - nw_half + 3, nose_base_y + 1), (cx + nw_half - 3, nose_base_y + 1)]
     pygame.draw.polygon(surface, (255, 140, 60), inner_nose)
 
     # Fins
     fin_h = int(height * 0.2)
     fin_w = int(width * 0.35)
     fin_y = nose_base_y
-    left_fin = [
-        (cx - bw_half, fin_y),
-        (cx - bw_half - fin_w, fin_y - fin_h),
-        (cx - bw_half, fin_y - fin_h)
-    ]
+    left_fin = [(cx - bw_half, fin_y), (cx - bw_half - fin_w, fin_y - fin_h), (cx - bw_half, fin_y - fin_h)]
     pygame.draw.polygon(surface, (180, 60, 10), left_fin)
-    right_fin = [
-        (cx + bw_half, fin_y),
-        (cx + bw_half + fin_w, fin_y - fin_h),
-        (cx + bw_half, fin_y - fin_h)
-    ]
+    right_fin = [(cx + bw_half, fin_y), (cx + bw_half + fin_w, fin_y - fin_h), (cx + bw_half, fin_y - fin_h)]
     pygame.draw.polygon(surface, (180, 60, 10), right_fin)

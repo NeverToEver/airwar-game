@@ -1,5 +1,4 @@
 """Chamfered (cut-corner) panel component for military UI style."""
-from typing import Tuple
 
 import pygame
 
@@ -55,10 +54,10 @@ def draw_chamfered_panel(
     y: int,
     width: int,
     height: int,
-    bg_color: Tuple[int, int, int],
-    border_color: Tuple[int, int, int, int] = None,
-    glow_color: Tuple[int, int, int, int] = None,
-    chamfer_depth: int = None
+    bg_color: tuple[int, int, int],
+    border_color: tuple[int, int, int, int] | None = None,
+    glow_color: tuple[int, int, int, int] | None = None,
+    chamfer_depth: int | None = None,
 ) -> None:
     """Draw a chamfered (cut-corner) panel with optional glow border.
 
@@ -81,7 +80,7 @@ def draw_chamfered_panel(
 
     # Create background surface with color
     bg_surf = panel_surf.copy()
-    bg_surf.fill(bg_color + (255,) if len(bg_color) == 3 else bg_color)
+    bg_surf.fill((*bg_color, 255) if len(bg_color) == 3 else bg_color)
 
     # Apply mask to get chamfered shape
     mask = pygame.mask.Mask((width, height))
@@ -109,8 +108,11 @@ def draw_chamfered_panel(
         bg_result.fill((0, 0, 0, 0))
         chamfer_shape = _get_chamfered_surface(width, height, chamfer_depth).copy()
         chamfer_shape.set_colorkey((0, 0, 0, 0))
-        pygame.draw.polygon(chamfer_shape, bg_color if len(bg_color) == 3 else bg_color[:3],
-                           create_chamfered_points(width, height, chamfer_depth))
+        pygame.draw.polygon(
+            chamfer_shape,
+            bg_color if len(bg_color) == 3 else bg_color[:3],
+            create_chamfered_points(width, height, chamfer_depth),
+        )
         bg_result.blit(chamfer_shape, (0, 0))
         _bg_cache[bg_key] = bg_result
 
@@ -123,8 +125,12 @@ def draw_chamfered_panel(
             border_result = pygame.Surface((width, height), pygame.SRCALPHA)
             border_result.fill((0, 0, 0, 0))
             points = create_chamfered_points(width, height, chamfer_depth)
-            pygame.draw.lines(border_result,
-                             border_color if len(border_color) == 4 else (*border_color, 255),
-                             False, points, SystemUI.CHAMFER_BORDER_WIDTH)
+            pygame.draw.lines(
+                border_result,
+                border_color if len(border_color) == 4 else (*border_color, 255),
+                False,
+                points,
+                SystemUI.CHAMFER_BORDER_WIDTH,
+            )
             _border_cache[border_key] = border_result
         surface.blit(_border_cache[border_key], (x, y))

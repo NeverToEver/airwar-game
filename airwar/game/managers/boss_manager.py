@@ -47,10 +47,10 @@ class BossManager:
 
     def __init__(
         self,
-        spawn_controller: 'SpawnController',
-        game_controller: 'GameController',
-        reward_system: 'RewardSystem',
-        bullet_manager: 'BulletManager'
+        spawn_controller: "SpawnController",
+        game_controller: "GameController",
+        reward_system: "RewardSystem",
+        bullet_manager: "BulletManager",
     ) -> None:
         """Initialize the boss manager.
 
@@ -107,7 +107,7 @@ class BossManager:
         if not boss or boss.active:
             return
 
-        if boss.is_escaped and not getattr(boss, '_escape_notified', False):
+        if boss.is_escaped and not getattr(boss, "_escape_notified", False):
             boss._escape_notified = True
             self._game_controller.show_notification("BOSS 逃跑! (+0)")
 
@@ -121,9 +121,7 @@ class BossManager:
             score: Score gained from the hit.
         """
         self._game_controller.show_notification(f"+{score} BOSS 分数!")
-        self._game_controller.state.score = normalize_score(
-            self._game_controller.state.score + score
-        )
+        self._game_controller.state.score = normalize_score(self._game_controller.state.score + score)
 
         if not self._spawn_controller.boss.active:
             self.on_boss_killed()

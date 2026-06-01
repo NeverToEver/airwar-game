@@ -233,7 +233,7 @@ def test_player_collision_uses_enemy_hitbox_not_visual_rect():
         player.get_hitbox(),
         [enemy],
         lambda: False,
-        lambda damage: hits.append(damage),
+        hits.append,
     )
 
     assert did_hit is True

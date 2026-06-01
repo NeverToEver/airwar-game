@@ -1,10 +1,12 @@
 """Difficulty strategy implementations — Easy, Medium, Hard progression."""
+
 import logging
 from abc import ABC
 
 
 class DifficultyStrategy(ABC):
     """Abstract base class for difficulty scaling strategies."""
+
     GROWTH_RATE: float = 1.0
     BASE_MULTIPLIER: float = 1.0
     MAX_MULTIPLIER: float = 5.0
@@ -39,6 +41,7 @@ class DifficultyStrategy(ABC):
 
 class EasyStrategy(DifficultyStrategy):
     """Easy difficulty strategy — slow scaling, low caps."""
+
     GROWTH_RATE = 0.5
     BASE_MULTIPLIER = 0.8
     MAX_MULTIPLIER = 3.0
@@ -49,6 +52,7 @@ class EasyStrategy(DifficultyStrategy):
 
 class MediumStrategy(DifficultyStrategy):
     """Medium difficulty strategy — balanced scaling and caps."""
+
     GROWTH_RATE = 1.0
     BASE_MULTIPLIER = 1.0
     MAX_MULTIPLIER = 5.0
@@ -59,6 +63,7 @@ class MediumStrategy(DifficultyStrategy):
 
 class HardStrategy(DifficultyStrategy):
     """Hard difficulty strategy — aggressive scaling, high caps."""
+
     GROWTH_RATE = 1.5
     BASE_MULTIPLIER = 1.2
     MAX_MULTIPLIER = 8.0
@@ -69,16 +74,17 @@ class HardStrategy(DifficultyStrategy):
 
 class DifficultyStrategyFactory:
     """Factory for creating DifficultyStrategy instances by difficulty name."""
+
     _STRATEGIES = {
-        'easy': EasyStrategy,
-        'medium': MediumStrategy,
-        'hard': HardStrategy,
+        "easy": EasyStrategy,
+        "medium": MediumStrategy,
+        "hard": HardStrategy,
     }
 
     @classmethod
     def create(cls, difficulty: str) -> DifficultyStrategy:
         if difficulty not in cls._STRATEGIES:
             logging.warning(f"Invalid difficulty '{difficulty}', defaulting to 'medium'")
-            difficulty = 'medium'
+            difficulty = "medium"
 
         return cls._STRATEGIES[difficulty]()

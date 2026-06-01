@@ -1,6 +1,7 @@
 """Game renderer — entity rendering, background, and death animation."""
+
 from dataclasses import dataclass
-from typing import Any, List
+from typing import Any
 
 import pygame
 
@@ -15,23 +16,25 @@ from .integrated_hud import IntegratedHUD
 @dataclass
 class GameEntities:
     """Game entities container dataclass — player, enemies, boss."""
+
     player: Any
-    enemies: List
+    enemies: list
     boss: Any
 
 
 class GameRenderer:
     """Game renderer — entity rendering, background, and death animation.
 
-        Handles the main game rendering pipeline: background → entities →
-        effects → HUD. Supports entrance animation zoom effect and death
-        animation transitions.
+    Handles the main game rendering pipeline: background → entities →
+    effects → HUD. Supports entrance animation zoom effect and death
+    animation transitions.
 
-        Attributes:
-            hud_renderer: HUDRenderer for heads-up display.
-            background_renderer: SpaceBackground for parallax starfield.
-            _death_animation: DeathAnimation instance during player death.
-        """
+    Attributes:
+        hud_renderer: HUDRenderer for heads-up display.
+        background_renderer: SpaceBackground for parallax starfield.
+        _death_animation: DeathAnimation instance during player death.
+    """
+
     def __init__(self, hud_renderer: HUDRenderer = None, use_integrated_hud: bool = True):
         self.hud_renderer = hud_renderer or HUDRenderer()
         self.integrated_hud = IntegratedHUD() if use_integrated_hud else None
@@ -45,7 +48,7 @@ class GameRenderer:
 
     def init_background(self, screen_width: int, screen_height: int) -> None:
         self.background_renderer = SpaceBackground(screen_width, screen_height)
-        self._screen_diagonal = int((screen_width ** 2 + screen_height ** 2) ** 0.5)
+        self._screen_diagonal = int((screen_width**2 + screen_height**2) ** 0.5)
 
     def render(self, surface: pygame.Surface, state: GameState, entities: GameEntities) -> None:
         is_dying = state.gameplay_state == GameplayState.DYING
@@ -81,7 +84,7 @@ class GameRenderer:
 
         fade_alpha = int(160 * (1 - progress))
         if fade_alpha > 0:
-            if not hasattr(self, '_entrance_fade') or self._entrance_fade.get_size() != surface.get_size():
+            if not hasattr(self, "_entrance_fade") or self._entrance_fade.get_size() != surface.get_size():
                 self._entrance_fade = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
                 self._entrance_fade.fill((0, 0, 0))
             self._entrance_fade.set_alpha(fade_alpha)
@@ -145,10 +148,10 @@ class GameRenderer:
         kills: int,
         next_progress: int,
         boss_kills: int = 0,
-        unlocked_buffs: list = None,
+        unlocked_buffs: list | None = None,
         get_buff_color=None,
-        current_coefficient: float = None,
-        initial_coefficient: float = None,
+        current_coefficient: float | None = None,
+        initial_coefficient: float | None = None,
     ) -> None:
         if self.integrated_hud:
             self.integrated_hud.render(
@@ -167,10 +170,14 @@ class GameRenderer:
             )
         else:
             self.hud_renderer.render_hud(
-                surface, score, difficulty,
-                player_health, player_max_health, kills,
+                surface,
+                score,
+                difficulty,
+                player_health,
+                player_max_health,
+                kills,
                 next_progress,
-                boss_kills=boss_kills
+                boss_kills=boss_kills,
             )
 
     def render_notification(self, surface, notification: str, timer: int) -> None:
@@ -194,9 +201,7 @@ class GameRenderer:
             self._death_animation = DeathAnimation()
             if entities.player:
                 self._death_animation.trigger(
-                    entities.player.rect.centerx,
-                    entities.player.rect.centery,
-                    self._screen_diagonal
+                    entities.player.rect.centerx, entities.player.rect.centery, self._screen_diagonal
                 )
             self._was_in_dying_state = True
 

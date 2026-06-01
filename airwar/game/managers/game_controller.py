@@ -1,8 +1,8 @@
 """Game controller — state management, scoring, and milestone progression."""
+
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Optional
 
 from airwar.config import RIPPLE_FADE_SPEED, VALID_DIFFICULTIES
 
@@ -16,6 +16,7 @@ from ..systems.reward_system import RewardSystem
 
 class GameplayState(Enum):
     """Gameplay state enum — PLAYING, DYING, GAME_OVER."""
+
     PLAYING = "playing"
     DYING = "dying"
     GAME_OVER = "game_over"
@@ -24,8 +25,9 @@ class GameplayState(Enum):
 @dataclass
 class GameState:
     """Game state dataclass — all mutable game session data."""
-    difficulty: str = 'medium'
-    username: str = 'Player'
+
+    difficulty: str = "medium"
+    username: str = "Player"
     score: int = 0
     score_multiplier: float = 1.0
     is_paused: bool = False
@@ -33,8 +35,8 @@ class GameState:
     is_player_invincible: bool = False
     invincibility_timer: int = 0
     is_silent_invincible: bool = False
-    ripple_effects: List[dict] = field(default_factory=list)
-    notification: Optional[str] = None
+    ripple_effects: list[dict] = field(default_factory=list)
+    notification: str | None = None
     notification_timer: int = 0
     requisition_points: int = 0
     is_entrance_playing: bool = True
@@ -52,17 +54,18 @@ class GameState:
 class GameController:
     """Game controller — manages game state, scoring, and milestone progression.
 
-        Coordinates player health, enemy kill scoring, difficulty thresholds,
-        and delegates reward selection to RewardSystem. Acts as the central
-        game logic hub during gameplay.
+    Coordinates player health, enemy kill scoring, difficulty thresholds,
+    and delegates reward selection to RewardSystem. Acts as the central
+    game logic hub during gameplay.
 
-        Attributes:
-            state: Current GameState snapshot.
-            health_system: HealthSystem for player health and regen.
-            reward_system: RewardSystem for buff selection and application.
-            difficulty_manager: DifficultyManager for progressive scaling.
-            milestone_index: Current milestone level (0-based).
-        """
+    Attributes:
+        state: Current GameState snapshot.
+        health_system: HealthSystem for player health and regen.
+        reward_system: RewardSystem for buff selection and application.
+        difficulty_manager: DifficultyManager for progressive scaling.
+        milestone_index: Current milestone level (0-based).
+    """
+
     # 1. Special methods
 
     def __init__(self, difficulty: str, username: str):
@@ -89,6 +92,7 @@ class GameController:
     def set_invincible(self, invincible: bool, timer: int = 0, silent: bool = False) -> None:
         """Set player invincibility, routing through LockManager if available."""
         from ..systems.lock_manager import LockLayer, LockRequest
+
         if self._lock_manager:
             if invincible:
                 self._lock_manager.acquire(
@@ -105,6 +109,7 @@ class GameController:
     def set_paused(self, paused: bool) -> None:
         """Set game paused state, routing through LockManager if available."""
         from ..systems.lock_manager import LockLayer, LockRequest
+
         if self._lock_manager:
             if paused:
                 self._lock_manager.acquire(
@@ -119,7 +124,6 @@ class GameController:
     # 3. Public lifecycle methods
 
     def update(self, player, has_regen: bool = False) -> None:
-
         """Update game controller state each frame.
 
         Updates health system, notification timers, ripple effects,
@@ -176,7 +180,6 @@ class GameController:
         return self.get_next_threshold() > self.get_previous_threshold()
 
     def on_player_hit(self, damage: int, player) -> None:
-
         """Handle player being hit by enemy fire.
 
         Applies damage, spawns a ripple effect at the hit position,
@@ -194,13 +197,7 @@ class GameController:
 
         center_x = player.rect.centerx
         center_y = player.rect.centery
-        self.state.ripple_effects.append({
-            'x': center_x,
-            'y': center_y,
-            'radius': 15,
-            'alpha': 350,
-            'pulse': 0
-        })
+        self.state.ripple_effects.append({"x": center_x, "y": center_y, "radius": 15, "alpha": 350, "pulse": 0})
 
         if player.health <= 0:
             self.state.gameplay_state = GameplayState.DYING
@@ -212,7 +209,6 @@ class GameController:
             self._logger.info(f"Player hit: damage={damage}, health={player.health}")
 
     def on_enemy_killed(self, score_gained: int) -> None:
-
         """Handle an enemy being killed.
 
         Increments kill count and adds score.
@@ -225,7 +221,6 @@ class GameController:
         self._logger.debug(f"Enemy killed: score_gained={score_gained}, total_kills={self.state.kill_count}")
 
     def on_boss_killed(self, score_gained: int) -> None:
-
         """Handle a boss being killed.
 
         Increments kill and boss kill counts, adds score, and notifies
@@ -243,13 +238,12 @@ class GameController:
 
     def update_ripples(self) -> None:
         for ripple in self.state.ripple_effects:
-            ripple['radius'] += GAME_CONSTANTS.ANIMATION.RIPPLE_EXPANSION_SPEED
-            ripple['alpha'] -= RIPPLE_FADE_SPEED
-            ripple['pulse'] += 1
-        self.state.ripple_effects = [r for r in self.state.ripple_effects if r['alpha'] > 0]
+            ripple["radius"] += GAME_CONSTANTS.ANIMATION.RIPPLE_EXPANSION_SPEED
+            ripple["alpha"] -= RIPPLE_FADE_SPEED
+            ripple["pulse"] += 1
+        self.state.ripple_effects = [r for r in self.state.ripple_effects if r["alpha"] > 0]
 
     def show_notification(self, message: str, duration: int = 90) -> None:
-
         """Display a timed on-screen notification.
 
         Args:
@@ -261,7 +255,6 @@ class GameController:
         self.notification_manager.show(message, duration)
 
     def on_reward_selected(self, reward: dict, player) -> None:
-
         """Apply the selected milestone reward to the player.
 
         Delegates to RewardSystem to apply the buff, then advances

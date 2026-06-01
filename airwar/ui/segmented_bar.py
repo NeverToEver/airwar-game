@@ -1,5 +1,4 @@
 """Segmented progress bar component — military HUD style."""
-from typing import Tuple
 
 import pygame
 
@@ -10,13 +9,7 @@ from airwar.utils.fonts import get_cjk_font
 class SegmentedProgressBar:
     """Segmented progress bar with military-style rendering."""
 
-    def __init__(
-        self,
-        width: int,
-        height: int = 16,
-        segments: int = 10,
-        segment_gap: int = None
-    ):
+    def __init__(self, width: int, height: int = 16, segments: int = 10, segment_gap: int | None = None):
         """Initialize the segmented progress bar.
 
         Args:
@@ -39,10 +32,10 @@ class SegmentedProgressBar:
         y: int,
         value: float,
         max_value: float,
-        fill_color: Tuple[int, int, int] = None,
-        bg_color: Tuple[int, int, int] = None,
-        border_color: Tuple[int, int, int] = None,
-        is_chamfered: bool = False
+        fill_color: tuple[int, int, int] | None = None,
+        bg_color: tuple[int, int, int] | None = None,
+        border_color: tuple[int, int, int] | None = None,
+        is_chamfered: bool = False,
     ) -> None:
         """Render the segmented progress bar.
 
@@ -75,9 +68,7 @@ class SegmentedProgressBar:
             if i < filled_count:
                 # 填充段
                 if is_chamfered:
-                    self._draw_chamfered_segment(
-                        surface, seg_rect, fill_color, border_color
-                    )
+                    self._draw_chamfered_segment(surface, seg_rect, fill_color, border_color)
                 else:
                     pygame.draw.rect(surface, fill_color, seg_rect)
                     pygame.draw.rect(surface, border_color, seg_rect, 1)
@@ -90,8 +81,8 @@ class SegmentedProgressBar:
         self,
         surface: pygame.Surface,
         rect: pygame.Rect,
-        fill_color: Tuple[int, int, int],
-        border_color: Tuple[int, int, int]
+        fill_color: tuple[int, int, int],
+        border_color: tuple[int, int, int],
     ) -> None:
         """Draw a chamfered (cut-corner) segment."""
         cache_key = (self.segment_width, self.height, fill_color, border_color)
@@ -121,10 +112,10 @@ class SegmentedProgressBar:
         y: int,
         value: float,
         max_value: float,
-        glow_color: Tuple[int, int, int, int] = None,
-        fill_color: Tuple[int, int, int] = None,
-        bg_color: Tuple[int, int, int] = None,
-        is_chamfered: bool = False
+        glow_color: tuple[int, int, int, int] | None = None,
+        fill_color: tuple[int, int, int] | None = None,
+        bg_color: tuple[int, int, int] | None = None,
+        is_chamfered: bool = False,
     ) -> None:
         """Render a progress bar with a glow effect.
 
@@ -157,19 +148,10 @@ class SegmentedProgressBar:
         surface.blit(self._rendered_cache[glow_key], (x - 2, y - 2))
 
         # 然后渲染进度条
-        self.render(
-            surface, x, y, value, max_value,
-            fill_color, bg_color, SystemColors.SEGMENT_BORDER, is_chamfered
-        )
+        self.render(surface, x, y, value, max_value, fill_color, bg_color, SystemColors.SEGMENT_BORDER, is_chamfered)
 
     def render_danger_pulse(
-        self,
-        surface: pygame.Surface,
-        x: int,
-        y: int,
-        value: float,
-        max_value: float,
-        pulse_alpha: int
+        self, surface: pygame.Surface, x: int, y: int, value: float, max_value: float, pulse_alpha: int
     ) -> None:
         """Render a danger pulse effect for low health.
 
@@ -188,7 +170,7 @@ class SegmentedProgressBar:
 
         # 添加脉冲闪烁
         if pulse_alpha > 0:
-            if not hasattr(self, '_pulse_surf') or self._pulse_surf.get_size() != (self.width, self.height):
+            if not hasattr(self, "_pulse_surf") or self._pulse_surf.get_size() != (self.width, self.height):
                 self._pulse_surf = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
             self._pulse_surf.fill((0, 0, 0, 0))
             pygame.draw.rect(self._pulse_surf, (*danger_color, pulse_alpha), self._pulse_surf.get_rect())
@@ -213,7 +195,7 @@ class BossHealthBar:
             width - 24,  # 减去标签宽度
             height - 8,
             segments=self.segment_count,
-            segment_gap=2
+            segment_gap=2,
         )
 
     def render(
@@ -226,7 +208,7 @@ class BossHealthBar:
         boss_name: str = "",
         current_phase: int = 1,
         total_phases: int = 3,
-        font: pygame.font.Font = None
+        font: pygame.font.Font = None,
     ) -> None:
         """Render the Boss health bar.
 
@@ -278,21 +260,18 @@ class BossHealthBar:
         # 绘制百分比
         percent_text = f"{int(ratio * 100)}%"
         text_surf = font.render(percent_text, True, SystemColors.TEXT_PRIMARY)
-        text_rect = text_surf.get_rect(right=bar_x + self.width - label_width - 10,
-                                       centery=y + self.height // 2)
+        text_rect = text_surf.get_rect(right=bar_x + self.width - label_width - 10, centery=y + self.height // 2)
         surface.blit(text_surf, text_rect)
 
         # 绘制阶段指示器
         if total_phases > 1:
             phase_text = f"阶段 {current_phase}/{total_phases}"
             phase_surf = font.render(phase_text, True, SystemColors.AMBER_DIM)
-            phase_rect = phase_surf.get_rect(left=bar_x + 8,
-                                            top=y - 22)
+            phase_rect = phase_surf.get_rect(left=bar_x + 8, top=y - 22)
             surface.blit(phase_surf, phase_rect)
 
         # 绘制 Boss 名称
         if boss_name:
             name_surf = font.render(boss_name, True, SystemColors.TEXT_PRIMARY)
-            name_rect = name_surf.get_rect(left=bar_x,
-                                          centery=y + self.height // 2)
+            name_rect = name_surf.get_rect(left=bar_x, centery=y + self.height // 2)
             surface.blit(name_surf, name_rect)

@@ -1,7 +1,7 @@
 """HUD renderer — score, health bar, boss HP, buff stats panel."""
+
 import logging
 import math
-from typing import List
 
 import pygame
 
@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 class HUDLayout:
     """HUD layout constants — positions for score, health, kills, boss info."""
+
     SCORE_POS = (15, 15)
     PROGRESS_POS = (15, 45)
     DIFFICULTY_OFFSET_X = -110
@@ -42,13 +43,14 @@ class HUDLayout:
 class HUDRenderer:
     """HUD renderer — score, health bar, boss HP, buff stats, notifications.
 
-        Renders all heads-up display elements including military-style and
-        original-style boss health bars.
+    Renders all heads-up display elements including military-style and
+    original-style boss health bars.
 
-        Attributes:
-            hud_font: Primary font for HUD text elements.
-            _buff_stats_panel: BuffStatsPanel for active buff display.
-        """
+    Attributes:
+        hud_font: Primary font for HUD text elements.
+        _buff_stats_panel: BuffStatsPanel for active buff display.
+    """
+
     BOSS_TIMER_FONT_SIZE = 32
     BOSS_HURRY_FONT_SIZE = 30
     BUFF_BAR_X_OFFSET = 8
@@ -91,9 +93,17 @@ class HUDRenderer:
     def _render_value(self, font, text, color, cache_key: str):
         return render_cached_text(font, text, color, cache_key, self._text_cache)
 
-    def render_hud(self, surface: pygame.Surface, score: int, difficulty: str,
-                  player_health: int, player_max_health: int, kills: int,
-                  next_progress: int, boss_kills: int = 0) -> None:
+    def render_hud(
+        self,
+        surface: pygame.Surface,
+        score: int,
+        difficulty: str,
+        player_health: int,
+        player_max_health: int,
+        kills: int,
+        next_progress: int,
+        boss_kills: int = 0,
+    ) -> None:
         score_text = self.hud_font.render(f"分数: {score}", True, HUDLayout.SCORE_COLOR)
         surface.blit(score_text, HUDLayout.SCORE_POS)
 
@@ -123,8 +133,7 @@ class HUDRenderer:
         boss_rect.y = HUDLayout.BOSS_Y
         surface.blit(boss_text, boss_rect)
 
-    def render_buffs(self, surface: pygame.Surface, unlocked_buffs: List[str],
-                     get_buff_color) -> None:
+    def render_buffs(self, surface: pygame.Surface, unlocked_buffs: list[str], get_buff_color) -> None:
         if not unlocked_buffs:
             return
 
@@ -136,19 +145,17 @@ class HUDRenderer:
             x - self.BUFF_BAR_X_OFFSET,
             y - self.BUFF_BAR_Y_OFFSET,
             self.BUFF_BAR_WIDTH,
-            self.BUFF_BAR_HEIGHT
+            self.BUFF_BAR_HEIGHT,
         )
-        pygame.draw.rect(
-            surface, (20, 20, 40), buff_bar_rect, border_radius=8
-        )
+        pygame.draw.rect(surface, (20, 20, 40), buff_bar_rect, border_radius=8)
 
-        for buff in reversed(list(unlocked_buffs)[:self.MAX_VISIBLE_BUFFS]):
+        for buff in reversed(list(unlocked_buffs)[: self.MAX_VISIBLE_BUFFS]):
             if buff in shown:
                 continue
             shown.add(buff)
 
             color = get_buff_color(buff)
-            text = self.buff_font.render(buff[:self.BUFF_TRUNCATE_LEN], True, color)
+            text = self.buff_font.render(buff[: self.BUFF_TRUNCATE_LEN], True, color)
             rect = text.get_rect(x=x, y=y)
             pygame.draw.rect(surface, color, rect, 1, border_radius=4)
             surface.blit(text, (x + 4, y + 4))
@@ -157,8 +164,7 @@ class HUDRenderer:
             if x > self.BUFF_WRAP_X:
                 break
 
-    def render_notification(self, surface: pygame.Surface, notification: str,
-                           timer: int) -> None:
+    def render_notification(self, surface: pygame.Surface, notification: str, timer: int) -> None:
         if timer > 0 and notification:
             colors = self._tokens.colors
             alpha = min(255, timer * 4)
@@ -210,8 +216,7 @@ class HUDRenderer:
         # Timer panel below the health bar
         time_remaining = boss.get_time_remaining()
         progress = boss.get_survival_progress()
-        self._render_boss_timer(surface, x, y + bar_height + 4, bar_width,
-                                time_remaining, progress)
+        self._render_boss_timer(surface, x, y + bar_height + 4, bar_width, time_remaining, progress)
 
     def _render_boss_timer(self, surface, x, y, bar_width, time_remaining, progress):
         """Render boss escape timer in a styled panel below the health bar."""
@@ -246,8 +251,7 @@ class HUDRenderer:
             tick = pygame.time.get_ticks() * self.HURRY_PULSE_SPEED
             pulse = abs(math.sin(tick)) * self.HURRY_PULSE_AMP + self.HURRY_PULSE_BASE
             alpha = int(200 * pulse)
-            hurry_text = self._boss_hurry_font.render("逃跑中!", True,
-                                                       self.HURRY_COLOR)
+            hurry_text = self._boss_hurry_font.render("逃跑中!", True, self.HURRY_COLOR)
             hurry_text.set_alpha(alpha)
             hurry_rect = hurry_text.get_rect(midtop=(x + bar_width // 2, y + timer_panel_h + 6))
             surface.blit(hurry_text, hurry_rect)
@@ -262,11 +266,15 @@ class HUDRenderer:
 
         # Draw chamfered panel background
         draw_chamfered_panel(
-            surface, x - 4, y - 4, bar_width + 8, bar_height + 8,
+            surface,
+            x - 4,
+            y - 4,
+            bar_width + 8,
+            bar_height + 8,
             SystemColors.BG_PANEL,
             SystemColors.BORDER_GLOW,
             SystemColors.AMBER_GLOW,
-            chamfer_depth=8
+            chamfer_depth=8,
         )
 
         # Draw segmented progress bar
@@ -274,69 +282,51 @@ class HUDRenderer:
         font = self._boss_label_font
 
         # Determine boss name
-        boss_name = getattr(boss, 'name', 'BOSS') if boss else 'BOSS'
+        boss_name = getattr(boss, "name", "BOSS") if boss else "BOSS"
 
         # Get phase info if available
-        current_phase = getattr(boss, 'phase', 1)
-        total_phases = getattr(boss, 'total_phases', self.DEFAULT_TOTAL_PHASES)
+        current_phase = getattr(boss, "phase", 1)
+        total_phases = getattr(boss, "total_phases", self.DEFAULT_TOTAL_PHASES)
 
         boss_bar.render(
-            surface, x, y,
-            boss.health, boss.max_health,
+            surface,
+            x,
+            y,
+            boss.health,
+            boss.max_health,
             boss_name=boss_name,
             current_phase=current_phase,
             total_phases=total_phases,
-            font=font
+            font=font,
         )
 
         # Time remaining — styled panel below the bar
         time_remaining = boss.get_time_remaining()
         progress = boss.get_survival_progress()
-        self._render_boss_timer(surface, x, y + bar_height + 4, bar_width,
-                                time_remaining, progress)
+        self._render_boss_timer(surface, x, y + bar_height + 4, bar_width, time_remaining, progress)
 
-    def render_ripples(self, surface: pygame.Surface, ripples: List[dict]) -> None:
+    def render_ripples(self, surface: pygame.Surface, ripples: list[dict]) -> None:
         for ripple in ripples:
-            pulse = ripple.get('pulse', 0)
-            draw_ripple(surface, ripple['x'], ripple['y'], ripple['radius'], ripple['alpha'], pulse)
+            pulse = ripple.get("pulse", 0)
+            draw_ripple(surface, ripple["x"], ripple["y"], ripple["radius"], ripple["alpha"], pulse)
 
-    def render_buff_stats_panel(
-        self,
-        surface: pygame.Surface,
-        reward_system,
-        player
-    ) -> None:
+    def render_buff_stats_panel(self, surface: pygame.Surface, reward_system, player) -> None:
         if not reward_system or not player:
             return
 
         try:
-            self._buff_stats_panel.render(
-                surface,
-                reward_system,
-                player,
-                surface.get_width(),
-                surface.get_height()
-            )
+            self._buff_stats_panel.render(surface, reward_system, player, surface.get_width(), surface.get_height())
         except (AttributeError, TypeError):
             logger.warning("Failed to render buff stats panel", exc_info=True)
         except Exception as e:
             logger.warning(f"Failed to render buff stats panel: {e}", exc_info=True)
 
-    def render_attack_mode_panel(
-        self,
-        surface: pygame.Surface,
-        reward_system
-    ) -> None:
+    def render_attack_mode_panel(self, surface: pygame.Surface, reward_system) -> None:
         if not reward_system:
             return
 
         try:
-            self._attack_mode_panel.render(
-                surface,
-                reward_system,
-                surface.get_width(),
-                surface.get_height()
-            )
+            self._attack_mode_panel.render(surface, reward_system, surface.get_width(), surface.get_height())
         except (AttributeError, TypeError):
             logger.warning("Failed to render attack mode panel", exc_info=True)
         except Exception as e:

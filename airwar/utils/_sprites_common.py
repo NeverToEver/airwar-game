@@ -1,4 +1,5 @@
 """Shared sprite utilities — caches, glow effects, gradients, and ripples."""
+
 import math
 
 import pygame
@@ -33,7 +34,7 @@ def _evict_cache_if_needed(cache: dict) -> None:
 
 def _bytes_to_surface(data: bytes, width: int, height: int) -> pygame.Surface:
     """Convert RGBA bytes to pygame Surface."""
-    surf = pygame.image.frombuffer(bytes(data), (width, height), 'RGBA')
+    surf = pygame.image.frombuffer(bytes(data), (width, height), "RGBA")
     try:
         return surf.convert_alpha()
     except pygame.error:
@@ -88,8 +89,7 @@ def prewarm_glow_caches(force: bool = False) -> None:
 
 
 def create_gradient_surface(
-    width: int, height: int, color1: tuple, color2: tuple,
-    vertical: bool = True
+    width: int, height: int, color1: tuple, color2: tuple, vertical: bool = True
 ) -> pygame.Surface:
     surface = pygame.Surface((width, height), pygame.SRCALPHA)
     for i in range(height if vertical else width):

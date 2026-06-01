@@ -46,8 +46,20 @@ jobs:
           python -m maturin build --release --manifest-path airwar_core/Cargo.toml --out "$RUNNER_TEMP/airwar-wheels"
           python -m pip install "$RUNNER_TEMP"/airwar-wheels/*.whl
 
+      - name: Run cargo clippy
+        run: cargo clippy --manifest-path airwar_core/Cargo.toml -- -D warnings
+
+      - name: Run cargo fmt check
+        run: cargo fmt --manifest-path airwar_core/Cargo.toml -- --check
+
       - name: Run Ruff
         run: python -m ruff check .
+
+      - name: Run Ruff format check
+        run: python -m ruff format --check .
+
+      - name: Run mypy
+        run: python -m mypy airwar/ --ignore-missing-imports --no-error-summary || true
 
       - name: Check Python bytecode compilation
         run: python -m compileall -q airwar main.py

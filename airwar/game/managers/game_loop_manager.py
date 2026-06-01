@@ -1,6 +1,7 @@
 """Game loop orchestration — coordinates all per-frame update logic."""
+
 import logging
-from typing import Callable, List
+from collections.abc import Callable
 
 from airwar.config import get_screen_height, get_screen_width
 from airwar.core_bindings import batch_update_movements
@@ -26,12 +27,13 @@ logger = logging.getLogger(__name__)
 class GameLoopManager:
     """Game loop manager — orchestrates all per-frame update logic.
 
-        Coordinates the update order of all managers and systems each frame:
-        input → player update → spawn controller → boss → collision → UI.
+    Coordinates the update order of all managers and systems each frame:
+    input → player update → spawn controller → boss → collision → UI.
 
-        Attributes:
-            _controllers: Ordered list of per-frame update callables.
-        """
+    Attributes:
+        _controllers: Ordered list of per-frame update callables.
+    """
+
     def __init__(
         self,
         game_controller: GameControllerProtocol,
@@ -57,9 +59,7 @@ class GameLoopManager:
     def _init_explosion_system(self) -> None:
         """Initialize explosion animation system"""
         self._explosion_manager = ExplosionManager()
-        self._collision_controller.set_explosion_callback(
-            self._on_explosion
-        )
+        self._collision_controller.set_explosion_callback(self._on_explosion)
 
     def _on_explosion(self, x: float, y: float, radius: int) -> None:
         """Explosion callback handler"""
@@ -112,7 +112,7 @@ class GameLoopManager:
         self._update_core(player)
 
     def _update_core(self, player: PlayerProtocol) -> None:
-        has_regen = 'Regeneration' in self._reward_system.unlocked_buffs
+        has_regen = "Regeneration" in self._reward_system.unlocked_buffs
         self._game_controller.update(player, has_regen)
         self._refresh_locks()
 
@@ -157,7 +157,7 @@ class GameLoopManager:
             self._lock_manager.release(LockLayer.BOSS_ENRAGE)
             return
         if self._should_lock_player_for_boss_enrage():
-            in_transition = getattr(boss, '_enrage_transition_timer', 0) > 0
+            in_transition = getattr(boss, "_enrage_transition_timer", 0) > 0
             self._lock_manager.acquire(
                 LockLayer.BOSS_ENRAGE,
                 LockRequest(
@@ -177,28 +177,20 @@ class GameLoopManager:
         player_dps = self._estimate_player_dps(player)
         self._spawn_controller.balance_for_player_dps(player_dps)
         spawn_needed = self._spawn_controller.update(
-            self._game_controller.state.score,
-            self._reward_system.slow_factor,
-            player_pos
+            self._game_controller.state.score, self._reward_system.slow_factor, player_pos
         )
 
         if spawn_needed:
             boss = self._spawn_controller.spawn_boss(
-                self._game_controller.state.boss_kill_count,
-                player.bullet_damage,
-                player_dps
+                self._game_controller.state.boss_kill_count, player.bullet_damage, player_dps
             )
-            self._game_controller.show_notification(
-                f"! BOSS 来袭 ({int(boss.data.escape_time/60)}秒) !"
-            )
+            self._game_controller.show_notification(f"! BOSS 来袭 ({int(boss.data.escape_time / 60)}秒) !")
 
     def _estimate_player_dps(self, player: PlayerProtocol) -> float:
         weapon_status = player.get_weapon_status() if hasattr(player, "get_weapon_status") else {}
         bullets_per_shot = 6 if weapon_status.get("spread") else 2
         fire_interval = max(1, int(getattr(player, "fire_interval", PlayerConstants.FIRE_COOLDOWN)))
-        damage = float(getattr(
-            player, "bullet_damage", PlayerConstants.BULLET_DAMAGE
-        ))
+        damage = float(getattr(player, "bullet_damage", PlayerConstants.BULLET_DAMAGE))
         return damage * bullets_per_shot / fire_interval * 60
 
     def _update_entities(self) -> None:
@@ -238,7 +230,7 @@ class GameLoopManager:
     def check_collisions(
         self,
         player: PlayerProtocol,
-        enemy_bullets: List,
+        enemy_bullets: list,
         on_player_hit: Callable,
     ) -> None:
         self._collision_controller.check_all_collisions(
@@ -251,11 +243,11 @@ class GameLoopManager:
             piercing_level=self._reward_system.piercing_level,
             player_invincible=self._game_controller.state.is_player_invincible,
             score_multiplier=self._game_controller.state.score_multiplier,
-            on_enemy_killed=lambda score: self._game_controller.on_enemy_killed(score),
-            on_boss_killed=lambda score: self._handle_boss_killed(score),
-            on_boss_hit=lambda score: self._boss_manager.on_boss_hit(score),
+            on_enemy_killed=self._game_controller.on_enemy_killed,
+            on_boss_killed=self._handle_boss_killed,
+            on_boss_hit=self._boss_manager.on_boss_hit,
             on_player_hit=on_player_hit,
-            on_lifesteal=lambda player, score: self._reward_system.apply_lifesteal(player, score),
+            on_lifesteal=self._reward_system.apply_lifesteal,
         )
 
     def is_entrance_playing(self) -> bool:

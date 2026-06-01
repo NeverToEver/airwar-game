@@ -1,4 +1,5 @@
 """Ammo magazine UI — vertical sci-fi ammunition rack for mothership cooldown/duration."""
+
 import contextlib
 import math
 
@@ -104,9 +105,12 @@ class AmmoMagazine:
 
     @property
     def frame_height(self) -> int:
-        return (self.CELL_COUNT * self.CELL_HEIGHT +
-                (self.CELL_COUNT - 1) * self.CELL_GAP +
-                self.FRAME_PAD_TOP + self.FRAME_PAD_BOTTOM)
+        return (
+            self.CELL_COUNT * self.CELL_HEIGHT
+            + (self.CELL_COUNT - 1) * self.CELL_GAP
+            + self.FRAME_PAD_TOP
+            + self.FRAME_PAD_BOTTOM
+        )
 
     def _ensure_fonts(self):
         if self._label_font is None:
@@ -125,17 +129,18 @@ class AmmoMagazine:
         r = self.FRAME_RADIUS
 
         # Frame background
-        pygame.draw.rect(surf, (*self._frame_color, self.FRAME_BG_ALPHA),
-                         surf.get_rect(), border_radius=r)
+        pygame.draw.rect(surf, (*self._frame_color, self.FRAME_BG_ALPHA), surf.get_rect(), border_radius=r)
 
         # Inner border accent
         inner = surf.get_rect().inflate(-self.FRAME_INNER_INSET, -self.FRAME_INNER_INSET)
-        pygame.draw.rect(surf, (*self._frame_border, self.FRAME_INNER_BORDER_ALPHA),
-                         inner, width=1, border_radius=max(r - 1, 2))
+        pygame.draw.rect(
+            surf, (*self._frame_border, self.FRAME_INNER_BORDER_ALPHA), inner, width=1, border_radius=max(r - 1, 2)
+        )
 
         # Outer border
-        pygame.draw.rect(surf, (*self._frame_border, self.FRAME_OUTER_BORDER_ALPHA),
-                         surf.get_rect(), width=1, border_radius=r)
+        pygame.draw.rect(
+            surf, (*self._frame_border, self.FRAME_OUTER_BORDER_ALPHA), surf.get_rect(), width=1, border_radius=r
+        )
 
         # Corner rivets
         rivet_color = (*self._frame_border, self.RIVET_ALPHA)
@@ -150,11 +155,19 @@ class AmmoMagazine:
 
         return surf
 
-    def render(self, surface: pygame.Surface, ammo_count: float,
-               ammo_max: float, *, is_cooldown: bool, is_docked: bool,
-               is_warning: bool, is_present: bool,
-               cooldown_remaining: float = 0.0,
-               cooldown_reduction: float = 0.0) -> None:
+    def render(
+        self,
+        surface: pygame.Surface,
+        ammo_count: float,
+        ammo_max: float,
+        *,
+        is_cooldown: bool,
+        is_docked: bool,
+        is_warning: bool,
+        is_present: bool,
+        cooldown_remaining: float = 0.0,
+        cooldown_reduction: float = 0.0,
+    ) -> None:
         """Render the ammo magazine.
 
         Args:
@@ -276,9 +289,7 @@ class AmmoMagazine:
                 self._draw_cell(surface, cells_x, cy, None, None, 0, 0.0)
 
         # Footer shows the actual return timer during cooldown, otherwise ammo cells.
-        cells_end_y = cells_start_y + self.CELL_COUNT * self.CELL_HEIGHT + (
-            self.CELL_COUNT - 1
-        ) * self.CELL_GAP
+        cells_end_y = cells_start_y + self.CELL_COUNT * self.CELL_HEIGHT + (self.CELL_COUNT - 1) * self.CELL_GAP
         if is_cooldown:
             count_text = f"{math.ceil(max(0.0, cooldown_remaining))}秒"
         else:
@@ -291,14 +302,10 @@ class AmmoMagazine:
         surface.blit(count_surf, count_rect)
 
         if has_reduction:
-            reduction_pct = min(99, int(round(cooldown_reduction * 100)))
+            reduction_pct = min(99, round(cooldown_reduction * 100))
             reduction_text = f"返场 -{reduction_pct}%"
-            reduction_surf = self._detail_font.render(
-                reduction_text, True, self._cell_filled
-            )
-            reduction_rect = reduction_surf.get_rect(
-                center=(fx + fw // 2, cells_end_y + 22)
-            )
+            reduction_surf = self._detail_font.render(reduction_text, True, self._cell_filled)
+            reduction_rect = reduction_surf.get_rect(center=(fx + fw // 2, cells_end_y + 22))
             surface.blit(reduction_surf, reduction_rect)
 
     def _draw_cell(self, surface, x, y, fill_color, glow_color, alpha, ratio):
@@ -308,37 +315,45 @@ class AmmoMagazine:
 
         # Empty background
         bg_rect = pygame.Rect(x, y, cw, ch)
-        pygame.draw.rect(surface, (*self._cell_empty, self.CELL_EMPTY_ALPHA), bg_rect,
-                         border_radius=self.CELL_BORDER_RADIUS)
-        pygame.draw.rect(surface, (*self._cell_empty_border, self.CELL_EMPTY_BORDER_ALPHA),
-                         bg_rect, width=1, border_radius=self.CELL_BORDER_RADIUS)
+        pygame.draw.rect(
+            surface, (*self._cell_empty, self.CELL_EMPTY_ALPHA), bg_rect, border_radius=self.CELL_BORDER_RADIUS
+        )
+        pygame.draw.rect(
+            surface,
+            (*self._cell_empty_border, self.CELL_EMPTY_BORDER_ALPHA),
+            bg_rect,
+            width=1,
+            border_radius=self.CELL_BORDER_RADIUS,
+        )
 
         if fill_color and ratio > 0:
             fill_width = int(cw * ratio)
             if fill_width > 0:
-
                 # Glow halo
                 glow_surf = pygame.Surface(
-                    (fill_width + self.GLOW_HALO_EXPAND, ch + self.GLOW_HALO_EXPAND),
-                    pygame.SRCALPHA)
+                    (fill_width + self.GLOW_HALO_EXPAND, ch + self.GLOW_HALO_EXPAND), pygame.SRCALPHA
+                )
                 glow_alpha = int(alpha * self.GLOW_ALPHA_SCALE)
-                pygame.draw.rect(glow_surf, (*glow_color, glow_alpha),
-                                 glow_surf.get_rect(),
-                                 border_radius=self.CELL_BORDER_RADIUS + 1)
+                pygame.draw.rect(
+                    glow_surf,
+                    (*glow_color, glow_alpha),
+                    glow_surf.get_rect(),
+                    border_radius=self.CELL_BORDER_RADIUS + 1,
+                )
                 surface.blit(glow_surf, (x - self.GLOW_OFFSET, y - self.GLOW_OFFSET))
 
                 # Fill bar
                 fill_surf = pygame.Surface((fill_width, ch), pygame.SRCALPHA)
-                pygame.draw.rect(fill_surf, (*fill_color, alpha),
-                                 fill_surf.get_rect(), border_radius=self.CELL_BORDER_RADIUS)
+                pygame.draw.rect(
+                    fill_surf, (*fill_color, alpha), fill_surf.get_rect(), border_radius=self.CELL_BORDER_RADIUS
+                )
                 surface.blit(fill_surf, (x, y))
 
                 # Bright top-edge highlight
                 if fill_width > self.HL_MIN_WIDTH:
-                    hl_surf = pygame.Surface(
-                        (fill_width - self.HL_OFFSET * 2, self.HL_HEIGHT), pygame.SRCALPHA)
+                    hl_surf = pygame.Surface((fill_width - self.HL_OFFSET * 2, self.HL_HEIGHT), pygame.SRCALPHA)
                     hl_alpha = min(self.HL_ALPHA_BASE, alpha + self.HL_ALPHA_BOOST)
-                    pygame.draw.rect(hl_surf, (*fill_color, hl_alpha),
-                                     hl_surf.get_rect(), border_radius=self.HL_BORDER_RADIUS)
-                    surface.blit(hl_surf,
-                                 (x + self.HL_OFFSET, y + self.HL_OFFSET))
+                    pygame.draw.rect(
+                        hl_surf, (*fill_color, hl_alpha), hl_surf.get_rect(), border_radius=self.HL_BORDER_RADIUS
+                    )
+                    surface.blit(hl_surf, (x + self.HL_OFFSET, y + self.HL_OFFSET))

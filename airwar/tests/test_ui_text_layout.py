@@ -12,7 +12,7 @@ from airwar.utils.fonts import get_cjk_font
 @pytest.fixture(scope="module", autouse=True)
 def _init_font():
     pygame.font.init()
-    yield
+    return
 
 
 def test_fit_string_to_width_never_exceeds_limit():

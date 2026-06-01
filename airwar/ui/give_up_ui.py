@@ -1,4 +1,5 @@
 """Give-up UI — surrender progress indicator overlay."""
+
 import math
 
 import pygame
@@ -12,8 +13,9 @@ from .chamfered_panel import draw_chamfered_panel
 class GiveUpUI:
     """Give-up UI — surrender progress indicator overlay.
 
-        Shows a progress bar that fills as the player holds the surrender key.
-        """
+    Shows a progress bar that fills as the player holds the surrender key.
+    """
+
     def __init__(self, screen_width: int, screen_height: int):
         self._visible = False
         self._progress = 0.0
@@ -83,12 +85,14 @@ class GiveUpUI:
         # Draw chamfered background
         draw_chamfered_panel(
             surface,
-            bar_x, bar_y,
-            self._bar_width, self._bar_height,
+            bar_x,
+            bar_y,
+            self._bar_width,
+            self._bar_height,
             SceneColors.BG_PANEL_LIGHT,
             SceneColors.DANGER_RED,
             None,
-            4
+            4,
         )
 
         progress_width = int(self._bar_width * self._progress)
@@ -96,12 +100,14 @@ class GiveUpUI:
             # Draw chamfered progress fill
             draw_chamfered_panel(
                 surface,
-                bar_x + 2, bar_y + 2,
-                progress_width - 4, self._bar_height - 4,
+                bar_x + 2,
+                bar_y + 2,
+                progress_width - 4,
+                self._bar_height - 4,
                 SceneColors.DANGER_RED,
                 SceneColors.DANGER_RED,
                 None,
-                4
+                4,
             )
 
     def _render_text(self, surface: pygame.Surface, center_x: int, y: int, alpha: int) -> None:
@@ -116,26 +122,29 @@ class GiveUpUI:
 
         bg_surface = pygame.Surface((self._bar_width, self._bar_height), pygame.SRCALPHA)
         pygame.draw.rect(
-            bg_surface, (*self._bg_color, 200),
+            bg_surface,
+            (*self._bg_color, 200),
             (0, 0, self._bar_width, self._bar_height),
-            border_radius=self._corner_radius
+            border_radius=self._corner_radius,
         )
         surface.blit(bg_surface, (bar_x, bar_y))
 
         pygame.draw.rect(
-            surface, (*self._border_color, alpha),
+            surface,
+            (*self._border_color, alpha),
             (bar_x, bar_y, self._bar_width, self._bar_height),
             self._border_width,
-            border_radius=self._corner_radius
+            border_radius=self._corner_radius,
         )
 
         progress_width = int(self._bar_width * self._progress)
         if progress_width > 0:
             progress_surface = pygame.Surface((progress_width, self._bar_height), pygame.SRCALPHA)
             pygame.draw.rect(
-                progress_surface, (*self._progress_color, 220),
+                progress_surface,
+                (*self._progress_color, 220),
                 (0, 0, progress_width, self._bar_height),
-                border_radius=self._corner_radius
+                border_radius=self._corner_radius,
             )
             surface.blit(progress_surface, (bar_x, bar_y))
 

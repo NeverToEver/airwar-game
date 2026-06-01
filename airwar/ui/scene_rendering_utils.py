@@ -4,8 +4,6 @@ Consolidates duplicated rendering code across death_scene.py, pause_scene.py,
 and exit_confirm_scene.py into a single utility class.
 """
 
-from typing import List, Optional, Tuple
-
 import pygame
 
 from airwar.config.design_tokens import SceneColors
@@ -22,13 +20,13 @@ def draw_centered_option_box(
     is_selected: bool,
     box_width: int,
     box_height: int,
-    selected_bg_color: Tuple[int, int, int],
-    selected_border_color: Tuple[int, int, int],
-    unselected_bg_color: Tuple[int, int, int],
-    unselected_border_color: Tuple[int, int, int],
-    selected_glow_color: Tuple[int, int, int],
-    selected_text_color: Tuple[int, int, int],
-    unselected_text_color: Tuple[int, int, int],
+    selected_bg_color: tuple[int, int, int],
+    selected_border_color: tuple[int, int, int],
+    unselected_bg_color: tuple[int, int, int],
+    unselected_border_color: tuple[int, int, int],
+    selected_glow_color: tuple[int, int, int],
+    selected_text_color: tuple[int, int, int],
+    unselected_text_color: tuple[int, int, int],
     glow_layers: int = 3,
     glow_alpha_divisor: int = 50,
     selected_border_width: int = 3,
@@ -42,16 +40,12 @@ def draw_centered_option_box(
     arrow = ">> " if is_selected else "   "
     display_text = f"{arrow}{text}"
     box_width = adaptive_box_width(font, display_text, box_width, width)
-    box_rect = pygame.Rect(
-        center_x - box_width // 2, y - box_height // 2, box_width, box_height
-    )
+    box_rect = pygame.Rect(center_x - box_width // 2, y - box_height // 2, box_width, box_height)
 
     if is_selected:
         for i in range(glow_layers, 0, -1):
             glow_rect = box_rect.inflate(i * 4, i * 4)
-            glow_surf = pygame.Surface(
-                (glow_rect.width, glow_rect.height), pygame.SRCALPHA
-            )
+            glow_surf = pygame.Surface((glow_rect.width, glow_rect.height), pygame.SRCALPHA)
             pygame.draw.rect(
                 glow_surf,
                 (*selected_glow_color, glow_alpha_divisor // i),
@@ -121,7 +115,7 @@ def fit_string_to_width(
 def fit_text_to_width(
     font: pygame.font.Font,
     text: str,
-    color: Tuple[int, int, int],
+    color: tuple[int, int, int],
     max_width: int,
     ellipsis: str = "...",
 ) -> pygame.Surface:
@@ -137,8 +131,8 @@ def wrap_text(
     text: str,
     font: pygame.font.Font,
     max_width: int,
-    max_lines: Optional[int] = None,
-) -> List[str]:
+    max_lines: int | None = None,
+) -> list[str]:
     """Wrap text by measured width, handling both spaced and CJK text."""
     if max_width <= 0:
         return [""]
@@ -147,7 +141,7 @@ def wrap_text(
 
     tokens = text.split(" ") if " " in text else list(text)
     use_spaces = " " in text
-    lines: List[str] = []
+    lines: list[str] = []
     current = ""
 
     for token in tokens:
@@ -201,9 +195,9 @@ class SceneRenderingUtils:
         surface: pygame.Surface,
         text: str,
         font: pygame.font.Font,
-        pos: Tuple[int, int],
-        color: Tuple[int, int, int],
-        glow_color: Tuple[int, int, int],
+        pos: tuple[int, int],
+        color: tuple[int, int, int],
+        glow_color: tuple[int, int, int],
         glow_radius: int = 5,
         glow_offset: int = 1,
         alpha_divisor: int = 100,
@@ -240,14 +234,14 @@ class SceneRenderingUtils:
         is_selected: bool,
         box_width: int,
         box_height: int,
-        option_rects: List[pygame.Rect],
-        selected_bg_color: Tuple[int, int, int],
-        selected_border_color: Tuple[int, int, int],
-        unselected_bg_color: Tuple[int, int, int],
-        unselected_border_color: Tuple[int, int, int],
-        selected_glow_color: Tuple[int, int, int],
-        selected_text_color: Tuple[int, int, int],
-        unselected_text_color: Tuple[int, int, int],
+        option_rects: list[pygame.Rect],
+        selected_bg_color: tuple[int, int, int],
+        selected_border_color: tuple[int, int, int],
+        unselected_bg_color: tuple[int, int, int],
+        unselected_border_color: tuple[int, int, int],
+        selected_glow_color: tuple[int, int, int],
+        selected_text_color: tuple[int, int, int],
+        unselected_text_color: tuple[int, int, int],
         glow_layers: int = 3,
         glow_alpha_divisor: int = 50,
         selected_border_width: int = 3,
@@ -306,7 +300,7 @@ class SceneRenderingUtils:
         surface: pygame.Surface,
         center_x: int,
         top_y: int,
-        color: Tuple[int, int, int],
+        color: tuple[int, int, int],
         count: int = 3,
         start_offset_y: int = -100,
         line_increment_y: int = 20,
@@ -339,7 +333,7 @@ def draw_themed_title(
     surface: pygame.Surface,
     text: str,
     font: pygame.font.Font,
-    pos: Tuple[int, int],
+    pos: tuple[int, int],
 ) -> None:
     """Draw title with military-style layered amber glow effect.
 
@@ -361,9 +355,7 @@ def draw_themed_title(
         for offset_x in range(-blur, blur + 1, 2):
             for offset_y in range(-blur, blur + 1, 2):
                 if offset_x * offset_x + offset_y * offset_y <= blur * blur:
-                    glow_rect = glow_surf.get_rect(
-                        center=(pos[0] + offset_x, pos[1] + offset_y)
-                    )
+                    glow_rect = glow_surf.get_rect(center=(pos[0] + offset_x, pos[1] + offset_y))
                     surface.blit(glow_surf, glow_rect)
 
     title = font.render(text, True, SceneColors.GOLD_PRIMARY)
@@ -445,7 +437,7 @@ def draw_themed_option_box(
     y: int,
     is_selected: bool,
     option_font: pygame.font.Font,
-    option_rects: List[pygame.Rect],
+    option_rects: list[pygame.Rect],
     base_box_width: int,
     base_box_height: int,
     scale: float = 1.0,
@@ -466,7 +458,7 @@ def draw_themed_option_box(
         base_box_height: Base height of the option box (before scaling).
         scale: Responsive scale factor.
     """
-    width, height = surface.get_size()
+    width, _height = surface.get_size()
     center_x = width // 2
 
     box_width = ResponsiveHelper.scale(base_box_width, scale)
@@ -480,9 +472,7 @@ def draw_themed_option_box(
         width,
         horizontal_padding=96,
     )
-    box_rect = pygame.Rect(
-        center_x - box_width // 2, y - box_height // 2, box_width, box_height
-    )
+    box_rect = pygame.Rect(center_x - box_width // 2, y - box_height // 2, box_width, box_height)
     option_rects.append(box_rect)
 
     if is_selected:

@@ -1,4 +1,5 @@
 """Persistence manager — JSON save/load for full game state."""
+
 import hashlib
 import json
 import logging
@@ -6,7 +7,6 @@ import os
 import re
 import shutil
 import time
-from typing import Optional
 
 from airwar.utils.platform_paths import user_data_dir
 
@@ -23,17 +23,18 @@ _LEGACY_SAVE_DIRECTORY = os.path.join(_AIRWAR_DIR, "data")
 class PersistenceManager(IPersistenceManager):
     """Persistence manager — JSON save/load for full game state.
 
-        Serializes and deserializes game state including player stats, buffs,
-        and difficulty progression to/from JSON files.
-        """
+    Serializes and deserializes game state including player stats, buffs,
+    and difficulty progression to/from JSON files.
+    """
+
     DEFAULT_SAVE_FILE_NAME = "user_docking_save.json"
     DEFAULT_SAVE_DIRECTORY = _DEFAULT_SAVE_DIRECTORY
 
     def __init__(
         self,
-        save_dir: Optional[str] = None,
-        save_file: Optional[str] = None,
-        username: Optional[str] = None,
+        save_dir: str | None = None,
+        save_file: str | None = None,
+        username: str | None = None,
     ):
         self.SAVE_DIRECTORY = save_dir or self.DEFAULT_SAVE_DIRECTORY
         self.SAVE_FILE_NAME = save_file or self._save_file_for_user(username)
@@ -56,7 +57,7 @@ class PersistenceManager(IPersistenceManager):
         shutil.copy2(legacy_path, self._save_path)
 
     @classmethod
-    def _save_file_for_user(cls, username: Optional[str]) -> str:
+    def _save_file_for_user(cls, username: str | None) -> str:
         if not username:
             return cls.DEFAULT_SAVE_FILE_NAME
         safe_username = re.sub(r"[^A-Za-z0-9_.-]+", "_", username.strip())
@@ -71,7 +72,7 @@ class PersistenceManager(IPersistenceManager):
             os.makedirs(self.SAVE_DIRECTORY, exist_ok=True)
 
             save_dict = data.to_dict()
-            save_dict['timestamp'] = time.time()
+            save_dict["timestamp"] = time.time()
             save_dict = normalize_save_data(save_dict)
 
             self._validate_save_dict(save_dict)
@@ -83,7 +84,7 @@ class PersistenceManager(IPersistenceManager):
                     os.remove(tmp_path)
                 except OSError as e:
                     logger.error(f"Failed to remove stale temp file {tmp_path}: {e}")
-            with open(tmp_path, 'w', encoding='utf-8') as f:
+            with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump(save_dict, f, indent=2, ensure_ascii=False)
             os.replace(tmp_path, self._save_path)
 
@@ -105,23 +106,23 @@ class PersistenceManager(IPersistenceManager):
 
     def _validate_save_dict(self, data: dict) -> None:
         data = normalize_save_data(data)
-        required_keys = {'version', 'score', 'username'}
+        required_keys = {"version", "score", "username"}
         type_checks = {
-            'version': int,
-            'score': int,
-            'cycle_count': int,
-            'kill_count': int,
-            'boss_kill_count': int,
-            'unlocked_buffs': list,
-            'buff_levels': dict,
-            'earned_buff_levels': dict,
-            'talent_loadout': dict,
-            'player_health': int,
-            'player_max_health': int,
-            'difficulty': str,
-            'timestamp': (int, float),
-            'is_in_mothership': bool,
-            'username': str,
+            "version": int,
+            "score": int,
+            "cycle_count": int,
+            "kill_count": int,
+            "boss_kill_count": int,
+            "unlocked_buffs": list,
+            "buff_levels": dict,
+            "earned_buff_levels": dict,
+            "talent_loadout": dict,
+            "player_health": int,
+            "player_max_health": int,
+            "difficulty": str,
+            "timestamp": (int, float),
+            "is_in_mothership": bool,
+            "username": str,
         }
         for key in required_keys:
             if key not in data:
@@ -129,37 +130,29 @@ class PersistenceManager(IPersistenceManager):
         for key, expected_type in type_checks.items():
             if key in data and not isinstance(data[key], expected_type):
                 raise SaveDataCorruptedError(
-                    f"Field '{key}' has wrong type: expected {expected_type.__name__}, "
-                    f"got {type(data[key]).__name__}"
+                    f"Field '{key}' has wrong type: expected {expected_type.__name__}, got {type(data[key]).__name__}"
                 )
 
         # Semantic validation
-        if 'player_max_health' in data and data['player_max_health'] <= 0:
-            raise SaveDataCorruptedError(
-                f"player_max_health must be > 0, got {data['player_max_health']}"
-            )
-        if 'player_health' in data and 'player_max_health' in data:
-            if not (1 <= data['player_health'] <= data['player_max_health']):
+        if "player_max_health" in data and data["player_max_health"] <= 0:
+            raise SaveDataCorruptedError(f"player_max_health must be > 0, got {data['player_max_health']}")
+        if "player_health" in data and "player_max_health" in data:
+            if not (1 <= data["player_health"] <= data["player_max_health"]):
                 raise SaveDataCorruptedError(
                     f"player_health must be between 1 and player_max_health "
                     f"({data['player_max_health']}), got {data['player_health']}"
                 )
-        for key in ('score', 'kill_count', 'boss_kill_count', 'cycle_count'):
+        for key in ("score", "kill_count", "boss_kill_count", "cycle_count"):
             if key in data and data[key] < 0:
-                raise SaveDataCorruptedError(
-                    f"{key} must be >= 0, got {data[key]}"
-                )
-        if 'difficulty' in data and data['difficulty'] not in ('easy', 'medium', 'hard'):
+                raise SaveDataCorruptedError(f"{key} must be >= 0, got {data[key]}")
+        if "difficulty" in data and data["difficulty"] not in ("easy", "medium", "hard"):
             raise SaveDataCorruptedError(
-                f"difficulty must be one of 'easy', 'medium', 'hard', "
-                f"got '{data['difficulty']}'"
+                f"difficulty must be one of 'easy', 'medium', 'hard', got '{data['difficulty']}'"
             )
-        if 'version' in data and data['version'] < 1:
-            raise SaveDataCorruptedError(
-                f"version must be >= 1, got {data['version']}"
-            )
+        if "version" in data and data["version"] < 1:
+            raise SaveDataCorruptedError(f"version must be >= 1, got {data['version']}")
 
-    def load_game(self) -> Optional[GameSaveData]:
+    def load_game(self) -> GameSaveData | None:
         if not self.has_saved_game():
             logger.debug("No saved game found")
             return None
@@ -167,7 +160,7 @@ class PersistenceManager(IPersistenceManager):
         logger.info(f"Loading game from {self._save_path}")
 
         try:
-            with open(self._save_path, 'r', encoding='utf-8') as f:
+            with open(self._save_path, encoding="utf-8") as f:
                 data = json.load(f)
 
             save_data = GameSaveData.from_dict(data)

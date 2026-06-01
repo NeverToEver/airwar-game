@@ -6,6 +6,7 @@ Priority chain:
 3. System-installed CJK font via pygame.font.match_font()
 4. pygame default font (freesansbold — basic CJK support)
 """
+
 import os
 from functools import lru_cache
 
@@ -21,13 +22,23 @@ _BUNDLED_CANDIDATES = [
 
 # System CJK font names to try via match_font
 _SYSTEM_CJK_NAMES = [
-    "microsoftyahei", "msyh", "Microsoft YaHei",
-    "notosanscjksc", "notosanscjk", "Noto Sans CJK SC",
-    "wqy", "wenquanyi", "WenQuanYi Micro Hei",
-    "simhei", "SimHei",
-    "simsun", "SimSun",
-    "stxihei", "STXihei",
-    "sourcehansanssc", "Source Han Sans SC",
+    "microsoftyahei",
+    "msyh",
+    "Microsoft YaHei",
+    "notosanscjksc",
+    "notosanscjk",
+    "Noto Sans CJK SC",
+    "wqy",
+    "wenquanyi",
+    "WenQuanYi Micro Hei",
+    "simhei",
+    "SimHei",
+    "simsun",
+    "SimSun",
+    "stxihei",
+    "STXihei",
+    "sourcehansanssc",
+    "Source Han Sans SC",
 ]
 
 
@@ -71,12 +82,7 @@ def _get_cjk_font_path() -> str | None:
     """Lazy-resolve the best available CJK font path."""
     global _CJK_FONT_PATH
     if _CJK_FONT_PATH is None:
-        _CJK_FONT_PATH = (
-            _find_bundled_font()
-            or _find_wsl_font()
-            or _find_system_cjk_font()
-            or None
-        )
+        _CJK_FONT_PATH = _find_bundled_font() or _find_wsl_font() or _find_system_cjk_font() or None
     return _CJK_FONT_PATH
 
 

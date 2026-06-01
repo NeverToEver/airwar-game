@@ -1,4 +1,5 @@
 """Scaled logical viewport for fixed-resolution game rendering."""
+
 from __future__ import annotations
 
 import pygame

@@ -1,4 +1,5 @@
 """Death screen — score summary and continue/quit options."""
+
 import math
 
 import pygame
@@ -18,9 +19,10 @@ from .scene import Scene
 class DeathScene(Scene, MouseSelectableMixin):
     """Death scene — post-death score summary and continue options.
 
-        Displays final score, kills, and boss kills. Offers options to
-        continue (return to menu) or quit.
-        """
+    Displays final score, kills, and boss kills. Offers options to
+    continue (return to menu) or quit.
+    """
+
     def __init__(self):
         Scene.__init__(self)
         MouseSelectableMixin.__init__(self)
@@ -28,10 +30,10 @@ class DeathScene(Scene, MouseSelectableMixin):
     def enter(self, **kwargs) -> None:
         self.running = True
         self.result = None
-        self.score = kwargs.get('score', 0)
-        self.kills = kwargs.get('kills', 0)
-        self.boss_kills = kwargs.get('boss_kills', 0)
-        self.username = kwargs.get('username', 'Player')
+        self.score = kwargs.get("score", 0)
+        self.kills = kwargs.get("kills", 0)
+        self.boss_kills = kwargs.get("boss_kills", 0)
+        self.username = kwargs.get("username", "Player")
         self.animation_time = 0
         self.glow_offset = 0
         self.ripples = []
@@ -51,30 +53,30 @@ class DeathScene(Scene, MouseSelectableMixin):
         self.hint_font = get_cjk_font(tokens.typography.HUD_SIZE)
         self.desc_font = get_cjk_font(tokens.typography.TINY_SIZE)
 
-        self.options = ['返回主菜单', '退出游戏']
+        self.options = ["返回主菜单", "退出游戏"]
         self.selected_index = 0
 
         self._background_renderer = MenuBackground()
         self._particle_system = ParticleSystem()
         self._effects_renderer = EffectsRenderer()
-        self._particle_system.reset(tokens.components.PARTICLE_PARTICLE_ALT_COUNT, 'particle')
+        self._particle_system.reset(tokens.components.PARTICLE_PARTICLE_ALT_COUNT, "particle")
 
         self._init_colors()
 
     def _init_colors(self) -> None:
         colors = self._tokens.colors
         self.colors = {
-            'bg': colors.BACKGROUND_PRIMARY,
-            'bg_gradient': colors.BACKGROUND_SECONDARY,
-            'title': colors.HEALTH_DANGER,
-            'title_glow': colors.HEALTH_DANGER,
-            'score': colors.TEXT_PRIMARY,
-            'kills': colors.PROGRESS_COLOR,
-            'selected': colors.BUTTON_SELECTED_PRIMARY,
-            'selected_glow': colors.BUTTON_SELECTED_GLOW,
-            'unselected': colors.TEXT_MUTED,
-            'hint': colors.TEXT_HINT,
-            'particle': colors.PARTICLE_ALT,
+            "bg": colors.BACKGROUND_PRIMARY,
+            "bg_gradient": colors.BACKGROUND_SECONDARY,
+            "title": colors.HEALTH_DANGER,
+            "title_glow": colors.HEALTH_DANGER,
+            "score": colors.TEXT_PRIMARY,
+            "kills": colors.PROGRESS_COLOR,
+            "selected": colors.BUTTON_SELECTED_PRIMARY,
+            "selected_glow": colors.BUTTON_SELECTED_GLOW,
+            "unselected": colors.TEXT_MUTED,
+            "hint": colors.TEXT_HINT,
+            "particle": colors.PARTICLE_ALT,
         }
 
     def exit(self) -> None:
@@ -97,9 +99,9 @@ class DeathScene(Scene, MouseSelectableMixin):
         self.running = False
         effective = self.get_effective_selected_index(self.selected_index)
         if effective == 0:
-            self.result = 'return_to_menu'
+            self.result = "return_to_menu"
         elif effective == 1:
-            self.result = 'quit'
+            self.result = "quit"
 
     def update(self, *args, **kwargs) -> None:
         self.animation_time += 1
@@ -112,57 +114,66 @@ class DeathScene(Scene, MouseSelectableMixin):
         self._particle_system.update(direction=-1)
 
         for ripple in self.ripples[:]:
-            ripple['radius'] += 1.5
-            ripple['alpha'] -= 3
-            if ripple['alpha'] <= 0:
+            ripple["radius"] += 1.5
+            ripple["alpha"] -= 3
+            if ripple["alpha"] <= 0:
                 self.ripples.remove(ripple)
 
     def _draw_ripples(self, surface: pygame.Surface) -> None:
         colors = self._tokens.colors
         for ripple in self.ripples:
-            ripple_surf = pygame.Surface((int(ripple['radius'] * 2), int(ripple['radius'] * 2)), pygame.SRCALPHA)
-            pygame.draw.circle(ripple_surf, (*colors.HEALTH_DANGER, ripple['alpha']),
-                             (int(ripple['radius']), int(ripple['radius'])),
-                             int(ripple['radius']), 2)
-            surface.blit(ripple_surf,
-                        (ripple['x'] - int(ripple['radius']),
-                         ripple['y'] - int(ripple['radius'])))
+            ripple_surf = pygame.Surface((int(ripple["radius"] * 2), int(ripple["radius"] * 2)), pygame.SRCALPHA)
+            pygame.draw.circle(
+                ripple_surf,
+                (*colors.HEALTH_DANGER, ripple["alpha"]),
+                (int(ripple["radius"]), int(ripple["radius"])),
+                int(ripple["radius"]),
+                2,
+            )
+            surface.blit(ripple_surf, (ripple["x"] - int(ripple["radius"]), ripple["y"] - int(ripple["radius"])))
 
     def render(self, surface: pygame.Surface) -> None:
         self._background_renderer.render(surface, self.colors)
-        self._particle_system.render(surface, self.colors['particle'])
+        self._particle_system.render(surface, self.colors["particle"])
         self._draw_ripples(surface)
 
         width, height = surface.get_size()
         scale = ResponsiveHelper.get_scale_factor(width, height)
 
         title_y = height // 3 + self.glow_offset * 0.3
-        SceneRenderingUtils.draw_glow_text(surface, "游戏结束", self.title_font,
-            (width // 2, title_y), self.colors['title'], self.colors['title_glow'],
-            glow_radius=5, glow_offset=2, alpha_divisor=80)
+        SceneRenderingUtils.draw_glow_text(
+            surface,
+            "游戏结束",
+            self.title_font,
+            (width // 2, title_y),
+            self.colors["title"],
+            self.colors["title_glow"],
+            glow_radius=5,
+            glow_offset=2,
+            alpha_divisor=80,
+        )
 
         SceneRenderingUtils.draw_decorative_lines(
-            surface, width // 2, height // 3,
-            self.colors['particle'],
-            start_offset_y=-80, line_increment_y=15,
-            line_width=250, alpha_base=25, alpha_decrement=6,
+            surface,
+            width // 2,
+            height // 3,
+            self.colors["particle"],
+            start_offset_y=-80,
+            line_increment_y=15,
+            line_width=250,
+            alpha_base=25,
+            alpha_decrement=6,
         )
 
-        score_text = self.score_font.render(
-            f"分数: {self.score}", True, self.colors['score']
-        )
+        score_text = self.score_font.render(f"分数: {self.score}", True, self.colors["score"])
         score_y = height // 2 - ResponsiveHelper.scale(45, scale)
         surface.blit(score_text, score_text.get_rect(center=(width // 2, score_y)))
 
-        kills_text = self.score_font.render(
-            f"击杀: {self.kills}", True, self.colors['kills']
-        )
+        kills_text = self.score_font.render(f"击杀: {self.kills}", True, self.colors["kills"])
         kills_y = height // 2 + ResponsiveHelper.scale(5, scale)
         surface.blit(kills_text, kills_text.get_rect(center=(width // 2, kills_y)))
 
-        boss_text = self.desc_font.render(
-            f"BOSS击杀: {self.boss_kills}", True, self.colors['hint']
-        )
+        boss_text = self.desc_font.render(f"BOSS击杀: {self.boss_kills}", True, self.colors["hint"])
         boss_y = height // 2 + ResponsiveHelper.scale(40, scale)
         surface.blit(boss_text, boss_text.get_rect(center=(width // 2, boss_y)))
 
@@ -176,23 +187,29 @@ class DeathScene(Scene, MouseSelectableMixin):
         box_height = ResponsiveHelper.scale(self.base_box_height, scale)
         for i, option in enumerate(self.options):
             SceneRenderingUtils.draw_option_box(
-                surface, option, self.option_font,
-                start_y + i * option_spacing, i == effective_index,
-                box_width, box_height, self._option_rects,
+                surface,
+                option,
+                self.option_font,
+                start_y + i * option_spacing,
+                i == effective_index,
+                box_width,
+                box_height,
+                self._option_rects,
                 selected_bg_color=colors.BUTTON_SELECTED_BG,
-                selected_border_color=self.colors['selected'],
+                selected_border_color=self.colors["selected"],
                 unselected_bg_color=colors.BUTTON_UNSELECTED_BG,
-                unselected_border_color=self.colors['unselected'],
-                selected_glow_color=self.colors['selected_glow'],
-                selected_text_color=self.colors['selected'],
-                unselected_text_color=self.colors['unselected'],
-                glow_layers=4, glow_alpha_divisor=40,
+                unselected_border_color=self.colors["unselected"],
+                selected_glow_color=self.colors["selected_glow"],
+                selected_text_color=self.colors["selected"],
+                unselected_text_color=self.colors["unselected"],
+                glow_layers=4,
+                glow_alpha_divisor=40,
             )
 
         blink_interval = self._tokens.animation.BLINK_INTERVAL
         blink = (self.animation_time // blink_interval) % 2 == 0
         hint_text = "点击或回车确认" if blink else "               "
-        hint = self.hint_font.render(hint_text, True, self.colors['hint'])
+        hint = self.hint_font.render(hint_text, True, self.colors["hint"])
         surface.blit(hint, hint.get_rect(center=(width // 2, height - ResponsiveHelper.scale(100, scale))))
 
         controls = self.desc_font.render("点击或 W/S 选择", True, SceneColors.DESC_TEXT)

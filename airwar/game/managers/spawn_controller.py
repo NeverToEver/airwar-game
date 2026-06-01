@@ -1,6 +1,7 @@
 """Enemy and boss spawning controller with wave management."""
+
 import random
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 
 from airwar.config import BASE_ENEMY_PARAMS, DIFFICULTY_SETTINGS, get_screen_width
 from airwar.entities import Boss, BossData, Bullet, Enemy, EnemySpawner, EnemyState
@@ -15,14 +16,15 @@ from ..spawners.enemy_bullet_spawner import EnemyBulletSpawner
 class SpawnController:
     """Enemy and boss spawn controller with wave-based spawning.
 
-        Manages enemy wave lifecycle and boss spawn timing. Uses EnemySpawner
-        for enemy creation and tracks boss state for escape/cleanup logic.
+    Manages enemy wave lifecycle and boss spawn timing. Uses EnemySpawner
+    for enemy creation and tracks boss state for escape/cleanup logic.
 
-        Attributes:
-            enemies: List of active Enemy entities.
-            enemy_bullets: List of active enemy bullet entities.
-            boss: Current Boss instance or None.
-        """
+    Attributes:
+        enemies: List of active Enemy entities.
+        enemy_bullets: List of active enemy bullet entities.
+        boss: Current Boss instance or None.
+    """
+
     BOSS_SPAWN_INTERVAL = 1800
     ESCAPE_PENALTY_MULT = 1.5
     ENEMY_EXIT_X_OFFSETS = [-300, 300, 0, -150, 150]
@@ -45,26 +47,25 @@ class SpawnController:
     BOSS_BASE_FIRE_RATE = 45
     BOSS_FIRE_RATE_DECREMENT = 2
     BOSS_SPAWN_Y = -100
+
     def __init__(self, settings: dict):
         self.enemy_spawner = EnemySpawner()
-        self._base_enemy_health = settings['enemy_health']
+        self._base_enemy_health = settings["enemy_health"]
         self.enemy_spawner.set_params(
-            health=settings['enemy_health'],
-            speed=settings['enemy_speed'],
-            spawn_rate=settings['spawn_rate']
+            health=settings["enemy_health"], speed=settings["enemy_speed"], spawn_rate=settings["spawn_rate"]
         )
-        self.enemy_spawner.set_spread_enemy_cap(settings.get('spread_enemy_cap', 2))
+        self.enemy_spawner.set_spread_enemy_cap(settings.get("spread_enemy_cap", 2))
 
-        self.enemies: List[Enemy] = []
-        self.enemy_bullets: List[Bullet] = []
-        self.boss: Optional[Boss] = None
+        self.enemies: list[Enemy] = []
+        self.enemy_bullets: list[Bullet] = []
+        self.boss: Boss | None = None
         self.boss_spawn_timer = 0
-        self.boss_spawn_interval = settings.get('boss_spawn_interval', self.BOSS_SPAWN_INTERVAL)
+        self.boss_spawn_interval = settings.get("boss_spawn_interval", self.BOSS_SPAWN_INTERVAL)
         self._base_boss_spawn_interval = self.boss_spawn_interval
-        self._escape_penalty_multiplier = settings.get('escape_penalty_multiplier', self.ESCAPE_PENALTY_MULT)
+        self._escape_penalty_multiplier = settings.get("escape_penalty_multiplier", self.ESCAPE_PENALTY_MULT)
         self.is_boss_killed = False
-        self._bullet_spawner: Optional[IBulletSpawner] = None
-        self._difficulty_manager: Optional['DifficultyManager'] = None
+        self._bullet_spawner: IBulletSpawner | None = None
+        self._difficulty_manager: DifficultyManager | None = None
 
     def set_bullet_spawner(self, spawner: IBulletSpawner) -> None:
         self._bullet_spawner = spawner
@@ -72,16 +73,14 @@ class SpawnController:
 
     def set_difficulty(self, difficulty: str) -> None:
         """Re-initialize spawn params from difficulty settings on restore."""
-        settings = DIFFICULTY_SETTINGS.get(difficulty, DIFFICULTY_SETTINGS['medium'])
-        self._base_enemy_health = settings['enemy_health']
+        settings = DIFFICULTY_SETTINGS.get(difficulty, DIFFICULTY_SETTINGS["medium"])
+        self._base_enemy_health = settings["enemy_health"]
         self.enemy_spawner.set_params(
-            health=settings['enemy_health'],
-            speed=settings['enemy_speed'],
-            spawn_rate=settings['spawn_rate']
+            health=settings["enemy_health"], speed=settings["enemy_speed"], spawn_rate=settings["spawn_rate"]
         )
-        self.enemy_spawner.set_spread_enemy_cap(settings.get('spread_enemy_cap', 2))
+        self.enemy_spawner.set_spread_enemy_cap(settings.get("spread_enemy_cap", 2))
 
-    def set_difficulty_manager(self, manager: 'DifficultyManager') -> None:
+    def set_difficulty_manager(self, manager: "DifficultyManager") -> None:
         self._difficulty_manager = manager
 
     def get_current_params(self) -> dict:
@@ -89,20 +88,20 @@ class SpawnController:
             return self._difficulty_manager.get_current_params()
 
         return {
-            'speed': BASE_ENEMY_PARAMS['speed'],
-            'fire_rate': BASE_ENEMY_PARAMS['fire_rate'],
-            'aggression': BASE_ENEMY_PARAMS['aggression'],
-            'spawn_rate': BASE_ENEMY_PARAMS['spawn_rate'],
-            'multiplier': 1.0,
-            'boss_kills': 0,
-            'complexity': 1,
+            "speed": BASE_ENEMY_PARAMS["speed"],
+            "fire_rate": BASE_ENEMY_PARAMS["fire_rate"],
+            "aggression": BASE_ENEMY_PARAMS["aggression"],
+            "spawn_rate": BASE_ENEMY_PARAMS["spawn_rate"],
+            "multiplier": 1.0,
+            "boss_kills": 0,
+            "complexity": 1,
         }
 
     def init_bullet_system(self) -> None:
         bullet_spawner = EnemyBulletSpawner(self.enemy_bullets)
         self.set_bullet_spawner(bullet_spawner)
 
-    def update(self, score: int, slow_factor: float, player_pos: tuple = None) -> bool:
+    def update(self, score: int, slow_factor: float, player_pos: tuple | None = None) -> bool:
         # Don't spawn new enemies when boss is active
         if self.boss is None:
             self.enemy_spawner.update(self.enemies, slow_factor, player_pos)
@@ -119,14 +118,11 @@ class SpawnController:
             return
         self.enemy_spawner.health = target_health
 
-    def spawn_boss(self, boss_kill_count: int, bullet_damage: int, player_dps: float = None) -> Boss:
+    def spawn_boss(self, boss_kill_count: int, bullet_damage: int, player_dps: float | None = None) -> Boss:
         # Force all existing enemies to exit when boss appears
         for enemy in self.enemies:
-            if enemy.active and getattr(enemy, '_state', None) == EnemyState.ACTIVE:
-                enemy.begin_exit(
-                    enemy.rect.x + random.choice(self.ENEMY_EXIT_X_OFFSETS),
-                    self.ENEMY_EXIT_END_Y
-                )
+            if enemy.active and getattr(enemy, "_state", None) == EnemyState.ACTIVE:
+                enemy.begin_exit(enemy.rect.x + random.choice(self.ENEMY_EXIT_X_OFFSETS), self.ENEMY_EXIT_END_Y)
 
         screen_width = get_screen_width()
         base_health = self._calculate_boss_health(boss_kill_count)
@@ -141,7 +137,7 @@ class SpawnController:
             height=self.BOSS_SPRITE_HEIGHT,
             fire_rate=self.BOSS_BASE_FIRE_RATE - boss_kill_count * self.BOSS_FIRE_RATE_DECREMENT,
             phase=1,
-            escape_time=escape_time
+            escape_time=escape_time,
         )
 
         boss = Boss(screen_width // 2 - boss_data.width // 2, self.BOSS_SPAWN_Y, boss_data)
@@ -156,7 +152,7 @@ class SpawnController:
         base_health = elite_health * self.BOSS_HEALTH_TO_ELITE_RATIO
         return int(base_health * (1 + boss_kill_count * self.BOSS_HEALTH_SCALING))
 
-    def _calculate_escape_time(self, boss_health: int, bullet_damage: int, player_dps: float = None) -> int:
+    def _calculate_escape_time(self, boss_health: int, bullet_damage: int, player_dps: float | None = None) -> int:
         if boss_health <= 0:
             boss_health = 1
         if bullet_damage <= 0:

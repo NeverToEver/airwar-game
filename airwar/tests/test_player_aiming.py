@@ -12,7 +12,7 @@ from airwar.ui.aim_crosshair import AimCrosshair
 @pytest.fixture(scope="module", autouse=True)
 def _init_pygame():
     pygame.init()
-    yield
+    return
 
 
 def _make_player() -> Player:

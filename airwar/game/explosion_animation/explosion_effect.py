@@ -1,7 +1,7 @@
 """Explosion effect — individual explosion particle and rendering."""
+
 import math
 import random
-from typing import List
 
 import pygame
 
@@ -69,18 +69,8 @@ def _get_flash_surface(radius: int) -> pygame.Surface:
         size = radius * 4 + 2
         surf = pygame.Surface((size, size), pygame.SRCALPHA)
         surf.fill((0, 0, 0, 0))
-        pygame.draw.circle(
-            surf,
-            (255, 188, 96, 180),
-            (radius * 2 + 1, radius * 2 + 1),
-            radius
-        )
-        pygame.draw.circle(
-            surf,
-            (255, 154, 72, 115),
-            (radius * 2 + 1, radius * 2 + 1),
-            int(radius * 0.6)
-        )
+        pygame.draw.circle(surf, (255, 188, 96, 180), (radius * 2 + 1, radius * 2 + 1), radius)
+        pygame.draw.circle(surf, (255, 154, 72, 115), (radius * 2 + 1, radius * 2 + 1), int(radius * 0.6))
         _flash_cache[radius] = surf
     return _flash_cache[radius]
 
@@ -116,10 +106,10 @@ class ExplosionEffect:
     INNER_CORE_ALPHA_BONUS = 22
 
     def __init__(self) -> None:
-        self._particles: List[ExplosionParticle] = []
-        self._sparks: List[ExplosionParticle] = []
-        self._debris: List[ExplosionParticle] = []
-        self._particle_pool: List[ExplosionParticle] = []  # Pool for reusing particles
+        self._particles: list[ExplosionParticle] = []
+        self._sparks: list[ExplosionParticle] = []
+        self._debris: list[ExplosionParticle] = []
+        self._particle_pool: list[ExplosionParticle] = []  # Pool for reusing particles
         self._active = False
         self._x = 0.0
         self._y = 0.0
@@ -154,9 +144,17 @@ class ExplosionEffect:
         self._central_glow = 1.0
         self._generate_particles()
 
-    def _acquire_particle(self, x: float, y: float, vx: float, vy: float,
-                          life: int, max_life: int, size: float,
-                          particle_type: str = "main") -> ExplosionParticle:
+    def _acquire_particle(
+        self,
+        x: float,
+        y: float,
+        vx: float,
+        vy: float,
+        life: int,
+        max_life: int,
+        size: float,
+        particle_type: str = "main",
+    ) -> ExplosionParticle:
         """Acquire a particle, reusing from pool if available"""
         if self._particle_pool:
             p = self._particle_pool.pop()
@@ -169,13 +167,15 @@ class ExplosionEffect:
             p.size = size
             p.particle_type = particle_type
             return p
-        return ExplosionParticle(x=x, y=y, vx=vx, vy=vy, life=life,
-                                 max_life=max_life, size=size, particle_type=particle_type)
+        return ExplosionParticle(
+            x=x, y=y, vx=vx, vy=vy, life=life, max_life=max_life, size=size, particle_type=particle_type
+        )
 
     def _generate_particles(self) -> None:
         """Generate explosion particles using Rust."""
         particle_data = generate_explosion_particles(
-            self._x, self._y,
+            self._x,
+            self._y,
             self.PARTICLE_COUNT,
             self.PARTICLE_LIFE_MIN,
             self.PARTICLE_LIFE_MAX,
@@ -192,24 +192,22 @@ class ExplosionEffect:
             speed = random.uniform(self.SPARK_SPEED_MIN, self.SPARK_SPEED_MAX)
             life = random.randint(self.SPARK_LIFE_MIN, self.SPARK_LIFE_MAX)
             size = random.uniform(self.SPARK_SIZE_MIN, self.SPARK_SIZE_MAX)
-            self._sparks.append(self._acquire_particle(
-                self._x, self._y,
-                math.cos(angle) * speed,
-                math.sin(angle) * speed,
-                life, life, size, "spark"
-            ))
+            self._sparks.append(
+                self._acquire_particle(
+                    self._x, self._y, math.cos(angle) * speed, math.sin(angle) * speed, life, life, size, "spark"
+                )
+            )
 
         for _ in range(self.DEBRIS_COUNT):
             angle = random.uniform(0, 2 * math.pi)
             speed = random.uniform(self.DEBRIS_SPEED_MIN, self.DEBRIS_SPEED_MAX)
             life = random.randint(self.DEBRIS_LIFE_MIN, self.DEBRIS_LIFE_MAX)
             size = random.uniform(self.DEBRIS_SIZE_MIN, self.DEBRIS_SIZE_MAX)
-            self._debris.append(self._acquire_particle(
-                self._x, self._y,
-                math.cos(angle) * speed,
-                math.sin(angle) * speed,
-                life, life, size, "debris"
-            ))
+            self._debris.append(
+                self._acquire_particle(
+                    self._x, self._y, math.cos(angle) * speed, math.sin(angle) * speed, life, life, size, "debris"
+                )
+            )
 
     def update(self, dt: float = 1.0) -> bool:
         """Update explosion state
@@ -224,21 +222,14 @@ class ExplosionEffect:
             return False
 
         max_lives = [p.max_life for p in self._particles]
-        particle_data = [
-            (p.x, p.y, p.vx, p.vy, p.life, p.max_life, p.size)
-            for p in self._particles
-        ]
+        particle_data = [(p.x, p.y, p.vx, p.vy, p.life, p.max_life, p.size) for p in self._particles]
         results = batch_update_particles(particle_data, dt)
         original_particles = self._particles
         self._particles = []
-        for i, (result, original_max_life) in enumerate(
-            zip(results, max_lives, strict=False)
-        ):
+        for i, (result, original_max_life) in enumerate(zip(results, max_lives, strict=False)):
             x, y, vx, vy, life, size, is_alive = result
             if is_alive:
-                self._particles.append(self._acquire_particle(
-                    x, y, vx, vy, life, original_max_life, size
-                ))
+                self._particles.append(self._acquire_particle(x, y, vx, vy, life, original_max_life, size))
             else:
                 self._particle_pool.append(original_particles[i])
 
@@ -310,10 +301,7 @@ class ExplosionEffect:
         cached_flash = flash_surf.copy()
         cached_flash.set_alpha(alpha)
 
-        surface.blit(
-            cached_flash,
-            (center[0] - flash_radius * 2 - 1, center[1] - flash_radius * 2 - 1)
-        )
+        surface.blit(cached_flash, (center[0] - flash_radius * 2 - 1, center[1] - flash_radius * 2 - 1))
 
     def _render_shockwave(self, surface: pygame.Surface) -> None:
         """Render expanding shockwave ring"""
@@ -331,11 +319,7 @@ class ExplosionEffect:
         thickness = max(1, int(3 * (1.0 - progress * 0.5)))
 
         pygame.draw.circle(
-            surface,
-            (255, 150, 50, alpha),
-            (int(self._x), int(self._y)),
-            int(self._shockwave_radius),
-            thickness
+            surface, (255, 150, 50, alpha), (int(self._x), int(self._y)), int(self._shockwave_radius), thickness
         )
 
         inner_alpha = int(28 * (1.0 - progress))
@@ -345,7 +329,7 @@ class ExplosionEffect:
                 (255, 200, 100, inner_alpha),
                 (int(self._x), int(self._y)),
                 int(self._shockwave_radius * 0.7),
-                max(1, thickness - 1)
+                max(1, thickness - 1),
             )
 
     def _render_debris(self, surface: pygame.Surface) -> None:
@@ -353,11 +337,7 @@ class ExplosionEffect:
         for particle in self._debris:
             self._render_debris_particle(surface, particle)
 
-    def _render_debris_particle(
-        self,
-        surface: pygame.Surface,
-        particle: ExplosionParticle
-    ) -> None:
+    def _render_debris_particle(self, surface: pygame.Surface, particle: ExplosionParticle) -> None:
         """Render a debris particle with trail effect."""
         alpha = min(self.PARTICLE_ALPHA_MAX, particle.get_alpha())
         if alpha < GAME_CONSTANTS.ANIMATION.PARTICLE_ALPHA_VISIBILITY_THRESHOLD:
@@ -389,11 +369,7 @@ class ExplosionEffect:
         for particle in self._particles:
             self._render_main_particle(surface, particle)
 
-    def _render_main_particle(
-        self,
-        surface: pygame.Surface,
-        particle: ExplosionParticle
-    ) -> None:
+    def _render_main_particle(self, surface: pygame.Surface, particle: ExplosionParticle) -> None:
         """Render a main particle with soft glow — uses cached textures."""
         alpha = min(self.PARTICLE_ALPHA_MAX, particle.get_alpha())
         if alpha < GAME_CONSTANTS.ANIMATION.PARTICLE_ALPHA_VISIBILITY_THRESHOLD:
@@ -427,11 +403,7 @@ class ExplosionEffect:
         for spark in self._sparks:
             self._render_spark_particle(surface, spark)
 
-    def _render_spark_particle(
-        self,
-        surface: pygame.Surface,
-        particle: ExplosionParticle
-    ) -> None:
+    def _render_spark_particle(self, surface: pygame.Surface, particle: ExplosionParticle) -> None:
         """Render a spark particle — uses cached core texture, skips line draw."""
         alpha = min(self.PARTICLE_ALPHA_MAX, particle.get_alpha())
         if alpha < GAME_CONSTANTS.ANIMATION.PARTICLE_ALPHA_VISIBILITY_THRESHOLD:

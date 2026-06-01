@@ -1,5 +1,4 @@
 """Explosion pool — object pool for reusing explosion effects."""
-from typing import Dict, List
 
 from .explosion_effect import ExplosionEffect
 
@@ -11,8 +10,8 @@ class ExplosionPool:
 
     def __init__(self, max_size: int = DEFAULT_MAX_SIZE) -> None:
         self._max_size = max_size
-        self._available: List[ExplosionEffect] = []
-        self._in_use: List[ExplosionEffect] = []
+        self._available: list[ExplosionEffect] = []
+        self._in_use: list[ExplosionEffect] = []
 
         self._prewarm(min(5, max_size))
 
@@ -71,15 +70,15 @@ class ExplosionPool:
 
         return len(self._in_use)
 
-    def get_stats(self) -> Dict[str, int]:
+    def get_stats(self) -> dict[str, int]:
         """Get pool statistics"""
         return {
-            'available': len(self._available),
-            'in_use': len(self._in_use),
-            'total': len(self._available) + len(self._in_use),
-            'max_size': self._max_size
+            "available": len(self._available),
+            "in_use": len(self._in_use),
+            "total": len(self._available) + len(self._in_use),
+            "max_size": self._max_size,
         }
 
-    def get_active_effects(self) -> List[ExplosionEffect]:
+    def get_active_effects(self) -> list[ExplosionEffect]:
         """Get all currently active effects"""
         return [e for e in self._in_use if e.is_active()]

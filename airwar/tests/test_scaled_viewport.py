@@ -71,7 +71,9 @@ def test_screen_to_logical_clamps_out_of_bounds() -> None:
     viewport.update(1000, 800)
 
     neg = viewport.screen_to_logical(-100, -100)
-    assert neg[0] >= 0.0 and neg[1] >= 0.0
+    assert neg[0] >= 0.0
+    assert neg[1] >= 0.0
 
     large = viewport.screen_to_logical(9999, 9999)
-    assert large[0] == pytest.approx(1920.0) and large[1] == pytest.approx(1080.0)
+    assert large[0] == pytest.approx(1920.0)
+    assert large[1] == pytest.approx(1080.0)

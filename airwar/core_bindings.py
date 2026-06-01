@@ -88,7 +88,7 @@ except (ImportError, OSError):
         return x, y
 
     class _AABB:
-        __slots__ = ("min_x", "min_y", "max_x", "max_y")
+        __slots__ = ("max_x", "max_y", "min_x", "min_y")
 
         def __init__(self, min_x: float, min_y: float, max_x: float, max_y: float) -> None:
             self.min_x = min_x
@@ -97,14 +97,14 @@ except (ImportError, OSError):
             self.max_y = max_y
 
         @classmethod
-        def from_xy_size(cls, x: float, y: float, width: float, height: float) -> "_AABB":
+        def from_xy_size(cls, x: float, y: float, width: float, height: float) -> _AABB:
             return cls(x, y, x + width, y + height)
 
         @classmethod
-        def from_xy_half_size(cls, x: float, y: float, half_size: float) -> "_AABB":
+        def from_xy_half_size(cls, x: float, y: float, half_size: float) -> _AABB:
             return cls(x - half_size, y - half_size, x + half_size, y + half_size)
 
-        def intersects(self, other: "_AABB") -> bool:
+        def intersects(self, other: _AABB) -> bool:
             return (
                 self.min_x < other.max_x
                 and self.max_x > other.min_x
@@ -136,7 +136,7 @@ except (ImportError, OSError):
             items = list(self._entities.items())
             pairs: list[tuple[int, int]] = []
             for i, (left_id, left_bounds) in enumerate(items):
-                for right_id, right_bounds in items[i + 1:]:
+                for right_id, right_bounds in items[i + 1 :]:
                     if left_bounds.intersects(right_bounds):
                         pairs.append((min(left_id, right_id), max(left_id, right_id)))
             return pairs
@@ -155,8 +155,7 @@ except (ImportError, OSError):
             return []
 
         enemy_bounds = [
-            (enemy_id, _AABB.from_xy_size(x, y, width, height))
-            for enemy_id, x, y, width, height in enemies
+            (enemy_id, _AABB.from_xy_size(x, y, width, height)) for enemy_id, x, y, width, height in enemies
         ]
         hits: list[tuple[int, int]] = []
         for bullet_id, bx, by, bwidth, bheight in bullets:
@@ -369,8 +368,10 @@ except (ImportError, OSError):
             dx = -500.0 if attack_dir == 1 else 500.0 if attack_dir == 2 else 0.0
             dy = 500.0 if attack_dir == 0 else -500.0 if attack_dir == 3 else 0.0
             length = max(math.sqrt(dx * dx + dy * dy), 0.001)
-            return [(source_x + offset, source_y, dx / length * speed, dy / length * speed, speed, 1, damage)
-                    for offset in (-30.0, 0.0, 30.0)]
+            return [
+                (source_x + offset, source_y, dx / length * speed, dy / length * speed, speed, 1, damage)
+                for offset in (-30.0, 0.0, 30.0)
+            ]
 
         speed = 4.0
         damage = 12
@@ -566,7 +567,7 @@ except (ImportError, OSError):
         query_y: float,
     ) -> int | None:
         best_id = None
-        best_dist_sq = float('inf')
+        best_dist_sq = float("inf")
         for cid, cx, cy in candidates:
             d = (cx - query_x) ** 2 + (cy - query_y) ** 2
             if d < best_dist_sq:
@@ -630,39 +631,40 @@ except (ImportError, OSError):
             results.append((cx + jx + lx, cy + jy + ly))
         return results
 
+
 __all__ = [
-    'RUST_AVAILABLE',
-    # Vector2 functions
-    'vec2_length',
-    'vec2_normalize',
-    'vec2_add',
-    'vec2_sub',
-    'vec2_dot',
-    'vec2_scale',
-    'vec2_distance',
-    'vec2_angle',
-    'vec2_from_angle',
-    'vec2_lerp',
-    'vec2_clamp_length',
+    "RUST_AVAILABLE",
+    "PersistentSpatialHash",
     # Collision functions
-    'batch_collide_bullets_vs_entities',
-    'PersistentSpatialHash',
-    # Movement functions
-    'update_movement',
-    'batch_update_movements',
-    'compute_boss_attack',
-    'batch_hallucinated_enemy_centers',
-    'find_nearest_target',
-    'find_target_in_direction',
-    # Particle functions
-    'batch_update_particles',
-    'generate_explosion_particles',
-    # Sprite functions
-    'create_single_bullet_glow',
-    'create_spread_bullet_glow',
-    'create_laser_bullet_glow',
-    'create_explosive_missile_glow',
-    'create_glow_circle',
+    "batch_collide_bullets_vs_entities",
+    "batch_hallucinated_enemy_centers",
     # Bullet functions
-    'batch_update_bullets',
+    "batch_update_bullets",
+    "batch_update_movements",
+    # Particle functions
+    "batch_update_particles",
+    "compute_boss_attack",
+    "create_explosive_missile_glow",
+    "create_glow_circle",
+    "create_laser_bullet_glow",
+    # Sprite functions
+    "create_single_bullet_glow",
+    "create_spread_bullet_glow",
+    "find_nearest_target",
+    "find_target_in_direction",
+    "generate_explosion_particles",
+    # Movement functions
+    "update_movement",
+    "vec2_add",
+    "vec2_angle",
+    "vec2_clamp_length",
+    "vec2_distance",
+    "vec2_dot",
+    "vec2_from_angle",
+    # Vector2 functions
+    "vec2_length",
+    "vec2_lerp",
+    "vec2_normalize",
+    "vec2_scale",
+    "vec2_sub",
 ]

@@ -1,4 +1,5 @@
 """Settings scene — configure control behavior per user account."""
+
 import logging
 import math
 
@@ -44,8 +45,8 @@ class SettingsScene(Scene, MouseInteractiveMixin):
     BOTTOM_HINT_Y_OFFSET = 60
 
     LABEL_OPTIONS = {
-        'ctrl_mode': ('Ctrl 减速', '按住', '点按'),
-        'shift_boost_mode': ('Shift 加速', '按住', '点按'),
+        "ctrl_mode": ("Ctrl 减速", "按住", "点按"),
+        "shift_boost_mode": ("Shift 加速", "按住", "点按"),
     }
 
     def __init__(self):
@@ -65,9 +66,9 @@ class SettingsScene(Scene, MouseInteractiveMixin):
         self.running = True
         self.clear_hover()
         self.clear_buttons()
-        self._db = kwargs.get('db')
-        self._username = kwargs.get('username')
-        self._settings_ref = kwargs.get('settings_ref', {})
+        self._db = kwargs.get("db")
+        self._username = kwargs.get("username")
+        self._settings_ref = kwargs.get("settings_ref", {})
         self._focus_index = 0
         self._animation_time = 0
         self._message = ""
@@ -83,7 +84,7 @@ class SettingsScene(Scene, MouseInteractiveMixin):
 
         self._background = MenuBackground()
         self._particles = ParticleSystem()
-        self._particles.reset(self._tokens.components.PARTICLE_COUNT, 'particle')
+        self._particles.reset(self._tokens.components.PARTICLE_COUNT, "particle")
 
     def exit(self) -> None:
         pass
@@ -116,32 +117,32 @@ class SettingsScene(Scene, MouseInteractiveMixin):
             self._focus_index = (self._focus_index - 1) % self._focus_count
         elif event.key == pygame.K_RETURN:
             if self._focus_index == 0:
-                self._toggle_setting('ctrl_mode')
+                self._toggle_setting("ctrl_mode")
             elif self._focus_index == 1:
-                self._toggle_setting('shift_boost_mode')
+                self._toggle_setting("shift_boost_mode")
             elif self._focus_index == 2:
                 self.running = False
         elif event.key in (pygame.K_LEFT, pygame.K_RIGHT):
             if self._focus_index == 0:
-                self._toggle_setting('ctrl_mode')
+                self._toggle_setting("ctrl_mode")
             elif self._focus_index == 1:
-                self._toggle_setting('shift_boost_mode')
+                self._toggle_setting("shift_boost_mode")
 
     def _handle_button_click(self, button_name: str) -> None:
-        if button_name == 'back':
+        if button_name == "back":
             self.running = False
-        elif button_name == 'ctrl_hold':
-            self._set_setting('ctrl_mode', 'hold')
-        elif button_name == 'ctrl_toggle':
-            self._set_setting('ctrl_mode', 'toggle')
-        elif button_name == 'shift_hold':
-            self._set_setting('shift_boost_mode', 'hold')
-        elif button_name == 'shift_toggle':
-            self._set_setting('shift_boost_mode', 'toggle')
+        elif button_name == "ctrl_hold":
+            self._set_setting("ctrl_mode", "hold")
+        elif button_name == "ctrl_toggle":
+            self._set_setting("ctrl_mode", "toggle")
+        elif button_name == "shift_hold":
+            self._set_setting("shift_boost_mode", "hold")
+        elif button_name == "shift_toggle":
+            self._set_setting("shift_boost_mode", "toggle")
 
     def _toggle_setting(self, key: str) -> None:
-        current = self._settings_ref.get(key, 'hold')
-        new_value = 'toggle' if current == 'hold' else 'hold'
+        current = self._settings_ref.get(key, "hold")
+        new_value = "toggle" if current == "hold" else "hold"
         self._set_setting(key, new_value)
 
     def _set_setting(self, key: str, value: str) -> None:
@@ -178,11 +179,14 @@ class SettingsScene(Scene, MouseInteractiveMixin):
         SC = SceneColors
         sw, sh = surface.get_width(), surface.get_height()
 
-        self._background.render_themed_style(surface, {
-            'bg': SC.BG_PRIMARY,
-            'bg_gradient': SC.BG_PANEL,
-        })
-        self._particles.render(surface, 'particle')
+        self._background.render_themed_style(
+            surface,
+            {
+                "bg": SC.BG_PRIMARY,
+                "bg_gradient": SC.BG_PANEL,
+            },
+        )
+        self._particles.render(surface, "particle")
 
         self._render_title(surface, sw, sh)
         self._render_settings(surface, sw, sh)
@@ -215,21 +219,31 @@ class SettingsScene(Scene, MouseInteractiveMixin):
         panel_x = (sw - panel_w) // 2
         panel_y = 110
 
-        draw_chamfered_panel(surface, panel_x, panel_y, panel_w, self.PANEL_H,
-                             SC.BG_PANEL_LIGHT, SC.BORDER_DIM, SC.GOLD_GLOW, self.CHAMFER)
+        draw_chamfered_panel(
+            surface,
+            panel_x,
+            panel_y,
+            panel_w,
+            self.PANEL_H,
+            SC.BG_PANEL_LIGHT,
+            SC.BORDER_DIM,
+            SC.GOLD_GLOW,
+            self.CHAMFER,
+        )
 
-        keys = ['ctrl_mode', 'shift_boost_mode']
+        keys = ["ctrl_mode", "shift_boost_mode"]
         row_start_y = panel_y + 40
 
         for i, key in enumerate(keys):
             y = row_start_y + i * (self.SETTING_ROW_H + self.SETTING_GAP)
-            is_focused = (i == self._focus_index)
+            is_focused = i == self._focus_index
             self._draw_setting_row(surface, panel_x, panel_w, y, key, is_focused)
 
-    def _draw_setting_row(self, surface: pygame.Surface, panel_x: int, panel_w: int,
-                          y: int, key: str, is_focused: bool) -> None:
+    def _draw_setting_row(
+        self, surface: pygame.Surface, panel_x: int, panel_w: int, y: int, key: str, is_focused: bool
+    ) -> None:
         SC = SceneColors
-        current = self._settings_ref.get(key, 'hold')
+        current = self._settings_ref.get(key, "hold")
         label, hold_text, toggle_text = self.LABEL_OPTIONS[key]
 
         # Draw row background if focused
@@ -237,12 +251,20 @@ class SettingsScene(Scene, MouseInteractiveMixin):
         row_w = panel_w - 32
         row_h = self.SETTING_ROW_H
         if is_focused:
-            draw_chamfered_panel(surface, row_x - 4, y - 4, row_w + 8, row_h + 8,
-                                 SC.BG_PANEL, SC.GOLD_GLOW, SC.GOLD_GLOW, 8)
-        draw_chamfered_panel(surface, row_x, y, row_w, row_h,
-                             SC.BG_PANEL if is_focused else SC.BG_PANEL_LIGHT,
-                             SC.GOLD_PRIMARY if is_focused else SC.BORDER_DIM,
-                             None, 6)
+            draw_chamfered_panel(
+                surface, row_x - 4, y - 4, row_w + 8, row_h + 8, SC.BG_PANEL, SC.GOLD_GLOW, SC.GOLD_GLOW, 8
+            )
+        draw_chamfered_panel(
+            surface,
+            row_x,
+            y,
+            row_w,
+            row_h,
+            SC.BG_PANEL if is_focused else SC.BG_PANEL_LIGHT,
+            SC.GOLD_PRIMARY if is_focused else SC.BORDER_DIM,
+            None,
+            6,
+        )
 
         # Label
         label_color = SC.GOLD_PRIMARY if is_focused else SC.TEXT_PRIMARY
@@ -256,14 +278,14 @@ class SettingsScene(Scene, MouseInteractiveMixin):
         btn_y = y + (row_h - self.TOGGLE_BTN_H) // 2
         btn_center_y = btn_y + self.TOGGLE_BTN_H // 2
 
-        values = [('hold', hold_text), ('toggle', toggle_text)]
+        values = [("hold", hold_text), ("toggle", toggle_text)]
         for j, (val, text) in enumerate(values):
             bx = btn_x + j * (self.TOGGLE_BTN_W + 4)
-            button_name = f'{key.split("_")[0]}_{val}'
+            button_name = f"{key.split('_', maxsplit=1)[0]}_{val}"
             btn_rect = pygame.Rect(bx, btn_y, self.TOGGLE_BTN_W, self.TOGGLE_BTN_H)
             self.register_button(button_name, btn_rect)
 
-            is_active = (current == val)
+            is_active = current == val
             hover = self.is_button_hovered(button_name)
 
             fill = (40, 60, 70) if is_active else SC.BG_PANEL
@@ -271,8 +293,7 @@ class SettingsScene(Scene, MouseInteractiveMixin):
                 fill = (50, 55, 65)
             border = SC.GOLD_PRIMARY if (is_active or hover) else SC.BORDER_DIM
 
-            draw_chamfered_panel(surface, bx, btn_y, self.TOGGLE_BTN_W, self.TOGGLE_BTN_H,
-                                 fill, border, None, 6)
+            draw_chamfered_panel(surface, bx, btn_y, self.TOGGLE_BTN_W, self.TOGGLE_BTN_H, fill, border, None, 6)
 
             text_color = SC.TEXT_BRIGHT if is_active else SC.TEXT_DIM
             text_surf = fit_text_to_width(self.hint_font, text, text_color, self.TOGGLE_BTN_W - 16)
@@ -286,18 +307,26 @@ class SettingsScene(Scene, MouseInteractiveMixin):
         btn_x = (sw - btn_w) // 2
         btn_y = sh - 130
 
-        is_focused = (self._focus_index == 2)
-        self.register_button('back', pygame.Rect(btn_x, btn_y, btn_w, btn_h))
-        hover = self.is_button_hovered('back')
+        is_focused = self._focus_index == 2
+        self.register_button("back", pygame.Rect(btn_x, btn_y, btn_w, btn_h))
+        hover = self.is_button_hovered("back")
 
         if is_focused or hover:
-            draw_chamfered_panel(surface, btn_x - 4, btn_y - 4, btn_w + 8, btn_h + 8,
-                                 SC.BG_PANEL, SC.GOLD_GLOW, SC.GOLD_GLOW, 8)
+            draw_chamfered_panel(
+                surface, btn_x - 4, btn_y - 4, btn_w + 8, btn_h + 8, SC.BG_PANEL, SC.GOLD_GLOW, SC.GOLD_GLOW, 8
+            )
 
-        draw_chamfered_panel(surface, btn_x, btn_y, btn_w, btn_h,
-                             SC.BG_PANEL if (is_focused or hover) else SC.BG_PANEL_LIGHT,
-                             SC.GOLD_PRIMARY if (is_focused or hover) else SC.BORDER_DIM,
-                             None, 6)
+        draw_chamfered_panel(
+            surface,
+            btn_x,
+            btn_y,
+            btn_w,
+            btn_h,
+            SC.BG_PANEL if (is_focused or hover) else SC.BG_PANEL_LIGHT,
+            SC.GOLD_PRIMARY if (is_focused or hover) else SC.BORDER_DIM,
+            None,
+            6,
+        )
         txt_color = SC.TEXT_PRIMARY if (is_focused or hover) else SC.TEXT_DIM
         txt_surf = fit_text_to_width(self.body_font, "返回", txt_color, btn_w - 24)
         surface.blit(txt_surf, txt_surf.get_rect(center=(btn_x + btn_w // 2, btn_y + btn_h // 2)))

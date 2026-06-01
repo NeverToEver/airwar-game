@@ -1,5 +1,4 @@
 """Buff registry — centralized buff metadata and factory functions."""
-from typing import Dict, Type
 
 from .base_buff import Buff
 from .buffs import (
@@ -20,25 +19,25 @@ from .buffs import (
     SpreadShotBuff,
 )
 
-BUFF_REGISTRY: Dict[str, Type[Buff]] = {
-    'Extra Life': ExtraLifeBuff,
-    'Regeneration': RegenerationBuff,
-    'Lifesteal': LifestealBuff,
-    'Power Shot': PowerShotBuff,
-    'Rapid Fire': RapidFireBuff,
-    'Piercing': PiercingBuff,
-    'Spread Shot': SpreadShotBuff,
-    'Explosive': ExplosiveBuff,
-    'Laser': LaserBuff,
-    'Armor': ArmorBuff,
-    'Evasion': EvasionBuff,
-    'Slow Field': SlowFieldBuff,
-    'Boost Recovery': BoostRecoveryBuff,
-    'Phase Dash': PhaseDashBuff,
-    'Mothership Recall': MothershipRecallBuff,
+BUFF_REGISTRY: dict[str, type[Buff]] = {
+    "Extra Life": ExtraLifeBuff,
+    "Regeneration": RegenerationBuff,
+    "Lifesteal": LifestealBuff,
+    "Power Shot": PowerShotBuff,
+    "Rapid Fire": RapidFireBuff,
+    "Piercing": PiercingBuff,
+    "Spread Shot": SpreadShotBuff,
+    "Explosive": ExplosiveBuff,
+    "Laser": LaserBuff,
+    "Armor": ArmorBuff,
+    "Evasion": EvasionBuff,
+    "Slow Field": SlowFieldBuff,
+    "Boost Recovery": BoostRecoveryBuff,
+    "Phase Dash": PhaseDashBuff,
+    "Mothership Recall": MothershipRecallBuff,
 }
 
-_BUFF_COLOR_CACHE: Dict[str, tuple] = {}
+_BUFF_COLOR_CACHE: dict[str, tuple] = {}
 
 
 def get_buff_color(name: str) -> tuple:

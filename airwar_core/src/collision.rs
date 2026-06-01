@@ -25,7 +25,7 @@ impl SpatialHashGrid {
     }
 
     fn pos_to_key(x: i32, y: i32) -> i64 {
-        ((x as i64) << 32) | (y as i64 & 0xFFFFFFFF)
+        (i64::from(x) << 32) | (i64::from(y) & 0xFFFF_FFFF)
     }
 
     pub fn insert(&mut self, id: i32, x: f32, y: f32, width: f32, height: f32) {
@@ -49,13 +49,7 @@ impl SpatialHashGrid {
         self.entity_positions.insert(id, bounds);
     }
 
-    pub fn get_potential_collisions(
-        &self,
-        x: f32,
-        y: f32,
-        width: f32,
-        height: f32,
-    ) -> Vec<i32> {
+    pub fn get_potential_collisions(&self, x: f32, y: f32, width: f32, height: f32) -> Vec<i32> {
         let bounds = AABB::from_xy_size(x, y, width, height);
         self.get_potential_collisions_for_aabb(bounds)
     }
@@ -119,10 +113,7 @@ impl AABB {
     }
 
     pub fn intersects(&self, other: &AABB) -> bool {
-        self.min_x < other.max_x
-            && self.max_x > other.min_x
-            && self.min_y < other.max_y
-            && self.max_y > other.min_y
+        self.min_x < other.max_x && self.max_x > other.min_x && self.min_y < other.max_y && self.max_y > other.min_y
     }
 }
 
@@ -163,15 +154,8 @@ pub fn check_collision(a: &AABB, b: &AABB) -> bool {
     unsafe { simd_collide_rects_sse(a, b) }
 }
 
-/// Check collision between two entities described by position and half_size
-pub fn check_entity_collision(
-    ax: f32,
-    ay: f32,
-    a_half: f32,
-    bx: f32,
-    by: f32,
-    b_half: f32,
-) -> bool {
+/// Check collision between two entities described by position and `half_size`
+pub fn check_entity_collision(ax: f32, ay: f32, a_half: f32, bx: f32, by: f32, b_half: f32) -> bool {
     let a = AABB::from_xy_half_size(ax, ay, a_half);
     let b = AABB::from_xy_half_size(bx, by, b_half);
     check_collision(&a, &b)
@@ -237,12 +221,8 @@ impl PersistentSpatialHash {
                     continue;
                 }
 
-                let (smaller, larger) = if id < other_id {
-                    (id, other_id)
-                } else {
-                    (other_id, id)
-                };
-                let pair_key = ((smaller as i64) << 32) | (larger as i64);
+                let (smaller, larger) = if id < other_id { (id, other_id) } else { (other_id, id) };
+                let pair_key = (i64::from(smaller) << 32) | i64::from(larger);
 
                 if checked.contains(&pair_key) {
                     continue;
@@ -286,10 +266,10 @@ impl PersistentSpatialHash {
 }
 
 /// Batch collision check: player bullets vs enemies.
-/// Returns (bullet_id, enemy_id) pairs for every bullet-enemy collision.
+/// Returns (`bullet_id`, `enemy_id`) pairs for every bullet-enemy collision.
 ///
-/// bullets: Vec<(i64 bullet_id, f32 x, f32 y, f32 width, f32 height)>
-/// enemies: Vec<(i32 enemy_id, f32 x, f32 y, f32 width, f32 height)>
+/// bullets: Vec<(i64 `bullet_id`, f32 x, f32 y, f32 width, f32 height)>
+/// enemies: Vec<(i32 `enemy_id`, f32 x, f32 y, f32 width, f32 height)>
 #[pyfunction]
 pub fn batch_collide_bullets_vs_entities(
     bullets: Vec<(i64, f32, f32, f32, f32)>,
@@ -370,14 +350,8 @@ mod tests {
 
     #[test]
     fn test_batch_collide_bullets_vs_entities() {
-        let bullets = vec![
-            (1i64, 0.0, 0.0, 10.0, 10.0),
-            (2i64, 100.0, 100.0, 10.0, 10.0),
-        ];
-        let enemies = vec![
-            (1i32, 0.0, 0.0, 20.0, 20.0),
-            (2i32, 100.0, 100.0, 20.0, 20.0),
-        ];
+        let bullets = vec![(1i64, 0.0, 0.0, 10.0, 10.0), (2i64, 100.0, 100.0, 10.0, 10.0)];
+        let enemies = vec![(1i32, 0.0, 0.0, 20.0, 20.0), (2i32, 100.0, 100.0, 20.0, 20.0)];
         let hits = batch_collide_bullets_vs_entities(bullets, enemies, 50);
         assert_eq!(hits.len(), 2);
     }

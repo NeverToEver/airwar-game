@@ -3,9 +3,9 @@ use pyo3::prelude::*;
 type BulletUpdateInput = (u64, f32, f32, f32, f32, i32, bool, f32);
 type BulletUpdateOutput = (u64, f32, f32, bool);
 
-/// Bullet update data: (id, x, y, vx, vy, bullet_type, is_laser, screen_height)
+/// Bullet update data: (id, x, y, vx, vy, `bullet_type`, `is_laser`, `screen_height`)
 /// id is u64 to handle Python's arbitrary precision integers
-/// Returns: (id, new_x, new_y, is_active)
+/// Returns: (id, `new_x`, `new_y`, `is_active`)
 #[pyfunction]
 pub fn batch_update_bullets(bullets: Vec<BulletUpdateInput>) -> Vec<BulletUpdateOutput> {
     let mut results = Vec::with_capacity(bullets.len());

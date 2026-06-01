@@ -56,8 +56,9 @@ class BossEnrageRenderer:
             alpha = int(12 * intensity * (1.0 - radius / max_dim))
             if alpha <= 0:
                 continue
-            pygame.draw.circle(self._enrage_ripple_surface, (160, 220, 255, alpha),
-                               (int(center_x), int(center_y)), radius, 2)
+            pygame.draw.circle(
+                self._enrage_ripple_surface, (160, 220, 255, alpha), (int(center_x), int(center_y)), radius, 2
+            )
 
         surface.blit(self._enrage_ripple_surface, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
 

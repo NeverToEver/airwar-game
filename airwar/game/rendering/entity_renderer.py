@@ -114,7 +114,7 @@ class EntityRenderer:
             oldest = cls._trail_cache_order.popleft()
             cls._trail_surface_cache.pop(oldest, None)
         trail_surface = pygame.Surface((width, height), pygame.SRCALPHA)
-        trail_surface.fill(color + (alpha,))
+        trail_surface.fill((*color, alpha))
         cls._trail_surface_cache[cache_key] = trail_surface
         cls._trail_cache_order.append(cache_key)
         return trail_surface
@@ -148,8 +148,7 @@ class EntityRenderer:
     def _render_boss_body(self, surface: pygame.Surface, boss: "Boss", health_ratio: float) -> None:
         if boss.enrage_visual_intensity() <= 0:
             draw_boss_ship(
-                surface, boss.rect.centerx, boss.rect.centery,
-                boss.rect.width, boss.rect.height, health_ratio
+                surface, boss.rect.centerx, boss.rect.centery, boss.rect.width, boss.rect.height, health_ratio
             )
             return
 

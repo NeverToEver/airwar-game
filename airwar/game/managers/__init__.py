@@ -30,9 +30,15 @@ from .spawn_controller import SpawnController
 from .ui_manager import UIManager
 
 __all__ = [
-    'BulletManager', 'BossManager', 'MilestoneManager',
-    'InputCoordinator', 'UIManager', 'GameLoopManager',
-    'GameController', 'GameState',
-    'SpawnController',
-    'CollisionController', 'CollisionResult',
+    "BossManager",
+    "BulletManager",
+    "CollisionController",
+    "CollisionResult",
+    "GameController",
+    "GameLoopManager",
+    "GameState",
+    "InputCoordinator",
+    "MilestoneManager",
+    "SpawnController",
+    "UIManager",
 ]

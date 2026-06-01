@@ -1,11 +1,11 @@
 """Database — SimpleDB and UserDB for player statistics persistence."""
+
 import hashlib
 import json
 import logging
 import os
 import secrets
 import shutil
-from typing import Optional
 
 from airwar.utils.platform_paths import user_data_dir
 
@@ -24,7 +24,8 @@ class DatabaseError(RuntimeError):
 
 class SimpleDB:
     """Simple key-value database backed by a JSON file."""
-    def __init__(self, db_path: Optional[str] = None):
+
+    def __init__(self, db_path: str | None = None):
         self.db_path = db_path if db_path is not None else _DEFAULT_DB_PATH
         self._ensure_dir()
 
@@ -48,7 +49,7 @@ class SimpleDB:
 
     def _load(self) -> dict:
         try:
-            with open(self.db_path, 'r', encoding='utf-8') as f:
+            with open(self.db_path, encoding="utf-8") as f:
                 return json.load(f)
         except json.JSONDecodeError as e:
             raise DatabaseError(f"Account database is corrupted: {self.db_path}") from e
@@ -58,7 +59,7 @@ class SimpleDB:
     def _save(self, data: dict) -> None:
         tmp_path = self.db_path + ".tmp"
         try:
-            with open(tmp_path, 'w', encoding='utf-8') as f:
+            with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
             os.replace(tmp_path, self.db_path)
         except (OSError, TypeError) as e:
@@ -75,7 +76,9 @@ class SimpleDB:
         if not password or not salt:
             raise ValueError("password and salt cannot be empty")
         return hashlib.pbkdf2_hmac(
-            "sha256", password.encode(), salt.encode(),
+            "sha256",
+            password.encode(),
+            salt.encode(),
             _HASH_ITERATIONS,
         ).hex()
 
@@ -83,10 +86,11 @@ class SimpleDB:
 class UserDB(SimpleDB):
     """User database — persists player stats (high score, kills, games played).
 
-        Wraps SimpleDB with user-specific operations for tracking statistics
-        across game sessions.
-        """
-    def __init__(self, db_path: Optional[str] = None):
+    Wraps SimpleDB with user-specific operations for tracking statistics
+    across game sessions.
+    """
+
+    def __init__(self, db_path: str | None = None):
         super().__init__(db_path)
 
     def create_user(self, user_id: str, password: str) -> bool:
@@ -95,12 +99,12 @@ class UserDB(SimpleDB):
             return False
         salt = secrets.token_hex(16)
         data[user_id] = {
-            'password': self._hash_password(password, salt),
-            'salt': salt,
-            'high_score': 0,
-            'total_kills': 0,
-            'games_played': 0,
-            'last_login_order': 0
+            "password": self._hash_password(password, salt),
+            "salt": salt,
+            "high_score": 0,
+            "total_kills": 0,
+            "games_played": 0,
+            "last_login_order": 0,
         }
         self._save(data)
         return True
@@ -109,10 +113,10 @@ class UserDB(SimpleDB):
         data = self._load()
         if user_id not in data:
             return False
-        stored = data[user_id].get('password')
+        stored = data[user_id].get("password")
         if not stored:
             return False
-        salt = data[user_id].get('salt', user_id)
+        salt = data[user_id].get("salt", user_id)
         return secrets.compare_digest(stored, self._hash_password(password, salt))
 
     def user_exists(self, user_id: str) -> bool:
@@ -122,19 +126,19 @@ class UserDB(SimpleDB):
     def list_usernames(self) -> list[str]:
         data = self._load()
         users = [
-            (user_id, record.get('last_login_order', 0))
+            (user_id, record.get("last_login_order", 0))
             for user_id, record in data.items()
-            if isinstance(record, dict) and record.get('password')
+            if isinstance(record, dict) and record.get("password")
         ]
         users.sort(key=lambda item: (-item[1], item[0].lower()))
         return [user_id for user_id, _ in users]
 
-    def get_last_login_user(self) -> Optional[str]:
+    def get_last_login_user(self) -> str | None:
         data = self._load()
         users = [
-            (user_id, record.get('last_login_order', 0))
+            (user_id, record.get("last_login_order", 0))
             for user_id, record in data.items()
-            if isinstance(record, dict) and record.get('password') and record.get('last_login_order', 0) > 0
+            if isinstance(record, dict) and record.get("password") and record.get("last_login_order", 0) > 0
         ]
         if not users:
             return None
@@ -145,14 +149,10 @@ class UserDB(SimpleDB):
         if user_id not in data:
             return False
         max_order = max(
-            (
-                record.get('last_login_order', 0)
-                for record in data.values()
-                if isinstance(record, dict)
-            ),
+            (record.get("last_login_order", 0) for record in data.values() if isinstance(record, dict)),
             default=0,
         )
-        data[user_id]['last_login_order'] = max_order + 1
+        data[user_id]["last_login_order"] = max_order + 1
         self._save(data)
         return True
 
@@ -172,27 +172,28 @@ class UserDB(SimpleDB):
         data = self._load()
         if user_id not in data:
             return False
-        if score > data[user_id].get('high_score', 0):
-            data[user_id]['high_score'] = score
+        if score > data[user_id].get("high_score", 0):
+            data[user_id]["high_score"] = score
             self._save(data)
             return True
         return False
+
     DEFAULT_SETTINGS = {
-        'ctrl_mode': 'hold',
-        'shift_boost_mode': 'hold',
+        "ctrl_mode": "hold",
+        "shift_boost_mode": "hold",
     }
 
     def get_user_settings(self, user_id: str) -> dict:
         data = self._load()
         if user_id not in data:
             return dict(self.DEFAULT_SETTINGS)
-        saved = data[user_id].get('settings', {})
+        saved = data[user_id].get("settings", {})
         return {**self.DEFAULT_SETTINGS, **saved}
 
     def update_user_settings(self, user_id: str, settings: dict) -> bool:
-        return self.update_user_data(user_id, {'settings': settings})
+        return self.update_user_data(user_id, {"settings": settings})
 
-    def delete_user(self, user_id: str, password: str = None) -> bool:
+    def delete_user(self, user_id: str, password: str | None = None) -> bool:
         """Delete a user account.
 
         Args:

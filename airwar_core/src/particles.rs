@@ -33,8 +33,8 @@ impl Particle {
 }
 
 /// Batch update particles - takes arrays of particle data and returns updated data
-/// Input: (x, y, vx, vy, life, max_life, size, dt) for each particle
-/// Output: (x, y, vx, vy, life, size, is_alive) for each particle (Python filters dead)
+/// Input: (x, y, vx, vy, life, `max_life`, size, dt) for each particle
+/// Output: (x, y, vx, vy, life, size, `is_alive`) for each particle (Python filters dead)
 #[pyfunction]
 pub fn batch_update_particles(
     particles: Vec<(f32, f32, f32, f32, i32, i32, f32)>,
@@ -57,7 +57,7 @@ pub fn batch_update_particles(
 }
 
 /// Generate explosion particles
-/// Returns list of (x, y, vx, vy, life, max_life, size)
+/// Returns list of (x, y, vx, vy, life, `max_life`, size)
 #[pyfunction]
 #[allow(clippy::too_many_arguments)]
 pub fn generate_explosion_particles(

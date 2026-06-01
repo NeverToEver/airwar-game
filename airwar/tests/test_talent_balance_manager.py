@@ -153,11 +153,7 @@ def test_base_talent_console_backdrop_draws_hangar_landing_pad() -> None:
 
     center_pad_pixel = surface.get_at((640, 490))[:3]
     deck_pixel = surface.get_at((640, 360))[:3]
-    warning_pixels = [
-        surface.get_at((x, y))[:3]
-        for x in range(0, 1280, 24)
-        for y in range(598, 622, 6)
-    ]
+    warning_pixels = [surface.get_at((x, y))[:3] for x in range(0, 1280, 24) for y in range(598, 622, 6)]
 
     assert center_pad_pixel != deck_pixel
     assert any(pixel[0] > pixel[1] > pixel[2] for pixel in warning_pixels)

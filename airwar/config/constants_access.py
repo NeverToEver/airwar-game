@@ -4,6 +4,7 @@ This module provides a lazy accessor for GAME_CONSTANTS that avoids the circular
 import that would occur if entities/player.py or entities/enemy.py imported
 directly from airwar.game.constants.
 """
+
 _GAME_CONSTANTS_REF = None
 
 
@@ -20,5 +21,6 @@ def get_game_constants():
     global _GAME_CONSTANTS_REF
     if _GAME_CONSTANTS_REF is None:
         from airwar.game.constants import GAME_CONSTANTS
+
         _GAME_CONSTANTS_REF = GAME_CONSTANTS
     return _GAME_CONSTANTS_REF

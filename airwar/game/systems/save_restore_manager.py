@@ -37,12 +37,12 @@ class SaveRestoreManager:
         game_controller.state.score = normalize_score(save_data.score)
         game_controller.state.kill_count = max(0, save_data.kill_count)
         game_controller.state.boss_kill_count = max(0, save_data.boss_kill_count)
-        game_controller.state.requisition_points = max(0, getattr(save_data, 'requisition_points', 0))
+        game_controller.state.requisition_points = max(0, getattr(save_data, "requisition_points", 0))
         game_controller.state.milestone_index = save_data.cycle_count
         game_controller.state.cycle_count = save_data.cycle_count
 
         # Sync difficulty BEFORE buff re-apply so base stats match the saved difficulty
-        saved_diff = save_data.difficulty if save_data.difficulty in VALID_DIFFICULTIES else 'medium'
+        saved_diff = save_data.difficulty if save_data.difficulty in VALID_DIFFICULTIES else "medium"
         game_controller.state.difficulty = saved_diff
         game_controller.state.username = save_data.username
         game_controller.state.score_multiplier = GAME_CONSTANTS.get_difficulty_multiplier(saved_diff)
@@ -55,12 +55,12 @@ class SaveRestoreManager:
 
         # Sync player boost config to the restored difficulty
         boost_cfg = BOOST_CONFIG[saved_diff]
-        player.boost_max = boost_cfg['max_boost']
-        player.boost_current = boost_cfg['max_boost']
-        player.boost_recovery_rate = boost_cfg['recovery_rate']
-        player.boost_speed_mult = boost_cfg['speed_mult']
-        player.boost_recovery_delay = boost_cfg['recovery_delay']
-        player.boost_recovery_ramp = boost_cfg['recovery_ramp']
+        player.boost_max = boost_cfg["max_boost"]
+        player.boost_current = boost_cfg["max_boost"]
+        player.boost_recovery_rate = boost_cfg["recovery_rate"]
+        player.boost_speed_mult = boost_cfg["speed_mult"]
+        player.boost_recovery_delay = boost_cfg["recovery_delay"]
+        player.boost_recovery_ramp = boost_cfg["recovery_ramp"]
 
         # Restore difficulty scaling so enemy stats scale correctly after load
         if game_controller.difficulty_manager:
@@ -95,9 +95,12 @@ class SaveRestoreManager:
         if not self._reward_system or not buff_levels:
             return
         legacy_map = {
-            'piercing_level': 'Piercing', 'spread_level': 'Spread Shot',
-            'explosive_level': 'Explosive', 'armor_level': 'Armor',
-            'evasion_level': 'Evasion', 'rapid_fire_level': 'Rapid Fire',
+            "piercing_level": "Piercing",
+            "spread_level": "Spread Shot",
+            "explosive_level": "Explosive",
+            "armor_level": "Armor",
+            "evasion_level": "Evasion",
+            "rapid_fire_level": "Rapid Fire",
         }
         for key, value in buff_levels.items():
             name = legacy_map.get(key, key)

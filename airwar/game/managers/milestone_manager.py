@@ -16,7 +16,8 @@ Usage:
     milestone_manager.check_and_trigger(player)
 """
 
-from typing import TYPE_CHECKING, Callable, Optional
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ...ui.reward_selector import RewardSelector
@@ -44,11 +45,7 @@ class MilestoneManager:
         _on_reward_selected_callback: Callback for reward selection completion.
     """
 
-    def __init__(
-        self,
-        game_controller: 'GameController',
-        reward_system: 'RewardSystem'
-    ) -> None:
+    def __init__(self, game_controller: "GameController", reward_system: "RewardSystem") -> None:
         """Initialize the milestone manager.
 
         Args:
@@ -57,10 +54,10 @@ class MilestoneManager:
         """
         self._game_controller = game_controller
         self._reward_system = reward_system
-        self._reward_selector: Optional['RewardSelector'] = None
-        self._on_reward_selected_callback: Optional[Callable] = None
+        self._reward_selector: RewardSelector | None = None
+        self._on_reward_selected_callback: Callable | None = None
 
-    def set_reward_selector(self, reward_selector: 'RewardSelector') -> None:
+    def set_reward_selector(self, reward_selector: "RewardSelector") -> None:
         """Set the reward selector.
 
         Args:
@@ -98,10 +95,7 @@ class MilestoneManager:
             player: Player object.
         """
         boss_kill_count = self._game_controller.difficulty_manager.get_boss_kill_count()
-        options = self._reward_system.generate_options(
-            boss_kill_count,
-            self._reward_system.unlocked_buffs
-        )
+        options = self._reward_system.generate_options(boss_kill_count, self._reward_system.unlocked_buffs)
         self._show_reward_selection(options, player)
         self._game_controller.set_paused(True)
 

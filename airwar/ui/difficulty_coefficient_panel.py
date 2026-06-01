@@ -1,5 +1,6 @@
 """Difficulty coefficient panel — visual indicator of current difficulty."""
-from typing import TYPE_CHECKING, List, Tuple
+
+from typing import TYPE_CHECKING
 
 import pygame
 
@@ -13,24 +14,25 @@ if TYPE_CHECKING:
 class DifficultyCoefficientPanel:
     """Difficulty coefficient panel — visual indicator of current difficulty multiplier.
 
-        Shows a stacked bar chart comparing initial vs current difficulty
-        across speed, fire rate, and aggression dimensions.
-        """
+    Shows a stacked bar chart comparing initial vs current difficulty
+    across speed, fire rate, and aggression dimensions.
+    """
+
     PANEL_WIDTH = 120
     PANEL_HEIGHT = 140
     MARGIN_LEFT = 15
 
-    _COLOR_THRESHOLDS: List[Tuple[float, Tuple[int, int, int], Tuple[int, int, int]]] = [
+    _COLOR_THRESHOLDS: list[tuple[float, tuple[int, int, int], tuple[int, int, int]]] = [
         (2.0, (100, 255, 100), (0, 255, 255)),
         (4.0, (255, 255, 100), (0, 200, 255)),
         (6.0, (255, 150, 50), (255, 150, 50)),
-        (float('inf'), Colors.ACCENT_DANGER, Colors.ACCENT_DANGER),
+        (float("inf"), Colors.ACCENT_DANGER, Colors.ACCENT_DANGER),
     ]
 
     _bg_surface_cache = None
     _glow_surface_cache = {}
 
-    def __init__(self, difficulty_manager: 'DifficultyManager'):
+    def __init__(self, difficulty_manager: "DifficultyManager"):
         self._manager = difficulty_manager
         self._initial_multiplier = difficulty_manager.initial_multiplier
         self._last_multiplier = difficulty_manager.get_current_multiplier()
@@ -67,13 +69,8 @@ class DifficultyCoefficientPanel:
             DifficultyCoefficientPanel._bg_surface_cache = bg_surface
         surface.blit(DifficultyCoefficientPanel._bg_surface_cache, (panel_x, panel_y))
 
-        bar_bg_rect = (
-            panel_x + 2, panel_y + 2,
-            self.PANEL_WIDTH - 4, self.PANEL_HEIGHT - 4
-        )
-        pygame.draw.rect(
-            surface, SystemColors.COEFFICIENT_BAR_BG, bar_bg_rect, 1
-        )
+        bar_bg_rect = (panel_x + 2, panel_y + 2, self.PANEL_WIDTH - 4, self.PANEL_HEIGHT - 4)
+        pygame.draw.rect(surface, SystemColors.COEFFICIENT_BAR_BG, bar_bg_rect, 1)
 
         bar_width = self.PANEL_WIDTH - 24
         bar_height = 10
@@ -81,10 +78,7 @@ class DifficultyCoefficientPanel:
         bar_y = panel_y + self.PANEL_HEIGHT - 28
 
         bar_rect = (bar_x, bar_y, bar_width, bar_height)
-        pygame.draw.rect(
-            surface, SystemColors.COEFFICIENT_BAR_FILL,
-            bar_rect, border_radius=3
-        )
+        pygame.draw.rect(surface, SystemColors.COEFFICIENT_BAR_FILL, bar_rect, border_radius=3)
         fill_width = int(bar_width * min(current / max_mult, 1.0))
         color = self._get_color_for_multiplier(current)
         if fill_width > 0:
@@ -127,18 +121,15 @@ class DifficultyCoefficientPanel:
                 glow_surface.fill((*glow_color[:3], alpha))
                 DifficultyCoefficientPanel._glow_surface_cache[cache_key] = glow_surface
             glow_surf = DifficultyCoefficientPanel._glow_surface_cache[cache_key]
-            surface.blit(
-                glow_surf, (x - i, y - i),
-                special_flags=pygame.BLEND_RGBA_ADD
-            )
+            surface.blit(glow_surf, (x - i, y - i), special_flags=pygame.BLEND_RGBA_ADD)
 
-    def _get_color_for_multiplier(self, multiplier: float) -> Tuple[int, int, int]:
+    def _get_color_for_multiplier(self, multiplier: float) -> tuple[int, int, int]:
         return self._get_color_by_index(multiplier, 1)
 
-    def _get_glow_color(self, multiplier: float) -> Tuple[int, int, int]:
+    def _get_glow_color(self, multiplier: float) -> tuple[int, int, int]:
         return self._get_color_by_index(multiplier, 2)
 
-    def _get_color_by_index(self, multiplier: float, color_index: int) -> Tuple[int, int, int]:
+    def _get_color_by_index(self, multiplier: float, color_index: int) -> tuple[int, int, int]:
         for threshold, normal_color, glow_color in self._COLOR_THRESHOLDS:
             if multiplier < threshold:
                 return glow_color if color_index == 2 else normal_color

@@ -1,11 +1,11 @@
 """Design tokens — color themes, typography, spacing, and animation values."""
-from typing import Tuple
 
 from airwar.utils.fonts import get_cjk_font
 
 
 class Colors:
     """Base color theme — cold steel palette matching ship armor."""
+
     BACKGROUND_PRIMARY = (6, 8, 16)
     BACKGROUND_SECONDARY = (10, 12, 22)
     BACKGROUND_PANEL = (8, 10, 18)
@@ -66,12 +66,13 @@ class Colors:
     INFO = (140, 170, 210)
 
     @staticmethod
-    def star_color(brightness: int) -> Tuple[int, int, int]:
+    def star_color(brightness: int) -> tuple[int, int, int]:
         return (brightness + 50, brightness + 50, brightness + 70)
 
 
 class Typography:
     """Typography — font sizes for all UI text elements."""
+
     DISPLAY_SIZE = 110
     TITLE_SIZE = 100
     HEADING_SIZE = 72
@@ -88,6 +89,7 @@ class Typography:
 
 class Spacing:
     """Spacing — margin, padding, and layout spacing values."""
+
     SPACE_XS = 4
     SPACE_SM = 8
     SPACE_MD = 12
@@ -114,6 +116,7 @@ class Spacing:
 
 class Animation:
     """Animation — timing and easing values."""
+
     GLOW_SPEED = 0.08
     GLOW_RADIUS_DEFAULT = 4
     GLOW_RADIUS_TITLE = 6
@@ -142,6 +145,7 @@ class Animation:
 
 class UIComponents:
     """UI components — dimensions for standard UI elements."""
+
     BUTTON_WIDTH = 280
     BUTTON_HEIGHT = 60
     TITLE_Y = 100
@@ -198,8 +202,10 @@ class UIComponents:
 
 # ─── System (HUD / in-game) theme ────────────────────────────────────────
 
+
 class SystemColors:
     """System color palette — in-game HUD and overlay elements."""
+
     ACCENT_PRIMARY = (140, 170, 210)
     ACCENT_DIM = (110, 140, 175)
     ACCENT_BRIGHT = (170, 195, 230)
@@ -260,6 +266,7 @@ class SystemColors:
 
 class SystemUI:
     """System UI component sizing and styling constants."""
+
     CHAMFER_DEPTH = 12
     CHAMFER_BORDER_WIDTH = 2
     CHAMFER_GLOW_WIDTH = 1
@@ -294,8 +301,10 @@ class SystemUI:
 
 # ─── Scene (menu / pause / login) theme ──────────────────────────────────
 
+
 class SceneColors:
     """Scene color palette — menus, pause, login, and overlay screens."""
+
     ACCENT_PRIMARY = (140, 170, 210)
     ACCENT_DIM = (110, 140, 175)
     ACCENT_BRIGHT = (170, 195, 230)
@@ -421,6 +430,7 @@ SystemUI.MILITARY_SMALL_SIZE = SystemUI.HUD_SMALL_SIZE
 
 
 # ─── DesignTokens singleton ───────────────────────────────────────────────
+
 
 class DesignTokens:
     """Design tokens singleton — centralized visual design system."""

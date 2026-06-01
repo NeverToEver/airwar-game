@@ -1,4 +1,5 @@
 """Window — resizable display window with event handling."""
+
 from __future__ import annotations
 
 import os
@@ -15,7 +16,8 @@ if not os.environ.get("SDL_RENDER_DRIVER"):
 
 class Window:
     """Resizable pygame window with event handling and mode management."""
-    def __init__(self, width: int = 1920, height: int = 1080, title: str = 'Air War', resizable: bool = True):
+
+    def __init__(self, width: int = 1920, height: int = 1080, title: str = "Air War", resizable: bool = True):
         self._running = False
         self._screen: pygame.Surface | None = None
         self._clock: pygame.time.Clock | None = None
@@ -127,9 +129,7 @@ class Window:
         # resolution; SDL2 scales to the window. Only recreate on explicit
         # size change that alters the logical resolution.
         if self._screen:
-            self._screen = pygame.display.set_mode(
-                (width, height), pygame.DOUBLEBUF | pygame.SCALED | pygame.RESIZABLE
-            )
+            self._screen = pygame.display.set_mode((width, height), pygame.DOUBLEBUF | pygame.SCALED | pygame.RESIZABLE)
         set_display_size(width, height)
 
     def flip(self) -> None:
@@ -201,19 +201,17 @@ class Window:
             # FULLSCREEN without SCALED — SCALED causes cropped/zoomed viewport
             # on pygame 2.6+ with certain SDL backends (X11/Wayland)
             try:
-                self._screen = pygame.display.set_mode(
-                    (self._width, self._height), pygame.FULLSCREEN)
+                self._screen = pygame.display.set_mode((self._width, self._height), pygame.FULLSCREEN)
             except pygame.error:
                 # Fallback: borderless maximized window
                 try:
-                    self._screen = pygame.display.set_mode(
-                        (self._width, self._height), pygame.NOFRAME)
+                    self._screen = pygame.display.set_mode((self._width, self._height), pygame.NOFRAME)
                 except pygame.error:
                     # Last resort: revert to windowed
                     self._width, self._height = self._windowed_size
                     self._screen = pygame.display.set_mode(
-                        (self._width, self._height),
-                        pygame.DOUBLEBUF | pygame.RESIZABLE)
+                        (self._width, self._height), pygame.DOUBLEBUF | pygame.RESIZABLE
+                    )
                     self._is_fullscreen = False
                     return
             self._is_fullscreen = True
@@ -234,7 +232,7 @@ def get_window() -> Window:
     return _window_instance
 
 
-def create_window(width: int = 1400, height: int = 800, title: str = 'Air War', resizable: bool = True) -> Window:
+def create_window(width: int = 1400, height: int = 800, title: str = "Air War", resizable: bool = True) -> Window:
     global _window_instance
     _window_instance = Window(width, height, title, resizable)
     _window_instance.init()

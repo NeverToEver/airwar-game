@@ -90,19 +90,31 @@ class BaseTalentConsole:
         self._requisition_points: int = 0
         self._missions: list[dict] = [
             {
-                "name": "歼灭先锋", "desc": "击杀5个敌人",
-                "target": "kills", "goal": 5, "progress": 0,
-                "done": False, "claimed": False
+                "name": "歼灭先锋",
+                "desc": "击杀5个敌人",
+                "target": "kills",
+                "goal": 5,
+                "progress": 0,
+                "done": False,
+                "claimed": False,
             },
             {
-                "name": "战场生存", "desc": "存活180秒",
-                "target": "survival_time", "goal": 180, "progress": 0,
-                "done": False, "claimed": False
+                "name": "战场生存",
+                "desc": "存活180秒",
+                "target": "survival_time",
+                "goal": 180,
+                "progress": 0,
+                "done": False,
+                "claimed": False,
             },
             {
-                "name": "主宰之战", "desc": "击杀Boss",
-                "target": "boss_kills", "goal": 1, "progress": 0,
-                "done": False, "claimed": False
+                "name": "主宰之战",
+                "desc": "击杀Boss",
+                "target": "boss_kills",
+                "goal": 1,
+                "progress": 0,
+                "done": False,
+                "claimed": False,
             },
         ]
 
@@ -366,10 +378,7 @@ class BaseTalentConsole:
             button_w = min(250, max(190, rect.w // 4))
             button_y_pad = 16 if route_h < 86 else 24
             button_rect = pygame.Rect(
-                rect.right - button_w - 26,
-                rect.y + button_y_pad,
-                button_w,
-                max(44, route_h - button_y_pad * 2)
+                rect.right - button_w - 26, rect.y + button_y_pad, button_w, max(44, route_h - button_y_pad * 2)
             )
             self._button_rects[f"route:{view.route}"] = button_rect
             selected = view.selected or "未解锁"
@@ -383,8 +392,7 @@ class BaseTalentConsole:
             surface.blit(detail_text, (rect.x + 24, rect.bottom - (28 if route_h < 86 else 34)))
 
     def _draw_hangar_module(
-        self, surface: pygame.Surface, rect: pygame.Rect,
-        status: dict, requisition_points: int = 0
+        self, surface: pygame.Surface, rect: pygame.Rect, status: dict, requisition_points: int = 0
     ) -> None:
         left_w = int(rect.w * 0.46)
         left = pygame.Rect(rect.x, rect.y, left_w, rect.h)
@@ -454,8 +462,7 @@ class BaseTalentConsole:
                 self._draw_facility_card(surface, card, title_text, state_text, detail, accent)
 
     def _draw_supply_module(
-        self, surface: pygame.Surface, rect: pygame.Rect,
-        status: dict, requisition_points: int = 0
+        self, surface: pygame.Surface, rect: pygame.Rect, status: dict, requisition_points: int = 0
     ) -> None:
         rp = requisition_points
         button_rect = pygame.Rect(rect.right - 218, rect.y + 8, 190, 52)
@@ -505,8 +512,7 @@ class BaseTalentConsole:
         log_y = card_y + card_h + log_gap
         log_rect = pygame.Rect(rect.x, log_y, rect.w, max(0, rect.bottom - log_y))
         draw_chamfered_panel(
-            surface, log_rect.x, log_rect.y, log_rect.w, log_rect.h,
-            (8, 18, 28), (64, 98, 118, 150), None, 7
+            surface, log_rect.x, log_rect.y, log_rect.w, log_rect.h, (8, 18, 28), (64, 98, 118, 150), None, 7
         )
         logs = [
             "补给完成后会立刻写入当前基地配置。",
@@ -516,21 +522,18 @@ class BaseTalentConsole:
         visible_lines = min(len(logs), max(0, (log_rect.h - 18) // 22))
         for index, text in enumerate(logs[:visible_lines]):
             y = log_rect.y + 14 + index * 22
-            text_surf = fit_text_to_width(
-                self._font_small, text, (150, 176, 194), log_rect.w - 38
-            )
+            text_surf = fit_text_to_width(self._font_small, text, (150, 176, 194), log_rect.w - 38)
             surface.blit(text_surf, (log_rect.x + 18, y))
 
     def _draw_mission_module(
-        self, surface: pygame.Surface, rect: pygame.Rect,
-        status: dict, requisition_points: int = 0
+        self, surface: pygame.Surface, rect: pygame.Rect, status: dict, requisition_points: int = 0
     ) -> None:
         draw_chamfered_panel(surface, rect.x, rect.y, rect.w, rect.h, (10, 24, 34), (58, 118, 138, 150), None, 7)
         title = self._font_section.render("任务规划台", True, (225, 242, 240))
         surface.blit(title, (rect.x + 18, rect.y + 16))
 
         # Draw all active missions with progress bars
-        missions = getattr(self, '_missions', [])
+        missions = getattr(self, "_missions", [])
         if not missions:
             empty_text = self._font.render("暂无任务", True, (150, 176, 194))
             surface.blit(empty_text, empty_text.get_rect(center=rect.center))
@@ -557,15 +560,12 @@ class BaseTalentConsole:
             bar_rect = pygame.Rect(bar_x, mr.y + mr.h // 2 - 7, 168, 14)
             self._draw_meter(surface, bar_rect, ratio, bar_color)
             prog_text = self._font_small.render(
-                f"{min(mission['progress'], mission['goal'])}/{mission['goal']}"
-                + (" ✓" if mission["done"] else ""),
+                f"{min(mission['progress'], mission['goal'])}/{mission['goal']}" + (" ✓" if mission["done"] else ""),
                 True,
-                (180, 210, 218) if not mission["done"] else (112, 206, 142)
+                (180, 210, 218) if not mission["done"] else (112, 206, 142),
             )
             surface.blit(
-                prog_text,
-                (bar_x - prog_text.get_width() - 10,
-                 mr.y + mr.h // 2 - prog_text.get_height() // 2)
+                prog_text, (bar_x - prog_text.get_width() - 10, mr.y + mr.h // 2 - prog_text.get_height() // 2)
             )
 
     def _draw_facility_card(
@@ -582,9 +582,7 @@ class BaseTalentConsole:
         title_y = rect.y + (10 if rect.h < 64 else 14)
         surface.blit(fit_text_to_width(self._font, title, (226, 242, 240), rect.w - 160), (rect.x + 32, title_y))
         status_surf = fit_text_to_width(self._font_small, status, accent, 100)
-        status_rect = status_surf.get_rect(
-            topright=(rect.right - 18, rect.y + (14 if rect.h < 64 else 18))
-        )
+        status_rect = status_surf.get_rect(topright=(rect.right - 18, rect.y + (14 if rect.h < 64 else 18)))
         surface.blit(status_surf, status_rect)
         if rect.h >= 52:
             surface.blit(
@@ -617,8 +615,7 @@ class BaseTalentConsole:
         self._draw_meter(surface, meter, ratio, color)
 
     def _draw_meter(
-        self, surface: pygame.Surface, rect: pygame.Rect,
-        ratio: float, color: tuple[int, int, int]
+        self, surface: pygame.Surface, rect: pygame.Rect, ratio: float, color: tuple[int, int, int]
     ) -> None:
         ratio = max(0.0, min(1.0, ratio))
         pygame.draw.rect(surface, (18, 28, 36), rect)
@@ -629,9 +626,13 @@ class BaseTalentConsole:
             pygame.draw.rect(surface, color, fill)
 
     def _draw_action_button(
-        self, surface: pygame.Surface, rect: pygame.Rect,
-        label: str, enabled: bool, hovered: bool,
-        accent: tuple[int, int, int]
+        self,
+        surface: pygame.Surface,
+        rect: pygame.Rect,
+        label: str,
+        enabled: bool,
+        hovered: bool,
+        accent: tuple[int, int, int],
     ) -> None:
         """Draw an actionable base button (repair/recharge)."""
         if enabled:
@@ -710,9 +711,7 @@ class BaseTalentConsole:
             (rect.x + 20, rect.y + 20),
         )
         hint_text = MODULE_HINTS.get(self._active_module, hint)
-        hint_surf = fit_text_to_width(
-            self._font_small, hint_text, (132, 154, 172), text_width
-        )
+        hint_surf = fit_text_to_width(self._font_small, hint_text, (132, 154, 172), text_width)
         surface.blit(hint_surf, (rect.x + 20, rect.y + 52))
         self._draw_continue_button(surface, button_rect, self._hovered_button == "continue")
 

@@ -1,7 +1,7 @@
 """Death animation — player destruction visual effect sequence."""
+
 import math
 import random
-from typing import List
 
 import pygame
 
@@ -11,16 +11,7 @@ from airwar.config.design_tokens import Colors
 class SparkParticle:
     """Spark particle used in the death explosion animation."""
 
-    def __init__(
-        self,
-        x: float,
-        y: float,
-        vx: float,
-        vy: float,
-        life: int,
-        max_life: int,
-        size: float
-    ) -> None:
+    def __init__(self, x: float, y: float, vx: float, vy: float, life: int, max_life: int, size: float) -> None:
         self.x = x
         self.y = y
         self.vx = vx
@@ -76,7 +67,7 @@ class DeathAnimation:
         self._timer = 0
         self._center_x = 0
         self._center_y = 0
-        self._sparks: List[SparkParticle] = []
+        self._sparks: list[SparkParticle] = []
         self._screen_diagonal = 0
         self._frame_since_last_spark = 0
 
@@ -167,15 +158,17 @@ class DeathAnimation:
             speed = random.uniform(self.SPARK_SPEED_MIN, self.SPARK_SPEED_MAX)
             life = random.randint(self.SPARK_LIFE_MIN, self.SPARK_LIFE_MAX)
             size = random.uniform(self.SPARK_SIZE_MIN, self.SPARK_SIZE_MAX)
-            self._sparks.append(SparkParticle(
-                x=self._center_x,
-                y=self._center_y,
-                vx=math.cos(angle) * speed,
-                vy=math.sin(angle) * speed,
-                life=life,
-                max_life=life,
-                size=size
-            ))
+            self._sparks.append(
+                SparkParticle(
+                    x=self._center_x,
+                    y=self._center_y,
+                    vx=math.cos(angle) * speed,
+                    vy=math.sin(angle) * speed,
+                    life=life,
+                    max_life=life,
+                    size=size,
+                )
+            )
 
     def _update_sparks(self) -> None:
         """Update position and lifetime of all spark particles."""
@@ -203,24 +196,14 @@ class DeathAnimation:
                 if cache_key not in DeathAnimation._spark_glow_cache:
                     glow_surf = pygame.Surface((glow_radius * 2, glow_radius * 2), pygame.SRCALPHA)
                     glow_alpha = int(alpha * self.SPARK_GLOW_ALPHA_RATIO)
-                    pygame.draw.circle(
-                        glow_surf,
-                        (*color_base, glow_alpha),
-                        (glow_radius, glow_radius),
-                        glow_radius
-                    )
+                    pygame.draw.circle(glow_surf, (*color_base, glow_alpha), (glow_radius, glow_radius), glow_radius)
                     DeathAnimation._spark_glow_cache[cache_key] = glow_surf
                 surface.blit(
                     DeathAnimation._spark_glow_cache[cache_key],
-                    (int(spark.x) - glow_radius, int(spark.y) - glow_radius)
+                    (int(spark.x) - glow_radius, int(spark.y) - glow_radius),
                 )
 
-            pygame.draw.circle(
-                surface,
-                color_base,
-                (int(spark.x), int(spark.y)),
-                max(1, int(spark.size * life_ratio))
-            )
+            pygame.draw.circle(surface, color_base, (int(spark.x), int(spark.y)), max(1, int(spark.size * life_ratio)))
 
     def _should_show_flicker(self) -> bool:
         """Check whether the current frame should show a flicker."""

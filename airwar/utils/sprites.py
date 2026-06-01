@@ -5,6 +5,7 @@ This module re-exports from the sub-modules for backward compatibility:
 - _sprites_ships: player, enemy, boss ship sprites
 - _sprites_bullets: single, spread, laser, explosive missile bullets
 """
+
 from ._sprites_bullets import (
     draw_bullet,
     draw_explosive_missile,
@@ -31,20 +32,20 @@ from ._sprites_ships import (
 )
 
 __all__ = [
-    'prewarm_glow_caches',
-    'create_gradient_surface',
-    'draw_glow_circle',
-    'draw_ripple',
-    'get_player_sprite',
-    'draw_player_ship',
-    'get_enemy_sprite',
-    'draw_enemy_ship',
-    'get_boss_sprite',
-    'draw_boss_ship',
-    'prewarm_ship_sprite_caches',
-    'draw_bullet',
-    'draw_single_bullet',
-    'draw_spread_bullet',
-    'draw_laser_bullet',
-    'draw_explosive_missile',
+    "create_gradient_surface",
+    "draw_boss_ship",
+    "draw_bullet",
+    "draw_enemy_ship",
+    "draw_explosive_missile",
+    "draw_glow_circle",
+    "draw_laser_bullet",
+    "draw_player_ship",
+    "draw_ripple",
+    "draw_single_bullet",
+    "draw_spread_bullet",
+    "get_boss_sprite",
+    "get_enemy_sprite",
+    "get_player_sprite",
+    "prewarm_glow_caches",
+    "prewarm_ship_sprite_caches",
 ]

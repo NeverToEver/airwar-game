@@ -266,10 +266,7 @@ def test_boss_enrage_releases_held_bullets_gradually_after_flow_finishes():
 
     assert first_released
     assert still_held
-    assert all(
-        0 < bullet.velocity.length() <= bullet.enrage_release_speed + 1e-6
-        for bullet in first_released
-    )
+    assert all(0 < bullet.velocity.length() <= bullet.enrage_release_speed + 1e-6 for bullet in first_released)
 
     for _ in range(boss.ENRAGE_RELEASE_INTERVAL * (boss._enrage_attack_index + 1)):
         manager.update_all()
@@ -344,9 +341,7 @@ def test_boss_enrage_faces_player_and_aims_muzzles_during_all_direction_movement
     assert len(boss._muzzle_flash_positions) == expected_flash_count
     ring_flash_positions = boss._muzzle_flash_positions[boss.ENRAGE_SNAPSHOT_LASER_COUNT :]
     assert len(set(ring_flash_positions)) == 2
-    assert ring_flash_positions == [
-        ring_flash_positions[index % 2] for index in range(len(ring_flash_positions))
-    ]
+    assert ring_flash_positions == [ring_flash_positions[index % 2] for index in range(len(ring_flash_positions))]
 
 
 def test_boss_enrage_trail_is_longer_and_half_resolution_blurred():
@@ -432,9 +427,7 @@ def test_bullet_manager_keeps_held_enrage_bullets_stationary_on_rust_path():
         batch_update.return_value = [(id(moving), moving.rect.x + 3, moving.rect.y + 2, True)]
         manager.update_all()
 
-    assert batch_update.call_args.args[0] == [
-        (id(moving), 40, 60, 3, 2, 0, False, 1080.0)
-    ]
+    assert batch_update.call_args.args[0] == [(id(moving), 40, 60, 3, 2, 0, False, 1080.0)]
     assert (held.rect.x, held.rect.y) == (100, 120)
     assert (moving.rect.x, moving.rect.y) == (43, 62)
 
@@ -472,8 +465,10 @@ def test_boss_enrage_overlay_keeps_ripples_cool_toned_and_subtle():
         rect=SimpleNamespace(centerx=320, centery=220),
     )
 
-    with patch("airwar.game.rendering.boss_enrage_renderer.pygame.draw.circle") as draw_circle, \
-         patch("airwar.game.rendering.boss_enrage_renderer.pygame.draw.line") as draw_line:
+    with (
+        patch("airwar.game.rendering.boss_enrage_renderer.pygame.draw.circle") as draw_circle,
+        patch("airwar.game.rendering.boss_enrage_renderer.pygame.draw.line") as draw_line,
+    ):
         renderer.render(surface, boss)
 
     colors = [call.args[1] for call in draw_circle.call_args_list]

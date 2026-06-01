@@ -1,4 +1,5 @@
 """Welcome scene -- single-page beginner interface combining login, difficulty, and quick tips."""
+
 import logging
 import math
 
@@ -70,7 +71,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         self.clear_buttons()
         self.db = UserDB()
         self.running = True
-        self.mode = 'login'
+        self.mode = "login"
         self.username = ""
         self.password = ""
         self.message = ""
@@ -80,9 +81,9 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         self.tutorial_requested = False
         self.settings_requested = False
         self.show_guest_confirm = False
-        self.guest_confirm_focus = 'yes'  # 'yes' | 'no'
+        self.guest_confirm_focus = "yes"  # 'yes' | 'no'
         self.show_delete_confirm = False
-        self.delete_confirm_focus = 'no'  # 'yes' | 'no'
+        self.delete_confirm_focus = "no"  # 'yes' | 'no'
         self.delete_username = ""
         self.animation_time = 0
         self.cursor_visible = True
@@ -91,19 +92,19 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         self.show_user_dropdown = False
 
         # Difficulty
-        self.difficulty_options = ['easy', 'medium', 'hard']
-        self.difficulty_labels = {'easy': '简单', 'medium': '中等', 'hard': '困难'}
-        self.selected_difficulty = 'medium'
+        self.difficulty_options = ["easy", "medium", "hard"]
+        self.difficulty_labels = {"easy": "简单", "medium": "中等", "hard": "困难"}
+        self.selected_difficulty = "medium"
         self.difficulty_index = 1
 
         # Focus: 'username' | 'password' | 'difficulty'
-        self.focus = 'username'
+        self.focus = "username"
         self._load_known_usernames()
 
         self._tokens = get_design_tokens()
         self._background = MenuBackground()
         self._particles = ParticleSystem()
-        self._particles.reset(self._tokens.components.PARTICLE_COUNT, 'particle')
+        self._particles.reset(self._tokens.components.PARTICLE_COUNT, "particle")
 
         pygame.font.init()
         tokens = self._tokens
@@ -127,17 +128,17 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         elif event.type == pygame.MOUSEBUTTONDOWN and self._handle_user_dropdown_click(event.pos):
             return
         elif event.type == pygame.MOUSEBUTTONDOWN and self.show_delete_confirm:
-            self._handle_modal_mouse_click(event.pos, {'delete_confirm_yes', 'delete_confirm_no'})
+            self._handle_modal_mouse_click(event.pos, {"delete_confirm_yes", "delete_confirm_no"})
         elif event.type == pygame.MOUSEBUTTONDOWN and self.handle_mouse_click(event.pos):
             btn = self.get_hovered_button()
             if btn:
                 self._handle_button_click(btn)
             # Clicking on input areas sets focus (only outside confirm mode)
             if not self.show_guest_confirm:
-                if btn == 'username_field':
-                    self.focus = 'username'
-                elif btn == 'password_field':
-                    self.focus = 'password'
+                if btn == "username_field":
+                    self.focus = "username"
+                elif btn == "password_field":
+                    self.focus = "password"
         elif event.type == pygame.MOUSEBUTTONDOWN:
             self.show_user_dropdown = False
 
@@ -163,24 +164,24 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         # Delete user confirmation mode — navigate buttons, Enter to confirm
         if self.show_delete_confirm:
             if event.key == pygame.K_RETURN:
-                if self.delete_confirm_focus == 'yes':
+                if self.delete_confirm_focus == "yes":
                     self._do_delete_user()
                 else:
                     self.show_delete_confirm = False
             elif event.key in (pygame.K_LEFT, pygame.K_RIGHT, pygame.K_TAB):
-                self.delete_confirm_focus = 'no' if self.delete_confirm_focus == 'yes' else 'yes'
+                self.delete_confirm_focus = "no" if self.delete_confirm_focus == "yes" else "yes"
             return
 
         # Guest confirmation mode — navigate buttons, Enter to confirm
         if self.show_guest_confirm:
             if event.key == pygame.K_RETURN:
-                if self.guest_confirm_focus == 'yes':
-                    self.username = 'Guest'
+                if self.guest_confirm_focus == "yes":
+                    self.username = "Guest"
                     self.running = False
                 else:
                     self.show_guest_confirm = False
             elif event.key in (pygame.K_LEFT, pygame.K_RIGHT, pygame.K_TAB):
-                self.guest_confirm_focus = 'no' if self.guest_confirm_focus == 'yes' else 'yes'
+                self.guest_confirm_focus = "no" if self.guest_confirm_focus == "yes" else "yes"
             return
 
         if event.key == pygame.K_TAB:
@@ -194,22 +195,22 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
                 self._do_login()
             else:
                 self.show_guest_confirm = True
-                self.guest_confirm_focus = 'yes'
+                self.guest_confirm_focus = "yes"
                 return
 
-        if self.focus in ('username', 'password'):
+        if self.focus in ("username", "password"):
             self._handle_input_key(event)
-        elif self.focus == 'difficulty':
+        elif self.focus == "difficulty":
             self._handle_difficulty_key(event)
 
     def _cycle_focus(self):
-        order = ['username', 'password', 'difficulty']
+        order = ["username", "password", "difficulty"]
         idx = order.index(self.focus) if self.focus in order else 0
         self.focus = order[(idx + 1) % len(order)]
 
     def _handle_input_key(self, event: pygame.event.Event):
         if event.key == pygame.K_BACKSPACE:
-            if self.focus == 'username':
+            if self.focus == "username":
                 self.username = self.username[:-1]
                 self.show_user_dropdown = bool(self.known_usernames)
             else:
@@ -219,12 +220,12 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             self.show_user_dropdown = False
         else:
             # Filter control characters so Enter/Tab don't become input
-            if not event.unicode or event.unicode in ('\r', '\n', '\t', '\x08'):
+            if not event.unicode or event.unicode in ("\r", "\n", "\t", "\x08"):
                 return
-            if self.focus == 'username' and len(self.username) < 16:
+            if self.focus == "username" and len(self.username) < 16:
                 self.username += event.unicode
                 self.show_user_dropdown = bool(self.known_usernames)
-            elif self.focus == 'password' and len(self.password) < 16:
+            elif self.focus == "password" and len(self.password) < 16:
                 self.password += event.unicode
 
     def _handle_difficulty_key(self, event: pygame.event.Event):
@@ -237,35 +238,35 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
     def _handle_button_click(self, button_name: str) -> None:
         handlers = {
-            'login': self._do_login,
-            'register': self._do_register,
-            'skip_login': self._start_guest_session,
-            'fullscreen': self._toggle_fullscreen,
-            'tutorial': self._request_tutorial,
-            'settings': self._request_settings,
-            'quit': self._request_quit,
-            'username_field': self._focus_username_field,
-            'username_dropdown': self._toggle_user_dropdown,
-            'password_field': self._focus_password_field,
-            'diff_easy': lambda: self._select_difficulty('easy'),
-            'diff_medium': lambda: self._select_difficulty('medium'),
-            'diff_hard': lambda: self._select_difficulty('hard'),
-            'guest_confirm_yes': self._start_guest_session,
-            'guest_confirm_no': self._dismiss_guest_confirm,
-            'delete_user': self._request_delete_user,
-            'delete_confirm_yes': self._do_delete_user,
-            'delete_confirm_no': self._dismiss_delete_confirm,
+            "login": self._do_login,
+            "register": self._do_register,
+            "skip_login": self._start_guest_session,
+            "fullscreen": self._toggle_fullscreen,
+            "tutorial": self._request_tutorial,
+            "settings": self._request_settings,
+            "quit": self._request_quit,
+            "username_field": self._focus_username_field,
+            "username_dropdown": self._toggle_user_dropdown,
+            "password_field": self._focus_password_field,
+            "diff_easy": lambda: self._select_difficulty("easy"),
+            "diff_medium": lambda: self._select_difficulty("medium"),
+            "diff_hard": lambda: self._select_difficulty("hard"),
+            "guest_confirm_yes": self._start_guest_session,
+            "guest_confirm_no": self._dismiss_guest_confirm,
+            "delete_user": self._request_delete_user,
+            "delete_confirm_yes": self._do_delete_user,
+            "delete_confirm_no": self._dismiss_delete_confirm,
         }
         handler = handlers.get(button_name)
         if handler:
             handler()
-        elif button_name.startswith('known_user_'):
-            index_text = button_name.rsplit('_', 1)[-1]
+        elif button_name.startswith("known_user_"):
+            index_text = button_name.rsplit("_", 1)[-1]
             if index_text.isdigit():
                 self._select_known_user(int(index_text))
 
     def _start_guest_session(self) -> None:
-        self.username = 'Guest'
+        self.username = "Guest"
         self.running = False
 
     def _toggle_fullscreen(self) -> None:
@@ -284,21 +285,21 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         self.running = False
 
     def _focus_username_field(self) -> None:
-        self.focus = 'username'
+        self.focus = "username"
         self.show_user_dropdown = bool(self.known_usernames)
 
     def _toggle_user_dropdown(self) -> None:
-        self.focus = 'username'
+        self.focus = "username"
         self.show_user_dropdown = bool(self.known_usernames) and not self.show_user_dropdown
 
     def _focus_password_field(self) -> None:
-        self.focus = 'password'
+        self.focus = "password"
         self.show_user_dropdown = False
 
     def _select_difficulty(self, difficulty: str) -> None:
         self.difficulty_index = self.difficulty_options.index(difficulty)
         self.selected_difficulty = difficulty
-        self.focus = 'difficulty'
+        self.focus = "difficulty"
         self.show_user_dropdown = False
 
     def _dismiss_guest_confirm(self) -> None:
@@ -311,7 +312,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         if self.username:
             self.delete_username = self.username
             self.show_delete_confirm = True
-            self.delete_confirm_focus = 'no'
+            self.delete_confirm_focus = "no"
         else:
             self.message = "请先输入用户名"
             self._is_error = True
@@ -329,7 +330,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             self._is_error = True
             self.message_timer = self.MESSAGE_DISPLAY_FRAMES
             self.show_delete_confirm = False
-            self.focus = 'password'
+            self.focus = "password"
             return
         try:
             deleted = self.db.delete_user(self.delete_username, self.password)
@@ -412,7 +413,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             self.message = "注册成功！现在可以开始游戏了"
             self._is_error = False
             self.message_timer = self.MESSAGE_DISPLAY_FRAMES
-            self.mode = 'login'
+            self.mode = "login"
             self.password = ""
             self._load_known_usernames()
         else:
@@ -431,21 +432,21 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         if last_user:
             self.username = last_user
             self.password = ""
-            self.focus = 'password'
+            self.focus = "password"
 
     def _select_known_user(self, index: int) -> None:
         if index < 0 or index >= len(self.known_usernames):
             return
         self.username = self.known_usernames[index]
         self.password = ""
-        self.focus = 'password'
+        self.focus = "password"
         self.show_user_dropdown = False
 
     def _handle_user_dropdown_click(self, pos: tuple[int, int]) -> bool:
         if not self.show_user_dropdown:
             return False
         for index in range(min(len(self.known_usernames), self.USER_DROPDOWN_MAX_ITEMS)):
-            rect = self.get_button_rect(f'known_user_{index}')
+            rect = self.get_button_rect(f"known_user_{index}")
             if rect and rect.collidepoint(pos):
                 self._select_known_user(index)
                 return True
@@ -476,11 +477,14 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         sw, sh = surface.get_width(), surface.get_height()
 
         # Background
-        self._background.render_themed_style(surface, {
-            'bg': SC.BG_PRIMARY,
-            'bg_gradient': SC.BG_PANEL,
-        })
-        self._particles.render(surface, 'particle')
+        self._background.render_themed_style(
+            surface,
+            {
+                "bg": SC.BG_PRIMARY,
+                "bg_gradient": SC.BG_PANEL,
+            },
+        )
+        self._particles.render(surface, "particle")
 
         # Title
         self._render_title(surface)
@@ -562,8 +566,9 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         layout = self._get_login_layout(px, py)
 
         # Panel background
-        draw_chamfered_panel(surface, px, py, self.PANEL_W, self.PANEL_H,
-                             SC.BG_PANEL_LIGHT, SC.BORDER_DIM, SC.GOLD_GLOW, self.CHAMFER)
+        draw_chamfered_panel(
+            surface, px, py, self.PANEL_W, self.PANEL_H, SC.BG_PANEL_LIGHT, SC.BORDER_DIM, SC.GOLD_GLOW, self.CHAMFER
+        )
 
         # Section title
         title = self.section_font.render("飞行员登录", True, SC.GOLD_PRIMARY)
@@ -571,8 +576,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
         # Decorative separator
         sep_y = py + 72
-        pygame.draw.line(surface, SC.BORDER_DIM,
-                         (px + 30, sep_y), (px + self.PANEL_W - 30, sep_y), 1)
+        pygame.draw.line(surface, SC.BORDER_DIM, (px + 30, sep_y), (px + self.PANEL_W - 30, sep_y), 1)
 
         self._draw_input_row(
             surface,
@@ -580,8 +584,8 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             layout["username_field"],
             "用户名",
             self.username,
-            self.focus == 'username',
-            'username_field',
+            self.focus == "username",
+            "username_field",
         )
         self._draw_username_dropdown_button(surface, layout["username_dropdown"])
         self._draw_input_row(
@@ -590,40 +594,54 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             layout["password_field"],
             "密码",
             self.password,
-            self.focus == 'password',
-            'password_field',
+            self.focus == "password",
+            "password_field",
             is_password=True,
         )
 
-        self._draw_button(surface, layout["login"], "登录", 'login',
-                         SceneColors.FOREST_GREEN, is_primary=True)
-        self._draw_button(surface, layout["register"], "注册", 'register',
-                         SceneColors.GOLD_DIM)
+        self._draw_button(surface, layout["login"], "登录", "login", SceneColors.FOREST_GREEN, is_primary=True)
+        self._draw_button(surface, layout["register"], "注册", "register", SceneColors.GOLD_DIM)
 
-        self._draw_ghost_button(surface, layout["guest"], "游客模式", 'skip_login')
+        self._draw_ghost_button(surface, layout["guest"], "游客模式", "skip_login")
 
         # Settings button
         settings_rect = layout["settings"]
-        self.register_button('settings', settings_rect)
-        settings_hover = self.is_button_hovered('settings')
+        self.register_button("settings", settings_rect)
+        settings_hover = self.is_button_hovered("settings")
         settings_fill = (20, 32, 42) if settings_hover else SC.BG_PANEL_LIGHT
         settings_border = (82, 180, 200) if settings_hover else SC.BORDER_DIM
-        draw_chamfered_panel(surface, settings_rect.x, settings_rect.y,
-                             settings_rect.width, settings_rect.height,
-                             settings_fill, settings_border, None, 6)
+        draw_chamfered_panel(
+            surface,
+            settings_rect.x,
+            settings_rect.y,
+            settings_rect.width,
+            settings_rect.height,
+            settings_fill,
+            settings_border,
+            None,
+            6,
+        )
         settings_color = (160, 220, 240) if settings_hover else SC.TEXT_DIM
         settings_font = get_cjk_font(self._tokens.typography.SMALL_SIZE)
         settings_text = settings_font.render("设置", True, settings_color)
         surface.blit(settings_text, settings_text.get_rect(center=settings_rect.center))
 
         delete_rect = layout["delete"]
-        self.register_button('delete_user', delete_rect)
-        delete_hover = self.is_button_hovered('delete_user')
+        self.register_button("delete_user", delete_rect)
+        delete_hover = self.is_button_hovered("delete_user")
         delete_fill = (80, 20, 20) if delete_hover else SC.BG_PANEL_LIGHT
         delete_border = (200, 60, 60) if delete_hover else SC.BORDER_DIM
-        draw_chamfered_panel(surface, delete_rect.x, delete_rect.y,
-                             delete_rect.width, delete_rect.height,
-                             delete_fill, delete_border, None, 6)
+        draw_chamfered_panel(
+            surface,
+            delete_rect.x,
+            delete_rect.y,
+            delete_rect.width,
+            delete_rect.height,
+            delete_fill,
+            delete_border,
+            None,
+            6,
+        )
         delete_color = (255, 100, 100) if delete_hover else SC.TEXT_DIM
         delete_font = get_cjk_font(self._tokens.typography.SMALL_SIZE)
         delete_text = delete_font.render("删除用户", True, delete_color)
@@ -695,17 +713,24 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
     def _draw_username_dropdown_button(self, surface, rect: pygame.Rect) -> None:
         SC = SceneColors
-        self.register_button('username_dropdown', rect)
-        hover = self.is_button_hovered('username_dropdown')
+        self.register_button("username_dropdown", rect)
+        hover = self.is_button_hovered("username_dropdown")
         active = self.show_user_dropdown or hover
         border = SC.GOLD_PRIMARY if active else SC.BORDER_DIM
         fill = SC.BG_PANEL if active else SC.BG_PANEL_LIGHT
         if active:
-            draw_chamfered_panel(surface, rect.x - 3, rect.y - 3,
-                                 rect.width + 6, rect.height + 6,
-                                 SC.BG_PANEL, SC.GOLD_GLOW, SC.GOLD_GLOW, 8)
-        draw_chamfered_panel(surface, rect.x, rect.y, rect.width, rect.height,
-                             fill, border, None, 6)
+            draw_chamfered_panel(
+                surface,
+                rect.x - 3,
+                rect.y - 3,
+                rect.width + 6,
+                rect.height + 6,
+                SC.BG_PANEL,
+                SC.GOLD_GLOW,
+                SC.GOLD_GLOW,
+                8,
+            )
+        draw_chamfered_panel(surface, rect.x, rect.y, rect.width, rect.height, fill, border, None, 6)
 
         arrow = "▲" if self.show_user_dropdown else "▼"
         color = SC.GOLD_PRIMARY if active else SC.TEXT_DIM
@@ -714,22 +739,21 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
     def _render_user_dropdown(self, surface, anchor_rect: pygame.Rect) -> None:
         for index in range(self.USER_DROPDOWN_MAX_ITEMS):
-            self.unregister_button(f'known_user_{index}')
+            self.unregister_button(f"known_user_{index}")
         if not self.show_user_dropdown or not self.known_usernames:
             return
 
         SC = SceneColors
-        visible_users = self.known_usernames[:self.USER_DROPDOWN_MAX_ITEMS]
+        visible_users = self.known_usernames[: self.USER_DROPDOWN_MAX_ITEMS]
         option_w = min(self.INPUT_W, anchor_rect.right - (anchor_rect.x - self.INPUT_W + self.USER_DROPDOWN_W))
         option_w = max(option_w, anchor_rect.width)
         menu_x = anchor_rect.right - option_w
         menu_y = anchor_rect.bottom + 6
         menu_h = len(visible_users) * self.USER_DROPDOWN_OPTION_H
-        draw_chamfered_panel(surface, menu_x, menu_y, option_w, menu_h,
-                             SC.BG_PANEL, SC.GOLD_PRIMARY, SC.GOLD_GLOW, 8)
+        draw_chamfered_panel(surface, menu_x, menu_y, option_w, menu_h, SC.BG_PANEL, SC.GOLD_PRIMARY, SC.GOLD_GLOW, 8)
 
         for index, username in enumerate(visible_users):
-            btn_name = f'known_user_{index}'
+            btn_name = f"known_user_{index}"
             item_rect = pygame.Rect(
                 menu_x + 4,
                 menu_y + 4 + index * self.USER_DROPDOWN_OPTION_H,
@@ -740,9 +764,9 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             hover = self.is_button_hovered(btn_name)
             fill = SC.BG_PANEL_LIGHT if hover or username == self.username else SC.BG_PANEL
             border = SC.GOLD_PRIMARY if hover else SC.BORDER_DIM
-            draw_chamfered_panel(surface, item_rect.x, item_rect.y,
-                                 item_rect.width, item_rect.height,
-                                 fill, border, None, 5)
+            draw_chamfered_panel(
+                surface, item_rect.x, item_rect.y, item_rect.width, item_rect.height, fill, border, None, 5
+            )
             color = SC.GOLD_PRIMARY if username == self.username else SC.TEXT_PRIMARY
             label = fit_text_to_width(self.tip_font, username, color, item_rect.width - 24)
             surface.blit(label, label.get_rect(midleft=(item_rect.x + 12, item_rect.centery)))
@@ -751,16 +775,16 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         SC = SceneColors
 
         # Panel background
-        draw_chamfered_panel(surface, px, py, self.PANEL_W, self.PANEL_H,
-                             SC.BG_PANEL_LIGHT, SC.BORDER_DIM, SC.GOLD_GLOW, self.CHAMFER)
+        draw_chamfered_panel(
+            surface, px, py, self.PANEL_W, self.PANEL_H, SC.BG_PANEL_LIGHT, SC.BORDER_DIM, SC.GOLD_GLOW, self.CHAMFER
+        )
 
         # Section title
         title = self.section_font.render("任务简报", True, SC.GOLD_PRIMARY)
         surface.blit(title, title.get_rect(center=(px + self.PANEL_W // 2, py + 32)))
 
         sep_y = py + 58
-        pygame.draw.line(surface, SC.BORDER_DIM,
-                         (px + 30, sep_y), (px + self.PANEL_W - 30, sep_y), 1)
+        pygame.draw.line(surface, SC.BORDER_DIM, (px + 30, sep_y), (px + self.PANEL_W - 30, sep_y), 1)
 
         # -- Tutorial call-to-action --
         tutorial_y = py + 80
@@ -775,9 +799,8 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         diff_start_y = diff_title_y + 26
         for i, opt in enumerate(self.difficulty_options):
             dy = diff_start_y + i * (self.DIFF_OPTION_H + self.DIFF_GAP)
-            is_sel = (i == self.difficulty_index)
-            self._draw_diff_option(surface, px + 20, dy, self.PANEL_W - 40,
-                                   self.difficulty_labels[opt], i, is_sel)
+            is_sel = i == self.difficulty_index
+            self._draw_diff_option(surface, px + 20, dy, self.PANEL_W - 40, self.difficulty_labels[opt], i, is_sel)
 
         # -- Quick Controls reference --
         tips_title_y = (
@@ -811,21 +834,29 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
     def _draw_diff_option(self, surface, x, y, w, label, index, selected):
         SC = SceneColors
-        btn_name = f'diff_{self.difficulty_options[index]}'
+        btn_name = f"diff_{self.difficulty_options[index]}"
         rect = pygame.Rect(x, y, w, self.DIFF_OPTION_H)
         self.register_button(btn_name, rect)
 
         hover = self.is_button_hovered(btn_name)
-        is_active = selected or (self.focus == 'difficulty' and hover)
+        is_active = selected or (self.focus == "difficulty" and hover)
 
         if is_active:
-            draw_chamfered_panel(surface, x - 2, y - 2, w + 4, self.DIFF_OPTION_H + 4,
-                                 SC.BG_PANEL, SC.GOLD_GLOW, SC.GOLD_GLOW, 6)
+            draw_chamfered_panel(
+                surface, x - 2, y - 2, w + 4, self.DIFF_OPTION_H + 4, SC.BG_PANEL, SC.GOLD_GLOW, SC.GOLD_GLOW, 6
+            )
 
-        draw_chamfered_panel(surface, x, y, w, self.DIFF_OPTION_H,
-                             SC.BG_PANEL if is_active else SC.BG_PANEL_LIGHT,
-                             SC.GOLD_PRIMARY if is_active else SC.BORDER_DIM,
-                             None, 6)
+        draw_chamfered_panel(
+            surface,
+            x,
+            y,
+            w,
+            self.DIFF_OPTION_H,
+            SC.BG_PANEL if is_active else SC.BG_PANEL_LIGHT,
+            SC.GOLD_PRIMARY if is_active else SC.BORDER_DIM,
+            None,
+            6,
+        )
 
         prefix = ">  " if is_active else "   "
         color = SC.GOLD_PRIMARY if is_active else SC.TEXT_DIM
@@ -835,8 +866,8 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
     def _draw_tutorial_cta_button(self, surface, rect: pygame.Rect) -> None:
         """Primary tutorial CTA with the same chamfer language as difficulty options."""
         SC = SceneColors
-        self.register_button('tutorial', rect)
-        hover = self.is_button_hovered('tutorial')
+        self.register_button("tutorial", rect)
+        hover = self.is_button_hovered("tutorial")
         pulse = 0.5 + 0.5 * math.sin(self.animation_time * 0.075)
         glow_alpha = int(58 + 48 * pulse)
 
@@ -886,16 +917,23 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         bg_color = SC.BG_PANEL if is_active else SC.BG_PANEL_LIGHT
 
         if is_active:
-            draw_chamfered_panel(surface, rect.x - 3, rect.y - 3,
-                                 rect.width + 6, rect.height + 6,
-                                 SC.BG_PANEL, SC.GOLD_GLOW, SC.GOLD_GLOW, 8)
-        draw_chamfered_panel(surface, rect.x, rect.y, rect.width, rect.height,
-                             bg_color, border_color, None, 6)
+            draw_chamfered_panel(
+                surface,
+                rect.x - 3,
+                rect.y - 3,
+                rect.width + 6,
+                rect.height + 6,
+                SC.BG_PANEL,
+                SC.GOLD_GLOW,
+                SC.GOLD_GLOW,
+                8,
+            )
+        draw_chamfered_panel(surface, rect.x, rect.y, rect.width, rect.height, bg_color, border_color, None, 6)
 
         # Text content
         display = text
         if is_password and display:
-            display = '*' * len(display)
+            display = "*" * len(display)
         text_surf = self.input_font.render(display, True, SC.TEXT_PRIMARY)
         text_rect = text_surf.get_rect(midleft=(rect.x + 16, rect.centery))
         # Clamp CJK text overflow: shift left so text stays within input box
@@ -914,11 +952,9 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         # Cursor
         if is_active and self.cursor_visible:
             cx = text_rect.right + 3 if text else rect.x + 16
-            pygame.draw.line(surface, SC.GOLD_PRIMARY,
-                             (cx, rect.y + 12), (cx, rect.y + rect.height - 12), 2)
+            pygame.draw.line(surface, SC.GOLD_PRIMARY, (cx, rect.y + 12), (cx, rect.y + rect.height - 12), 2)
 
-    def _draw_button(self, surface, rect, text, button_name, color, is_primary=False,
-                     is_focused=False):
+    def _draw_button(self, surface, rect, text, button_name, color, is_primary=False, is_focused=False):
         SC = SceneColors
         self.register_button(button_name, rect)
         hover = self.is_button_hovered(button_name)
@@ -927,14 +963,29 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         btn_color = tuple(min(c + 30, 255) for c in color) if active else color
 
         if (is_primary and hover) or (is_focused and not hover):
-            draw_chamfered_panel(surface, rect.x - 4, rect.y - 4,
-                                 rect.width + 8, rect.height + 8,
-                                 SC.BG_PANEL, SC.GOLD_GLOW, SC.GOLD_GLOW, 8)
+            draw_chamfered_panel(
+                surface,
+                rect.x - 4,
+                rect.y - 4,
+                rect.width + 8,
+                rect.height + 8,
+                SC.BG_PANEL,
+                SC.GOLD_GLOW,
+                SC.GOLD_GLOW,
+                8,
+            )
 
-        draw_chamfered_panel(surface, rect.x, rect.y, rect.width, rect.height,
-                             btn_color,
-                             SC.GOLD_PRIMARY if active else SC.BORDER_DIM,
-                             None, 6)
+        draw_chamfered_panel(
+            surface,
+            rect.x,
+            rect.y,
+            rect.width,
+            rect.height,
+            btn_color,
+            SC.GOLD_PRIMARY if active else SC.BORDER_DIM,
+            None,
+            6,
+        )
 
         text_color = SC.TEXT_BRIGHT if active else SC.TEXT_PRIMARY
         text_surf = fit_text_to_width(self.button_font, text, text_color, rect.width - 32)
@@ -948,8 +999,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
         fill = SC.BG_PANEL if hover else SC.BG_PANEL_LIGHT
         border = SC.GOLD_PRIMARY if hover else SC.BORDER_DIM
-        draw_chamfered_panel(surface, rect.x, rect.y, rect.width, rect.height,
-                             fill, border, None, 6)
+        draw_chamfered_panel(surface, rect.x, rect.y, rect.width, rect.height, fill, border, None, 6)
 
         text_color = SC.TEXT_PRIMARY if hover else SC.TEXT_DIM
         font = get_cjk_font(self._tokens.typography.SMALL_SIZE)
@@ -987,8 +1037,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         dlg_w, dlg_h = 560, 300
         dlg_x = (sw - dlg_w) // 2
         dlg_y = (sh - dlg_h) // 2
-        draw_chamfered_panel(surface, dlg_x, dlg_y, dlg_w, dlg_h,
-                             SC.BG_PANEL_LIGHT, SC.GOLD_PRIMARY, SC.GOLD_GLOW, 12)
+        draw_chamfered_panel(surface, dlg_x, dlg_y, dlg_w, dlg_h, SC.BG_PANEL_LIGHT, SC.GOLD_PRIMARY, SC.GOLD_GLOW, 12)
 
         # Title
         title = self.section_font.render("游客模式", True, SC.GOLD_PRIMARY)
@@ -1014,16 +1063,21 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
         # Confirm button (primary)
         confirm_rect = pygame.Rect(btn_start_x, btn_y, btn_w, btn_h)
-        self._draw_button(surface, confirm_rect, "游客进入",
-                          'guest_confirm_yes', SC.FOREST_GREEN, is_primary=True,
-                          is_focused=(self.guest_confirm_focus == 'yes'))
+        self._draw_button(
+            surface,
+            confirm_rect,
+            "游客进入",
+            "guest_confirm_yes",
+            SC.FOREST_GREEN,
+            is_primary=True,
+            is_focused=(self.guest_confirm_focus == "yes"),
+        )
 
         # Cancel button (secondary)
         cancel_rect = pygame.Rect(btn_start_x + btn_w + gap, btn_y, btn_w, btn_h)
-        self._draw_button(surface, cancel_rect, "返回",
-                          'guest_confirm_no', SC.GOLD_DIM,
-                          is_focused=(self.guest_confirm_focus == 'no'))
-
+        self._draw_button(
+            surface, cancel_rect, "返回", "guest_confirm_no", SC.GOLD_DIM, is_focused=(self.guest_confirm_focus == "no")
+        )
 
     def _render_delete_confirm(self, surface):
         """Overlay confirmation dialog: delete user account."""
@@ -1039,8 +1093,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         dlg_w, dlg_h = 620, 280
         dlg_x = (sw - dlg_w) // 2
         dlg_y = (sh - dlg_h) // 2
-        draw_chamfered_panel(surface, dlg_x, dlg_y, dlg_w, dlg_h,
-                             SC.BG_PANEL_LIGHT, SC.GOLD_PRIMARY, SC.GOLD_GLOW, 12)
+        draw_chamfered_panel(surface, dlg_x, dlg_y, dlg_w, dlg_h, SC.BG_PANEL_LIGHT, SC.GOLD_PRIMARY, SC.GOLD_GLOW, 12)
 
         # Title
         title = self.section_font.render("删除用户", True, SC.DANGER_RED)
@@ -1066,15 +1119,26 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
         # Confirm button (danger — red)
         confirm_rect = pygame.Rect(btn_start_x, btn_y, btn_w, btn_h)
-        self._draw_button(surface, confirm_rect, "确认删除",
-                          'delete_confirm_yes', SC.DANGER_RED, is_primary=True,
-                          is_focused=(self.delete_confirm_focus == 'yes'))
+        self._draw_button(
+            surface,
+            confirm_rect,
+            "确认删除",
+            "delete_confirm_yes",
+            SC.DANGER_RED,
+            is_primary=True,
+            is_focused=(self.delete_confirm_focus == "yes"),
+        )
 
         # Cancel button
         cancel_rect = pygame.Rect(btn_start_x + btn_w + gap, btn_y, btn_w, btn_h)
-        self._draw_button(surface, cancel_rect, "取消",
-                          'delete_confirm_no', SC.GOLD_DIM,
-                          is_focused=(self.delete_confirm_focus == 'no'))
+        self._draw_button(
+            surface,
+            cancel_rect,
+            "取消",
+            "delete_confirm_no",
+            SC.GOLD_DIM,
+            is_focused=(self.delete_confirm_focus == "no"),
+        )
 
     def _render_dialog_lines(self, surface, lines, center_x, start_y, max_width):
         y = start_y
@@ -1093,20 +1157,26 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         btn_h = ResponsiveHelper.scale(38, scale)
         rect = pygame.Rect(sw - btn_w - 30, sh - btn_h - 30, btn_w, btn_h)
 
-        self.register_button('fullscreen', rect)
-        hover = self.is_button_hovered('fullscreen')
-        draw_chamfered_panel(surface, rect.x, rect.y, rect.width, rect.height,
-                             SC.BG_PANEL_LIGHT if hover else SC.BG_PANEL,
-                             SC.GOLD_PRIMARY if hover else SC.BORDER_DIM,
-                             None, 6)
-        fs_surf = self.tip_font.render(fs_text, True,
-                                       SC.TEXT_PRIMARY if hover else SC.TEXT_DIM)
+        self.register_button("fullscreen", rect)
+        hover = self.is_button_hovered("fullscreen")
+        draw_chamfered_panel(
+            surface,
+            rect.x,
+            rect.y,
+            rect.width,
+            rect.height,
+            SC.BG_PANEL_LIGHT if hover else SC.BG_PANEL,
+            SC.GOLD_PRIMARY if hover else SC.BORDER_DIM,
+            None,
+            6,
+        )
+        fs_surf = self.tip_font.render(fs_text, True, SC.TEXT_PRIMARY if hover else SC.TEXT_DIM)
         surface.blit(fs_surf, fs_surf.get_rect(center=rect.center))
 
     # -- Public interface (used by SceneDirector) -----------------------
 
     def get_username(self) -> str:
-        return self.username if self.username else 'Guest'
+        return self.username if self.username else "Guest"
 
     def get_difficulty(self) -> str:
         return self.selected_difficulty

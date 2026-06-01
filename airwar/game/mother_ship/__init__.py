@@ -1,4 +1,5 @@
 """Mothership package — docking system for saving game progress."""
+
 from .event_bus import EventBus
 from .game_integrator import GameIntegrator
 from .input_detector import InputDetector
@@ -16,20 +17,20 @@ from .progress_bar_ui import ProgressBarUI
 from .state_machine import MotherShipStateMachine
 
 __all__ = [
-    'IInputDetector',
-    'IMotherShipUI',
-    'IEventBus',
-    'IPersistenceManager',
-    'IMotherShipStateMachine',
-    'MotherShipState',
-    'DockingProgress',
-    'GameSaveData',
-    'SaveDataCorruptedError',
-    'EventBus',
-    'InputDetector',
-    'MotherShipStateMachine',
-    'ProgressBarUI',
-    'PersistenceManager',
-    'MotherShip',
-    'GameIntegrator',
+    "DockingProgress",
+    "EventBus",
+    "GameIntegrator",
+    "GameSaveData",
+    "IEventBus",
+    "IInputDetector",
+    "IMotherShipStateMachine",
+    "IMotherShipUI",
+    "IPersistenceManager",
+    "InputDetector",
+    "MotherShip",
+    "MotherShipState",
+    "MotherShipStateMachine",
+    "PersistenceManager",
+    "ProgressBarUI",
+    "SaveDataCorruptedError",
 ]

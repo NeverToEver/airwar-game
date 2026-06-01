@@ -2,9 +2,11 @@ import airwar.core_bindings as core_bindings
 
 
 def test_batch_update_bullets_contract():
-    result = core_bindings.batch_update_bullets([
-        (7, 10.0, 20.0, 1.5, -2.0, 0, False, 100.0),
-    ])
+    result = core_bindings.batch_update_bullets(
+        [
+            (7, 10.0, 20.0, 1.5, -2.0, 0, False, 100.0),
+        ]
+    )
 
     assert result == [(7, 11.5, 18.0, True)]
 
@@ -26,9 +28,11 @@ def test_core_bindings_fallback_when_rust_module_is_missing(monkeypatch):
     sys.meta_path.insert(0, BlockAirwarCore())
     try:
         fallback = importlib.import_module("airwar.core_bindings")
-        result = fallback.batch_update_bullets([
-            (9, 10.0, 20.0, 1.0, -2.0, 0, False, 100.0),
-        ])
+        result = fallback.batch_update_bullets(
+            [
+                (9, 10.0, 20.0, 1.0, -2.0, 0, False, 100.0),
+            ]
+        )
 
         assert fallback.RUST_AVAILABLE is False
         assert result == [(9, 11.0, 18.0, True)]

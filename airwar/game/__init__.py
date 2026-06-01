@@ -20,18 +20,26 @@ from .systems.notification_manager import NotificationManager
 from .systems.reward_system import RewardSystem
 
 __all__ = [
-    'HealthSystem', 'RewardSystem', 'HUDRenderer', 'NotificationManager',
-    'GameController', 'GameState', 'SpawnController', 'CollisionController',
-    'GameRenderer', 'GameEntities',
-    'EnemyBulletSpawner'
+    "CollisionController",
+    "EnemyBulletSpawner",
+    "GameController",
+    "GameEntities",
+    "GameRenderer",
+    "GameState",
+    "HUDRenderer",
+    "HealthSystem",
+    "NotificationManager",
+    "RewardSystem",
+    "SpawnController",
 ]
 
 # Lazy import to avoid circular import
 _game_module = None
 
+
 def __getattr__(name):
-    global _game_module
-    if name == 'Game' and _game_module is None:
+    if name == "Game":
         from .game import Game
+
         return Game
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

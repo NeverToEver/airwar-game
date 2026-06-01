@@ -19,10 +19,7 @@ def _make_player(x=400, y=700):
 
 def _finish_dash(player):
     for _ in range(
-        Player.PHASE_DASH_WINDUP_FRAMES
-        + Player.PHASE_DASH_ACTIVE_FRAMES
-        + Player.PHASE_DASH_RECOVERY_FRAMES
-        + 2
+        Player.PHASE_DASH_WINDUP_FRAMES + Player.PHASE_DASH_ACTIVE_FRAMES + Player.PHASE_DASH_RECOVERY_FRAMES + 2
     ):
         player.update()
 

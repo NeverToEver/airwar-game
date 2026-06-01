@@ -1,7 +1,7 @@
 """Scene base classes and scene management framework."""
+
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Dict
 
 import pygame
 
@@ -16,6 +16,7 @@ class PauseAction(Enum):
         QUIT_WITHOUT_SAVING: Quit without saving.
         QUIT: Quit the application.
     """
+
     RESUME = "resume"
     MAIN_MENU = "main_menu"
     SAVE_AND_QUIT = "save_and_quit"
@@ -31,6 +32,7 @@ class ExitConfirmAction(Enum):
         START_NEW_GAME: Start a new game.
         QUIT_GAME: Quit the game entirely.
     """
+
     RETURN_TO_MENU = "return_to_menu"
     START_NEW_GAME = "start_new_game"
     QUIT_GAME = "quit_game"
@@ -107,7 +109,7 @@ class SceneManager:
     """
 
     def __init__(self):
-        self._scenes: Dict[str, Scene] = {}
+        self._scenes: dict[str, Scene] = {}
         self._current_scene: Scene = None
         self._current_scene_name: str = ""
 

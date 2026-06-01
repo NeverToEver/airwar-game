@@ -83,7 +83,7 @@ class AimAssistSystem:
             if movement_len_sq >= self.AIM_ASSIST_RELEASE_DISTANCE * self.AIM_ASSIST_RELEASE_DISTANCE:
                 self._aim_assist_target = None
                 return None
-            if self._aim_assist_target and getattr(self._aim_assist_target, 'active', False):
+            if self._aim_assist_target and getattr(self._aim_assist_target, "active", False):
                 return self._aim_assist_target
 
         if self._aim_assist_target and self._is_aim_assist_locked(self._aim_assist_target, raw_x, raw_y):
@@ -114,9 +114,9 @@ class AimAssistSystem:
     def _aim_assist_candidates(self) -> list:
         if not self._spawn_controller:
             return []
-        targets = [enemy for enemy in self._spawn_controller.enemies if getattr(enemy, 'active', False)]
+        targets = [enemy for enemy in self._spawn_controller.enemies if getattr(enemy, "active", False)]
         boss = self._spawn_controller.boss
-        if boss and getattr(boss, 'active', False):
+        if boss and getattr(boss, "active", False):
             targets.append(boss)
         return targets
 
@@ -124,7 +124,7 @@ class AimAssistSystem:
         return self._target_rect(target).collidepoint(raw_x, raw_y)
 
     def _is_aim_assist_locked(self, target, raw_x: float, raw_y: float) -> bool:
-        if not getattr(target, 'active', False):
+        if not getattr(target, "active", False):
             return False
         rect = self._target_rect(target)
         if rect.collidepoint(raw_x, raw_y):
@@ -141,8 +141,9 @@ class AimAssistSystem:
 
     def _nearest_aim_assist_target(self, candidates: list, raw_x: float, raw_y: float):
         if RUST_AVAILABLE:
-            data = [(id(t), float(self._target_rect(t).centerx), float(self._target_rect(t).centery))
-                    for t in candidates]
+            data = [
+                (id(t), float(self._target_rect(t).centerx), float(self._target_rect(t).centery)) for t in candidates
+            ]
             result_id = find_nearest_target(data, raw_x, raw_y)
             if result_id is not None:
                 return next((t for t in candidates if id(t) == result_id), None)
@@ -161,12 +162,18 @@ class AimAssistSystem:
 
         mx, my = movement
         if RUST_AVAILABLE:
-            data = [(id(t), float(self._target_rect(t).centerx), float(self._target_rect(t).centery))
-                    for t in candidates]
+            data = [
+                (id(t), float(self._target_rect(t).centerx), float(self._target_rect(t).centery)) for t in candidates
+            ]
             exclude = id(self._aim_assist_target) if self._aim_assist_target else None
             result_id = find_target_in_direction(
-                data, origin[0], origin[1], mx, my,
-                self.AIM_ASSIST_DIRECTION_CONE_DOT, exclude,
+                data,
+                origin[0],
+                origin[1],
+                mx,
+                my,
+                self.AIM_ASSIST_DIRECTION_CONE_DOT,
+                exclude,
             )
             if result_id is not None:
                 return next((t for t in candidates if id(t) == result_id), None)
@@ -202,9 +209,9 @@ class AimAssistSystem:
         return dx * dx + dy * dy
 
     def _target_rect(self, target) -> pygame.Rect:
-        rect = target.get_hitbox() if hasattr(target, 'get_hitbox') else target.rect
+        rect = target.get_hitbox() if hasattr(target, "get_hitbox") else target.rect
         if isinstance(rect, pygame.Rect):
             return rect
-        if hasattr(target, 'get_hitbox'):
+        if hasattr(target, "get_hitbox"):
             rect = target.get_hitbox()
         return pygame.Rect(rect.x, rect.y, rect.width, rect.height)

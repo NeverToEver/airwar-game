@@ -1,6 +1,6 @@
 """Hexagonal icon component — military HUD style."""
+
 import math
-from typing import Tuple
 
 import pygame
 
@@ -30,7 +30,7 @@ ICON_COLORS = {
 }
 
 
-def _get_hexagon_points(center: Tuple[float, float], size: float, pointy_top: bool = True) -> list:
+def _get_hexagon_points(center: tuple[float, float], size: float, pointy_top: bool = True) -> list:
     """Calculate the 6 vertices of a hexagon.
 
     Args:
@@ -52,13 +52,13 @@ def _get_hexagon_points(center: Tuple[float, float], size: float, pointy_top: bo
 
 def draw_hexagon(
     surface: pygame.Surface,
-    center: Tuple[float, float],
+    center: tuple[float, float],
     size: float,
-    fill_color: Tuple[int, int, int],
-    border_color: Tuple[int, int, int, int] = None,
+    fill_color: tuple[int, int, int],
+    border_color: tuple[int, int, int, int] | None = None,
     border_width: int = 2,
-    glow_color: Tuple[int, int, int, int] = None,
-    pointy_top: bool = True
+    glow_color: tuple[int, int, int, int] | None = None,
+    pointy_top: bool = True,
 ) -> None:
     """Draw a hexagon.
 
@@ -99,10 +99,10 @@ def draw_hexagon(
 def draw_icon(
     surface: pygame.Surface,
     icon_type: str,
-    center: Tuple[float, float],
+    center: tuple[float, float],
     size: float,
-    color: Tuple[int, int, int] = None,
-    glow: bool = False
+    color: tuple[int, int, int] | None = None,
+    glow: bool = False,
 ) -> None:
     """Draw an icon symbol.
 
@@ -131,10 +131,10 @@ def draw_icon(
 def _draw_icon_shape(
     surface: pygame.Surface,
     icon_type: str,
-    center: Tuple[float, float],
+    center: tuple[float, float],
     size: float,
-    color: Tuple[int, int, int],
-    line_width: int
+    color: tuple[int, int, int],
+    line_width: int,
 ) -> None:
     """Draw the icon shape."""
     cx, cy = center
@@ -200,18 +200,20 @@ def _draw_icon_shape(
         ]
         pygame.draw.polygon(surface, color, points)
         # 火焰
-        pygame.draw.polygon(surface, SystemColors.DANGER_RED, [
-            (cx, cy + size * 0.5),
-            (cx + size * 0.08, cy + size * 0.35),
-            (cx - size * 0.08, cy + size * 0.35),
-        ])
+        pygame.draw.polygon(
+            surface,
+            SystemColors.DANGER_RED,
+            [
+                (cx, cy + size * 0.5),
+                (cx + size * 0.08, cy + size * 0.35),
+                (cx - size * 0.08, cy + size * 0.35),
+            ],
+        )
 
     elif icon_type == ICON_HEALTH:
         # 加号/医疗符号
-        pygame.draw.rect(surface, color,
-                        (cx - line_width, cy - size * 0.4, line_width * 2, size * 0.8))
-        pygame.draw.rect(surface, color,
-                        (cx - size * 0.4, cy - line_width, size * 0.8, line_width * 2))
+        pygame.draw.rect(surface, color, (cx - line_width, cy - size * 0.4, line_width * 2, size * 0.8))
+        pygame.draw.rect(surface, color, (cx - size * 0.4, cy - line_width, size * 0.8, line_width * 2))
 
     elif icon_type == ICON_SHIELD:
         # 小盾牌
@@ -231,10 +233,8 @@ def _draw_icon_shape(
         for i in range(5):
             outer_angle = math.radians(72 * i - 90)
             inner_angle = math.radians(72 * i - 90 + 36)
-            points.append((cx + size * 0.5 * math.cos(outer_angle),
-                         cy + size * 0.5 * math.sin(outer_angle)))
-            points.append((cx + size * 0.25 * math.cos(inner_angle),
-                         cy + size * 0.25 * math.sin(inner_angle)))
+            points.append((cx + size * 0.5 * math.cos(outer_angle), cy + size * 0.5 * math.sin(outer_angle)))
+            points.append((cx + size * 0.25 * math.cos(inner_angle), cy + size * 0.25 * math.sin(inner_angle)))
         pygame.draw.polygon(surface, color, points)
 
     else:
@@ -249,11 +249,11 @@ class HexIcon:
         self,
         icon_type: str = ICON_POWER,
         size: float = SystemUI.HEXAGON_SIZE,
-        fill_color: Tuple[int, int, int] = None,
-        border_color: Tuple[int, int, int, int] = None,
-        glow_color: Tuple[int, int, int, int] = None,
+        fill_color: tuple[int, int, int] | None = None,
+        border_color: tuple[int, int, int, int] | None = None,
+        glow_color: tuple[int, int, int, int] | None = None,
         is_active: bool = True,
-        is_max_level: bool = False
+        is_max_level: bool = False,
     ):
         """Initialize the hexagonal icon.
 
@@ -275,10 +275,7 @@ class HexIcon:
         self.is_max_level = is_max_level
 
     def render(
-        self,
-        surface: pygame.Surface,
-        center: Tuple[float, float],
-        icon_color: Tuple[int, int, int] = None
+        self, surface: pygame.Surface, center: tuple[float, float], icon_color: tuple[int, int, int] | None = None
     ) -> None:
         """Render the icon.
 
@@ -303,11 +300,13 @@ class HexIcon:
 
         # 绘制六边形底
         draw_hexagon(
-            surface, center, self.size,
+            surface,
+            center,
+            self.size,
             self.fill_color,
             border_color=border_color,
             border_width=SystemUI.HEXAGON_BORDER_WIDTH,
-            glow_color=glow_color if self.is_active else None
+            glow_color=glow_color if self.is_active else None,
         )
 
         # 绘制图标
@@ -324,11 +323,11 @@ class HexIcon:
     def render_with_label(
         self,
         surface: pygame.Surface,
-        center: Tuple[float, float],
+        center: tuple[float, float],
         label: str,
         font: pygame.font.Font,
-        level: int = None,
-        icon_color: Tuple[int, int, int] = None
+        level: int | None = None,
+        icon_color: tuple[int, int, int] | None = None,
     ) -> None:
         """Render the icon with a label.
 
@@ -347,6 +346,5 @@ class HexIcon:
         if level is not None and level > 0:
             level_text = f"+{level}"
             level_surf = font.render(level_text, True, SystemColors.AMBER_BRIGHT)
-            level_rect = level_surf.get_rect(center=(center[0] + self.size * 0.6,
-                                                    center[1] + self.size * 0.6))
+            level_rect = level_surf.get_rect(center=(center[0] + self.size * 0.6, center[1] + self.size * 0.6))
             surface.blit(level_surf, level_rect)

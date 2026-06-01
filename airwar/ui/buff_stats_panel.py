@@ -1,8 +1,8 @@
 """Buff stats panel — displays active buffs and attack mode info."""
+
 import logging
 import math
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
 
 import pygame
 
@@ -21,42 +21,44 @@ logger = logging.getLogger(__name__)
 @dataclass
 class BuffStatEntry:
     """Buff stat entry dataclass — name, level, and value for a single buff."""
+
     name: str
     short_name: str
     value: str
     level: int
-    color: Tuple[int, int, int]
+    color: tuple[int, int, int]
     category: str
 
 
 class BuffStatsAggregator:
     """Buff stats aggregator — computes combined buff effect values."""
+
     def __init__(self):
         self._stat_formatters = self._init_stat_formatters()
-        self._category_order = ['offense', 'defense', 'health', 'utility']
+        self._category_order = ["offense", "defense", "health", "utility"]
 
-    def _init_stat_formatters(self) -> Dict[str, callable]:
+    def _init_stat_formatters(self) -> dict[str, callable]:
         return {
-            'Power Shot': lambda rs, p: f"+{int((p.bullet_damage / rs.base_bullet_damage - 1) * 100)}%",
-            'Rapid Fire': lambda rs, p: self._calculate_rapid_fire_value(rs),
-            'Piercing': lambda rs, _: f"Lv.{rs.piercing_level}",
-            'Spread Shot': lambda rs, _: "ON" if 'Spread Shot' in rs.unlocked_buffs else "-",
-            'Explosive': lambda rs, _: "ON" if 'Explosive' in rs.unlocked_buffs else "-",
-            'Laser': lambda rs, _: "ON" if 'Laser' in rs.unlocked_buffs else "-",
-            'Armor': lambda rs, _: f"-{rs.armor_level * 15}%",
-            'Evasion': lambda rs, _: f"+{rs.evasion_level * 20}%",
-            'Barrier': lambda rs, _: "+50",
-            'Extra Life': lambda rs, _: "+50 HP",
-            'Regeneration': lambda rs, _: "+2/s",
-            'Lifesteal': lambda rs, _: "+10%",
-            'Slow Field': lambda rs, _: f"{int((1 - rs.slow_factor) * 100)}%",
-            'Boost Recovery': lambda rs, p: f"x{p.boost_recovery_rate:.1f}",
-            'Phase Dash': lambda rs, p: "READY" if p.can_phase_dash() else "CD",
-            'Mothership Recall': lambda rs, p: f"x{p.mothership_cooldown_mult:.2f}",
+            "Power Shot": lambda rs, p: f"+{int((p.bullet_damage / rs.base_bullet_damage - 1) * 100)}%",
+            "Rapid Fire": lambda rs, p: self._calculate_rapid_fire_value(rs),
+            "Piercing": lambda rs, _: f"Lv.{rs.piercing_level}",
+            "Spread Shot": lambda rs, _: "ON" if "Spread Shot" in rs.unlocked_buffs else "-",
+            "Explosive": lambda rs, _: "ON" if "Explosive" in rs.unlocked_buffs else "-",
+            "Laser": lambda rs, _: "ON" if "Laser" in rs.unlocked_buffs else "-",
+            "Armor": lambda rs, _: f"-{rs.armor_level * 15}%",
+            "Evasion": lambda rs, _: f"+{rs.evasion_level * 20}%",
+            "Barrier": lambda rs, _: "+50",
+            "Extra Life": lambda rs, _: "+50 HP",
+            "Regeneration": lambda rs, _: "+2/s",
+            "Lifesteal": lambda rs, _: "+10%",
+            "Slow Field": lambda rs, _: f"{int((1 - rs.slow_factor) * 100)}%",
+            "Boost Recovery": lambda rs, p: f"x{p.boost_recovery_rate:.1f}",
+            "Phase Dash": lambda rs, p: "READY" if p.can_phase_dash() else "CD",
+            "Mothership Recall": lambda rs, p: f"x{p.mothership_cooldown_mult:.2f}",
         }
 
     def _calculate_rapid_fire_value(self, reward_system) -> str:
-        level = getattr(reward_system, 'rapid_fire_level', 0)
+        level = getattr(reward_system, "rapid_fire_level", 0)
         if level <= 0:
             return "-"
         base_cooldown = reward_system.base_fire_cooldown
@@ -66,7 +68,7 @@ class BuffStatsAggregator:
         bonus = int((1 - cooldown / base_cooldown) * 100)
         return f"+{bonus}%"
 
-    def _get_buff_color(self, name: str, reward_system) -> Tuple[int, int, int]:
+    def _get_buff_color(self, name: str, reward_system) -> tuple[int, int, int]:
         try:
             return create_buff(name).get_color()
         except (ValueError, AttributeError):
@@ -74,37 +76,57 @@ class BuffStatsAggregator:
 
     def _get_buff_category(self, name: str) -> str:
         category_map = {
-            'Power Shot': 'offense', 'Rapid Fire': 'offense', 'Piercing': 'offense',
-            'Spread Shot': 'offense', 'Explosive': 'offense', 'Laser': 'offense',
-            'Armor': 'defense', 'Evasion': 'defense', 'Barrier': 'defense',
-            'Extra Life': 'health', 'Regeneration': 'health', 'Lifesteal': 'health',
-            'Slow Field': 'utility', 'Boost Recovery': 'utility',
-            'Phase Dash': 'utility', 'Mothership Recall': 'utility',
+            "Power Shot": "offense",
+            "Rapid Fire": "offense",
+            "Piercing": "offense",
+            "Spread Shot": "offense",
+            "Explosive": "offense",
+            "Laser": "offense",
+            "Armor": "defense",
+            "Evasion": "defense",
+            "Barrier": "defense",
+            "Extra Life": "health",
+            "Regeneration": "health",
+            "Lifesteal": "health",
+            "Slow Field": "utility",
+            "Boost Recovery": "utility",
+            "Phase Dash": "utility",
+            "Mothership Recall": "utility",
         }
-        return category_map.get(name, 'utility')
+        return category_map.get(name, "utility")
 
     def _get_short_name(self, name: str) -> str:
         short_names = {
-            'Power Shot': '伤', 'Rapid Fire': '速', 'Piercing': '穿',
-            'Spread Shot': '散', 'Explosive': '爆', 'Laser': '光',
-            'Armor': '甲', 'Evasion': '闪', 'Barrier': '护',
-            'Extra Life': '生', 'Regeneration': '回', 'Lifesteal': '吸',
-            'Slow Field': '缓', 'Boost Recovery': '能',
-            'Phase Dash': '突', 'Mothership Recall': '召',
+            "Power Shot": "伤",
+            "Rapid Fire": "速",
+            "Piercing": "穿",
+            "Spread Shot": "散",
+            "Explosive": "爆",
+            "Laser": "光",
+            "Armor": "甲",
+            "Evasion": "闪",
+            "Barrier": "护",
+            "Extra Life": "生",
+            "Regeneration": "回",
+            "Lifesteal": "吸",
+            "Slow Field": "缓",
+            "Boost Recovery": "能",
+            "Phase Dash": "突",
+            "Mothership Recall": "召",
         }
         return short_names.get(name, name[:3].upper())
 
     def _get_buff_level(self, name: str, reward_system) -> int:
         level_map = {
-            'Piercing': reward_system.piercing_level,
-            'Spread Shot': reward_system.spread_level,
-            'Explosive': reward_system.explosive_level,
-            'Armor': reward_system.armor_level,
-            'Evasion': reward_system.evasion_level,
+            "Piercing": reward_system.piercing_level,
+            "Spread Shot": reward_system.spread_level,
+            "Explosive": reward_system.explosive_level,
+            "Armor": reward_system.armor_level,
+            "Evasion": reward_system.evasion_level,
         }
         return level_map.get(name, 1)
 
-    def get_buff_stats(self, reward_system, player) -> List[BuffStatEntry]:
+    def get_buff_stats(self, reward_system, player) -> list[BuffStatEntry]:
         if not reward_system or not reward_system.unlocked_buffs:
             return []
 
@@ -114,14 +136,16 @@ class BuffStatsAggregator:
                 formatter = self._stat_formatters.get(buff_name)
                 value = formatter(reward_system, player) if formatter else "ON"
 
-                entries.append(BuffStatEntry(
-                    name=get_buff_display_name(buff_name),
-                    short_name=self._get_short_name(buff_name),
-                    value=value,
-                    level=self._get_buff_level(buff_name, reward_system),
-                    color=self._get_buff_color(buff_name, reward_system),
-                    category=self._get_buff_category(buff_name)
-                ))
+                entries.append(
+                    BuffStatEntry(
+                        name=get_buff_display_name(buff_name),
+                        short_name=self._get_short_name(buff_name),
+                        value=value,
+                        level=self._get_buff_level(buff_name, reward_system),
+                        color=self._get_buff_color(buff_name, reward_system),
+                        category=self._get_buff_category(buff_name),
+                    )
+                )
             except (AttributeError, TypeError, KeyError) as e:
                 logger.debug(f"Failed to format buff '{buff_name}': {e}")
                 continue
@@ -131,7 +155,7 @@ class BuffStatsAggregator:
 
         return entries
 
-    def get_summary_stats(self, reward_system, player) -> Dict[str, str]:
+    def get_summary_stats(self, reward_system, player) -> dict[str, str]:
         if not reward_system:
             return {}
 
@@ -141,29 +165,29 @@ class BuffStatsAggregator:
             current_damage = player.bullet_damage
             total_damage_bonus = int((current_damage / base_damage - 1) * 100) if current_damage > base_damage else 0
             if total_damage_bonus > 0:
-                summary['DMG'] = f"+{total_damage_bonus}%"
+                summary["DMG"] = f"+{total_damage_bonus}%"
 
             rapid_fire_value = self._calculate_rapid_fire_value(reward_system)
             if rapid_fire_value != "-":
-                summary['RATE'] = rapid_fire_value
+                summary["RATE"] = rapid_fire_value
 
             total_armor = reward_system.armor_level * 15
             if total_armor > 0:
-                summary['ARM'] = f"-{total_armor}%"
+                summary["ARM"] = f"-{total_armor}%"
 
             total_dodge = reward_system.evasion_level * 20
             if total_dodge > 0:
-                summary['EVD'] = f"+{total_dodge}%"
+                summary["EVD"] = f"+{total_dodge}%"
 
             total_pierce = reward_system.piercing_level
             if total_pierce > 0:
-                summary['PIR'] = f"+{total_pierce}"
+                summary["PIR"] = f"+{total_pierce}"
 
             if reward_system.explosive_level > 0:
-                summary['EXP'] = f"Lv.{reward_system.explosive_level}"
+                summary["EXP"] = f"Lv.{reward_system.explosive_level}"
 
             if reward_system.spread_level > 0:
-                summary['SPD'] = f"Lv.{reward_system.spread_level}"
+                summary["SPD"] = f"Lv.{reward_system.spread_level}"
 
         except (AttributeError, TypeError) as e:
             logger.debug(f"Failed to calculate summary stats: {e}")
@@ -172,8 +196,10 @@ class BuffStatsAggregator:
 
         return summary
 
+
 class BuffStatsPanel:
     """Buff stats panel — displays active buffs and their current levels."""
+
     _MAX_CACHE_SIZE = 50
     _panel_surface_cache: dict = {}
 
@@ -208,7 +234,7 @@ class BuffStatsPanel:
         self._summary_bg_color = (*colors.BACKGROUND_PANEL, 30)
 
         self._aggregator = BuffStatsAggregator()
-        self._cached_surface: Optional[pygame.Surface] = None
+        self._cached_surface: pygame.Surface | None = None
         self._cache_valid = False
 
     def _calculate_panel_height(self, buff_count: int) -> int:
@@ -220,16 +246,9 @@ class BuffStatsPanel:
 
     def _create_panel_surface(self, width: int, height: int) -> pygame.Surface:
         surface = pygame.Surface((width, height), pygame.SRCALPHA)
+        pygame.draw.rect(surface, self._bg_color, (0, 0, width, height), border_radius=self._corner_radius)
         pygame.draw.rect(
-            surface, self._bg_color,
-            (0, 0, width, height),
-            border_radius=self._corner_radius
-        )
-        pygame.draw.rect(
-            surface, self._border_color,
-            (0, 0, width, height),
-            self._border_width,
-            border_radius=self._corner_radius
+            surface, self._border_color, (0, 0, width, height), self._border_width, border_radius=self._corner_radius
         )
         return surface
 
@@ -240,7 +259,7 @@ class BuffStatsPanel:
         player,
         screen_width: int,
         screen_height: int,
-        use_themed_style: bool = True
+        use_themed_style: bool = True,
     ) -> None:
         if not reward_system or not reward_system.unlocked_buffs:
             return
@@ -261,11 +280,7 @@ class BuffStatsPanel:
                 panel_y = 50
 
             if use_themed_style:
-                self._render_themed_style(
-                    surface, buff_entries, summary,
-                    panel_width, panel_height,
-                    panel_x, panel_y
-                )
+                self._render_themed_style(surface, buff_entries, summary, panel_width, panel_height, panel_x, panel_y)
             else:
                 cache_key = (panel_width, panel_height, tuple(sorted(reward_system.unlocked_buffs)))
                 if cache_key not in BuffStatsPanel._panel_surface_cache:
@@ -286,8 +301,8 @@ class BuffStatsPanel:
 
     def _calculate_panel_width(
         self,
-        buff_entries: List[BuffStatEntry],
-        summary: Dict[str, str],
+        buff_entries: list[BuffStatEntry],
+        summary: dict[str, str],
         screen_width: int,
     ) -> int:
         max_content = self._title_font.size("当前增益")[0]
@@ -297,8 +312,7 @@ class BuffStatsPanel:
             max_content = max(max_content, name_width + value_width + 72)
         if summary:
             summary_width = sum(
-                self._summary_font.size(f"{key}:{value}")[0] + 12
-                for key, value in list(summary.items())[:4]
+                self._summary_font.size(f"{key}:{value}")[0] + 12 for key, value in list(summary.items())[:4]
             )
             max_content = max(max_content, summary_width + 24)
         max_width = max(170, screen_width - 140)
@@ -310,13 +324,10 @@ class BuffStatsPanel:
         surface.blit(title, title_rect)
 
         pygame.draw.line(
-            surface, self._border_color,
-            (self._panel_padding, 22),
-            (surface.get_width() - self._panel_padding, 22),
-            1
+            surface, self._border_color, (self._panel_padding, 22), (surface.get_width() - self._panel_padding, 22), 1
         )
 
-    def _render_buff_items(self, surface: pygame.Surface, entries: List[BuffStatEntry]) -> None:
+    def _render_buff_items(self, surface: pygame.Surface, entries: list[BuffStatEntry]) -> None:
         y_offset = 25 + self._item_spacing
 
         for entry in entries:
@@ -343,17 +354,18 @@ class BuffStatsPanel:
             level_text = self._value_font.render(f"x{entry.level}", True, SystemColors.STATS_TEXT_DIM)
             surface.blit(level_text, (x + 5, y_offset + item_height - 14))
 
-    def _render_summary(self, surface: pygame.Surface, summary: Dict[str, str]) -> None:
+    def _render_summary(self, surface: pygame.Surface, summary: dict[str, str]) -> None:
         if not summary:
             return
 
         y_offset = surface.get_height() - self._summary_height - self._panel_padding
 
         pygame.draw.line(
-            surface, self._border_color,
+            surface,
+            self._border_color,
             (self._panel_padding, y_offset),
             (surface.get_width() - self._panel_padding, y_offset),
-            1
+            1,
         )
 
         y_offset += 8
@@ -370,21 +382,25 @@ class BuffStatsPanel:
     def _render_themed_style(
         self,
         surface: pygame.Surface,
-        buff_entries: List[BuffStatEntry],
-        summary: Dict[str, str],
+        buff_entries: list[BuffStatEntry],
+        summary: dict[str, str],
         panel_width: int,
         panel_height: int,
         panel_x: int,
-        panel_y: int
+        panel_y: int,
     ) -> None:
         """Render buff stats panel in military style"""
         # Draw chamfered panel background
         draw_chamfered_panel(
-            surface, panel_x, panel_y, panel_width, panel_height,
+            surface,
+            panel_x,
+            panel_y,
+            panel_width,
+            panel_height,
             SystemColors.BG_PANEL,
             SystemColors.BORDER_GLOW,
             SystemColors.AMBER_GLOW,
-            chamfer_depth=8
+            chamfer_depth=8,
         )
 
         # Render content on a separate surface
@@ -398,10 +414,7 @@ class BuffStatsPanel:
         content_surf.blit(title, title_rect)
 
         # Divider line
-        pygame.draw.line(
-            content_surf, SystemColors.BORDER_DIM,
-            (10, 30), (panel_width - 10, 30), 1
-        )
+        pygame.draw.line(content_surf, SystemColors.BORDER_DIM, (10, 30), (panel_width - 10, 30), 1)
 
         # Buff items
         y_offset = 40
@@ -412,8 +425,7 @@ class BuffStatsPanel:
         # Summary (if any)
         if summary:
             pygame.draw.line(
-                content_surf, SystemColors.BORDER_DIM,
-                (10, y_offset + 5), (panel_width - 10, y_offset + 5), 1
+                content_surf, SystemColors.BORDER_DIM, (10, y_offset + 5), (panel_width - 10, y_offset + 5), 1
             )
             y_offset += 15
             summary_font = get_cjk_font(SystemUI.MILITARY_SMALL_SIZE)
@@ -428,18 +440,14 @@ class BuffStatsPanel:
         surface.blit(content_surf, (panel_x, panel_y))
 
     def _render_themed_buff_item(
-        self,
-        surface: pygame.Surface,
-        entry: BuffStatEntry,
-        y_offset: int,
-        panel_width: int
+        self, surface: pygame.Surface, entry: BuffStatEntry, y_offset: int, panel_width: int
     ) -> None:
         """Render a single buff item in military style"""
         # Determine icon type based on category
         icon_type = ICON_POWER
-        if entry.category == 'defense':
+        if entry.category == "defense":
             icon_type = ICON_DEFENSE
-        elif entry.category == 'utility':
+        elif entry.category == "utility":
             icon_type = ICON_SPEED
 
         # Draw hexagon icon
@@ -450,9 +458,7 @@ class BuffStatsPanel:
         name_font = get_cjk_font(SystemUI.MILITARY_SMALL_SIZE)
         value_text = name_font.render(entry.value, True, SystemColors.AMBER_PRIMARY)
         max_name_width = max(24, panel_width - value_text.get_width() - 58)
-        name_text = fit_text_to_width(
-            name_font, entry.name, SystemColors.TEXT_PRIMARY, max_name_width
-        )
+        name_text = fit_text_to_width(name_font, entry.name, SystemColors.TEXT_PRIMARY, max_name_width)
         surface.blit(name_text, (38, y_offset + 2))
 
         # Buff value
@@ -468,10 +474,11 @@ class BuffStatsPanel:
 @dataclass
 class AttackModeEntry:
     """Attack mode entry dataclass — current weapon mode configuration."""
+
     name: str
     short_name: str
     is_on: bool
-    color: Tuple[int, int, int]
+    color: tuple[int, int, int]
 
 
 class AttackModePanel:
@@ -488,18 +495,12 @@ class AttackModePanel:
         self._font = get_cjk_font(SystemUI.MILITARY_LABEL_SIZE)
         self._name_font = get_cjk_font(SystemUI.MILITARY_LABEL_SIZE)
 
-    def render(
-        self,
-        surface: pygame.Surface,
-        reward_system,
-        screen_width: int,
-        screen_height: int
-    ) -> None:
+    def render(self, surface: pygame.Surface, reward_system, screen_width: int, screen_height: int) -> None:
         if not reward_system:
             return
 
-        spread_on = 'Spread Shot' in reward_system.unlocked_buffs
-        laser_on = reward_system.laser_level > 0 or 'Laser' in reward_system.unlocked_buffs
+        spread_on = "Spread Shot" in reward_system.unlocked_buffs
+        laser_on = reward_system.laser_level > 0 or "Laser" in reward_system.unlocked_buffs
         explosive_on = reward_system.explosive_level > 0
 
         panel_x = 15
@@ -509,10 +510,7 @@ class AttackModePanel:
             AttackModeEntry("光", "激光", laser_on, (255, 80, 180)),
             AttackModeEntry("爆", "爆炸", explosive_on, Colors.ACCENT_EXPLOSIVE),
         ]
-        entry_width = max(
-            self.ENTRY_MIN_WIDTH,
-            max(self._name_font.size(entry.short_name)[0] + 28 for entry in entries),
-        )
+        entry_width = max(self.ENTRY_MIN_WIDTH, *(self._name_font.size(entry.short_name)[0] + 28 for entry in entries))
         panel_width = max(
             self.PANEL_WIDTH,
             entry_width * len(entries) + 24,
@@ -520,11 +518,15 @@ class AttackModePanel:
         )
 
         draw_chamfered_panel(
-            surface, panel_x, panel_y, panel_width, self.PANEL_HEIGHT,
+            surface,
+            panel_x,
+            panel_y,
+            panel_width,
+            self.PANEL_HEIGHT,
             SystemColors.BG_PANEL,
             SystemColors.BORDER_GLOW,
             SystemColors.AMBER_GLOW,
-            chamfer_depth=5
+            chamfer_depth=5,
         )
 
         content_surf = pygame.Surface((panel_width, self.PANEL_HEIGHT), pygame.SRCALPHA)
@@ -550,8 +552,9 @@ class AttackModePanel:
                 glow_surf = pygame.Surface((self.LIGHT_SIZE * 4 + 8, self.LIGHT_SIZE * 4 + 8), pygame.SRCALPHA)
                 for r in range(self.LIGHT_SIZE + 4, 1, -2):
                     alpha = max(0, 70 - (r - 1) * 5)
-                    pygame.draw.circle(glow_surf, (*color_on, alpha),
-                                       (self.LIGHT_SIZE * 2 + 4, self.LIGHT_SIZE * 2 + 4), r)
+                    pygame.draw.circle(
+                        glow_surf, (*color_on, alpha), (self.LIGHT_SIZE * 2 + 4, self.LIGHT_SIZE * 2 + 4), r
+                    )
                 content_surf.blit(glow_surf, (cx - self.LIGHT_SIZE * 2 - 4, hex_center_y - self.LIGHT_SIZE * 2 - 4))
 
             # Hexagon indicator
@@ -567,7 +570,7 @@ class AttackModePanel:
 
         surface.blit(content_surf, (panel_x, panel_y))
 
-    def _draw_hexagon(self, size: int, color: Tuple[int, int, int]) -> pygame.Surface:
+    def _draw_hexagon(self, size: int, color: tuple[int, int, int]) -> pygame.Surface:
         surf = pygame.Surface((size * 2, size * 2), pygame.SRCALPHA)
         cx, cy = size, size
         points = []

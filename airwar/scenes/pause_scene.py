@@ -1,4 +1,5 @@
 """Pause menu overlay with resume, restart, and quit options."""
+
 import pygame
 
 from airwar.config.design_tokens import SceneColors, get_design_tokens
@@ -17,8 +18,9 @@ from .themed_scene_mixin import ThemedSceneMixin
 class PauseScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
     """Pause scene — overlay menu with resume, restart, and quit options.
 
-        Shown as an overlay on top of GameScene when the player presses ESC.
-        """
+    Shown as an overlay on top of GameScene when the player presses ESC.
+    """
+
     def __init__(self):
         Scene.__init__(self)
         MouseSelectableMixin.__init__(self)
@@ -26,7 +28,7 @@ class PauseScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
     def enter(self, **kwargs) -> None:
         self.running = True
         self.result: PauseAction = None
-        self.options = ['继续游戏', '返回主菜单', '保存并退出', '不保存退出', '设置']
+        self.options = ["继续游戏", "返回主菜单", "保存并退出", "不保存退出", "设置"]
         self.selected_index = 0
         self.animation_time = 0
         self.glow_offset = 0
@@ -47,35 +49,35 @@ class PauseScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
         self._background_renderer = MenuBackground()
         self._particle_system = ParticleSystem()
         self._effects_renderer = EffectsRenderer()
-        self._particle_system.reset(self._tokens.components.PARTICLE_PARTICLE_ALT_COUNT, 'particle')
+        self._particle_system.reset(self._tokens.components.PARTICLE_PARTICLE_ALT_COUNT, "particle")
 
         colors = self._tokens.colors
         self.colors = {
-            'bg': colors.BACKGROUND_PRIMARY,
-            'bg_gradient': colors.BACKGROUND_SECONDARY,
-            'overlay': colors.BACKGROUND_OVERLAY,
-            'title': colors.TEXT_PRIMARY,
-            'title_glow': colors.HUD_AMBER_BRIGHT,
-            'selected': colors.HUD_AMBER,
-            'selected_glow': colors.HUD_AMBER_BRIGHT,
-            'unselected': colors.TEXT_MUTED,
-            'hint': colors.TEXT_HINT,
-            'particle': colors.PARTICLE_PRIMARY,
+            "bg": colors.BACKGROUND_PRIMARY,
+            "bg_gradient": colors.BACKGROUND_SECONDARY,
+            "overlay": colors.BACKGROUND_OVERLAY,
+            "title": colors.TEXT_PRIMARY,
+            "title_glow": colors.HUD_AMBER_BRIGHT,
+            "selected": colors.HUD_AMBER,
+            "selected_glow": colors.HUD_AMBER_BRIGHT,
+            "unselected": colors.TEXT_MUTED,
+            "hint": colors.TEXT_HINT,
+            "particle": colors.PARTICLE_PRIMARY,
         }
 
         self._init_themed_colors()
 
     def _init_themed_colors(self) -> None:
         self.themed_colors = {
-            'bg': SceneColors.BG_PRIMARY,
-            'bg_gradient': SceneColors.BG_PANEL,
-            'title': SceneColors.TEXT_PRIMARY,
-            'title_glow': SceneColors.GOLD_GLOW,
-            'selected': SceneColors.GOLD_PRIMARY,
-            'selected_glow': SceneColors.GOLD_BRIGHT,
-            'unselected': SceneColors.TEXT_DIM,
-            'hint': SceneColors.TEXT_DIM,
-            'particle': SceneColors.GOLD_PRIMARY,
+            "bg": SceneColors.BG_PRIMARY,
+            "bg_gradient": SceneColors.BG_PANEL,
+            "title": SceneColors.TEXT_PRIMARY,
+            "title_glow": SceneColors.GOLD_GLOW,
+            "selected": SceneColors.GOLD_PRIMARY,
+            "selected_glow": SceneColors.GOLD_BRIGHT,
+            "unselected": SceneColors.TEXT_DIM,
+            "hint": SceneColors.TEXT_DIM,
+            "particle": SceneColors.GOLD_PRIMARY,
         }
 
     def exit(self) -> None:
@@ -121,10 +123,10 @@ class PauseScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
     def render(self, surface: pygame.Surface) -> None:
         if self.use_themed_style:
             self._background_renderer.render_themed_style(surface, self.themed_colors)
-            self._particle_system.render(surface, self.themed_colors['particle'])
+            self._particle_system.render(surface, self.themed_colors["particle"])
         else:
             self._background_renderer.render(surface, self.colors)
-            self._particle_system.render(surface, self.colors['particle'])
+            self._particle_system.render(surface, self.colors["particle"])
 
         width, height = surface.get_size()
         scale = ResponsiveHelper.get_scale_factor(width, height)
@@ -133,16 +135,26 @@ class PauseScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
         if self.use_themed_style:
             self._draw_themed_title(surface, "已暂停", self.title_font, (width // 2, title_y))
         else:
-            SceneRenderingUtils.draw_glow_text(surface, "已暂停", self.title_font,
-                (width // 2, title_y), self.colors['title'], self.colors['title_glow'],
-                glow_radius=4, glow_offset=1, alpha_divisor=100)
+            SceneRenderingUtils.draw_glow_text(
+                surface,
+                "已暂停",
+                self.title_font,
+                (width // 2, title_y),
+                self.colors["title"],
+                self.colors["title_glow"],
+                glow_radius=4,
+                glow_offset=1,
+                alpha_divisor=100,
+            )
 
         if self.use_themed_style:
             self._draw_themed_decorations(surface, width, height)
         else:
             SceneRenderingUtils.draw_decorative_lines(
-                surface, width // 2, height // 3,
-                self.colors['particle'],
+                surface,
+                width // 2,
+                height // 3,
+                self.colors["particle"],
             )
 
         option_spacing = ResponsiveHelper.scale(self.base_option_spacing, scale)
@@ -157,22 +169,27 @@ class PauseScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
                 box_width = ResponsiveHelper.scale(self.base_box_width, scale)
                 box_height = ResponsiveHelper.scale(self.base_box_height, scale)
                 SceneRenderingUtils.draw_option_box(
-                    surface, option, self.option_font,
-                    start_y + i * option_spacing, i == effective_index,
-                    box_width, box_height, self._option_rects,
+                    surface,
+                    option,
+                    self.option_font,
+                    start_y + i * option_spacing,
+                    i == effective_index,
+                    box_width,
+                    box_height,
+                    self._option_rects,
                     selected_bg_color=SceneColors.PANEL_OVERLAY_DARK,
-                    selected_border_color=self.colors['selected'],
+                    selected_border_color=self.colors["selected"],
                     unselected_bg_color=SceneColors.PANEL_OVERLAY_LIGHT,
-                    unselected_border_color=self.colors['unselected'],
-                    selected_glow_color=self.colors['selected_glow'],
-                    selected_text_color=self.colors['selected'],
-                    unselected_text_color=self.colors['unselected'],
+                    unselected_border_color=self.colors["unselected"],
+                    selected_glow_color=self.colors["selected_glow"],
+                    selected_text_color=self.colors["selected"],
+                    unselected_text_color=self.colors["unselected"],
                 )
 
         blink_interval = self._tokens.animation.BLINK_INTERVAL
         blink = (self.animation_time // blink_interval) % 2 == 0
         hint_text = "点击或回车确认" if blink else "               "
-        hint_color = SceneColors.TEXT_DIM if self.use_themed_style else self.colors['hint']
+        hint_color = SceneColors.TEXT_DIM if self.use_themed_style else self.colors["hint"]
         hint = self.hint_font.render(hint_text, True, hint_color)
         surface.blit(hint, hint.get_rect(center=(width // 2, height - ResponsiveHelper.scale(120, scale))))
 

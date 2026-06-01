@@ -275,10 +275,7 @@ class HomecomingUI:
             pygame.draw.circle(streaks, (206, 238, 255, int(66 * aperture)), (center_x, int(sh * 0.45)), radius, 2)
             inner_color = (88, 218, 230, int(80 * aperture))
             inner_radius = max(8, radius // 8)
-            pygame.draw.circle(
-                streaks, inner_color,
-                (center_x, int(sh * 0.45)), inner_radius, 2
-            )
+            pygame.draw.circle(streaks, inner_color, (center_x, int(sh * 0.45)), inner_radius, 2)
 
         surface.blit(streaks, (0, 0))
 
@@ -339,10 +336,7 @@ class HomecomingUI:
         if beam_alpha > 0:
             beam_w = max(14, int(42 * (1.0 - t) + 14))
             beam_color = (162, 226, 232, beam_alpha)
-            pygame.draw.line(
-                targeting, beam_color,
-                (impact_x, -40), (impact_x, sh + 40), beam_w
-            )
+            pygame.draw.line(targeting, beam_color, (impact_x, -40), (impact_x, sh + 40), beam_w)
 
         ring_radius = int(max(sw, sh) * (0.08 + 1.08 * t))
         ring_alpha = int(82 * max(0.0, 1.0 - t))
@@ -350,10 +344,7 @@ class HomecomingUI:
             pygame.draw.circle(targeting, (168, 246, 236, ring_alpha), (impact_x, impact_y), ring_radius, 5)
             inner_ring_color = (184, 236, 232, int(ring_alpha * 0.55))
             inner_ring_r = max(12, ring_radius // 5)
-            pygame.draw.circle(
-                targeting, inner_ring_color,
-                (impact_x, impact_y), inner_ring_r, 3
-            )
+            pygame.draw.circle(targeting, inner_ring_color, (impact_x, impact_y), inner_ring_r, 3)
             for side in (-1, 1):
                 pygame.draw.line(
                     targeting,
@@ -537,10 +528,7 @@ class HomecomingUI:
             trail_alpha = int(140 * (1 - progress))
             if trail_alpha > 0:
                 trail_color = (225, 245, 255, trail_alpha)
-                pygame.draw.line(
-                    surface, trail_color,
-                    (int(x), int(y + 70)), (int(x), int(y + 170)), 10
-                )
+                pygame.draw.line(surface, trail_color, (int(x), int(y + 70)), (int(x), int(y + 170)), 10)
         elif phase == PHASE_LANDING:
             scale = 0.96 - 0.12 * progress
         else:
@@ -611,10 +599,7 @@ class HomecomingUI:
         if trail_alpha > 0:
             width = max(4, int(24 * (1.0 - progress) + 5))
             trail_color = (226, 248, 255, trail_alpha)
-            pygame.draw.line(
-                surface, trail_color,
-                (int(entry_x), int(entry_y)), (int(x), int(y)), width
-            )
+            pygame.draw.line(surface, trail_color, (int(entry_x), int(entry_y)), (int(x), int(y)), width)
             draw_glow_circle(surface, (int(entry_x), int(entry_y)), 18, (236, 250, 255), 64)
 
         scale = 0.58 + 0.64 * progress
@@ -653,10 +638,7 @@ class HomecomingUI:
         for radius in (54, 34, 18):
             ring_alpha = max(55, alpha - radius * 2)
             ring_color = (90, 236, 214, ring_alpha)
-            pygame.draw.circle(
-                guide, ring_color,
-                (int(entry_x), int(entry_y)), radius, 2
-            )
+            pygame.draw.circle(guide, ring_color, (int(entry_x), int(entry_y)), radius, 2)
         draw_glow_circle(guide, (int(entry_x), int(entry_y)), 18, (80, 230, 210), 58)
         surface.blit(guide, (0, 0))
 

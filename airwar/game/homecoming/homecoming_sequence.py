@@ -220,10 +220,7 @@ class HomecomingSequence:
 
     def _update_orbital_strike(self) -> None:
         progress = self.get_phase_progress()
-        if (
-            not self._orbital_strike_callback_sent
-            and progress >= self.ORBITAL_STRIKE_IMPACT_PROGRESS
-        ):
+        if not self._orbital_strike_callback_sent and progress >= self.ORBITAL_STRIKE_IMPACT_PROGRESS:
             self._orbital_strike_callback_sent = True
             if self._on_orbital_strike_callback:
                 self._on_orbital_strike_callback()

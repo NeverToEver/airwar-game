@@ -1,3 +1,4 @@
+import itertools
 from types import SimpleNamespace
 
 from airwar.game.constants import GAME_CONSTANTS
@@ -32,15 +33,9 @@ class _SelectorWithShow:
 
 def test_reward_thresholds_follow_design_curve_and_keep_growing() -> None:
     for difficulty in ("easy", "medium", "hard"):
-        thresholds = [
-            GAME_CONSTANTS.get_next_threshold(index, difficulty)
-            for index in range(128)
-        ]
+        thresholds = [GAME_CONSTANTS.get_next_threshold(index, difficulty) for index in range(128)]
 
-        assert all(
-            later > earlier
-            for earlier, later in zip(thresholds, thresholds[1:], strict=False)
-        )
+        assert all(later > earlier for earlier, later in itertools.pairwise(thresholds))
 
 
 def test_game_controller_uses_design_threshold_curve() -> None:

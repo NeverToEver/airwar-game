@@ -7,7 +7,6 @@ movement, weapon firing, health and shield systems.
 # === Standard library ===
 import math
 from enum import Enum
-from typing import List, Optional, Tuple
 
 # === Third-party ===
 import pygame
@@ -33,6 +32,7 @@ from .bullet import Bullet, BulletData
 
 class PhaseDashState(Enum):
     """Phase dash ability lifecycle states."""
+
     READY = "ready"
     WINDUP = "windup"
     ACTIVE = "active"
@@ -118,8 +118,8 @@ class Player(Entity):
         self._has_laser = False
         self._has_explosive = False
         self._laser_duration = 0
-        self._bullet_listeners: List = []
-        self._bullets: List = []
+        self._bullet_listeners: list = []
+        self._bullets: list = []
         self.is_shielded = False
         self._shield_duration = 0
         self.is_controls_locked = False
@@ -134,7 +134,7 @@ class Player(Entity):
         self._phase_dash_start = (0.0, 0.0)
         self._phase_dash_target = (0.0, 0.0)
         self._phase_dash_direction = (0.0, -1.0)
-        self._aim_target: Tuple[float, float] | None = None
+        self._aim_target: tuple[float, float] | None = None
         self._facing_angle_degrees = 0.0
         self._facing_direction = Vector2(0, -1)
         self._rotated_sprite_cache: dict[tuple[int, int, int], pygame.Surface] = {}
@@ -214,7 +214,7 @@ class Player(Entity):
 
     # 4. Public behavior methods
 
-    def fire(self) -> Optional[Bullet]:
+    def fire(self) -> Bullet | None:
         """Fire a single bullet from the player ship.
 
         Returns:
@@ -262,9 +262,9 @@ class Player(Entity):
 
     def get_weapon_status(self) -> dict:
         return {
-            'spread': self._has_spread,
-            'laser': self._has_laser,
-            'explosive': self._has_explosive,
+            "spread": self._has_spread,
+            "laser": self._has_laser,
+            "explosive": self._has_explosive,
         }
 
     def activate_phase_dash(self) -> None:
@@ -316,17 +316,17 @@ class Player(Entity):
 
     def get_boost_status(self) -> dict:
         return {
-            'current': self.boost_current,
-            'max': self.boost_max,
-            'active': self.is_boost_active,
-            'dash_cooldown': self._phase_dash_cooldown,
-            'dash_cooldown_max': self.PHASE_DASH_COOLDOWN_FRAMES,
-            'dash_enabled': self.is_phase_dash_enabled,
-            'dash_active': self.is_phase_dashing(),
-            'dash_ready': self.can_phase_dash(),
+            "current": self.boost_current,
+            "max": self.boost_max,
+            "active": self.is_boost_active,
+            "dash_cooldown": self._phase_dash_cooldown,
+            "dash_cooldown_max": self.PHASE_DASH_COOLDOWN_FRAMES,
+            "dash_enabled": self.is_phase_dash_enabled,
+            "dash_active": self.is_phase_dashing(),
+            "dash_ready": self.can_phase_dash(),
         }
 
-    def get_bullets(self) -> List[Bullet]:
+    def get_bullets(self) -> list[Bullet]:
         return self._bullets
 
     def remove_bullet(self, bullet: Bullet) -> None:
@@ -356,13 +356,13 @@ class Player(Entity):
         )
 
     def add_listener(self, listener) -> None:
-        if hasattr(listener, 'on_bullet_fired'):
+        if hasattr(listener, "on_bullet_fired"):
             self._bullet_listeners.append(listener)
 
     def set_aim_target(self, x: float, y: float) -> None:
         self._aim_target = (x, y)
 
-    def get_aim_target(self) -> Tuple[float, float] | None:
+    def get_aim_target(self) -> tuple[float, float] | None:
         return self._aim_target
 
     def get_facing_direction(self) -> Vector2:
@@ -532,7 +532,7 @@ class Player(Entity):
 
     # 6. Private behavior methods
 
-    def _create_bullets_for_shot_mode(self, return_first: bool = False) -> Optional[Bullet]:
+    def _create_bullets_for_shot_mode(self, return_first: bool = False) -> Bullet | None:
         first_bullet = None
 
         if self._has_spread:
@@ -545,7 +545,7 @@ class Player(Entity):
                             damage=self.bullet_damage,
                             speed=self._constants.PLAYER.BULLET_SPEED,
                             angle_offset=angle,
-                            bullet_type='spread_laser' if self._has_laser else 'spread'
+                            bullet_type="spread_laser" if self._has_laser else "spread",
                         ),
                     )
                     self._aim_bullet_velocity(bullet, self._facing_direction, angle)
@@ -592,7 +592,7 @@ class Player(Entity):
             return BulletData(
                 damage=self.bullet_damage,
                 speed=self._constants.PLAYER.BULLET_SPEED,
-                bullet_type='laser',
+                bullet_type="laser",
                 is_laser=True,
             )
         return BulletData(damage=self.bullet_damage, speed=self._constants.PLAYER.BULLET_SPEED)

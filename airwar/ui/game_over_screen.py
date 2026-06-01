@@ -1,6 +1,6 @@
 """Game over screen — post-death options and score display."""
+
 from enum import Enum
-from typing import Optional
 
 import pygame
 
@@ -13,16 +13,18 @@ from .scene_rendering_utils import fit_text_to_width
 
 class ScreenAction(Enum):
     """Screen action enum — user choices on the game over screen."""
+
     RETURN_TO_MENU = "return_to_menu"
     QUIT = "quit"
 
 
 class GameOverScreen:
     """Game over screen — post-death UI with score display and action buttons."""
+
     def __init__(self, window):
         self._window = window
         self._running = False
-        self._action: Optional[ScreenAction] = None
+        self._action: ScreenAction | None = None
         self._animation_time = 0
         self._button_hover_scale = {}
         self._button_click_animation = {}
@@ -31,8 +33,7 @@ class GameOverScreen:
         self._tokens = get_design_tokens()
         self._use_themed_style = True
 
-    def show(self, score: int, kills: int, username: Optional[str] = None,
-             high_score: Optional[int] = None) -> ScreenAction:
+    def show(self, score: int, kills: int, username: str | None = None, high_score: int | None = None) -> ScreenAction:
         self._running = True
         self._action = None
         self._animation_time = 0
@@ -47,7 +48,7 @@ class GameOverScreen:
         self._init_buttons(screen_width, screen_height)
 
         while self._running:
-            quit_event, keydown, resize = self._window.process_events()
+            quit_event, _keydown, resize = self._window.process_events()
             if quit_event:
                 self._action = ScreenAction.QUIT
                 break
@@ -78,8 +79,7 @@ class GameOverScreen:
 
             self._animation_time += 1
             self._update_click_animations()
-            self._render_game_over(screen, score, kills, username, high_score,
-                                   screen_width, screen_height)
+            self._render_game_over(screen, score, kills, username, high_score, screen_width, screen_height)
             self._window.flip()
             self._window.tick(60)
 
@@ -100,8 +100,8 @@ class GameOverScreen:
         quit_button_y = int(560 * scale)
 
         self._buttons = {
-            'menu': pygame.Rect(center_x - button_width // 2, menu_button_y, button_width, button_height),
-            'quit': pygame.Rect(center_x - button_width // 2, quit_button_y, button_width, button_height)
+            "menu": pygame.Rect(center_x - button_width // 2, menu_button_y, button_width, button_height),
+            "quit": pygame.Rect(center_x - button_width // 2, quit_button_y, button_width, button_height),
         }
 
         for btn_key in self._buttons:
@@ -129,17 +129,24 @@ class GameOverScreen:
             if btn_rect.collidepoint(pos):
                 self._button_click_animation[btn_key] = 1.0
 
-                if btn_key == 'menu':
+                if btn_key == "menu":
                     self._action = ScreenAction.RETURN_TO_MENU
                     self._running = False
-                elif btn_key == 'quit':
+                elif btn_key == "quit":
                     self._action = ScreenAction.QUIT
                     self._running = False
                 break
 
-    def _render_game_over(self, surface, score: int, kills: int,
-                         username: Optional[str], high_score: Optional[int],
-                         screen_width: int, screen_height: int) -> None:
+    def _render_game_over(
+        self,
+        surface,
+        score: int,
+        kills: int,
+        username: str | None,
+        high_score: int | None,
+        screen_width: int,
+        screen_height: int,
+    ) -> None:
         pygame.font.init()
 
         tokens = self._tokens
@@ -170,10 +177,7 @@ class GameOverScreen:
                 for offset_x in range(-blur, blur + 1, 2):
                     for offset_y in range(-blur, blur + 1, 2):
                         if offset_x * offset_x + offset_y * offset_y <= blur * blur:
-                            glow_center = (
-                                screen_width // 2 + offset_x,
-                                int(150 * scale) + offset_y
-                            )
+                            glow_center = (screen_width // 2 + offset_x, int(150 * scale) + offset_y)
                             glow_rect = glow_surf.get_rect(center=glow_center)
                             surface.blit(glow_surf, glow_rect)
 
@@ -191,8 +195,8 @@ class GameOverScreen:
                 hs_text = font_small.render(f"最高分: {high_score}", True, SceneColors.FOREST_GREEN)
                 surface.blit(hs_text, hs_text.get_rect(center=(screen_width // 2, int(400 * scale))))
 
-            self._render_themed_button(surface, 'menu', "返回主菜单", font_button, scale)
-            self._render_themed_button(surface, 'quit', "退出游戏", font_button, scale)
+            self._render_themed_button(surface, "menu", "返回主菜单", font_button, scale)
+            self._render_themed_button(surface, "quit", "退出游戏", font_button, scale)
         else:
             # Original style
             colors = tokens.colors
@@ -211,8 +215,8 @@ class GameOverScreen:
                 hs_text = font_small.render(f"最高分: {high_score}", True, colors.SUCCESS)
                 surface.blit(hs_text, hs_text.get_rect(center=(screen_width // 2, int(400 * scale))))
 
-            self._render_button(surface, 'menu', "返回主菜单", font_button, scale)
-            self._render_button(surface, 'quit', "退出游戏", font_button, scale)
+            self._render_button(surface, "menu", "返回主菜单", font_button, scale)
+            self._render_button(surface, "quit", "退出游戏", font_button, scale)
 
     def _render_button(self, surface, btn_key: str, text: str, font, scale: float):
         colors = self._tokens.colors
@@ -227,13 +231,10 @@ class GameOverScreen:
 
         center_x, center_y = btn_rect.centerx, btn_rect.centery
         scaled_rect = pygame.Rect(
-            center_x - scaled_width // 2,
-            center_y - scaled_height // 2,
-            scaled_width,
-            scaled_height
+            center_x - scaled_width // 2, center_y - scaled_height // 2, scaled_width, scaled_height
         )
 
-        if btn_key == 'menu':
+        if btn_key == "menu":
             if is_hovered:
                 base_color = colors.BUTTON_SELECTED_PRIMARY
                 glow_color = colors.BUTTON_SELECTED_GLOW
@@ -258,15 +259,13 @@ class GameOverScreen:
                 glow_rect = scaled_rect.inflate(expand * 2, expand * 2)
                 alpha = max(5, 40 // i)
                 glow_surf = pygame.Surface((glow_rect.width, glow_rect.height), pygame.SRCALPHA)
-                pygame.draw.rect(glow_surf, (*glow_color, alpha),
-                               glow_surf.get_rect(), border_radius=12)
+                pygame.draw.rect(glow_surf, (*glow_color, alpha), glow_surf.get_rect(), border_radius=12)
                 surface.blit(glow_surf, glow_rect)
 
         pygame.draw.rect(surface, base_color, scaled_rect, border_radius=10)
 
         border_surf = pygame.Surface((scaled_rect.width, scaled_rect.height), pygame.SRCALPHA)
-        pygame.draw.rect(border_surf, (*glow_color, 180),
-                        border_surf.get_rect(), width=2, border_radius=10)
+        pygame.draw.rect(border_surf, (*glow_color, 180), border_surf.get_rect(), width=2, border_radius=10)
         surface.blit(border_surf, scaled_rect.topleft)
 
         text_surf = fit_text_to_width(font, text, text_color, scaled_rect.width - int(48 * scale))
@@ -286,13 +285,10 @@ class GameOverScreen:
 
         center_x, center_y = btn_rect.centerx, btn_rect.centery
         scaled_rect = pygame.Rect(
-            center_x - scaled_width // 2,
-            center_y - scaled_height // 2,
-            scaled_width,
-            scaled_height
+            center_x - scaled_width // 2, center_y - scaled_height // 2, scaled_width, scaled_height
         )
 
-        if btn_key == 'menu':
+        if btn_key == "menu":
             if is_hovered:
                 base_color = SceneColors.FOREST_GREEN
                 border_color = SceneColors.GOLD_PRIMARY
@@ -315,23 +311,27 @@ class GameOverScreen:
         if is_hovered or self._button_click_animation[btn_key] > 0:
             draw_chamfered_panel(
                 surface,
-                scaled_rect.x - 4, scaled_rect.y - 4,
-                scaled_rect.width + 8, scaled_rect.height + 8,
+                scaled_rect.x - 4,
+                scaled_rect.y - 4,
+                scaled_rect.width + 8,
+                scaled_rect.height + 8,
                 SceneColors.BG_PANEL,
-                SceneColors.GOLD_GLOW if btn_key == 'menu' else SceneColors.DANGER_RED,
-                SceneColors.GOLD_GLOW if btn_key == 'menu' else SceneColors.DANGER_RED,
-                10
+                SceneColors.GOLD_GLOW if btn_key == "menu" else SceneColors.DANGER_RED,
+                SceneColors.GOLD_GLOW if btn_key == "menu" else SceneColors.DANGER_RED,
+                10,
             )
 
         # Draw chamfered button
         draw_chamfered_panel(
             surface,
-            scaled_rect.x, scaled_rect.y,
-            scaled_rect.width, scaled_rect.height,
+            scaled_rect.x,
+            scaled_rect.y,
+            scaled_rect.width,
+            scaled_rect.height,
             base_color,
             border_color,
             None,
-            8
+            8,
         )
 
         text_surf = fit_text_to_width(font, text, text_color, scaled_rect.width - int(48 * scale))

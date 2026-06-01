@@ -105,7 +105,7 @@ class LockManager:
             if req.is_paused:
                 paused = True
         if self._game_state:
-            was_invincible = getattr(self._game_state, 'is_player_invincible', False)
+            was_invincible = getattr(self._game_state, "is_player_invincible", False)
             self._game_state.is_player_invincible = invincible
             # Only update timer from lock duration when:
             # 1. A new lock was just acquired (_force_timer_update)

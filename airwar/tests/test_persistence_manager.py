@@ -81,13 +81,15 @@ def test_save_normalizes_integer_float_score(tmp_path):
 def test_load_normalizes_integer_float_score(tmp_path):
     save_path = tmp_path / PersistenceManager.DEFAULT_SAVE_FILE_NAME
     save_path.write_text(
-        json.dumps({
-            "version": 1,
-            "score": 1234.0,
-            "username": "pilot",
-            "player_health": 80.0,
-            "player_max_health": 100.0,
-        }),
+        json.dumps(
+            {
+                "version": 1,
+                "score": 1234.0,
+                "username": "pilot",
+                "player_health": 80.0,
+                "player_max_health": 100.0,
+            }
+        ),
         encoding="utf-8",
     )
 

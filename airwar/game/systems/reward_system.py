@@ -1,7 +1,8 @@
 """Reward generation and application — buffs unlocked at score milestones."""
+
 import logging
 import random
-from typing import Callable, Dict, List
+from collections.abc import Callable
 
 from airwar.config import DIFFICULTY_SETTINGS
 
@@ -13,64 +14,65 @@ logger = logging.getLogger(__name__)
 
 
 REWARD_POOL = {
-    'health': [
-        {'name': 'Extra Life', 'desc': '最大生命+50, 生命+30', 'icon': '生'},
-        {'name': 'Regeneration', 'desc': '每秒恢复2点生命', 'icon': '回'},
-        {'name': 'Lifesteal', 'desc': '击杀时恢复10%生命', 'icon': '吸'},
+    "health": [
+        {"name": "Extra Life", "desc": "最大生命+50, 生命+30", "icon": "生"},
+        {"name": "Regeneration", "desc": "每秒恢复2点生命", "icon": "回"},
+        {"name": "Lifesteal", "desc": "击杀时恢复10%生命", "icon": "吸"},
     ],
-    'offense': [
-        {'name': 'Power Shot', 'desc': '子弹伤害+25%', 'icon': '伤'},
-        {'name': 'Rapid Fire', 'desc': '射速+20%', 'icon': '速'},
-        {'name': 'Piercing', 'desc': '子弹穿透1个敌人', 'icon': '穿'},
-        {'name': 'Spread Shot', 'desc': '一次发射3颗子弹', 'icon': '散'},
-        {'name': 'Explosive', 'desc': '子弹造成30范围伤害', 'icon': '爆'},
-        {'name': 'Laser', 'desc': '持续激光束攻击', 'icon': '光'},
+    "offense": [
+        {"name": "Power Shot", "desc": "子弹伤害+25%", "icon": "伤"},
+        {"name": "Rapid Fire", "desc": "射速+20%", "icon": "速"},
+        {"name": "Piercing", "desc": "子弹穿透1个敌人", "icon": "穿"},
+        {"name": "Spread Shot", "desc": "一次发射3颗子弹", "icon": "散"},
+        {"name": "Explosive", "desc": "子弹造成30范围伤害", "icon": "爆"},
+        {"name": "Laser", "desc": "持续激光束攻击", "icon": "光"},
     ],
-    'defense': [
-        {'name': 'Armor', 'desc': '受到伤害-15%', 'icon': '甲'},
-        {'name': 'Evasion', 'desc': '+20%闪避几率', 'icon': '闪'},
+    "defense": [
+        {"name": "Armor", "desc": "受到伤害-15%", "icon": "甲"},
+        {"name": "Evasion", "desc": "+20%闪避几率", "icon": "闪"},
     ],
-    'utility': [
-        {'name': 'Slow Field', 'desc': '减慢敌人20%速度', 'icon': '缓'},
-        {'name': 'Boost Recovery', 'desc': '加速能量恢复+50%', 'icon': '能'},
-        {'name': 'Phase Dash', 'desc': '消耗25%燃料无敌突进', 'icon': '突'},
-        {'name': 'Mothership Recall', 'desc': '母舰冷却时间-50%', 'icon': '召'},
+    "utility": [
+        {"name": "Slow Field", "desc": "减慢敌人20%速度", "icon": "缓"},
+        {"name": "Boost Recovery", "desc": "加速能量恢复+50%", "icon": "能"},
+        {"name": "Phase Dash", "desc": "消耗25%燃料无敌突进", "icon": "突"},
+        {"name": "Mothership Recall", "desc": "母舰冷却时间-50%", "icon": "召"},
     ],
 }
 
 
-def _empty_buff_levels() -> Dict[str, int]:
+def _empty_buff_levels() -> dict[str, int]:
     return {
-        'Power Shot': 0,
-        'Rapid Fire': 0,
-        'Piercing': 0,
-        'Spread Shot': 0,
-        'Explosive': 0,
-        'Armor': 0,
-        'Evasion': 0,
-        'Laser': 0,
-        'Lifesteal': 0,
-        'Regeneration': 0,
-        'Extra Life': 0,
-        'Slow Field': 0,
-        'Boost Recovery': 0,
-        'Phase Dash': 0,
-        'Mothership Recall': 0,
+        "Power Shot": 0,
+        "Rapid Fire": 0,
+        "Piercing": 0,
+        "Spread Shot": 0,
+        "Explosive": 0,
+        "Armor": 0,
+        "Evasion": 0,
+        "Laser": 0,
+        "Lifesteal": 0,
+        "Regeneration": 0,
+        "Extra Life": 0,
+        "Slow Field": 0,
+        "Boost Recovery": 0,
+        "Phase Dash": 0,
+        "Mothership Recall": 0,
     }
 
 
 class RewardSystem:
     """Reward system — generates and applies milestone buff rewards.
 
-        Manages buff levels, applies buff effects to the player, and generates
-        reward options at score milestones. Tracks unlocked buffs and their
-        cumulative levels.
+    Manages buff levels, applies buff effects to the player, and generates
+    reward options at score milestones. Tracks unlocked buffs and their
+    cumulative levels.
 
-        Attributes:
-            unlocked_buffs: List of buff names the player has acquired.
-            buff_levels: Dict mapping buff names to current level counts.
-            active_buffs: Dict of currently active Buff instances.
-        """
+    Attributes:
+        unlocked_buffs: List of buff names the player has acquired.
+        buff_levels: Dict mapping buff names to current level counts.
+        active_buffs: Dict of currently active Buff instances.
+    """
+
     REWARD_OPTIONS = 3
     EXPLOSIVE_GATING_BOSS_KILLS = 3
     MAX_RETRY_ATTEMPTS = 10
@@ -80,36 +82,37 @@ class RewardSystem:
     EVASION_CHANCE = 0.2
     LIFESTEAL_FRACTION = 0.1
     EXPLOSIVE_SPLASH_FRACTION = 0.5
-    def __init__(self, difficulty: str = 'medium'):
-        self.unlocked_buffs: List[str] = []
-        self.active_buffs: Dict[str, Buff] = {}
+
+    def __init__(self, difficulty: str = "medium"):
+        self.unlocked_buffs: list[str] = []
+        self.active_buffs: dict[str, Buff] = {}
         self.pending_reward = None
         self.locked_buffs: set[str] = set()
-        self.talent_loadout: Dict[str, str] = {}
+        self.talent_loadout: dict[str, str] = {}
 
         self._base_bullet_damage: int = 50
         self._base_fire_cooldown: int = 8
         self._base_max_health: int = 100
         self._base_boost_recovery_rate: float = 1.0
 
-        self.buff_levels: Dict[str, int] = _empty_buff_levels()
-        self.earned_buff_levels: Dict[str, int] = _empty_buff_levels()
+        self.buff_levels: dict[str, int] = _empty_buff_levels()
+        self.earned_buff_levels: dict[str, int] = _empty_buff_levels()
 
         self.slow_factor: float = 1.0
 
-        settings = DIFFICULTY_SETTINGS.get(difficulty, DIFFICULTY_SETTINGS['medium'])
-        self._base_bullet_damage = settings.get('bullet_damage', 50)
-        self._base_max_health = settings.get('max_health', 100)
+        settings = DIFFICULTY_SETTINGS.get(difficulty, DIFFICULTY_SETTINGS["medium"])
+        self._base_bullet_damage = settings.get("bullet_damage", 50)
+        self._base_max_health = settings.get("max_health", 100)
 
-        self._buff_apply_handlers: Dict[str, Callable] = self._init_buff_apply_handlers()
+        self._buff_apply_handlers: dict[str, Callable] = self._init_buff_apply_handlers()
 
     def set_difficulty(self, difficulty: str) -> None:
         """Update base stats to reflect a changed difficulty level."""
-        settings = DIFFICULTY_SETTINGS.get(difficulty, DIFFICULTY_SETTINGS['medium'])
-        self._base_bullet_damage = settings.get('bullet_damage', 50)
-        self._base_fire_cooldown = settings.get('fire_cooldown', 8)
-        self._base_max_health = settings.get('max_health', 100)
-        self._base_boost_recovery_rate = settings.get('boost_recovery_rate', 1.0)
+        settings = DIFFICULTY_SETTINGS.get(difficulty, DIFFICULTY_SETTINGS["medium"])
+        self._base_bullet_damage = settings.get("bullet_damage", 50)
+        self._base_fire_cooldown = settings.get("fire_cooldown", 8)
+        self._base_max_health = settings.get("max_health", 100)
+        self._base_boost_recovery_rate = settings.get("boost_recovery_rate", 1.0)
 
     @property
     def base_bullet_damage(self) -> int:
@@ -125,71 +128,72 @@ class RewardSystem:
 
     @property
     def piercing_level(self) -> int:
-        return self.buff_levels.get('Piercing', 0)
+        return self.buff_levels.get("Piercing", 0)
 
     @piercing_level.setter
     def piercing_level(self, value: int) -> None:
-        self.buff_levels['Piercing'] = value
+        self.buff_levels["Piercing"] = value
 
     @property
     def spread_level(self) -> int:
-        return self.buff_levels.get('Spread Shot', 0)
+        return self.buff_levels.get("Spread Shot", 0)
 
     @spread_level.setter
     def spread_level(self, value: int) -> None:
-        self.buff_levels['Spread Shot'] = value
+        self.buff_levels["Spread Shot"] = value
 
     @property
     def laser_level(self) -> int:
-        return self.buff_levels.get('Laser', 0)
+        return self.buff_levels.get("Laser", 0)
 
     @laser_level.setter
     def laser_level(self, value: int) -> None:
-        self.buff_levels['Laser'] = value
+        self.buff_levels["Laser"] = value
 
     @property
     def explosive_level(self) -> int:
-        return self.buff_levels.get('Explosive', 0)
+        return self.buff_levels.get("Explosive", 0)
 
     @explosive_level.setter
     def explosive_level(self, value: int) -> None:
-        self.buff_levels['Explosive'] = value
+        self.buff_levels["Explosive"] = value
 
     @property
     def armor_level(self) -> int:
-        return self.buff_levels.get('Armor', 0)
+        return self.buff_levels.get("Armor", 0)
 
     @armor_level.setter
     def armor_level(self, value: int) -> None:
-        self.buff_levels['Armor'] = value
+        self.buff_levels["Armor"] = value
 
     @property
     def evasion_level(self) -> int:
-        return self.buff_levels.get('Evasion', 0)
+        return self.buff_levels.get("Evasion", 0)
 
     @evasion_level.setter
     def evasion_level(self, value: int) -> None:
-        self.buff_levels['Evasion'] = value
+        self.buff_levels["Evasion"] = value
 
     @property
     def rapid_fire_level(self) -> int:
-        return self.buff_levels.get('Rapid Fire', 0)
+        return self.buff_levels.get("Rapid Fire", 0)
 
     @rapid_fire_level.setter
     def rapid_fire_level(self, value: int) -> None:
-        self.buff_levels['Rapid Fire'] = value
+        self.buff_levels["Rapid Fire"] = value
 
-    def generate_options(self, boss_kill_count: int, unlocked_buffs: list) -> List[Dict]:
+    def generate_options(self, boss_kill_count: int, unlocked_buffs: list) -> list[dict]:
         options = []
         categories = list(REWARD_POOL.keys())
 
         # One-shot buffs: binary abilities in normal rewards. Base loadout
         # redistribution may later turn their earned point into enhancement.
-        ONE_SHOT_BUFFS = {'Spread Shot', 'Explosive', 'Laser', 'Phase Dash'}
+        ONE_SHOT_BUFFS = {"Spread Shot", "Explosive", "Laser", "Phase Dash"}
 
         unlocked = set(unlocked_buffs)
         taken_one_shots = {
-            name for name in ONE_SHOT_BUFFS
+            name
+            for name in ONE_SHOT_BUFFS
             if self.earned_buff_levels.get(name, 0) > 0 or self.buff_levels.get(name, 0) > 0 or name in unlocked
         }
 
@@ -197,16 +201,13 @@ class RewardSystem:
             cat = random.choice(categories)
             rewards = REWARD_POOL[cat]
 
-            if cat == 'offense' and boss_kill_count < self.EXPLOSIVE_GATING_BOSS_KILLS:
-                rewards = [r for r in rewards if r['name'] not in ['Explosive']]
+            if cat == "offense" and boss_kill_count < self.EXPLOSIVE_GATING_BOSS_KILLS:
+                rewards = [r for r in rewards if r["name"] not in ["Explosive"]]
 
             # Filter out already-taken one-shot buffs
-            available = [
-                r for r in rewards
-                if r['name'] not in taken_one_shots and r['name'] not in self.locked_buffs
-            ]
+            available = [r for r in rewards if r["name"] not in taken_one_shots and r["name"] not in self.locked_buffs]
             if not available:
-                available = [r for r in rewards if r['name'] not in self.locked_buffs]
+                available = [r for r in rewards if r["name"] not in self.locked_buffs]
             if not available:
                 available = rewards  # fallback if all filtered out
 
@@ -220,49 +221,49 @@ class RewardSystem:
 
         return options
 
-    def _init_buff_apply_handlers(self) -> Dict[str, Callable]:
+    def _init_buff_apply_handlers(self) -> dict[str, Callable]:
         return {
-            'Power Shot': self._apply_power_shot,
-            'Rapid Fire': self._apply_rapid_fire,
-            'Piercing': self._apply_piercing,
-            'Spread Shot': self._apply_spread_shot,
-            'Explosive': self._apply_explosive,
-            'Laser': self._apply_laser,
-            'Armor': self._apply_armor,
-            'Evasion': self._apply_evasion,
-            'Slow Field': self._apply_slow_field,
-            'Boost Recovery': self._apply_boost_recovery,
-            'Phase Dash': self._apply_phase_dash,
-            'Mothership Recall': self._apply_mothership_recall,
-            'Extra Life': self._apply_extra_life,
+            "Power Shot": self._apply_power_shot,
+            "Rapid Fire": self._apply_rapid_fire,
+            "Piercing": self._apply_piercing,
+            "Spread Shot": self._apply_spread_shot,
+            "Explosive": self._apply_explosive,
+            "Laser": self._apply_laser,
+            "Armor": self._apply_armor,
+            "Evasion": self._apply_evasion,
+            "Slow Field": self._apply_slow_field,
+            "Boost Recovery": self._apply_boost_recovery,
+            "Phase Dash": self._apply_phase_dash,
+            "Mothership Recall": self._apply_mothership_recall,
+            "Extra Life": self._apply_extra_life,
         }
 
     def _apply_power_shot(self, player) -> None:
-        level = self.buff_levels.get('Power Shot', 0)
-        buff = create_buff('Power Shot')
+        level = self.buff_levels.get("Power Shot", 0)
+        buff = create_buff("Power Shot")
         player.bullet_damage = buff.calculate_value(self._base_bullet_damage, level)
 
     def _apply_rapid_fire(self, player) -> None:
-        level = self.buff_levels.get('Rapid Fire', 0)
-        buff = create_buff('Rapid Fire')
-        if hasattr(player, 'fire_interval'):
+        level = self.buff_levels.get("Rapid Fire", 0)
+        buff = create_buff("Rapid Fire")
+        if hasattr(player, "fire_interval"):
             player.fire_interval = buff.calculate_value(self._base_fire_cooldown, level)
         else:
             player.fire_cooldown = buff.calculate_value(self._base_fire_cooldown, level)
 
     def _apply_piercing(self, player) -> None:
-        player.pierce_count = self.buff_levels.get('Piercing', 0)
+        player.pierce_count = self.buff_levels.get("Piercing", 0)
 
     def _apply_spread_shot(self, player) -> None:
-        if self.buff_levels.get('Spread Shot', 0) > 0:
+        if self.buff_levels.get("Spread Shot", 0) > 0:
             player.activate_shotgun()
 
     def _apply_explosive(self, player) -> None:
-        if self.buff_levels.get('Explosive', 0) > 0:
+        if self.buff_levels.get("Explosive", 0) > 0:
             player.activate_explosive()
 
     def _apply_laser(self, player) -> None:
-        if self.buff_levels.get('Laser', 0) > 0:
+        if self.buff_levels.get("Laser", 0) > 0:
             player.activate_laser(GAME_CONSTANTS.REWARD.LASER_DURATION)
 
     def _apply_armor(self, player) -> None:
@@ -275,16 +276,16 @@ class RewardSystem:
         self.slow_factor = 0.8
 
     def _apply_boost_recovery(self, player) -> None:
-        level = self.buff_levels.get('Boost Recovery', 0)
-        player.boost_recovery_rate = self._base_boost_recovery_rate * (1.5 ** level)
+        level = self.buff_levels.get("Boost Recovery", 0)
+        player.boost_recovery_rate = self._base_boost_recovery_rate * (1.5**level)
 
     def _apply_phase_dash(self, player) -> None:
-        buff = create_buff('Phase Dash')
+        buff = create_buff("Phase Dash")
         buff.apply(player)
 
     def _apply_mothership_recall(self, player) -> None:
-        level = self.buff_levels.get('Mothership Recall', 0)
-        player.mothership_cooldown_mult = 0.5 ** level
+        level = self.buff_levels.get("Mothership Recall", 0)
+        player.mothership_cooldown_mult = 0.5**level
 
     def _apply_extra_life(self, player) -> None:
         player.max_health += self.EXTRA_LIFE_BONUS_HP
@@ -293,10 +294,10 @@ class RewardSystem:
     def capture_player_baselines(self, player) -> None:
         if not player:
             return
-        self._base_boost_recovery_rate = getattr(player, 'boost_recovery_rate', 1.0)
-        self._base_max_health = getattr(player, 'max_health', self._base_max_health)
+        self._base_boost_recovery_rate = getattr(player, "boost_recovery_rate", 1.0)
+        self._base_max_health = getattr(player, "max_health", self._base_max_health)
 
-    def get_earned_buff_levels(self) -> Dict[str, int]:
+    def get_earned_buff_levels(self) -> dict[str, int]:
         self.ensure_earned_levels()
         return dict(self.earned_buff_levels)
 
@@ -309,9 +310,9 @@ class RewardSystem:
 
     def apply_effective_levels(
         self,
-        levels: Dict[str, int],
+        levels: dict[str, int],
         locked_buffs: set[str] | None = None,
-        talent_loadout: Dict[str, str] | None = None,
+        talent_loadout: dict[str, str] | None = None,
     ) -> None:
         cleaned = _empty_buff_levels()
         for name, value in levels.items():
@@ -336,35 +337,35 @@ class RewardSystem:
             return
 
         player.bullet_damage = self._base_bullet_damage
-        if hasattr(player, 'fire_interval'):
+        if hasattr(player, "fire_interval"):
             player.fire_interval = self._base_fire_cooldown
         player.pierce_count = 0
         player.max_health = self._base_max_health
-        current_health = getattr(player, 'health', self._base_max_health)
+        current_health = getattr(player, "health", self._base_max_health)
         if not isinstance(current_health, (int, float)):
             current_health = self._base_max_health
         player.health = min(current_health, player.max_health)
         player.boost_recovery_rate = self._base_boost_recovery_rate
         player.is_phase_dash_enabled = False
         player.mothership_cooldown_mult = 1.0
-        if hasattr(player, 'set_weapon_modifiers'):
+        if hasattr(player, "set_weapon_modifiers"):
             player.set_weapon_modifiers(spread=False, laser=False, explosive=False)
 
-        extra_life_level = self.buff_levels.get('Extra Life', 0)
+        extra_life_level = self.buff_levels.get("Extra Life", 0)
         if extra_life_level > 0:
             player.max_health = self._base_max_health + extra_life_level * self.EXTRA_LIFE_BONUS_HP
             player.health = min(player.health, player.max_health)
 
         self.slow_factor = 1.0
         for buff_name, level in self.buff_levels.items():
-            if level <= 0 or buff_name == 'Extra Life':
+            if level <= 0 or buff_name == "Extra Life":
                 continue
             handler = self._buff_apply_handlers.get(buff_name)
             if handler:
                 handler(player)
 
-    def apply_reward(self, reward: Dict, player) -> str:
-        name = reward['name']
+    def apply_reward(self, reward: dict, player) -> str:
+        name = reward["name"]
 
         if name not in self.buff_levels:
             logger.warning("Unknown reward selected: %s", name)
@@ -385,23 +386,23 @@ class RewardSystem:
             self.active_buffs[name] = buff
 
         self.reapply_all_effects(player)
-        if name == 'Extra Life':
+        if name == "Extra Life":
             player.health = min(player.health + self.EXTRA_LIFE_HEAL, player.max_health)
 
         return buff.get_notification(self.buff_levels[name])
 
     def calculate_damage_taken(self, damage: int) -> int:
-        if 'Armor' in self.unlocked_buffs:
+        if "Armor" in self.unlocked_buffs:
             return int(damage * self.ARMOR_MULTIPLIER)
         return damage
 
     def try_dodge(self) -> bool:
-        return bool('Evasion' in self.unlocked_buffs and random.random() < self.EVASION_CHANCE)
+        return bool("Evasion" in self.unlocked_buffs and random.random() < self.EVASION_CHANCE)
 
-    def apply_lifesteal(self, player, kill_value: int) -> None:
+    def apply_lifesteal(self, player, score: int) -> None:
         if player is None:
             return
-        if 'Lifesteal' in self.unlocked_buffs:
+        if "Lifesteal" in self.unlocked_buffs:
             heal = int(player.max_health * self.LIFESTEAL_FRACTION)
             player.health = min(player.health + heal, player.max_health)
 

@@ -1,5 +1,6 @@
 """Mouse interaction — mixins for clickable and hoverable UI elements."""
-from typing import Callable, Dict, List, Optional
+
+from collections.abc import Callable
 
 import pygame
 
@@ -26,14 +27,12 @@ class MouseSelectableMixin:
 
     def __init__(self):
         self._hovered_index: int = -1
-        self._option_rects: List[pygame.Rect] = []
-        self._on_hover_callback: Optional[Callable[[int], None]] = None
-        self._on_click_callback: Optional[Callable[[int], None]] = None
+        self._option_rects: list[pygame.Rect] = []
+        self._on_hover_callback: Callable[[int], None] | None = None
+        self._on_click_callback: Callable[[int], None] | None = None
 
     def set_mouse_callbacks(
-        self,
-        on_hover: Optional[Callable[[int], None]] = None,
-        on_click: Optional[Callable[[int], None]] = None
+        self, on_hover: Callable[[int], None] | None = None, on_click: Callable[[int], None] | None = None
     ) -> None:
         self._on_hover_callback = on_hover
         self._on_click_callback = on_click
@@ -70,7 +69,7 @@ class MouseSelectableMixin:
     def clear_hover(self) -> None:
         self._hovered_index = -1
 
-    def update_option_rects(self, rects: List[pygame.Rect]) -> None:
+    def update_option_rects(self, rects: list[pygame.Rect]) -> None:
         self._option_rects = rects
 
     def append_option_rect(self, rect: pygame.Rect) -> None:
@@ -101,15 +100,13 @@ class MouseInteractiveMixin:
     """
 
     def __init__(self):
-        self._button_rects: Dict[str, pygame.Rect] = {}
-        self._hovered_button: Optional[str] = None
-        self._on_button_hover_callback: Optional[Callable[[str], None]] = None
-        self._on_button_click_callback: Optional[Callable[[str], None]] = None
+        self._button_rects: dict[str, pygame.Rect] = {}
+        self._hovered_button: str | None = None
+        self._on_button_hover_callback: Callable[[str], None] | None = None
+        self._on_button_click_callback: Callable[[str], None] | None = None
 
     def set_button_callbacks(
-        self,
-        on_hover: Optional[Callable[[str], None]] = None,
-        on_click: Optional[Callable[[str], None]] = None
+        self, on_hover: Callable[[str], None] | None = None, on_click: Callable[[str], None] | None = None
     ) -> None:
         self._on_button_hover_callback = on_hover
         self._on_button_click_callback = on_click
@@ -124,7 +121,7 @@ class MouseInteractiveMixin:
     def clear_buttons(self) -> None:
         self._button_rects.clear()
 
-    def get_button_rect(self, name: str) -> Optional[pygame.Rect]:
+    def get_button_rect(self, name: str) -> pygame.Rect | None:
         return self._button_rects.get(name)
 
     def handle_mouse_motion(self, mouse_pos: tuple) -> None:
@@ -143,7 +140,7 @@ class MouseInteractiveMixin:
             return True
         return False
 
-    def _get_button_at_pos(self, pos: tuple) -> Optional[str]:
+    def _get_button_at_pos(self, pos: tuple) -> str | None:
         for name, rect in self._button_rects.items():
             if rect.collidepoint(pos):
                 return name
@@ -152,7 +149,7 @@ class MouseInteractiveMixin:
     def is_button_hovered(self, name: str) -> bool:
         return self._hovered_button == name
 
-    def get_hovered_button(self) -> Optional[str]:
+    def get_hovered_button(self) -> str | None:
         return self._hovered_button
 
     def clear_hover(self) -> None:

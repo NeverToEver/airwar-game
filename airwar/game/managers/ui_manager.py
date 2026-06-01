@@ -1,30 +1,25 @@
 """UI coordination — manages rendering delegation and overlay display."""
+
 import pygame
 
 from ..buffs.buff_registry import get_buff_color
 from ..protocols import GameControllerProtocol, GameRendererProtocol, RewardSystemProtocol
 from ..rendering.entity_renderer import EntityRenderer
-
-
-class GameEntities:
-    """Game entities container — player, enemies, and boss references."""
-    def __init__(self, player, enemies, boss):
-        self.player = player
-        self.enemies = enemies
-        self.boss = boss
+from ..rendering.game_renderer import GameEntities
 
 
 class UIManager:
     """UI manager — coordinates rendering delegation and overlay display.
 
-        Routes rendering calls to the appropriate renderer (GameRenderer,
-        HUDRenderer) and manages UI overlay state (reward selector, pause).
+    Routes rendering calls to the appropriate renderer (GameRenderer,
+    HUDRenderer) and manages UI overlay state (reward selector, pause).
 
-        Attributes:
-            _game_renderer: GameRenderer for entity and background rendering.
-            _reward_system: RewardSystem for buff stats display.
-            _game_controller: GameController for state access.
-        """
+    Attributes:
+        _game_renderer: GameRenderer for entity and background rendering.
+        _reward_system: RewardSystem for buff stats display.
+        _game_controller: GameController for state access.
+    """
+
     def __init__(
         self,
         game_renderer: GameRendererProtocol,
@@ -59,7 +54,7 @@ class UIManager:
     def render_hud(self, surface: pygame.Surface, player) -> None:
         state = self._game_controller.state
 
-        unlocked_buffs = getattr(self._reward_system, 'unlocked_buffs', [])
+        unlocked_buffs = getattr(self._reward_system, "unlocked_buffs", [])
 
         difficulty_manager = self._game_controller.difficulty_manager
         current_coefficient = difficulty_manager.get_current_multiplier()
@@ -73,7 +68,7 @@ class UIManager:
             player.max_health,
             state.kill_count,
             self._game_controller.get_next_progress(),
-            boss_kills=getattr(state, 'boss_kill_count', 0),
+            boss_kills=getattr(state, "boss_kill_count", 0),
             unlocked_buffs=unlocked_buffs,
             get_buff_color=get_buff_color,
             current_coefficient=current_coefficient,
@@ -82,19 +77,8 @@ class UIManager:
 
     def render_notification(self, surface: pygame.Surface) -> None:
         state = self._game_controller.state
-        self._game_renderer.render_notification(
-            surface,
-            state.notification,
-            state.notification_timer
-        )
+        self._game_renderer.render_notification(surface, state.notification, state.notification_timer)
 
     def render_buff_stats_panel(self, surface: pygame.Surface, player) -> None:
-        self._game_renderer.render_buff_stats_panel(
-            surface,
-            self._reward_system,
-            player
-        )
-        self._game_renderer.render_attack_mode_panel(
-            surface,
-            self._reward_system
-        )
+        self._game_renderer.render_buff_stats_panel(surface, self._reward_system, player)
+        self._game_renderer.render_attack_mode_panel(surface, self._reward_system)

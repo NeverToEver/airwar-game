@@ -1,7 +1,7 @@
 """Talent loadout balancing for base-side respec decisions."""
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Dict, Iterable
 
 OFFENSE_ROUTE = "offense"
 SUPPORT_ROUTE = "support"
@@ -37,13 +37,13 @@ class TalentRouteView:
 class TalentBalanceManager:
     """Calculates effective buff levels under route exclusivity constraints."""
 
-    def __init__(self, earned_levels: Dict[str, int], loadout: Dict[str, str] | None = None):
+    def __init__(self, earned_levels: dict[str, int], loadout: dict[str, str] | None = None):
         self._earned_levels = {name: max(0, int(level)) for name, level in earned_levels.items()}
         self._loadout = dict(loadout or {})
         self._normalize_loadout()
 
     @property
-    def loadout(self) -> Dict[str, str]:
+    def loadout(self) -> dict[str, str]:
         return dict(self._loadout)
 
     def total_points(self) -> int:
@@ -85,7 +85,7 @@ class TalentBalanceManager:
         self._loadout[route] = options[next_index]
         return self._loadout[route]
 
-    def effective_levels(self) -> Dict[str, int]:
+    def effective_levels(self) -> dict[str, int]:
         levels = dict(self._earned_levels)
         for route, options in LOADOUT_ROUTES.items():
             budget = self._route_budget(options)
@@ -128,7 +128,7 @@ class TalentBalanceManager:
         for name in options:
             if self._earned_levels.get(name, 0) > 0:
                 return name
-        return tuple(options)[0]
+        return next(iter(options))
 
     def _route_budget(self, options: Iterable[str]) -> int:
         return sum(self._earned_levels.get(name, 0) for name in options)

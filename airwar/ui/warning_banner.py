@@ -1,4 +1,5 @@
 """Warning banner — slide-in tech alert panel for mothership ammo depletion."""
+
 import contextlib
 import math
 
@@ -23,9 +24,9 @@ class WarningBanner:
     BANNER_HEIGHT = 60
     HAZARD_WIDTH = 70
     HAZARD_STRIPE = 10
-    ENTER_DURATION = 0.55     # seconds — ease-out slide in
-    HOLD_DURATION = 4.0       # seconds — static pulse display
-    EXIT_DURATION = 0.45      # seconds — ease-in slide out
+    ENTER_DURATION = 0.55  # seconds — ease-out slide in
+    HOLD_DURATION = 4.0  # seconds — static pulse display
+    EXIT_DURATION = 0.45  # seconds — ease-in slide out
 
     # Text colors
     WARNING_TEXT_COLOR = (255, 160, 40)
@@ -119,10 +120,8 @@ class WarningBanner:
         if self._main_font is None:
             self._main_font = get_cjk_font(28)
             self._sub_font = get_cjk_font(20)
-        self._main_text = self._main_font.render(
-            self.WARNING_TEXT, True, self.WARNING_TEXT_COLOR)
-        self._sub_text = self._sub_font.render(
-            self.SUB_TEXT, True, self.SUB_TEXT_COLOR)
+        self._main_text = self._main_font.render(self.WARNING_TEXT, True, self.WARNING_TEXT_COLOR)
+        self._sub_text = self._sub_font.render(self.SUB_TEXT, True, self.SUB_TEXT_COLOR)
         return True
 
     def reset(self) -> None:
@@ -162,7 +161,7 @@ class WarningBanner:
         elif self._state == self._STATE_EXITING:
             t = min(self._state_time / self.EXIT_DURATION, 1.0)
             # Ease-in-cubic: slide up and away
-            eased = t ** self.EASE_IN_EXP
+            eased = t**self.EASE_IN_EXP
             self._y_offset = -self.BANNER_HEIGHT * eased
             if t >= 1.0:
                 self._state = self._STATE_INACTIVE
@@ -198,18 +197,17 @@ class WarningBanner:
 
         # Glow bar at bottom edge
         glow_phase = self._pulse_phase * self.GLOW_FREQUENCY
-        glow_alpha = int(
-            self.GLOW_ALPHA_BASE + self.GLOW_ALPHA_RANGE * math.sin(glow_phase)
+        glow_alpha = int(self.GLOW_ALPHA_BASE + self.GLOW_ALPHA_RANGE * math.sin(glow_phase))
+        pygame.draw.rect(
+            surface,
+            (*self.GLOW_BAR_COLOR, glow_alpha),
+            (0, banner_y + self.BANNER_HEIGHT - self.GLOW_BAR_HEIGHT, screen_w, self.GLOW_BAR_HEIGHT),
         )
-        pygame.draw.rect(surface, (*self.GLOW_BAR_COLOR, glow_alpha),
-                         (0, banner_y + self.BANNER_HEIGHT - self.GLOW_BAR_HEIGHT, screen_w, self.GLOW_BAR_HEIGHT))
 
         # Centered text
         if self._main_text and self._sub_text:
-            main_rect = self._main_text.get_rect(
-                center=(screen_w // 2, banner_y + self.TEXT_CENTERY))
-            sub_rect = self._sub_text.get_rect(
-                center=(screen_w // 2, banner_y + self.SUBTEXT_CENTERY))
+            main_rect = self._main_text.get_rect(center=(screen_w // 2, banner_y + self.TEXT_CENTERY))
+            sub_rect = self._sub_text.get_rect(center=(screen_w // 2, banner_y + self.SUBTEXT_CENTERY))
             surface.blit(self._main_text, main_rect)
             surface.blit(self._sub_text, sub_rect)
 

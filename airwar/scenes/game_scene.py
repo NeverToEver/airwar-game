@@ -1,7 +1,5 @@
 """Main game scene -- gameplay loop, entity coordination, and rendering."""
 
-from typing import Dict
-
 import pygame
 
 from airwar.config import BOOST_CONFIG, DIFFICULTY_SETTINGS, get_screen_height, get_screen_width
@@ -155,7 +153,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if self._haunting_renderer:
             self._haunting_renderer.dispose()
         self._haunting_renderer = HauntingRenderer()
-        self._viewport = kwargs.get('viewport')
+        self._viewport = kwargs.get("viewport")
 
         # Prewarm glow caches before gameplay starts
         self._loading_progress = 20
@@ -169,9 +167,9 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._init_pause_button_layout()
         self._aim_assist.set_raw_aim_position(self._get_logical_mouse_pos())
 
-        difficulty = kwargs.get('difficulty', 'medium')
-        username = kwargs.get('username', 'Player')
-        settings_ref = kwargs.get('settings_ref', {})
+        difficulty = kwargs.get("difficulty", "medium")
+        username = kwargs.get("username", "Player")
+        settings_ref = kwargs.get("settings_ref", {})
         settings = DIFFICULTY_SETTINGS[difficulty]
 
         self.game_controller = GameController(difficulty, username)
@@ -192,19 +190,19 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self.player = Player(
             screen_width // 2 - PlayerConstants.INITIAL_X_OFFSET,
             screen_height - PlayerConstants.SCREEN_BOTTOM_OFFSET,
-            input_handler
+            input_handler,
         )
         self._lock_manager.set_player(self.player)
         self._sync_player_aim_target()
         self.player.rect.y = PlayerConstants.INITIAL_Y
-        self.player.bullet_damage = settings['bullet_damage']
+        self.player.bullet_damage = settings["bullet_damage"]
         boost_cfg = BOOST_CONFIG[difficulty]
-        self.player.boost_max = boost_cfg['max_boost']
-        self.player.boost_current = boost_cfg['max_boost']
-        self.player.boost_recovery_rate = boost_cfg['recovery_rate']
-        self.player.boost_speed_mult = boost_cfg['speed_mult']
-        self.player.boost_recovery_delay = boost_cfg['recovery_delay']
-        self.player.boost_recovery_ramp = boost_cfg['recovery_ramp']
+        self.player.boost_max = boost_cfg["max_boost"]
+        self.player.boost_current = boost_cfg["max_boost"]
+        self.player.boost_recovery_rate = boost_cfg["recovery_rate"]
+        self.player.boost_speed_mult = boost_cfg["speed_mult"]
+        self.player.boost_recovery_delay = boost_cfg["recovery_delay"]
+        self.player.boost_recovery_ramp = boost_cfg["recovery_ramp"]
         self.player.apply_settings(settings_ref)
         self.reward_system.capture_player_baselines(self.player)
         self._boost_gauge = BoostGauge()
@@ -218,15 +216,9 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._init_homecoming_system(screen_width, screen_height)
         self._bullet_manager = BulletManager(self.player, self.spawn_controller)
         self._boss_manager = BossManager(
-            self.spawn_controller,
-            self.game_controller,
-            self.reward_system,
-            self._bullet_manager
+            self.spawn_controller, self.game_controller, self.reward_system, self._bullet_manager
         )
-        self._milestone_manager = MilestoneManager(
-            self.game_controller,
-            self.reward_system
-        )
+        self._milestone_manager = MilestoneManager(self.game_controller, self.reward_system)
         self._milestone_manager.set_reward_selector(self.reward_selector)
         self._input_coordinator = InputCoordinator(
             self.player,
@@ -254,7 +246,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._auto_save_timer = 0
 
     def _setup_reward_selector(self) -> None:
-        self.reward_selector.hide = lambda: setattr(self.reward_selector, 'visible', False)
+        self.reward_selector.hide = lambda: setattr(self.reward_selector, "visible", False)
         self.reward_selector.visible = False
 
     def _init_mother_ship_system(self, screen_width: int, screen_height: int) -> None:
@@ -281,6 +273,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
     def _init_homecoming_system(self, screen_width: int, screen_height: int) -> None:
         from airwar.game.systems.homecoming_coordinator import HomecomingCoordinator
+
         detector = HomecomingDetector(self._on_homecoming_requested)
         sequence = HomecomingSequence(self._on_homecoming_complete)
         ui = HomecomingUI(screen_width, screen_height)
@@ -371,11 +364,10 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._update_homecoming()
 
         if self.game_renderer and self.game_renderer.integrated_hud:
-            unlocked_buffs = getattr(self.reward_system, 'unlocked_buffs', [])
+            unlocked_buffs = getattr(self.reward_system, "unlocked_buffs", [])
             self.game_renderer.integrated_hud.update_scroll(len(unlocked_buffs))
             if self.player:
-                self.game_renderer.integrated_hud.update_health_tank(
-                    self.player.health, self.player.max_health)
+                self.game_renderer.integrated_hud.update_health_tank(self.player.health, self.player.max_health)
             self.game_renderer.integrated_hud.update()
 
         if self._is_homecoming_active():
@@ -455,8 +447,10 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             return False
         state = self._mother_ship_integrator.get_current_state()
         return state in (
-            MotherShipState.ENTERING, MotherShipState.DOCKING,
-            MotherShipState.DOCKED, MotherShipState.UNDOCKING,
+            MotherShipState.ENTERING,
+            MotherShipState.DOCKING,
+            MotherShipState.DOCKED,
+            MotherShipState.UNDOCKING,
         )
 
     def _render_haunting_world(self, surface: pygame.Surface) -> None:
@@ -551,7 +545,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             return
 
         status = self._mother_ship_integrator.get_status_data()
-        if not status.get('ammo_warning', False):
+        if not status.get("ammo_warning", False):
             return
 
         if self._warning_banner.is_active:
@@ -594,43 +588,60 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     def _update_homecoming(self) -> None:
         if self._homecoming_coordinator:
             self._homecoming_coordinator.update(
-                self.game_controller, self.player, self._lock_manager,
-                self._bullet_manager, self.spawn_controller,
-                self._game_loop_manager, self.notification_manager,
+                self.game_controller,
+                self.player,
+                self._lock_manager,
+                self._bullet_manager,
+                self.spawn_controller,
+                self._game_loop_manager,
+                self.notification_manager,
             )
 
     def _on_homecoming_requested(self) -> None:
         if self._homecoming_coordinator:
             self._homecoming_coordinator.on_requested(
-                self.game_controller, self.player, self._lock_manager,
-                self._bullet_manager, self.notification_manager,
+                self.game_controller,
+                self.player,
+                self._lock_manager,
+                self._bullet_manager,
+                self.notification_manager,
             )
-
 
     def _on_homecoming_complete(self) -> None:
         if self._homecoming_coordinator:
             self._homecoming_coordinator.on_complete(
-                self.game_controller, self.player, self._lock_manager,
-                self.notification_manager, self.reward_system,
+                self.game_controller,
+                self.player,
+                self._lock_manager,
+                self.notification_manager,
+                self.reward_system,
             )
             self._homecoming_base_pending = self._homecoming_coordinator.is_base_pending()
             self._talent_balance_manager = self._homecoming_coordinator.get_talent_balance_manager()
 
-
     def _handle_base_console_click(self, pos: tuple[int, int]) -> bool:
         if self._homecoming_coordinator:
             return self._homecoming_coordinator.handle_console_click(
-                pos, self.game_controller, self.player, self._lock_manager,
-                self.spawn_controller, self._game_loop_manager,
-                self.notification_manager, self.reward_system,
+                pos,
+                self.game_controller,
+                self.player,
+                self._lock_manager,
+                self.spawn_controller,
+                self._game_loop_manager,
+                self.notification_manager,
+                self.reward_system,
             )
         return False
 
     def _leave_homecoming_base(self) -> None:
         if self._homecoming_coordinator:
             self._homecoming_coordinator.leave_base(
-                self.game_controller, self.player, self._lock_manager,
-                self.spawn_controller, self._game_loop_manager, self.notification_manager,
+                self.game_controller,
+                self.player,
+                self._lock_manager,
+                self.spawn_controller,
+                self._game_loop_manager,
+                self.notification_manager,
             )
             self._homecoming_base_pending = self._homecoming_coordinator.is_base_pending()
             self._pause_requested = False
@@ -638,18 +649,23 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     def _on_homecoming_orbital_strike(self) -> None:
         if self._homecoming_coordinator:
             self._homecoming_coordinator.on_orbital_strike(
-                self.spawn_controller, self._game_loop_manager, self.player, self.notification_manager,
+                self.spawn_controller,
+                self._game_loop_manager,
+                self.player,
+                self.notification_manager,
             )
-
 
     def _on_homecoming_departure_complete(self) -> None:
         if self._homecoming_coordinator:
             self._homecoming_coordinator.on_departure_complete(
-                self.game_controller, self.player, self._lock_manager,
-                self.spawn_controller, self._game_loop_manager, self.notification_manager,
+                self.game_controller,
+                self.player,
+                self._lock_manager,
+                self.spawn_controller,
+                self._game_loop_manager,
+                self.notification_manager,
             )
             self._homecoming_base_pending = self._homecoming_coordinator.is_base_pending()
-
 
     def _save_base_loadout(self) -> bool:
         if not self._mother_ship_integrator:
@@ -706,19 +722,10 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if self._ui_manager:
             self._ui_manager.set_player_docked(is_docked_render)
 
-        self._ui_manager.render_game(
-            surface,
-            self.player,
-            self.spawn_controller.enemies,
-            self.spawn_controller.boss
-        )
+        self._ui_manager.render_game(surface, self.player, self.spawn_controller.enemies, self.spawn_controller.boss)
         self._render_haunting_world(surface)
 
-        self._ui_manager.render_bullets(
-            surface,
-            self.player,
-            self.spawn_controller.enemy_bullets
-        )
+        self._ui_manager.render_bullets(surface, self.player, self.spawn_controller.enemy_bullets)
         self._render_haunting_post_bullets(surface)
         self._ui_manager.render_hud(surface, self.player)
         self._ui_manager.render_buff_stats_panel(surface, self.player)
@@ -728,22 +735,21 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         # Boost gauge -- bottom-left dashboard indicator
         if self._boost_gauge is not None:
             status = self.player.get_boost_status()
-            self._boost_gauge.render(surface, status['current'],
-                                     status['max'], status['active'], status)
+            self._boost_gauge.render(surface, status["current"], status["max"], status["active"], status)
 
         # Ammo magazine -- left-side vertical ammo rack
         if self._ammo_magazine and self._mother_ship_integrator:
             ms_data = self._mother_ship_integrator.get_status_data()
             self._ammo_magazine.render(
                 surface,
-                ammo_count=ms_data.get('ammo_count', 0.0),
-                ammo_max=ms_data.get('ammo_max', 10.0),
-                is_cooldown=ms_data.get('is_in_cooldown', False),
-                is_docked=ms_data.get('is_docked', False),
-                is_warning=ms_data.get('ammo_warning', False),
-                is_present=ms_data.get('is_present', False),
-                cooldown_remaining=ms_data.get('cooldown_remaining', 0.0),
-                cooldown_reduction=ms_data.get('cooldown_reduction', 0.0),
+                ammo_count=ms_data.get("ammo_count", 0.0),
+                ammo_max=ms_data.get("ammo_max", 10.0),
+                is_cooldown=ms_data.get("is_in_cooldown", False),
+                is_docked=ms_data.get("is_docked", False),
+                is_warning=ms_data.get("ammo_warning", False),
+                is_present=ms_data.get("is_present", False),
+                cooldown_remaining=ms_data.get("cooldown_remaining", 0.0),
+                cooldown_reduction=ms_data.get("cooldown_reduction", 0.0),
             )
 
         if self._mother_ship_integrator:
@@ -830,8 +836,6 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             return
         is_hovered = self.is_button_hovered("pause")
         self._pause_button.render(surface, is_hovered, self._tokens.colors, self._tokens.spacing)
-
-
 
     @property
     def score(self) -> int:
@@ -935,7 +939,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         Returns:
             Game difficulty ('easy', 'medium', 'hard').
         """
-        return self.game_controller.state.difficulty if self.game_controller else 'medium'
+        return self.game_controller.state.difficulty if self.game_controller else "medium"
 
     @difficulty.setter
     def difficulty(self, value: str) -> None:
@@ -1015,9 +1019,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     def add_score(self, amount: int) -> None:
         """Add to score."""
         if self.game_controller:
-            self.game_controller.state.score = normalize_score(
-                self.game_controller.state.score + amount
-            )
+            self.game_controller.state.score = normalize_score(self.game_controller.state.score + amount)
 
     def add_kill(self) -> None:
         """Increment kill count."""
@@ -1094,18 +1096,18 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         """Get list of unlocked buff names."""
         return self.unlocked_buffs
 
-    def get_buff_levels(self) -> Dict[str, int]:
+    def get_buff_levels(self) -> dict[str, int]:
         """Get buff levels dictionary."""
         if not self.reward_system:
             return {}
         return dict(self.reward_system.buff_levels)
 
-    def get_earned_buff_levels(self) -> Dict[str, int]:
+    def get_earned_buff_levels(self) -> dict[str, int]:
         if not self.reward_system:
             return {}
         return self.reward_system.get_earned_buff_levels()
 
-    def get_talent_loadout(self) -> Dict[str, str]:
+    def get_talent_loadout(self) -> dict[str, str]:
         if not self.reward_system:
             return {}
         return dict(self.reward_system.talent_loadout)
@@ -1124,7 +1126,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
     def get_username(self) -> str:
         """Get player username."""
-        return self.game_controller.state.username if self.game_controller else 'Player'
+        return self.game_controller.state.username if self.game_controller else "Player"
 
     def set_paused(self, paused: bool) -> None:
         """Set game paused state."""

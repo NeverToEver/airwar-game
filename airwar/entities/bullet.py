@@ -6,7 +6,6 @@ player bullets, enemy bullets, lasers, and explosive missiles.
 
 import math
 from collections import deque
-from typing import List
 
 import pygame
 
@@ -44,14 +43,11 @@ class Bullet(Entity):
         self.data = data
         self.velocity = Vector2(0, -data.speed)
         self._trail: deque = deque(maxlen=8)
-        self._hit_enemies: List[int] = []
+        self._hit_enemies: list[int] = []
 
         if data.angle_offset != 0:
             angle_rad = math.radians(data.angle_offset)
-            self.velocity = Vector2(
-                data.speed * math.sin(angle_rad),
-                -data.speed * math.cos(angle_rad)
-            )
+            self.velocity = Vector2(data.speed * math.sin(angle_rad), -data.speed * math.cos(angle_rad))
 
     def update(self, *args, **kwargs) -> None:
         if getattr(self, "held", False):

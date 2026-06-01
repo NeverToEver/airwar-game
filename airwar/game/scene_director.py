@@ -1,6 +1,6 @@
 """Scene orchestration -- manages scene transitions and lifecycle."""
+
 import logging
-from typing import List, Optional
 
 import pygame
 
@@ -15,14 +15,15 @@ from .scaled_viewport import ScaledViewport
 class SceneDirector:
     """Scene director -- orchestrates scene transitions and lifecycle.
 
-        Manages the high-level scene flow: Welcome -> Game, with support
-        for pause, death, and exit confirmation overlays. Preserves scene
-        state across transitions via SceneManager.
+    Manages the high-level scene flow: Welcome -> Game, with support
+    for pause, death, and exit confirmation overlays. Preserves scene
+    state across transitions via SceneManager.
 
-        Attributes:
-            _window: Pygame display window reference.
-            _scene_manager: SceneManager for registration and switching.
-        """
+    Attributes:
+        _window: Pygame display window reference.
+        _scene_manager: SceneManager for registration and switching.
+    """
+
     def __init__(self, window, scene_manager: SceneManager, user_db=None, viewport: ScaledViewport = None):
         self._logger = logging.getLogger(self.__class__.__name__)
         self._window = window
@@ -30,15 +31,15 @@ class SceneDirector:
         self._user_db = user_db
         self._viewport = viewport or ScaledViewport()
         self._running = True
-        self._current_user: Optional[str] = None
-        self._selected_difficulty: str = 'medium'
+        self._current_user: str | None = None
+        self._selected_difficulty: str = "medium"
         self._pending_save_data = None
         self._save_dir = None
-        self._settings_ref = {'ctrl_mode': 'hold', 'shift_boost_mode': 'hold'}
+        self._settings_ref = {"ctrl_mode": "hold", "shift_boost_mode": "hold"}
         self._update_viewport_from_window()
 
     @property
-    def current_user(self) -> Optional[str]:
+    def current_user(self) -> str | None:
         return self._current_user
 
     def run(self) -> None:
@@ -90,14 +91,14 @@ class SceneDirector:
             if result == "quit":
                 return (False, None)
 
-            if hasattr(welcome, 'should_quit') and welcome.should_quit():
+            if hasattr(welcome, "should_quit") and welcome.should_quit():
                 return (False, None)
-            if hasattr(welcome, 'should_open_tutorial') and welcome.should_open_tutorial():
+            if hasattr(welcome, "should_open_tutorial") and welcome.should_open_tutorial():
                 result = self._run_tutorial_flow()
                 if result == "quit":
                     return (False, None)
                 continue
-            if hasattr(welcome, 'should_open_settings') and welcome.should_open_settings():
+            if hasattr(welcome, "should_open_settings") and welcome.should_open_settings():
                 if not self._show_settings_menu():
                     return (False, None)
                 continue
@@ -123,11 +124,13 @@ class SceneDirector:
 
     def _run_game_flow(self) -> str:
         self._logger.info(f"Starting game flow: difficulty={self._selected_difficulty}, user={self._current_user}")
-        self._scene_manager.switch("game",
-                                  difficulty=self._selected_difficulty,
-                                  username=self._current_user or 'Guest',
-                                  settings_ref=self._settings_ref,
-                                  viewport=self._viewport)
+        self._scene_manager.switch(
+            "game",
+            difficulty=self._selected_difficulty,
+            username=self._current_user or "Guest",
+            settings_ref=self._settings_ref,
+            viewport=self._viewport,
+        )
 
         current_scene = self._scene_manager.get_current_scene()
         if self._pending_save_data and isinstance(current_scene, GameScene):
@@ -180,24 +183,24 @@ class SceneDirector:
 
         return "quit"
 
-    def _poll_events(self) -> List[pygame.event.Event]:
+    def _poll_events(self) -> list[pygame.event.Event]:
         return [self._map_mouse_event(event) for event in pygame.event.get()]
 
-    def _check_quit(self, events: List[pygame.event.Event]) -> bool:
+    def _check_quit(self, events: list[pygame.event.Event]) -> bool:
         for event in events:
             if event.type == pygame.QUIT:
                 self._running = False
                 return False
         return True
 
-    def _handle_resize_if_needed(self, events: List[pygame.event.Event]) -> None:
+    def _handle_resize_if_needed(self, events: list[pygame.event.Event]) -> None:
         for event in events:
             if event.type == pygame.VIDEORESIZE:
                 # With SCALED, SDL2 handles scaling — just update viewport
                 # for coordinate conversion; don't recreate the display surface.
                 self._handle_resize(event.w, event.h)
 
-    def _handle_pause_toggle(self, events: List[pygame.event.Event], game_scene: GameScene) -> str:
+    def _handle_pause_toggle(self, events: list[pygame.event.Event], game_scene: GameScene) -> str:
         if getattr(game_scene, "is_homecoming_locked", lambda: False)():
             return "none"
 
@@ -232,7 +235,7 @@ class SceneDirector:
         current_scene: GameScene,
         *,
         source: str = "",
-    ) -> Optional[str]:
+    ) -> str | None:
         if result in ("resume", "none"):
             return None
         if result == "main_menu":
@@ -255,7 +258,7 @@ class SceneDirector:
         current_scene: GameScene,
         *,
         from_mouse: bool = False,
-    ) -> Optional[str]:
+    ) -> str | None:
         result = self._pause_action_result(action, current_scene)
         if result == "main_menu":
             current_scene.resume()
@@ -263,7 +266,7 @@ class SceneDirector:
         return self._dispatch_pause_result(result, current_scene, source=source)
 
     def _load_user_settings(self) -> None:
-        if not self._current_user or self._current_user == 'Guest' or not self._user_db:
+        if not self._current_user or self._current_user == "Guest" or not self._user_db:
             return
         try:
             saved = self._user_db.get_user_settings(self._current_user)
@@ -289,7 +292,7 @@ class SceneDirector:
         settings_scene.exit()
         if result == "quit":
             return False
-        if game_scene and hasattr(game_scene, 'player') and game_scene.player:
+        if game_scene and hasattr(game_scene, "player") and game_scene.player:
             self._apply_settings_to_player(game_scene.player)
         return True
 
@@ -366,27 +369,30 @@ class SceneDirector:
 
         result = death_scene.get_result()
         death_scene.exit()
-        return result == 'return_to_menu'
+        return result == "return_to_menu"
 
-    def _update_user_stats(self, score: int, kills: int) -> Optional[int]:
+    def _update_user_stats(self, score: int, kills: int) -> int | None:
         if not self._current_user or not self._user_db:
             return None
         try:
             user_data = self._user_db.get_user_data(self._current_user)
-            new_high = max(score, user_data.get('high_score', 0))
-            self._user_db.update_user_data(self._current_user, {
-                'high_score': new_high,
-                'total_kills': user_data.get('total_kills', 0) + kills,
-                'games_played': user_data.get('games_played', 0) + 1
-            })
+            new_high = max(score, user_data.get("high_score", 0))
+            self._user_db.update_user_data(
+                self._current_user,
+                {
+                    "high_score": new_high,
+                    "total_kills": user_data.get("total_kills", 0) + kills,
+                    "games_played": user_data.get("games_played", 0) + 1,
+                },
+            )
             return new_high
         except DatabaseError:
             self._logger.warning("Failed to update user stats", exc_info=True)
             return None
 
-    def _handle_scene_events(self, events: List[pygame.event.Event], skip_escape: bool = False) -> None:
+    def _handle_scene_events(self, events: list[pygame.event.Event], skip_escape: bool = False) -> None:
         for event in events:
-            if skip_escape and hasattr(event, 'key') and event.key == pygame.K_ESCAPE:
+            if skip_escape and hasattr(event, "key") and event.key == pygame.K_ESCAPE:
                 continue
             self._scene_manager.handle_events(event)
 
@@ -417,7 +423,7 @@ class SceneDirector:
         scene.render(self._viewport.logical_surface)
         self._viewport.present(self._window.get_surface())
 
-    def _check_and_get_saved_game(self, username: str) -> Optional[GameSaveData]:
+    def _check_and_get_saved_game(self, username: str) -> GameSaveData | None:
         if not username:
             return None
         for persistence_manager in self._candidate_persistence_managers(username):

@@ -63,6 +63,7 @@ class TutorialSceneRenderer:
         sw, sh = surface.get_width(), surface.get_height()
         if s._game_renderer is None:
             from airwar.game.rendering import GameRenderer
+
             s._game_renderer = GameRenderer(use_integrated_hud=False)
             s._game_renderer.init_background(sw, sh)
             s._background_size = (sw, sh)
@@ -87,29 +88,27 @@ class TutorialSceneRenderer:
         if s._stage.id == "homecoming_base" and s._base_sub_phase != "combat":
             return
 
-        render_hostiles = not (
-            s._stage.id == "mothership_docking"
-            and s._dock_sub_phase == "eject_player"
-        )
+        render_hostiles = not (s._stage.id == "mothership_docking" and s._dock_sub_phase == "eject_player")
         if render_hostiles:
             for bullet in s._bullets:
                 draw_bullet(
-                    surface, bullet.rect.x, bullet.rect.y,
-                    bullet.rect.width, bullet.rect.height,
-                    "single", "player"
+                    surface, bullet.rect.x, bullet.rect.y, bullet.rect.width, bullet.rect.height, "single", "player"
                 )
             for bullet in s._enemy_bullets:
                 draw_bullet(
-                    surface, bullet.rect.x, bullet.rect.y,
-                    bullet.rect.width, bullet.rect.height,
-                    bullet.bullet_type, "enemy"
+                    surface,
+                    bullet.rect.x,
+                    bullet.rect.y,
+                    bullet.rect.width,
+                    bullet.rect.height,
+                    bullet.bullet_type,
+                    "enemy",
                 )
 
             for enemy in s._enemies:
                 health_ratio = max(0.0, enemy.health / enemy.max_health)
                 draw_enemy_ship(
-                    surface, enemy.rect.centerx, enemy.rect.centery,
-                    enemy.rect.width, enemy.rect.height, health_ratio
+                    surface, enemy.rect.centerx, enemy.rect.centery, enemy.rect.width, enemy.rect.height, health_ratio
                 )
                 self._draw_entity_health_bar(surface, enemy.rect, health_ratio)
 
@@ -119,8 +118,7 @@ class TutorialSceneRenderer:
             if boss.enraged:
                 self._render_boss_enrage_aura(surface, boss)
             draw_boss_ship(
-                surface, boss.rect.centerx, boss.rect.centery,
-                boss.rect.width, boss.rect.height, health_ratio
+                surface, boss.rect.centerx, boss.rect.centery, boss.rect.width, boss.rect.height, health_ratio
             )
             self._draw_boss_health(surface, boss)
             if boss.enraged:
@@ -202,10 +200,7 @@ class TutorialSceneRenderer:
         panel_tint = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
         panel_tint.fill((0, 0, 0, 28))
         line_color = (*SceneColors.ACCENT_TEAL_BRIGHT, 80)
-        pygame.draw.line(
-            panel_tint, line_color,
-            (24, panel_h - 36), (panel_w - 24, panel_h - 36), 1
-        )
+        pygame.draw.line(panel_tint, line_color, (24, panel_h - 36), (panel_w - 24, panel_h - 36), 1)
         surface.blit(panel_tint, (x, y))
 
         badge_rect = pygame.Rect(0, 0, badge_size, badge_size)
@@ -466,10 +461,7 @@ class TutorialSceneRenderer:
     def _render_mothership_components(self, surface: pygame.Surface) -> None:
         s = self._scene
         if s._mothership:
-            mothership_departing = (
-                s._dock_sub_phase == "eject_player"
-                and s._dock_undock_phase == "mothership"
-            )
+            mothership_departing = s._dock_sub_phase == "eject_player" and s._dock_undock_phase == "mothership"
             if not mothership_departing:
                 s._mothership.show()
             s._mothership.render(surface)
@@ -579,8 +571,17 @@ class TutorialSceneRenderer:
         panel_w = min(720, sw - 80)
         panel_h = min(560, sh - 90)
         panel = pygame.Rect((sw - panel_w) // 2, (sh - panel_h) // 2, panel_w, panel_h)
-        draw_chamfered_panel(surface, panel.x, panel.y, panel.width, panel.height,
-                             SceneColors.BG_PANEL_LIGHT, SceneColors.ACCENT_PRIMARY, SceneColors.GOLD_GLOW, 12)
+        draw_chamfered_panel(
+            surface,
+            panel.x,
+            panel.y,
+            panel.width,
+            panel.height,
+            SceneColors.BG_PANEL_LIGHT,
+            SceneColors.ACCENT_PRIMARY,
+            SceneColors.GOLD_GLOW,
+            12,
+        )
 
         title = s._title_font.render("教程完成", True, SceneColors.ACCENT_TEAL_BRIGHT)
         surface.blit(title, title.get_rect(center=(panel.centerx, panel.y + 54)))
@@ -609,9 +610,17 @@ class TutorialSceneRenderer:
         btn = pygame.Rect(panel.centerx - 120, panel.bottom - 74, 240, 48)
         s.register_button("return_menu", btn)
         hover = s.is_button_hovered("return_menu")
-        draw_chamfered_panel(surface, btn.x, btn.y, btn.width, btn.height,
-                             SceneColors.ACCENT_TEAL if hover else SceneColors.ACCENT_TEAL_DIM,
-                             SceneColors.ACCENT_PRIMARY, None, 6)
+        draw_chamfered_panel(
+            surface,
+            btn.x,
+            btn.y,
+            btn.width,
+            btn.height,
+            SceneColors.ACCENT_TEAL if hover else SceneColors.ACCENT_TEAL_DIM,
+            SceneColors.ACCENT_PRIMARY,
+            None,
+            6,
+        )
         btn_text = s._body_font.render("返回主菜单", True, SceneColors.TEXT_BRIGHT)
         surface.blit(btn_text, btn_text.get_rect(center=btn.center))
 

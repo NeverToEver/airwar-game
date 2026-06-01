@@ -1,7 +1,8 @@
 """Explosion manager — unified trigger and update for explosions."""
+
 import math
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any
 
 import pygame
 
@@ -23,11 +24,7 @@ class ExplosionManager:
     DEFAULT_MAX_PER_SECOND = 30.0
     BOSS_DEATH_MAX_ACTIVE_DELAY = 26
 
-    def __init__(
-        self,
-        max_per_second: float = DEFAULT_MAX_PER_SECOND,
-        pool_max_size: int = 20
-    ) -> None:
+    def __init__(self, max_per_second: float = DEFAULT_MAX_PER_SECOND, pool_max_size: int = 20) -> None:
         self._pool = ExplosionPool(max_size=pool_max_size)
         self._max_per_second = max_per_second
         self._time_accumulator = 0.0
@@ -36,12 +33,7 @@ class ExplosionManager:
         self._total_explosions = 0
         self._queued_explosions: list[_QueuedExplosion] = []
 
-    def trigger(
-        self,
-        x: float,
-        y: float,
-        radius: int
-    ) -> bool:
+    def trigger(self, x: float, y: float, radius: int) -> bool:
         """Trigger explosion effect
 
         Args:
@@ -141,17 +133,17 @@ class ExplosionManager:
         for effect in self._pool.get_active_effects():
             effect.render(surface)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get performance statistics"""
         pool_stats = self._pool.get_stats()
         return {
             **pool_stats,
-            'max_per_second': self._max_per_second,
-            'explosions_this_second': self._explosions_this_second,
-            'dropped_explosions': self._dropped_explosions,
-            'total_explosions': self._total_explosions,
-            'active_count': len(self._pool.get_active_effects()),
-            'queued_count': len(self._queued_explosions),
+            "max_per_second": self._max_per_second,
+            "explosions_this_second": self._explosions_this_second,
+            "dropped_explosions": self._dropped_explosions,
+            "total_explosions": self._total_explosions,
+            "active_count": len(self._pool.get_active_effects()),
+            "queued_count": len(self._queued_explosions),
         }
 
     def reset_stats(self) -> None:

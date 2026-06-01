@@ -1,4 +1,5 @@
 """Exit confirmation dialog overlay."""
+
 import math
 
 import pygame
@@ -18,6 +19,7 @@ from .themed_scene_mixin import ThemedSceneMixin
 
 class ExitConfirmScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
     """Exit confirmation scene -- dialog confirming player wants to quit."""
+
     def __init__(self):
         Scene.__init__(self)
         MouseSelectableMixin.__init__(self)
@@ -25,10 +27,10 @@ class ExitConfirmScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
     def enter(self, **kwargs) -> None:
         self.running = True
         self.result: ExitConfirmAction = None
-        self.options = ['返回主菜单', '新游戏', '退出游戏']
+        self.options = ["返回主菜单", "新游戏", "退出游戏"]
         self.selected_index = 0
-        self.saved = kwargs.get('saved', False)
-        self.difficulty = kwargs.get('difficulty', 'medium')
+        self.saved = kwargs.get("saved", False)
+        self.difficulty = kwargs.get("difficulty", "medium")
         self.animation_time = 0
         self.glow_offset = 0
         self.use_themed_style = True
@@ -49,7 +51,7 @@ class ExitConfirmScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
         self._background_renderer = MenuBackground()
         self._particle_system = ParticleSystem()
         self._effects_renderer = EffectsRenderer()
-        self._particle_system.reset(self._tokens.components.PARTICLE_PARTICLE_ALT_COUNT, 'particle')
+        self._particle_system.reset(self._tokens.components.PARTICLE_PARTICLE_ALT_COUNT, "particle")
 
         self._init_colors()
         self._init_themed_colors()
@@ -57,31 +59,31 @@ class ExitConfirmScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
     def _init_colors(self) -> None:
         colors = self._tokens.colors
         self.colors = {
-            'bg': colors.BACKGROUND_PRIMARY,
-            'bg_gradient': colors.BACKGROUND_SECONDARY,
-            'overlay': colors.BACKGROUND_OVERLAY,
-            'title': colors.TEXT_PRIMARY,
-            'title_glow': colors.HUD_AMBER_BRIGHT,
-            'selected': colors.HUD_AMBER,
-            'selected_glow': colors.HUD_AMBER_BRIGHT,
-            'unselected': colors.TEXT_MUTED,
-            'hint': colors.TEXT_HINT,
-            'particle': colors.PARTICLE_PRIMARY,
-            'success': colors.SUCCESS,
+            "bg": colors.BACKGROUND_PRIMARY,
+            "bg_gradient": colors.BACKGROUND_SECONDARY,
+            "overlay": colors.BACKGROUND_OVERLAY,
+            "title": colors.TEXT_PRIMARY,
+            "title_glow": colors.HUD_AMBER_BRIGHT,
+            "selected": colors.HUD_AMBER,
+            "selected_glow": colors.HUD_AMBER_BRIGHT,
+            "unselected": colors.TEXT_MUTED,
+            "hint": colors.TEXT_HINT,
+            "particle": colors.PARTICLE_PRIMARY,
+            "success": colors.SUCCESS,
         }
 
     def _init_themed_colors(self) -> None:
         self.themed_colors = {
-            'bg': SceneColors.BG_PRIMARY,
-            'bg_gradient': SceneColors.BG_PANEL,
-            'title': SceneColors.TEXT_PRIMARY,
-            'title_glow': SceneColors.GOLD_GLOW,
-            'selected': SceneColors.GOLD_PRIMARY,
-            'selected_glow': SceneColors.GOLD_BRIGHT,
-            'unselected': SceneColors.TEXT_DIM,
-            'hint': SceneColors.TEXT_DIM,
-            'particle': SceneColors.GOLD_PRIMARY,
-            'success': SceneColors.FOREST_GREEN,
+            "bg": SceneColors.BG_PRIMARY,
+            "bg_gradient": SceneColors.BG_PANEL,
+            "title": SceneColors.TEXT_PRIMARY,
+            "title_glow": SceneColors.GOLD_GLOW,
+            "selected": SceneColors.GOLD_PRIMARY,
+            "selected_glow": SceneColors.GOLD_BRIGHT,
+            "unselected": SceneColors.TEXT_DIM,
+            "hint": SceneColors.TEXT_DIM,
+            "particle": SceneColors.GOLD_PRIMARY,
+            "success": SceneColors.FOREST_GREEN,
         }
 
     def exit(self) -> None:
@@ -119,7 +121,7 @@ class ExitConfirmScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
     def _draw_success_indicator(self, surface: pygame.Surface, center_x: int, y: int, scale: float = 1.0) -> None:
         if self.saved:
             check_text = "[OK] 游戏已保存"
-            check_surface = self.hint_font.render(check_text, True, self.colors['success'])
+            check_surface = self.hint_font.render(check_text, True, self.colors["success"])
             check_rect = check_surface.get_rect(center=(center_x, y))
             pulse = math.sin(self.animation_time * 0.1)
             alpha = int(200 + 55 * pulse)
@@ -129,10 +131,10 @@ class ExitConfirmScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
     def render(self, surface: pygame.Surface) -> None:
         if self.use_themed_style:
             self._background_renderer.render_themed_style(surface, self.themed_colors)
-            self._particle_system.render(surface, self.themed_colors['particle'])
+            self._particle_system.render(surface, self.themed_colors["particle"])
         else:
             self._background_renderer.render(surface, self.colors)
-            self._particle_system.render(surface, self.colors['particle'])
+            self._particle_system.render(surface, self.colors["particle"])
 
         width, height = surface.get_size()
         scale = ResponsiveHelper.get_scale_factor(width, height)
@@ -144,24 +146,32 @@ class ExitConfirmScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
         if self.use_themed_style:
             self._draw_themed_title(surface, title_text, self.title_font, (center_x, title_y))
         else:
-            SceneRenderingUtils.draw_glow_text(surface, title_text, self.title_font,
-                (center_x, title_y), self.colors['title'], self.colors['title_glow'],
-                glow_radius=4, glow_offset=1, alpha_divisor=100)
+            SceneRenderingUtils.draw_glow_text(
+                surface,
+                title_text,
+                self.title_font,
+                (center_x, title_y),
+                self.colors["title"],
+                self.colors["title_glow"],
+                glow_radius=4,
+                glow_offset=1,
+                alpha_divisor=100,
+            )
 
         if self.use_themed_style:
             self._draw_themed_decorations(surface, width, height)
         else:
             SceneRenderingUtils.draw_decorative_lines(
-                surface, center_x, height // 3,
-                self.colors['particle'],
+                surface,
+                center_x,
+                height // 3,
+                self.colors["particle"],
             )
 
         if self.saved:
             if self.use_themed_style:
                 indicator_y = title_y + ResponsiveHelper.scale(50, scale)
-                self._draw_themed_success_indicator(
-                    surface, center_x, indicator_y, scale
-                )
+                self._draw_themed_success_indicator(surface, center_x, indicator_y, scale)
             else:
                 self._draw_success_indicator(surface, center_x, title_y + ResponsiveHelper.scale(50, scale), scale)
 
@@ -177,22 +187,27 @@ class ExitConfirmScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
                 box_width = ResponsiveHelper.scale(self.base_box_width, scale)
                 box_height = ResponsiveHelper.scale(self.base_box_height, scale)
                 SceneRenderingUtils.draw_option_box(
-                    surface, option, self.option_font,
-                    start_y + i * option_spacing, i == effective_index,
-                    box_width, box_height, self._option_rects,
+                    surface,
+                    option,
+                    self.option_font,
+                    start_y + i * option_spacing,
+                    i == effective_index,
+                    box_width,
+                    box_height,
+                    self._option_rects,
                     selected_bg_color=self._tokens.colors.BUTTON_SELECTED_BG,
-                    selected_border_color=self.colors['selected'],
+                    selected_border_color=self.colors["selected"],
                     unselected_bg_color=self._tokens.colors.BUTTON_UNSELECTED_BG,
-                    unselected_border_color=self.colors['unselected'],
-                    selected_glow_color=self.colors['selected_glow'],
-                    selected_text_color=self.colors['selected'],
-                    unselected_text_color=self.colors['unselected'],
+                    unselected_border_color=self.colors["unselected"],
+                    selected_glow_color=self.colors["selected_glow"],
+                    selected_text_color=self.colors["selected"],
+                    unselected_text_color=self.colors["unselected"],
                 )
 
         blink_interval = self._tokens.animation.BLINK_INTERVAL
         blink = (self.animation_time // blink_interval) % 2 == 0
         hint_text = "点击或回车确认" if blink else "               "
-        hint_color = SceneColors.TEXT_DIM if self.use_themed_style else self.colors['hint']
+        hint_color = SceneColors.TEXT_DIM if self.use_themed_style else self.colors["hint"]
         hint = self.hint_font.render(hint_text, True, hint_color)
         surface.blit(hint, hint.get_rect(center=(center_x, height - ResponsiveHelper.scale(120, scale))))
 
@@ -204,8 +219,7 @@ class ExitConfirmScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
         surface.blit(esc_hint, esc_hint.get_rect(center=(center_x, height - ResponsiveHelper.scale(50, scale))))
 
     def _draw_themed_success_indicator(
-        self, surface: pygame.Surface, center_x: int,
-        y: int, scale: float = 1.0
+        self, surface: pygame.Surface, center_x: int, y: int, scale: float = 1.0
     ) -> None:
         if self.saved:
             check_text = ">> 游戏已保存 <<"

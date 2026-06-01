@@ -1,6 +1,7 @@
 """Game integrator — bridges mothership state with game systems."""
+
 import math
-from typing import TYPE_CHECKING, Dict, List, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 
 import pygame
 
@@ -54,13 +55,14 @@ class GatlingTurretSpec(NamedTuple):
 class GameIntegrator:
     """Game integrator — bridges mothership state with game systems.
 
-        Coordinates between game state and mothership docking flow,
-        updating entity states and UI during the docking process.
-        """
+    Coordinates between game state and mothership docking flow,
+    updating entity states and UI during the docking process.
+    """
+
     MOTHERSHIP_BULLET_DAMAGE = 250
-    MOTHERSHIP_FIRE_RATE = 18       # ~3.3 shots/sec at 60fps — heavy missile cadence
+    MOTHERSHIP_FIRE_RATE = 18  # ~3.3 shots/sec at 60fps — heavy missile cadence
     MOTHERSHIP_BULLET_SPEED = 10
-    MOTHERSHIP_TARGET_COUNT = 5     # fire at up to 5 closest enemies per volley
+    MOTHERSHIP_TARGET_COUNT = 5  # fire at up to 5 closest enemies per volley
     MOTHERSHIP_EXPLOSION_RADIUS = 80
     MOTHERSHIP_EXPLOSION_DAMAGE = 60
     MOTHERSHIP_GATLING_DAMAGE = 24
@@ -74,12 +76,10 @@ class GameIntegrator:
     MOTHERSHIP_GATLING_BARREL_X_OFFSETS = (-56, 56)
     MOTHERSHIP_GATLING_TURRETS = (
         GatlingTurretSpec(
-            "left", MOTHERSHIP_GATLING_BARREL_X_OFFSETS[0],
-            -60.0, 20.0, MOTHERSHIP_GATLING_SWEEP_PERIOD, 0
+            "left", MOTHERSHIP_GATLING_BARREL_X_OFFSETS[0], -60.0, 20.0, MOTHERSHIP_GATLING_SWEEP_PERIOD, 0
         ),
         GatlingTurretSpec(
-            "right", MOTHERSHIP_GATLING_BARREL_X_OFFSETS[1],
-            -20.0, 60.0, MOTHERSHIP_GATLING_RIGHT_SWEEP_PERIOD, 21
+            "right", MOTHERSHIP_GATLING_BARREL_X_OFFSETS[1], -20.0, 60.0, MOTHERSHIP_GATLING_RIGHT_SWEEP_PERIOD, 21
         ),
     )
     MOTHERSHIP_GATLING_MUZZLE_Y_OFFSET = -64
@@ -95,12 +95,12 @@ class GameIntegrator:
 
     def __init__(
         self,
-        event_bus: 'EventBus',
-        input_detector: 'InputDetector',
-        state_machine: 'MotherShipStateMachine',
-        persistence_manager: 'PersistenceManager',
-        progress_bar_ui: 'ProgressBarUI',
-        mother_ship: 'MotherShip',
+        event_bus: "EventBus",
+        input_detector: "InputDetector",
+        state_machine: "MotherShipStateMachine",
+        persistence_manager: "PersistenceManager",
+        progress_bar_ui: "ProgressBarUI",
+        mother_ship: "MotherShip",
     ):
         self._event_bus = event_bus
         self._input_detector = input_detector
@@ -137,7 +137,7 @@ class GameIntegrator:
         self._game_scene = None
         self._player_control_disabled = False
 
-        self._mothership_bullets: List['Bullet'] = []
+        self._mothership_bullets: list[Bullet] = []
         self._entity_renderer = EntityRenderer()
         self._mothership_fire_timer = 0
         self._mothership_gatling_timer = 0
@@ -235,13 +235,13 @@ class GameIntegrator:
             return
 
         # Sort by distance and target the N closest
-        active_enemies = [(math.sqrt(
-            (e.rect.centerx - mother_ship_pos[0]) ** 2 +
-            (e.rect.centery - mother_ship_pos[1]) ** 2
-        ), e) for e in targets]
+        active_enemies = [
+            (math.sqrt((e.rect.centerx - mother_ship_pos[0]) ** 2 + (e.rect.centery - mother_ship_pos[1]) ** 2), e)
+            for e in targets
+        ]
         active_enemies.sort(key=lambda x: x[0])
 
-        for dist, target in active_enemies[:self.MOTHERSHIP_TARGET_COUNT]:
+        for dist, target in active_enemies[: self.MOTHERSHIP_TARGET_COUNT]:
             if dist > 0:
                 vx = (target.rect.centerx - mother_ship_pos[0]) / dist * self.MOTHERSHIP_BULLET_SPEED
                 vy = (target.rect.centery - mother_ship_pos[1]) / dist * self.MOTHERSHIP_BULLET_SPEED
@@ -255,7 +255,7 @@ class GameIntegrator:
                         owner="mothership",
                         bullet_type="explosive_missile",
                         is_explosive=True,
-                    )
+                    ),
                 )
                 bullet.velocity.x = vx
                 bullet.velocity.y = vy
@@ -285,7 +285,7 @@ class GameIntegrator:
                     speed=self.MOTHERSHIP_GATLING_BULLET_SPEED,
                     owner="mothership",
                     bullet_type=self.MOTHERSHIP_GATLING_BULLET_TYPE,
-                )
+                ),
             )
             bullet.rect.width = 6
             bullet.rect.height = 14
@@ -308,7 +308,7 @@ class GameIntegrator:
                 return spec
         return self.MOTHERSHIP_GATLING_TURRETS[0]
 
-    def _get_mothership_targets(self) -> List:
+    def _get_mothership_targets(self) -> list:
         if not self._game_scene:
             return []
 
@@ -316,7 +316,7 @@ class GameIntegrator:
         boss = self._game_scene.get_boss()
         if boss:
             targets.append(boss)
-        return [target for target in targets if getattr(target, 'active', False)]
+        return [target for target in targets if getattr(target, "active", False)]
 
     def _update_mothership_bullets(self) -> None:
         if not self._game_scene:
@@ -373,18 +373,18 @@ class GameIntegrator:
         self._mothership_bullets = [b for b in self._mothership_bullets if b.active]
 
     def _entity_collision_rect(self, entity):
-        if hasattr(entity, 'get_hitbox'):
+        if hasattr(entity, "get_hitbox"):
             return entity.get_hitbox()
         return entity.rect
 
     def _trigger_explosion(self, x: float, y: float) -> None:
         """Trigger explosion visual effect at position."""
-        if self._game_scene and hasattr(self._game_scene, 'trigger_explosion'):
+        if self._game_scene and hasattr(self._game_scene, "trigger_explosion"):
             self._game_scene.trigger_explosion(x, y, self.MOTHERSHIP_EXPLOSION_RADIUS)
 
     def _apply_missile_splash(self, x: float, y: float, enemies, boss) -> None:
         """Apply AoE damage to enemies within explosion radius."""
-        radius_sq = self.MOTHERSHIP_EXPLOSION_RADIUS ** 2
+        radius_sq = self.MOTHERSHIP_EXPLOSION_RADIUS**2
         explosion_damage = self.MOTHERSHIP_EXPLOSION_DAMAGE
 
         for enemy in enemies:
@@ -410,7 +410,7 @@ class GameIntegrator:
         if not self._game_scene:
             return
 
-        base_score = getattr(enemy, 'score', 100)
+        base_score = getattr(enemy, "score", 100)
         base_score = self._get_entity_score(enemy, base_score)
         reduced_score = int(base_score * self._score_reduction_factor)
 
@@ -422,18 +422,18 @@ class GameIntegrator:
         if not self._game_scene:
             return
 
-        base_score = getattr(boss, 'score', 1000)
+        base_score = getattr(boss, "score", 1000)
         base_score = self._get_entity_score(boss, base_score)
         reduced_score = int(base_score * self._score_reduction_factor)
 
         # Route through GameController for RP award and difficulty scaling
-        gc = getattr(self._game_scene, 'game_controller', None)
+        gc = getattr(self._game_scene, "game_controller", None)
         if gc:
             gc.on_boss_killed(reduced_score)
         else:
             self._game_scene.add_score(reduced_score)
             self._game_scene.add_boss_kill()
-        if hasattr(self._game_scene, 'trigger_boss_death_explosion'):
+        if hasattr(self._game_scene, "trigger_boss_death_explosion"):
             self._game_scene.trigger_boss_death_explosion(boss)
         self._game_scene.clear_boss()
         self._game_scene.show_notification(f"BOSS +{reduced_score} (mothership)")
@@ -517,7 +517,7 @@ class GameIntegrator:
     def _apply_cooldown_multiplier_from_player(self) -> None:
         """Read player's Mothership Recall buff and apply to cooldown."""
         if self._game_scene and self._game_scene.player:
-            mult = getattr(self._game_scene.player, 'mothership_cooldown_mult', 1.0)
+            mult = getattr(self._game_scene.player, "mothership_cooldown_mult", 1.0)
             self._state_machine.cooldown.cooldown_multiplier = mult * self._undocking_cooldown_multiplier
 
     def _clear_undocking_cooldown_modifier(self) -> None:
@@ -538,7 +538,7 @@ class GameIntegrator:
         self._persistence_manager.save_game(save_data)
         self._game_scene.set_paused(True)
 
-    def create_save_data(self) -> 'GameSaveData':
+    def create_save_data(self) -> "GameSaveData":
         if not self._game_scene:
             return GameSaveData()
 
@@ -562,8 +562,7 @@ class GameIntegrator:
             is_in_mothership=is_docked,
             username=self._game_scene.get_username(),
             requisition_points=(
-                self._game_scene.game_controller.state.requisition_points
-                if self._game_scene.game_controller else 0
+                self._game_scene.game_controller.state.requisition_points if self._game_scene.game_controller else 0
             ),
         )
 
@@ -690,8 +689,7 @@ class GameIntegrator:
 
         if self._undocking_phase == 1:
             # Phase 1: eject player backward from docking bay
-            progress = min(
-                self._undocking_animation_frame / self._undocking_eject_duration, 1.0)
+            progress = min(self._undocking_animation_frame / self._undocking_eject_duration, 1.0)
             eased = self._ease_out_quad(progress)
 
             sx, sy = self._undocking_start_position
@@ -742,8 +740,8 @@ class GameIntegrator:
         self._mothership_gatling_sweep_frame = 0
 
     def _get_entity_score(self, entity, fallback: int) -> int:
-        data = getattr(entity, 'data', None)
-        return getattr(data, 'score', getattr(entity, 'score', fallback))
+        data = getattr(entity, "data", None)
+        return getattr(data, "score", getattr(entity, "score", fallback))
 
     def _clear_ripple_effects(self) -> None:
         if not self._game_scene:
@@ -767,17 +765,17 @@ class GameIntegrator:
     def get_undocking_animation_start(self) -> tuple:
         return self._undocking_start_position if self._undocking_start_position else (0, 0)
 
-    def _get_buff_levels(self) -> Dict[str, int]:
+    def _get_buff_levels(self) -> dict[str, int]:
         if not self._game_scene:
             return {}
         return self._game_scene.get_buff_levels()
 
-    def _get_earned_buff_levels(self) -> Dict[str, int]:
+    def _get_earned_buff_levels(self) -> dict[str, int]:
         if not self._game_scene or not hasattr(self._game_scene, "get_earned_buff_levels"):
             return self._get_buff_levels()
         return self._game_scene.get_earned_buff_levels()
 
-    def _get_talent_loadout(self) -> Dict[str, str]:
+    def _get_talent_loadout(self) -> dict[str, str]:
         if not self._game_scene or not hasattr(self._game_scene, "get_talent_loadout"):
             return {}
         return self._game_scene.get_talent_loadout()
@@ -790,9 +788,13 @@ class GameIntegrator:
         stay.update_stay(pygame.time.get_ticks() / 1000.0)  # Ensure progress is fresh
 
         # Compute ammo count based on state
-        is_present = state in (MotherShipState.PRESSING, MotherShipState.ENTERING,
-                               MotherShipState.DOCKING, MotherShipState.DOCKED,
-                               MotherShipState.UNDOCKING)
+        is_present = state in (
+            MotherShipState.PRESSING,
+            MotherShipState.ENTERING,
+            MotherShipState.DOCKING,
+            MotherShipState.DOCKED,
+            MotherShipState.UNDOCKING,
+        )
         is_cooldown = self._state_machine.is_in_cooldown()
         is_docked = state == MotherShipState.DOCKED
 
@@ -800,8 +802,12 @@ class GameIntegrator:
             ammo_count = cd.cooldown_progress * self.AMMO_CELL_COUNT
         elif is_docked:
             ammo_count = (1.0 - stay.stay_progress) * self.AMMO_CELL_COUNT
-        elif state in (MotherShipState.IDLE, MotherShipState.PRESSING,
-                       MotherShipState.ENTERING, MotherShipState.DOCKING):
+        elif state in (
+            MotherShipState.IDLE,
+            MotherShipState.PRESSING,
+            MotherShipState.ENTERING,
+            MotherShipState.DOCKING,
+        ):
             ammo_count = self.AMMO_CELL_COUNT
         else:
             ammo_count = 0.0
@@ -809,30 +815,29 @@ class GameIntegrator:
         ammo_warning = is_docked and ammo_count <= 4.0
 
         return {
-            'state': state,
-            'is_present': is_present,
-            'is_in_cooldown': is_cooldown,
-            'is_docked': is_docked,
-            'cooldown_progress': cd.cooldown_progress,
-            'cooldown_remaining': cd.get_remaining_time(),
-            'cooldown_duration': cd.cooldown_duration,
-            'cooldown_base_duration': cd.BASE_COOLDOWN,
-            'cooldown_multiplier': cd.cooldown_multiplier,
-            'cooldown_reduction': max(0.0, 1.0 - cd.cooldown_multiplier),
-            'hold_progress': (
-                self._input_detector.get_progress().current_progress
-                if state == MotherShipState.PRESSING else 0.0
+            "state": state,
+            "is_present": is_present,
+            "is_in_cooldown": is_cooldown,
+            "is_docked": is_docked,
+            "cooldown_progress": cd.cooldown_progress,
+            "cooldown_remaining": cd.get_remaining_time(),
+            "cooldown_duration": cd.cooldown_duration,
+            "cooldown_base_duration": cd.BASE_COOLDOWN,
+            "cooldown_multiplier": cd.cooldown_multiplier,
+            "cooldown_reduction": max(0.0, 1.0 - cd.cooldown_multiplier),
+            "hold_progress": (
+                self._input_detector.get_progress().current_progress if state == MotherShipState.PRESSING else 0.0
             ),
-            'stay_progress': stay.stay_progress,
-            'stay_remaining': (
-                max(0.0, stay.stay_duration - (
-                    pygame.time.get_ticks() / 1000.0 - stay.stay_start_time
-                )) if stay.is_staying else 0.0
+            "stay_progress": stay.stay_progress,
+            "stay_remaining": (
+                max(0.0, stay.stay_duration - (pygame.time.get_ticks() / 1000.0 - stay.stay_start_time))
+                if stay.is_staying
+                else 0.0
             ),
-            'stay_duration': stay.stay_duration,
-            'ammo_count': ammo_count,
-            'ammo_max': self.AMMO_CELL_COUNT,
-            'ammo_warning': ammo_warning,
+            "stay_duration": stay.stay_duration,
+            "ammo_count": ammo_count,
+            "ammo_max": self.AMMO_CELL_COUNT,
+            "ammo_warning": ammo_warning,
         }
 
     def render(self, surface) -> None:

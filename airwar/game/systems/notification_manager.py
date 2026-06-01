@@ -1,6 +1,6 @@
 """On-screen notification display and lifecycle management."""
+
 import logging
-from typing import Optional
 
 import pygame
 
@@ -14,21 +14,22 @@ logger = logging.getLogger(__name__)
 class NotificationManager:
     """Notification manager — on-screen message display and lifecycle.
 
-        Manages timed notification messages that appear during gameplay
-        (score popups, boss warnings, reward notifications).
+    Manages timed notification messages that appear during gameplay
+    (score popups, boss warnings, reward notifications).
 
-        Attributes:
-            current_notification: Currently displayed notification text.
-            timer: Frames remaining for the current notification.
-        """
+    Attributes:
+        current_notification: Currently displayed notification text.
+        timer: Frames remaining for the current notification.
+    """
+
     def __init__(self, duration: int = 90):
-        self.current_notification: Optional[str] = None
+        self.current_notification: str | None = None
         self.timer: int = 0
         self.duration = duration
         pygame.font.init()
         self.notif_font = get_cjk_font(32)
 
-    def show(self, message: str, duration: int = None) -> None:
+    def show(self, message: str, duration: int | None = None) -> None:
         self.current_notification = message
         self.timer = duration or self.duration
 

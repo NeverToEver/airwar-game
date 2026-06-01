@@ -240,7 +240,8 @@ def test_mothership_gatling_fires_high_frequency_sweep_bullets():
         integrator._update_mothership_firing()
 
     gatling = [
-        bullet for bullet in integrator._mothership_bullets
+        bullet
+        for bullet in integrator._mothership_bullets
         if bullet.data.bullet_type == integrator.MOTHERSHIP_GATLING_BULLET_TYPE
     ]
     missiles = [bullet for bullet in integrator._mothership_bullets if bullet.data.is_explosive]

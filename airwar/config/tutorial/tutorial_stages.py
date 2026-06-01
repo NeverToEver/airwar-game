@@ -1,4 +1,5 @@
 """Structured tutorial stage definitions for the playable tutorial scene."""
+
 from dataclasses import dataclass
 
 
@@ -110,4 +111,4 @@ TUTORIAL_STAGES = [
 ]
 
 
-__all__ = ["TutorialStage", "TUTORIAL_STAGES"]
+__all__ = ["TUTORIAL_STAGES", "TutorialStage"]

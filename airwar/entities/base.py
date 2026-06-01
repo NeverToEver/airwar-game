@@ -9,7 +9,6 @@ from __future__ import annotations
 import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional
 
 import pygame
 
@@ -59,6 +58,7 @@ class Vector2:
 @dataclass
 class Rect:
     """Axis-aligned rectangle for collision detection and positioning."""
+
     x: float
     y: float
     width: float
@@ -92,11 +92,13 @@ class Rect:
     def top(self) -> float:
         return self.y
 
-    def colliderect(self, other: 'Rect') -> bool:
-        return (self.x < other.x + other.width and
-                self.x + self.width > other.x and
-                self.y < other.y + other.height and
-                self.y + self.height > other.y)
+    def colliderect(self, other: Rect) -> bool:
+        return (
+            self.x < other.x + other.width
+            and self.x + self.width > other.x
+            and self.y < other.y + other.height
+            and self.y + self.height > other.y
+        )
 
 
 class Entity(ABC):
@@ -115,7 +117,7 @@ class Entity(ABC):
         self.rect = Rect(x, y, width, height)
         self.velocity = Vector2()
         self.active = True
-        self._sprite: Optional[pygame.Surface] = None
+        self._sprite: pygame.Surface | None = None
 
     @property
     def position(self) -> tuple[float, float]:
@@ -150,6 +152,7 @@ class BulletData:
         is_laser: Whether the bullet is a laser beam.
         is_explosive: Whether the bullet explodes on impact.
     """
+
     damage: int = 10
     speed: float = 14.0
     owner: str = "player"
@@ -171,6 +174,7 @@ class EnemyData:
         fire_rate: Fire rate in frames between shots.
         bullet_type: Type of bullet fired by the enemy.
     """
+
     health: int = 100
     speed: float = 3.0
     score: int = 100

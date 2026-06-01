@@ -1,3 +1,4 @@
+import itertools
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -165,7 +166,7 @@ def test_homecoming_handoff_moves_player_into_base_entry() -> None:
         sequence.update(player)
 
     assert sequence.phase == HomecomingPhase.HANDOFF
-    start_x, start_y = sequence.get_player_center()
+    _start_x, start_y = sequence.get_player_center()
     entry_x, entry_y = sequence.get_base_entry_center()
 
     for _ in range(HomecomingSequence.HANDOFF_FRAMES):
@@ -184,13 +185,16 @@ def test_homecoming_departure_runs_orbital_strike_then_complete() -> None:
     strike = []
     sequence = HomecomingSequence()
 
-    assert sequence.start_departure(
-        player,
-        1280,
-        720,
-        on_complete_callback=lambda: completed.append(True),
-        on_orbital_strike_callback=lambda: strike.append(True),
-    ) is True
+    assert (
+        sequence.start_departure(
+            player,
+            1280,
+            720,
+            on_complete_callback=lambda: completed.append(True),
+            on_orbital_strike_callback=lambda: strike.append(True),
+        )
+        is True
+    )
     assert sequence.phase == HomecomingPhase.BASE_LAUNCH
 
     for _ in range(
@@ -223,11 +227,7 @@ def test_homecoming_scene_renders_asteroid_belt_and_space_station() -> None:
     background_pixel = surface.get_at((1540, 507))
     empty_station_pixel = surface.get_at((960, 508))
     ui._render_asteroid_belt(surface, HomecomingPhase.APPROACH, 0.5)
-    asteroid_pixels = [
-        surface.get_at((x, y))
-        for x in range(1528, 1553, 4)
-        for y in range(495, 520, 4)
-    ]
+    asteroid_pixels = [surface.get_at((x, y)) for x in range(1528, 1553, 4) for y in range(495, 520, 4)]
     ui._render_space_station(surface, HomecomingPhase.APPROACH, 0.5, sequence)
     station_hub_pixel = surface.get_at((960, 508))
     solar_array_pixel = surface.get_at((1288, 383))
@@ -290,7 +290,7 @@ def test_homecoming_launch_corridor_uses_slow_low_contrast_pulse(monkeypatch) ->
         progress = frame / HomecomingSequence.BASE_LAUNCH_FRAMES
         ui._render_launch_corridor(surface, sequence, progress)
 
-    deltas = [current - previous for previous, current in zip(line_alphas, line_alphas[1:], strict=False)]
+    deltas = [current - previous for previous, current in itertools.pairwise(line_alphas)]
     sign_changes = 0
     previous_sign = 0
     for delta in deltas:
@@ -301,10 +301,7 @@ def test_homecoming_launch_corridor_uses_slow_low_contrast_pulse(monkeypatch) ->
             sign_changes += 1
         previous_sign = sign
 
-    max_alpha = (
-        HomecomingUI.LAUNCH_CORRIDOR_LINE_ALPHA_BASE
-        + HomecomingUI.LAUNCH_CORRIDOR_LINE_ALPHA_RANGE
-    )
+    max_alpha = HomecomingUI.LAUNCH_CORRIDOR_LINE_ALPHA_BASE + HomecomingUI.LAUNCH_CORRIDOR_LINE_ALPHA_RANGE
     assert max(line_alphas) <= max_alpha
     assert max(abs(delta) for delta in deltas) <= 3
     assert sign_changes <= 4
@@ -322,11 +319,7 @@ def test_homecoming_departure_renders_launch_and_orbital_strike_pixels() -> None
         sequence.update(player)
     ui.render_sequence(surface, sequence, player)
 
-    launch_pixels = [
-        surface.get_at((x, y))
-        for x in range(150, 171, 5)
-        for y in range(110, 210, 12)
-    ]
+    launch_pixels = [surface.get_at((x, y)) for x in range(150, 171, 5) for y in range(110, 210, 12)]
     assert any(pixel[:3] != (2, 4, 10) for pixel in launch_pixels)
 
     for _ in range(HomecomingSequence.BASE_LAUNCH_FRAMES + HomecomingSequence.RETURN_BLACKOUT_FRAMES + 2):
@@ -339,6 +332,7 @@ def test_homecoming_departure_renders_launch_and_orbital_strike_pixels() -> None
 
 def test_game_scene_homecoming_request_sets_safe_interface_state() -> None:
     from airwar.game.systems.homecoming_coordinator import HomecomingCoordinator
+
     scene = GameScene()
     scene.player = _make_player()
     scene.game_controller = GameController("medium", "pilot")
@@ -385,6 +379,7 @@ def test_game_scene_homecoming_complete_keeps_scene_locked() -> None:
 
 def test_game_scene_homecoming_complete_opens_base_talent_console() -> None:
     from airwar.game.systems.homecoming_coordinator import HomecomingCoordinator
+
     scene = GameScene()
     scene.player = _make_player()
     scene.game_controller = GameController("medium", "pilot")
@@ -411,6 +406,7 @@ def test_game_scene_homecoming_complete_opens_base_talent_console() -> None:
 
 def test_game_scene_leaving_base_starts_departure_sequence() -> None:
     from airwar.game.systems.homecoming_coordinator import HomecomingCoordinator
+
     scene = GameScene()
     scene.player = _make_player()
     scene.game_controller = GameController("medium", "pilot")
@@ -452,6 +448,7 @@ def test_game_scene_leaving_base_starts_departure_sequence() -> None:
 def test_game_scene_homecoming_departure_complete_restores_play_state() -> None:
     from airwar.game.systems.homecoming_coordinator import HomecomingCoordinator
     from airwar.game.systems.lock_manager import LockLayer, LockManager, LockRequest
+
     scene = GameScene()
     scene.player = _make_player()
     scene.game_controller = GameController("medium", "pilot")
@@ -467,10 +464,16 @@ def test_game_scene_homecoming_departure_complete_restores_play_state() -> None:
     scene.game_controller.state.invincibility_timer = 999999
     scene.game_controller.state.is_silent_invincible = True
     # Set up HOMECOMING lock to match the state before departure complete
-    lock_manager.acquire(LockLayer.HOMECOMING, LockRequest(
-        invincible=True, lock_controls=True, is_paused=True,
-        is_silent_invincible=True, invincibility_duration=999999,
-    ))
+    lock_manager.acquire(
+        LockLayer.HOMECOMING,
+        LockRequest(
+            invincible=True,
+            lock_controls=True,
+            is_paused=True,
+            is_silent_invincible=True,
+            invincibility_duration=999999,
+        ),
+    )
     scene._homecoming_coordinator = HomecomingCoordinator(
         detector=scene._homecoming_detector,
         sequence=scene._homecoming_sequence,
@@ -498,6 +501,7 @@ def test_game_scene_homecoming_departure_complete_restores_play_state() -> None:
 def test_game_scene_homecoming_update_does_not_relock_after_departure_complete() -> None:
     from airwar.game.systems.homecoming_coordinator import HomecomingCoordinator
     from airwar.game.systems.lock_manager import LockLayer, LockManager, LockRequest
+
     scene = GameScene()
     scene.player = _make_player()
     scene.game_controller = GameController("medium", "pilot")
@@ -508,10 +512,16 @@ def test_game_scene_homecoming_update_does_not_relock_after_departure_complete()
     scene._homecoming_sequence = HomecomingSequence(scene._on_homecoming_complete)
     scene.notification_manager = SimpleNamespace(show=MagicMock())
     # Set up HOMECOMING lock via LockManager
-    lock_manager.acquire(LockLayer.HOMECOMING, LockRequest(
-        invincible=True, lock_controls=True, is_paused=True,
-        is_silent_invincible=True, invincibility_duration=999999,
-    ))
+    lock_manager.acquire(
+        LockLayer.HOMECOMING,
+        LockRequest(
+            invincible=True,
+            lock_controls=True,
+            is_paused=True,
+            is_silent_invincible=True,
+            invincibility_duration=999999,
+        ),
+    )
     scene._homecoming_coordinator = HomecomingCoordinator(
         detector=scene._homecoming_detector,
         sequence=scene._homecoming_sequence,
@@ -538,6 +548,7 @@ def test_game_scene_homecoming_update_does_not_relock_after_departure_complete()
 
 def test_game_scene_homecoming_orbital_strike_clears_hostiles() -> None:
     from airwar.game.systems.homecoming_coordinator import HomecomingCoordinator
+
     scene = GameScene()
     scene.player = _make_player()
     scene.player.get_bullets().append(SimpleNamespace(active=True))
@@ -570,6 +581,7 @@ def test_game_scene_homecoming_orbital_strike_clears_hostiles() -> None:
 
 def test_game_scene_base_loadout_save_persists_current_route(monkeypatch) -> None:
     from airwar.game.systems.homecoming_coordinator import HomecomingCoordinator
+
     scene = GameScene()
     scene.player = _make_player()
     scene.game_controller = GameController("medium", "pilot")
@@ -580,9 +592,7 @@ def test_game_scene_base_loadout_save_persists_current_route(monkeypatch) -> Non
     def create_save_data():
         return GameSaveData(username="pilot", talent_loadout=scene.get_talent_loadout())
 
-    scene._mother_ship_integrator = SimpleNamespace(
-        create_save_data=MagicMock(side_effect=create_save_data)
-    )
+    scene._mother_ship_integrator = SimpleNamespace(create_save_data=MagicMock(side_effect=create_save_data))
     saved = _capture_base_saves(monkeypatch)
 
     coordinator = HomecomingCoordinator(
@@ -595,9 +605,13 @@ def test_game_scene_base_loadout_save_persists_current_route(monkeypatch) -> Non
     coordinator.set_save_fn(scene._save_base_loadout)
     coordinator._handle_action(
         BaseTalentConsoleAction.select_route("offense"),
-        scene.game_controller, scene.player, scene._lock_manager,
-        scene.spawn_controller, scene._game_loop_manager,
-        scene.notification_manager, scene.reward_system,
+        scene.game_controller,
+        scene.player,
+        scene._lock_manager,
+        scene.spawn_controller,
+        scene._game_loop_manager,
+        scene.notification_manager,
+        scene.reward_system,
     )
 
     assert scene.reward_system.talent_loadout == {"offense": "Laser"}
@@ -606,6 +620,7 @@ def test_game_scene_base_loadout_save_persists_current_route(monkeypatch) -> Non
 
 def test_game_scene_homecoming_complete_saves_initial_base_loadout(monkeypatch) -> None:
     from airwar.game.systems.homecoming_coordinator import HomecomingCoordinator
+
     scene = GameScene()
     scene.player = _make_player()
     scene.game_controller = GameController("medium", "pilot")
@@ -625,9 +640,7 @@ def test_game_scene_homecoming_complete_saves_initial_base_loadout(monkeypatch) 
     def create_save_data():
         return GameSaveData(username="pilot", talent_loadout=scene.get_talent_loadout())
 
-    scene._mother_ship_integrator = SimpleNamespace(
-        create_save_data=MagicMock(side_effect=create_save_data)
-    )
+    scene._mother_ship_integrator = SimpleNamespace(create_save_data=MagicMock(side_effect=create_save_data))
     saved = _capture_base_saves(monkeypatch)
 
     scene._on_homecoming_complete()
@@ -638,6 +651,7 @@ def test_game_scene_homecoming_complete_saves_initial_base_loadout(monkeypatch) 
 
 def test_game_scene_leaving_base_saves_current_loadout(monkeypatch) -> None:
     from airwar.game.systems.homecoming_coordinator import HomecomingCoordinator
+
     scene = GameScene()
     scene.player = _make_player()
     scene.game_controller = GameController("medium", "pilot")
@@ -660,9 +674,7 @@ def test_game_scene_leaving_base_saves_current_loadout(monkeypatch) -> None:
     def create_save_data():
         return GameSaveData(username="pilot", talent_loadout=scene.get_talent_loadout())
 
-    scene._mother_ship_integrator = SimpleNamespace(
-        create_save_data=MagicMock(side_effect=create_save_data)
-    )
+    scene._mother_ship_integrator = SimpleNamespace(create_save_data=MagicMock(side_effect=create_save_data))
     saved = _capture_base_saves(monkeypatch)
 
     scene._leave_homecoming_base()
@@ -672,6 +684,7 @@ def test_game_scene_leaving_base_saves_current_loadout(monkeypatch) -> None:
 
 def test_game_scene_base_route_action_applies_loadout() -> None:
     from airwar.game.systems.homecoming_coordinator import HomecomingCoordinator
+
     scene = GameScene()
     scene.player = _make_player()
     scene.game_controller = GameController("medium", "pilot")
@@ -688,9 +701,13 @@ def test_game_scene_base_route_action_applies_loadout() -> None:
     coordinator._talent_balance_manager = TalentBalanceManager({"Spread Shot": 1}, {"offense": "Spread Shot"})
     coordinator._handle_action(
         BaseTalentConsoleAction.select_route("offense"),
-        scene.game_controller, scene.player, scene._lock_manager,
-        scene.spawn_controller, scene._game_loop_manager,
-        scene.notification_manager, scene.reward_system,
+        scene.game_controller,
+        scene.player,
+        scene._lock_manager,
+        scene.spawn_controller,
+        scene._game_loop_manager,
+        scene.notification_manager,
+        scene.reward_system,
     )
 
     assert scene.reward_system.talent_loadout["offense"] == "Laser"
@@ -701,6 +718,7 @@ def test_game_scene_base_route_action_applies_loadout() -> None:
 
 def test_game_scene_base_resupply_restores_ship_and_saves(monkeypatch) -> None:
     from airwar.game.systems.homecoming_coordinator import HomecomingCoordinator
+
     scene = GameScene()
     scene.player = _make_player()
     scene.player.max_health = 140
@@ -716,9 +734,7 @@ def test_game_scene_base_resupply_restores_ship_and_saves(monkeypatch) -> None:
     def create_save_data():
         return GameSaveData(username="pilot", talent_loadout=scene.get_talent_loadout())
 
-    scene._mother_ship_integrator = SimpleNamespace(
-        create_save_data=MagicMock(side_effect=create_save_data)
-    )
+    scene._mother_ship_integrator = SimpleNamespace(create_save_data=MagicMock(side_effect=create_save_data))
     saved = _capture_base_saves(monkeypatch)
 
     coordinator = HomecomingCoordinator(
@@ -730,9 +746,13 @@ def test_game_scene_base_resupply_restores_ship_and_saves(monkeypatch) -> None:
     coordinator.set_save_fn(scene._save_base_loadout)
     coordinator._handle_action(
         BaseTalentConsoleAction.resupply(),
-        scene.game_controller, scene.player, scene._lock_manager,
-        scene.spawn_controller, scene._game_loop_manager,
-        scene.notification_manager, scene.reward_system,
+        scene.game_controller,
+        scene.player,
+        scene._lock_manager,
+        scene.spawn_controller,
+        scene._game_loop_manager,
+        scene.notification_manager,
+        scene.reward_system,
     )
 
     assert scene.player.health == scene.player.max_health
@@ -744,6 +764,7 @@ def test_game_scene_base_resupply_restores_ship_and_saves(monkeypatch) -> None:
 
 def test_game_scene_base_module_action_does_not_change_loadout() -> None:
     from airwar.game.systems.homecoming_coordinator import HomecomingCoordinator
+
     scene = GameScene()
     scene.player = _make_player()
     scene.game_controller = GameController("medium", "pilot")
@@ -758,9 +779,13 @@ def test_game_scene_base_module_action_does_not_change_loadout() -> None:
     )
     coordinator._handle_action(
         BaseTalentConsoleAction.select_module("mission"),
-        scene.game_controller, scene.player, scene._lock_manager,
-        scene.spawn_controller, scene._game_loop_manager,
-        scene.notification_manager, scene.reward_system,
+        scene.game_controller,
+        scene.player,
+        scene._lock_manager,
+        scene.spawn_controller,
+        scene._game_loop_manager,
+        scene.notification_manager,
+        scene.reward_system,
     )
 
     assert scene.reward_system.talent_loadout == {"offense": "Spread Shot"}
@@ -769,6 +794,7 @@ def test_game_scene_base_module_action_does_not_change_loadout() -> None:
 def test_game_scene_homecoming_request_is_blocked_by_unsafe_states() -> None:
     from airwar.game.managers.game_controller import GameplayState
     from airwar.game.systems.homecoming_coordinator import HomecomingCoordinator
+
     scene = GameScene()
     scene.player = _make_player()
     scene.game_controller = GameController("medium", "pilot")

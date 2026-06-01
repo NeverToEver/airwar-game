@@ -3,6 +3,7 @@
 Extracted from GameScene to reduce god-class responsibilities.
 Handles detection, sequence, base console, talent management, departure.
 """
+
 from airwar.config import get_screen_height, get_screen_width
 from airwar.game.constants import GAME_CONSTANTS, PlayerConstants
 from airwar.game.systems.lock_manager import LockLayer, LockRequest
@@ -62,9 +63,14 @@ class HomecomingCoordinator:
     # --- Update ---
 
     def update(
-        self, game_controller, player, lock_manager,
-        bullet_manager, spawn_controller, game_loop_manager,
-        notification_manager, save_fn=None
+        self,
+        game_controller,
+        player,
+        lock_manager,
+        bullet_manager,
+        spawn_controller,
+        game_loop_manager,
+        notification_manager,
     ):
         if not self._detector or not self._sequence:
             return
@@ -96,9 +102,7 @@ class HomecomingCoordinator:
                 mission["claimed"] = True
                 if notification_manager:
                     reward = GAME_CONSTANTS.REQUISITION.MISSION_REWARD
-                    notification_manager.show(
-                        f"任务完成: {mission['name']} (+{reward}RP)"
-                    )
+                    notification_manager.show(f"任务完成: {mission['name']} (+{reward}RP)")
 
     def sync_mission_progress(self, game_controller, survival_frames):
         """Keep mission progress in sync with actual game state."""
@@ -144,8 +148,7 @@ class HomecomingCoordinator:
             notification_manager.show("轨道导弹清场完成")
 
     def on_departure_complete(
-        self, game_controller, player, lock_manager,
-        spawn_controller, game_loop_manager, notification_manager
+        self, game_controller, player, lock_manager, spawn_controller, game_loop_manager, notification_manager
     ):
         self._base_pending = False
         if self._sequence:
@@ -217,9 +220,15 @@ class HomecomingCoordinator:
             notification_manager.show(f"基地全面补给完成 (-{actual_cost}RP)")
 
     def handle_console_click(
-        self, pos, game_controller, player, lock_manager,
-        spawn_controller, game_loop_manager, notification_manager,
-        reward_system
+        self,
+        pos,
+        game_controller,
+        player,
+        lock_manager,
+        spawn_controller,
+        game_loop_manager,
+        notification_manager,
+        reward_system,
     ):
         if not self._base_talent_console or not self._talent_balance_manager:
             return False
@@ -227,15 +236,19 @@ class HomecomingCoordinator:
         if action is None:
             return False
         self._handle_action(
-            action, game_controller, player, lock_manager,
-            spawn_controller, game_loop_manager, notification_manager,
-            reward_system
+            action,
+            game_controller,
+            player,
+            lock_manager,
+            spawn_controller,
+            game_loop_manager,
+            notification_manager,
+            reward_system,
         )
         return True
 
     def leave_base(
-        self, game_controller, player, lock_manager,
-        spawn_controller, game_loop_manager, notification_manager
+        self, game_controller, player, lock_manager, spawn_controller, game_loop_manager, notification_manager
     ):
         self._save_base_loadout()
         self._base_pending = False
@@ -249,19 +262,15 @@ class HomecomingCoordinator:
                 get_screen_width(),
                 get_screen_height(),
                 on_complete_callback=lambda: self.on_departure_complete(
-                    game_controller, player, lock_manager,
-                    spawn_controller, game_loop_manager,
-                    notification_manager
+                    game_controller, player, lock_manager, spawn_controller, game_loop_manager, notification_manager
                 ),
                 on_orbital_strike_callback=lambda: self.on_orbital_strike(
-                    spawn_controller, game_loop_manager,
-                    player, notification_manager
+                    spawn_controller, game_loop_manager, player, notification_manager
                 ),
             )
         if not started:
             self.on_departure_complete(
-                game_controller, player, lock_manager,
-                spawn_controller, game_loop_manager, notification_manager
+                game_controller, player, lock_manager, spawn_controller, game_loop_manager, notification_manager
             )
             return
         if notification_manager:
@@ -290,10 +299,7 @@ class HomecomingCoordinator:
         )
         self._apply_talent_loadout(reward_system, None, show_notification=False)
 
-    def _apply_talent_loadout(
-        self, reward_system, player,
-        show_notification=True, notification_manager=None
-    ):
+    def _apply_talent_loadout(self, reward_system, player, show_notification=True, notification_manager=None):
         if not self._talent_balance_manager or not reward_system:
             return
         reward_system.apply_effective_levels(
@@ -308,15 +314,21 @@ class HomecomingCoordinator:
             notification_manager.show("基地天赋配置已同步")
 
     def _handle_action(
-        self, action, game_controller, player, lock_manager,
-        spawn_controller, game_loop_manager, notification_manager,
-        reward_system
+        self,
+        action,
+        game_controller,
+        player,
+        lock_manager,
+        spawn_controller,
+        game_loop_manager,
+        notification_manager,
+        reward_system,
     ):
         from airwar.ui.base_talent_console import BaseTalentConsoleAction
+
         if action.kind == BaseTalentConsoleAction.CONTINUE:
             self.leave_base(
-                game_controller, player, lock_manager,
-                spawn_controller, game_loop_manager, notification_manager
+                game_controller, player, lock_manager, spawn_controller, game_loop_manager, notification_manager
             )
             return
         if action.kind == BaseTalentConsoleAction.RESUPPLY:
@@ -378,8 +390,11 @@ class HomecomingCoordinator:
         for enemy in spawn_controller.enemies:
             if getattr(enemy, "active", False) and game_loop_manager:
                 game_loop_manager.trigger_boss_death_explosion(
-                    enemy.rect.centerx, enemy.rect.centery,
-                    max(28, int(enemy.rect.width * 0.7)), max(28, int(enemy.rect.height * 0.7)))
+                    enemy.rect.centerx,
+                    enemy.rect.centery,
+                    max(28, int(enemy.rect.width * 0.7)),
+                    max(28, int(enemy.rect.height * 0.7)),
+                )
             enemy.active = False
         spawn_controller.enemies.clear()
 
@@ -387,7 +402,8 @@ class HomecomingCoordinator:
         if boss:
             if game_loop_manager:
                 game_loop_manager.trigger_boss_death_explosion(
-                    boss.rect.centerx, boss.rect.centery, boss.rect.width, boss.rect.height)
+                    boss.rect.centerx, boss.rect.centery, boss.rect.width, boss.rect.height
+                )
             boss.active = False
             spawn_controller.boss = None
             if hasattr(spawn_controller, "reset_boss_timer"):
@@ -399,7 +415,7 @@ class HomecomingCoordinator:
             player.cleanup_inactive_bullets()
 
     def _save_base_loadout(self):
-        if not hasattr(self, '_last_save_fn') or not self._last_save_fn:
+        if not hasattr(self, "_last_save_fn") or not self._last_save_fn:
             return False
         return self._last_save_fn()
 

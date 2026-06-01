@@ -37,11 +37,7 @@ class BulletManager:
         _spawn_controller: Enemy spawn controller (provides enemy bullet list).
     """
 
-    def __init__(
-        self,
-        player: PlayerProtocol,
-        spawn_controller: SpawnControllerProtocol
-    ) -> None:
+    def __init__(self, player: PlayerProtocol, spawn_controller: SpawnControllerProtocol) -> None:
         """Initialize the bullet manager.
 
         Args:
@@ -90,7 +86,8 @@ class BulletManager:
                 continue
             bullet.active = False
         self._spawn_controller.enemy_bullets[:] = [
-            bullet for bullet in self._spawn_controller.enemy_bullets
+            bullet
+            for bullet in self._spawn_controller.enemy_bullets
             if getattr(bullet, "clear_immune", False) and not include_clear_immune
         ]
 
@@ -155,16 +152,18 @@ class BulletManager:
             vx = bullet.velocity.x
             vy = bullet.velocity.y
             is_laser = bullet.data.bullet_type == "laser" or bullet.data.is_laser
-            bullet_data.append((
-                bullet_id,
-                bullet.rect.x,
-                bullet.rect.y,
-                vx,
-                vy,
-                0,  # bullet_type (reserved for future use)
-                is_laser,
-                float(get_screen_height())
-            ))
+            bullet_data.append(
+                (
+                    bullet_id,
+                    bullet.rect.x,
+                    bullet.rect.y,
+                    vx,
+                    vy,
+                    0,  # bullet_type (reserved for future use)
+                    is_laser,
+                    float(get_screen_height()),
+                )
+            )
             bullet_map[bullet_id] = bullet
 
         if not bullet_data:
@@ -185,12 +184,14 @@ class BulletManager:
 
             # Handle laser trail (still needs Python for pygame operations)
             if bullet.data.bullet_type == "laser" or bullet.data.is_laser:
-                bullet._trail.append((
-                    bullet.rect.x,
-                    bullet.rect.y,
-                    bullet.rect.width,
-                    bullet.rect.height,
-                ))
+                bullet._trail.append(
+                    (
+                        bullet.rect.x,
+                        bullet.rect.y,
+                        bullet.rect.width,
+                        bullet.rect.height,
+                    )
+                )
 
             # Update active state
             if not is_active or self._is_bullet_outside_screen(bullet):

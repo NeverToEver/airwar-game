@@ -1,4 +1,5 @@
 """Boost gauge UI — 270° arc fuel gauge with pointer needle."""
+
 import contextlib
 import math
 
@@ -16,9 +17,9 @@ class BoostGauge:
     """
 
     ARC_RADIUS = 80
-    ARC_START_DEG = 225          # empty: bottom-left
-    ARC_END_DEG = -45            # full: bottom-right (= 315°)
-    TICK_MAJOR_INTERVAL = 45    # degrees between major ticks
+    ARC_START_DEG = 225  # empty: bottom-left
+    ARC_END_DEG = -45  # full: bottom-right (= 315°)
+    TICK_MAJOR_INTERVAL = 45  # degrees between major ticks
 
     # Colors
     BG_COLOR = (12, 16, 22)
@@ -126,7 +127,7 @@ class BoostGauge:
             t = i / self.TICK_DIVISOR
             deg = self.ARC_START_DEG - t * (self.ARC_START_DEG - self.ARC_END_DEG)
             rad = math.radians(deg)
-            is_major = (i % 5 == 0)
+            is_major = i % 5 == 0
             inner = self.ARC_RADIUS - (self.MAJOR_TICK_INNER if is_major else self.MINOR_TICK_INNER)
             outer = self.ARC_RADIUS
             ticks.append((rad, inner, outer, is_major, t))
@@ -156,11 +157,9 @@ class BoostGauge:
         r = self.ARC_RADIUS
         ratio = boost_current / boost_max if boost_max > 0 else 0
         dash_cooling = bool(
-            boost_status
-            and boost_status.get('dash_enabled')
-            and boost_status.get('dash_cooldown', 0) > 0
+            boost_status and boost_status.get("dash_enabled") and boost_status.get("dash_cooldown", 0) > 0
         )
-        dash_active = bool(boost_status and boost_status.get('dash_active'))
+        dash_active = bool(boost_status and boost_status.get("dash_active"))
 
         # Panel
         pw, ph = self.PANEL_W, self.PANEL_H
@@ -227,11 +226,9 @@ class BoostGauge:
         r = self.ARC_RADIUS
         ratio = boost_current / boost_max if boost_max > 0 else 0
         dash_cooling = bool(
-            boost_status
-            and boost_status.get('dash_enabled')
-            and boost_status.get('dash_cooldown', 0) > 0
+            boost_status and boost_status.get("dash_enabled") and boost_status.get("dash_cooldown", 0) > 0
         )
-        dash_active = bool(boost_status and boost_status.get('dash_active'))
+        dash_active = bool(boost_status and boost_status.get("dash_active"))
 
         self._render_panel(layer, 0, 0, pw, ph)
 
@@ -277,19 +274,29 @@ class BoostGauge:
 
     def _render_panel(self, surface, x, y, w, h):
         cache_key = (w, h)
-        if self._bg_cache is None or self._bg_cache.get('key') != cache_key:
+        if self._bg_cache is None or self._bg_cache.get("key") != cache_key:
             panel = pygame.Surface((w, h), pygame.SRCALPHA)
-            pygame.draw.rect(panel, (*self._bg_color, self.PANEL_BG_ALPHA),
-                             panel.get_rect(), border_radius=self.PANEL_BORDER_RADIUS)
+            pygame.draw.rect(
+                panel, (*self._bg_color, self.PANEL_BG_ALPHA), panel.get_rect(), border_radius=self.PANEL_BORDER_RADIUS
+            )
             # Inner border accent
-            pygame.draw.rect(panel, (*self._arc_color, self.PANEL_INNER_BORDER_ALPHA),
-                             panel.get_rect().inflate(self.PANEL_INNER_INSET, self.PANEL_INNER_INSET),
-                             width=1, border_radius=self.PANEL_INNER_BORDER_RADIUS)
+            pygame.draw.rect(
+                panel,
+                (*self._arc_color, self.PANEL_INNER_BORDER_ALPHA),
+                panel.get_rect().inflate(self.PANEL_INNER_INSET, self.PANEL_INNER_INSET),
+                width=1,
+                border_radius=self.PANEL_INNER_BORDER_RADIUS,
+            )
             # Outer border
-            pygame.draw.rect(panel, (*self._arc_color, self.PANEL_OUTER_BORDER_ALPHA),
-                             panel.get_rect(), width=1, border_radius=self.PANEL_BORDER_RADIUS)
-            self._bg_cache = {'key': cache_key, 'surf': panel}
-        surface.blit(self._bg_cache['surf'], (x, y))
+            pygame.draw.rect(
+                panel,
+                (*self._arc_color, self.PANEL_OUTER_BORDER_ALPHA),
+                panel.get_rect(),
+                width=1,
+                border_radius=self.PANEL_BORDER_RADIUS,
+            )
+            self._bg_cache = {"key": cache_key, "surf": panel}
+        surface.blit(self._bg_cache["surf"], (x, y))
 
     def _draw_arc(self, surface, cx, cy, r):
         """Draw 270° arc track with subtle glow."""

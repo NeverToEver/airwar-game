@@ -1,12 +1,15 @@
 """Mothership interfaces — protocols for input, UI, events, persistence."""
+
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 from .mother_ship_state import DockingProgress, GameSaveData, MotherShipState
 
 
 class IInputDetector(ABC):
     """Interface for docking input detection."""
+
     @abstractmethod
     def update(self) -> None:
         pass
@@ -22,6 +25,7 @@ class IInputDetector(ABC):
 
 class IMotherShipUI(ABC):
     """Interface for mothership UI rendering and state display."""
+
     @abstractmethod
     def show(self) -> None:
         pass
@@ -45,6 +49,7 @@ class IMotherShipUI(ABC):
 
 class IEventBus(ABC):
     """Interface for mothership event publish/subscribe."""
+
     @abstractmethod
     def subscribe(self, event: str, callback: Callable) -> None:
         pass
@@ -60,12 +65,13 @@ class IEventBus(ABC):
 
 class IPersistenceManager(ABC):
     """Interface for game state save/load operations."""
+
     @abstractmethod
     def save_game(self, data: GameSaveData) -> bool:
         pass
 
     @abstractmethod
-    def load_game(self) -> Optional[GameSaveData]:
+    def load_game(self) -> GameSaveData | None:
         pass
 
     @abstractmethod
@@ -79,6 +85,7 @@ class IPersistenceManager(ABC):
 
 class IMotherShipStateMachine(ABC):
     """Interface for mothership docking state machine."""
+
     @property
     @abstractmethod
     def current_state(self) -> MotherShipState:
@@ -137,7 +144,7 @@ class IEntityProvider(ABC):
     """Interface for entity access from GameIntegrator."""
 
     @abstractmethod
-    def get_enemies(self) -> List:
+    def get_enemies(self) -> list:
         """Get current enemy list."""
         pass
 
@@ -200,20 +207,20 @@ class IGameScene(IScoreProvider, IEntityProvider, IPlayerControl):
     """
 
     @abstractmethod
-    def get_unlocked_buffs(self) -> List:
+    def get_unlocked_buffs(self) -> list:
         """Get list of unlocked buff names."""
         pass
 
     @abstractmethod
-    def get_buff_levels(self) -> Dict[str, int]:
+    def get_buff_levels(self) -> dict[str, int]:
         """Get buff levels dictionary."""
         pass
 
-    def get_earned_buff_levels(self) -> Dict[str, int]:
+    def get_earned_buff_levels(self) -> dict[str, int]:
         """Get earned buff levels before base-side loadout redistribution."""
         return self.get_buff_levels()
 
-    def get_talent_loadout(self) -> Dict[str, str]:
+    def get_talent_loadout(self) -> dict[str, str]:
         """Get current base-side talent loadout selections."""
         return {}
 

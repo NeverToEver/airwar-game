@@ -1,5 +1,4 @@
 """Explosion particle — single particle in an explosion effect."""
-from typing import Tuple
 
 
 class ExplosionParticle:
@@ -14,7 +13,7 @@ class ExplosionParticle:
         life: int,
         max_life: int,
         size: float,
-        particle_type: str = "main"
+        particle_type: str = "main",
     ) -> None:
         self.x = x
         self.y = y
@@ -50,7 +49,7 @@ class ExplosionParticle:
         """Get alpha value (0-255)"""
         return int(255 * self.life_ratio)
 
-    def get_color(self) -> Tuple[int, int, int]:
+    def get_color(self) -> tuple[int, int, int]:
         """Get color (changes with lifecycle)
 
         Transitions from orange-red to yellow for main particles.

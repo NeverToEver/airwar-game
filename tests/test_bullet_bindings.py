@@ -1,13 +1,13 @@
 """Tests for bullet Rust bindings."""
 
 
-
 class TestBatchUpdateBullets:
     """Tests for batch_update_bullets Rust function."""
 
     def test_import(self):
         """Test that batch_update_bullets can be imported."""
         from airwar.core_bindings import batch_update_bullets
+
         assert callable(batch_update_bullets)
 
     def test_basic_movement(self):
@@ -53,7 +53,7 @@ class TestBatchUpdateBullets:
 
         bullets = [
             (0, 400.0, -100.0, 0.0, -5.0, 2, True, 800.0),  # laser, off top
-            (1, 500.0, 900.0, 0.0, 5.0, 2, True, 800.0),   # laser, off bottom
+            (1, 500.0, 900.0, 0.0, 5.0, 2, True, 800.0),  # laser, off bottom
         ]
         results = batch_update_bullets(bullets)
         assert len(results) == 2
@@ -67,8 +67,8 @@ class TestBatchUpdateBullets:
         bullets = [
             (0, 100.0, 100.0, 0.0, -10.0, 0, False, 800.0),
             (1, 200.0, 200.0, 5.0, 0.0, 0, False, 800.0),  # moving right
-            (2, 300.0, 300.0, -5.0, 0.0, 0, False, 800.0), # moving left
-            (3, 400.0, 400.0, 0.0, 10.0, 0, False, 800.0), # moving down
+            (2, 300.0, 300.0, -5.0, 0.0, 0, False, 800.0),  # moving left
+            (3, 400.0, 400.0, 0.0, 10.0, 0, False, 800.0),  # moving down
         ]
         results = batch_update_bullets(bullets)
         assert len(results) == 4
