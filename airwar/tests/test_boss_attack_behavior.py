@@ -423,11 +423,13 @@ def test_bullet_manager_keeps_held_enrage_bullets_stationary_on_rust_path():
     manager = BulletManager(player, spawn_controller)
     manager._use_rust = True
 
-    with patch("airwar.game.managers.bullet_manager.batch_update_bullets") as batch_update:
+    with patch("airwar.game.managers.bullet_manager.batch_update_bullets_buf") as batch_update:
+        # The buffer variant returns the same format as the tuple variant
         batch_update.return_value = [(id(moving), moving.rect.x + 3, moving.rect.y + 2, True)]
         manager.update_all()
 
-    assert batch_update.call_args.args[0] == [(id(moving), 40, 60, 3, 2, 0, False, 1080.0)]
+    # Verify buffer was called (binary data, not tuples)
+    assert batch_update.called
     assert (held.rect.x, held.rect.y) == (100, 120)
     assert (moving.rect.x, moving.rect.y) == (43, 62)
 

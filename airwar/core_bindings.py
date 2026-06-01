@@ -11,9 +11,12 @@ try:
         # Collision functions
         batch_collide_bullets_vs_entities,
         batch_hallucinated_enemy_centers,
+        batch_render_particles,
         # Bullet functions
         batch_update_bullets,
+        batch_update_bullets_buf,
         batch_update_movements,
+        batch_update_movements_buf,
         # Particle functions
         batch_update_particles,
         compute_boss_attack,
@@ -319,6 +322,19 @@ except (ImportError, OSError):
             ) in zip(base_params, extra_params, strict=False)
         ]
 
+    def batch_update_movements_buf(base_buf: bytes, extra_buf: bytes) -> list[tuple[float, float, float]]:
+        import struct
+
+        count = len(base_buf) // 48
+        base_fmt = "<Bxxxfff fffffff"  # u8 + pad2 + 11*f32 = 48 bytes
+        extra_fmt = "<fffffffI"  # 7*f32 + i32 = 32 bytes
+        base_list = []
+        extra_list = []
+        for i in range(count):
+            base_list.append(struct.unpack_from(base_fmt, base_buf, i * 48))
+            extra_list.append(struct.unpack_from(extra_fmt, extra_buf, i * 32))
+        return batch_update_movements(base_list, extra_list)
+
     def compute_boss_attack(
         pattern: int,
         phase: int,
@@ -416,6 +432,40 @@ except (ImportError, OSError):
             size = size_min + random.random() * (size_max - size_min)
             particles.append((center_x, center_y, math.cos(angle) * speed, math.sin(angle) * speed, life, life, size))
         return particles
+
+    def batch_render_particles(
+        particles: list[tuple[float, float, float, float, float, int, int, int]],
+        screen_width: int,
+        screen_height: int,
+    ) -> bytes:
+        w, h = screen_width, screen_height
+        data = bytearray(w * h * 4)
+        for px, py, size, glow_radius, alpha, r, g, b in particles:
+            cx, cy = int(px), int(py)
+            total_radius = int(size + glow_radius)
+            a_base = max(0.0, min(1.0, alpha))
+            for dy in range(-total_radius, total_radius + 1):
+                for dx in range(-total_radius, total_radius + 1):
+                    x, y = cx + dx, cy + dy
+                    if x < 0 or x >= w or y < 0 or y >= h:
+                        continue
+                    dist = (dx * dx + dy * dy) ** 0.5
+                    if dist <= size:
+                        a = a_base
+                    elif dist <= size + glow_radius:
+                        t = 1.0 - (dist - size) / glow_radius
+                        a = a_base * t * t
+                    else:
+                        continue
+                    if a < 0.01:
+                        continue
+                    sa = int(a * 255)
+                    idx = (y * w + x) * 4
+                    data[idx] = min(255, data[idx] + r * sa // 255)
+                    data[idx + 1] = min(255, data[idx + 1] + g * sa // 255)
+                    data[idx + 2] = min(255, data[idx + 2] + b * sa // 255)
+                    data[idx + 3] = min(255, data[idx + 3] + sa)
+        return bytes(data)
 
     def _set_pixel(data: bytearray, width: int, x: int, y: int, color: tuple[int, int, int], alpha: int) -> None:
         idx = (y * width + x) * 4
@@ -555,6 +605,20 @@ except (ImportError, OSError):
     ) -> list[tuple[int, float, float, bool]]:
         results = []
         for bullet_id, x, y, vx, vy, _bullet_type, is_laser, screen_height in bullets:
+            new_x = x + vx
+            new_y = y + vy
+            active = True if is_laser else -10.0 <= new_y <= screen_height + 10.0
+            results.append((bullet_id, new_x, new_y, active))
+        return results
+
+    def batch_update_bullets_buf(buf: bytes) -> list[tuple[int, float, float, bool]]:
+        import struct
+
+        count = len(buf) // 32
+        fmt = "<QffffBxxxf"
+        results = []
+        for i in range(count):
+            bullet_id, x, y, vx, vy, is_laser, _pad, screen_height = struct.unpack_from(fmt, buf, i * 32)
             new_x = x + vx
             new_y = y + vy
             active = True if is_laser else -10.0 <= new_y <= screen_height + 10.0

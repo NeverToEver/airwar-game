@@ -31,6 +31,7 @@ fn airwar_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Movement functions
     m.add_function(wrap_pyfunction!(movement::update_movement, m)?)?;
     m.add_function(wrap_pyfunction!(movement::batch_update_movements, m)?)?;
+    m.add_function(wrap_pyfunction!(movement::batch_update_movements_buf, m)?)?;
     m.add_function(wrap_pyfunction!(movement::compute_boss_attack, m)?)?;
     m.add_function(wrap_pyfunction!(movement::batch_hallucinated_enemy_centers, m)?)?;
     m.add_function(wrap_pyfunction!(movement::find_nearest_target, m)?)?;
@@ -39,6 +40,7 @@ fn airwar_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Particle functions
     m.add_function(wrap_pyfunction!(particles::batch_update_particles, m)?)?;
     m.add_function(wrap_pyfunction!(particles::generate_explosion_particles, m)?)?;
+    m.add_function(wrap_pyfunction!(particles::batch_render_particles, m)?)?;
 
     // Sprite functions
     m.add_function(wrap_pyfunction!(sprites::create_single_bullet_glow, m)?)?;
@@ -49,6 +51,7 @@ fn airwar_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // Bullet functions
     m.add_function(wrap_pyfunction!(bullets::batch_update_bullets, m)?)?;
+    m.add_function(wrap_pyfunction!(bullets::batch_update_bullets_buf, m)?)?;
 
     Ok(())
 }

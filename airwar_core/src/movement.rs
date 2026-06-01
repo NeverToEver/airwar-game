@@ -191,6 +191,97 @@ pub fn batch_update_movements(
         .collect()
 }
 
+/// Binary buffer variant of `batch_update_movements` for reduced FFI overhead.
+///
+/// base_buf layout per enemy (48 bytes, little-endian):
+///   [0]      u8    move_type
+///   [1..3)   [u8;2] padding
+///   [4..8)   f32   timer
+///   [8..12)  f32   active_x
+///   [12..16) f32   active_y
+///   [16..20) f32   move_range_x
+///   [20..24) f32   move_range_y
+///   [24..28) f32   offset
+///   [28..32) f32   amplitude
+///   [32..36) f32   frequency
+///   [36..40) f32   speed
+///   [40..44) f32   direction
+///   [44..48) f32   zigzag_interval
+///
+/// extra_buf layout per enemy (32 bytes, little-endian):
+///   [0..4)   f32   spiral_radius
+///   [4..8)   f32   current_x
+///   [8..12)  f32   current_y
+///   [12..16) f32   noise_scale_x
+///   [16..20) f32   noise_scale_y
+///   [20..24) f32   noise_amplitude_x
+///   [24..28) f32   noise_amplitude_y
+///   [28..32) i32   noise_seed
+const BASE_BUF_STRIDE: usize = 48;
+const EXTRA_BUF_STRIDE: usize = 32;
+
+#[pyfunction]
+pub fn batch_update_movements_buf(base_buf: &[u8], extra_buf: &[u8]) -> Vec<MovementResult> {
+    let count = base_buf.len() / BASE_BUF_STRIDE;
+    let mut results = Vec::with_capacity(count);
+
+    for i in 0..count {
+        let bo = i * BASE_BUF_STRIDE;
+        let bc = &base_buf[bo..bo + BASE_BUF_STRIDE];
+
+        let move_type = bc[0];
+        let timer = f32::from_le_bytes(bc[4..8].try_into().unwrap());
+        let active_x = f32::from_le_bytes(bc[8..12].try_into().unwrap());
+        let active_y = f32::from_le_bytes(bc[12..16].try_into().unwrap());
+        let move_range_x = f32::from_le_bytes(bc[16..20].try_into().unwrap());
+        let move_range_y = f32::from_le_bytes(bc[20..24].try_into().unwrap());
+        let offset = f32::from_le_bytes(bc[24..28].try_into().unwrap());
+        let amplitude = f32::from_le_bytes(bc[28..32].try_into().unwrap());
+        let frequency = f32::from_le_bytes(bc[32..36].try_into().unwrap());
+        let speed = f32::from_le_bytes(bc[36..40].try_into().unwrap());
+        let direction = f32::from_le_bytes(bc[40..44].try_into().unwrap());
+        let zigzag_interval = f32::from_le_bytes(bc[44..48].try_into().unwrap());
+
+        let eo = i * EXTRA_BUF_STRIDE;
+        let ec = &extra_buf[eo..eo + EXTRA_BUF_STRIDE];
+
+        let spiral_radius = f32::from_le_bytes(ec[0..4].try_into().unwrap());
+        let current_x = f32::from_le_bytes(ec[4..8].try_into().unwrap());
+        let current_y = f32::from_le_bytes(ec[8..12].try_into().unwrap());
+        let noise_scale_x = f32::from_le_bytes(ec[12..16].try_into().unwrap());
+        let noise_scale_y = f32::from_le_bytes(ec[16..20].try_into().unwrap());
+        let noise_amplitude_x = f32::from_le_bytes(ec[20..24].try_into().unwrap());
+        let noise_amplitude_y = f32::from_le_bytes(ec[24..28].try_into().unwrap());
+        let noise_seed = i32::from_le_bytes(ec[28..32].try_into().unwrap());
+
+        let result = update_movement_inner(
+            move_type,
+            timer,
+            active_x,
+            active_y,
+            move_range_x,
+            move_range_y,
+            offset,
+            amplitude,
+            frequency,
+            speed,
+            direction,
+            zigzag_interval,
+            spiral_radius,
+            current_x,
+            current_y,
+            noise_scale_x,
+            noise_scale_y,
+            noise_amplitude_x,
+            noise_amplitude_y,
+            noise_seed,
+        );
+        results.push(result);
+    }
+
+    results
+}
+
 /// Inner implementation shared by single and batch variants.
 #[allow(clippy::too_many_arguments)]
 fn update_movement_inner(

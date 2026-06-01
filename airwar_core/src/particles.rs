@@ -89,6 +89,76 @@ pub fn generate_explosion_particles(
     particles
 }
 
+/// Particle render data: (x, y, size, glow_radius, alpha, r, g, b)
+type ParticleRenderData = (f32, f32, f32, f32, f32, u8, u8, u8);
+
+/// Batch render particles into a single RGBA buffer.
+///
+/// Each particle is rendered as a filled glow circle with additive blending.
+/// Returns raw RGBA pixel buffer of `screen_width * screen_height * 4` bytes.
+#[pyfunction]
+pub fn batch_render_particles(
+    particles: Vec<ParticleRenderData>,
+    screen_width: i32,
+    screen_height: i32,
+) -> Vec<u8> {
+    let width = screen_width as usize;
+    let height = screen_height as usize;
+    let mut buf = vec![0u8; width * height * 4];
+
+    for (px, py, size, glow_radius, alpha, red, green, blue) in particles {
+        let center_x = px as i32;
+        let center_y = py as i32;
+        let total_radius = (size + glow_radius) as i32;
+        let alpha_f = alpha.clamp(0.0, 1.0);
+
+        for dy in -total_radius..=total_radius {
+            for dx in -total_radius..=total_radius {
+                let pixel_x = center_x + dx;
+                let pixel_y = center_y + dy;
+                if pixel_x < 0 || pixel_x >= screen_width || pixel_y < 0 || pixel_y >= screen_height {
+                    continue;
+                }
+
+                let dist = ((dx * dx + dy * dy) as f32).sqrt();
+                let a = if dist <= size {
+                    // Core: full alpha
+                    alpha_f
+                } else if dist <= size + glow_radius {
+                    // Glow: fade out
+                    let t = 1.0 - (dist - size) / glow_radius;
+                    alpha_f * t * t  // quadratic falloff
+                } else {
+                    continue
+                };
+
+                if a < 0.01 {
+                    continue;
+                }
+
+                let idx = (pixel_y as usize * width + pixel_x as usize) * 4;
+                // Additive blending
+                let sa = (a * 255.0) as u16;
+                let sr = u16::from(red) * sa / 255;
+                let sg = u16::from(green) * sa / 255;
+                let sb = u16::from(blue) * sa / 255;
+
+                let dr = u16::from(buf[idx]) + sr;
+                let dg = u16::from(buf[idx + 1]) + sg;
+                let db = u16::from(buf[idx + 2]) + sb;
+                let da = u16::from(buf[idx + 3]) + sa;
+
+                buf[idx] = dr.min(255) as u8;
+                buf[idx + 1] = dg.min(255) as u8;
+                buf[idx + 2] = db.min(255) as u8;
+                buf[idx + 3] = da.min(255) as u8;
+            }
+        }
+    }
+
+    buf
+}
+
 thread_local! {
     static PARTICLE_RNG_STATE: Cell<u64> = Cell::new(initial_rng_seed());
 }

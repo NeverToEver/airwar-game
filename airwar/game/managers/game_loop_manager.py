@@ -1,10 +1,11 @@
 """Game loop orchestration — coordinates all per-frame update logic."""
 
 import logging
+import struct
 from collections.abc import Callable
 
 from airwar.config import get_screen_height, get_screen_width
-from airwar.core_bindings import batch_update_movements
+from airwar.core_bindings import batch_update_movements, batch_update_movements_buf
 
 from ..constants import PlayerConstants
 from ..explosion_animation import ExplosionManager
@@ -193,16 +194,25 @@ class GameLoopManager:
         damage = float(getattr(player, "bullet_damage", PlayerConstants.BULLET_DAMAGE))
         return damage * bullets_per_shot / fire_interval * 60
 
+    # Binary buffer formats for movement FFI
+    # base: B(move_type) + xx(pad) + 11*f32 = 48 bytes
+    _MOVEMENT_BASE_FMT = "<Bxxxfff fffffff"
+    _MOVEMENT_BASE_SIZE = struct.calcsize(_MOVEMENT_BASE_FMT)  # 48
+    # extra: 7*f32 + i32 = 32 bytes
+    _MOVEMENT_EXTRA_FMT = "<fffffffI"
+    _MOVEMENT_EXTRA_SIZE = struct.calcsize(_MOVEMENT_EXTRA_FMT)  # 32
+
     def _update_entities(self) -> None:
         enemies = self._spawn_controller.enemies
         if not enemies:
             return
 
         # Batch Rust movement — only for enemies in 'active' state (not entering/exiting)
-        if batch_update_movements is not None:
-            base_list = []
-            extra_list = []
+        if batch_update_movements_buf is not None:
             batch_indices = []
+            base_buf_parts = []
+            extra_buf_parts = []
+
             for i, enemy in enumerate(enemies):
                 if enemy.is_ready_for_batch_movement():
                     try:
@@ -213,6 +223,66 @@ class GameLoopManager:
                             enemy,
                             exc_info=True,
                         )
+                        continue
+                    if base is not None:
+                        # Pack base: (move_type:u8, pad, timer, active_x, active_y,
+                        #   move_range_x, move_range_y, offset, amplitude, frequency,
+                        #   speed, direction, zigzag_interval)
+                        base_buf_parts.append(
+                            struct.pack(
+                                self._MOVEMENT_BASE_FMT,
+                                base[0],
+                                base[1],
+                                base[2],
+                                base[3],
+                                base[4],
+                                base[5],
+                                base[6],
+                                base[7],
+                                base[8],
+                                base[9],
+                                base[10],
+                                base[11],
+                            )
+                        )
+                        # Pack extra: (spiral_radius, current_x, current_y,
+                        #   noise_scale_x, noise_scale_y, noise_amplitude_x,
+                        #   noise_amplitude_y, noise_seed)
+                        extra_buf_parts.append(
+                            struct.pack(
+                                self._MOVEMENT_EXTRA_FMT,
+                                extra[0],
+                                extra[1],
+                                extra[2],
+                                extra[3],
+                                extra[4],
+                                extra[5],
+                                extra[6],
+                                extra[7],
+                            )
+                        )
+                        batch_indices.append(i)
+                elif batch_update_movements is not None:
+                    # Fallback to tuple path if buffer variant unavailable
+                    pass
+
+            if base_buf_parts:
+                base_buf = b"".join(base_buf_parts)
+                extra_buf = b"".join(extra_buf_parts)
+                results = batch_update_movements_buf(base_buf, extra_buf)
+                for j, (new_x, new_y, new_timer) in enumerate(results):
+                    idx = batch_indices[j]
+                    enemies[idx].apply_batch_movement_result((new_x, new_y, new_timer))
+        elif batch_update_movements is not None:
+            # Fallback: tuple-based batch movement
+            base_list = []
+            extra_list = []
+            batch_indices = []
+            for i, enemy in enumerate(enemies):
+                if enemy.is_ready_for_batch_movement():
+                    try:
+                        base, extra = enemy.get_rust_batch_params()
+                    except (ValueError, TypeError):
                         continue
                     if base is not None:
                         base_list.append(base)

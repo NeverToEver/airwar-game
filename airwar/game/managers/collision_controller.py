@@ -77,6 +77,10 @@ class CollisionController:
         self._bullet_map: dict = {}
         self._enemy_data: list[tuple] = []
         self._enemy_map: dict = {}
+        # Reusable temp containers for enemy-bullets-vs-player Rust collision
+        self._enemy_bullet_data: list[tuple] = []
+        self._enemy_bullet_map: dict = {}
+        self._player_entity_data: list[tuple] = []
 
     def _clear_grid(self) -> None:
         """Clear the spatial hash grid."""
@@ -537,6 +541,40 @@ class CollisionController:
     ) -> bool:
         player_hitbox = player.get_hitbox()
 
+        if self._use_rust and enemy_bullets:
+            # Use Rust spatial hash: build bullet data + single player entity
+            eb_data = self._enemy_bullet_data
+            eb_map = self._enemy_bullet_map
+            eb_data.clear()
+            eb_map.clear()
+            for i, eb in enumerate(enemy_bullets):
+                if eb.active and not getattr(eb, "held", False):
+                    r = eb.rect
+                    eb_data.append((i, float(r.left), float(r.top), float(r.width), float(r.height)))
+                    eb_map[i] = eb
+
+            if eb_data:
+                self._player_entity_data.clear()
+                self._player_entity_data.append(
+                    (
+                        -1,
+                        float(player_hitbox.left),
+                        float(player_hitbox.top),
+                        float(player_hitbox.width),
+                        float(player_hitbox.height),
+                    )
+                )
+                hits = batch_collide_bullets_vs_entities(eb_data, self._player_entity_data, self._grid_cell_size)
+                if hits:
+                    bullet_id = hits[0][0]
+                    eb = eb_map[bullet_id]
+                    damage = calculate_damage_func(eb.data.damage)
+                    on_player_hit_func(damage, player)
+                    eb.active = False
+                    return True
+            return False
+
+        # Python fallback: linear scan
         for eb in enemy_bullets:
             if eb.active and not getattr(eb, "held", False) and eb.rect.colliderect(player_hitbox):
                 damage = calculate_damage_func(eb.data.damage)

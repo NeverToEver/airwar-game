@@ -6,6 +6,7 @@ import random
 import pygame
 
 from airwar.core_bindings import (
+    batch_render_particles,
     batch_update_particles,
     generate_explosion_particles,
 )
@@ -365,9 +366,41 @@ class ExplosionEffect:
         surface.blit(core_surf, (int(particle.x) - size - 1, int(particle.y) - size - 1))
 
     def _render_particles(self, surface: pygame.Surface) -> None:
-        """Render main explosion particles with glow"""
+        """Render main explosion particles with glow — batched via Rust."""
+        if not self._particles:
+            return
+
+        # Collect particle data for batch rendering
+        particle_data = []
         for particle in self._particles:
-            self._render_main_particle(surface, particle)
+            alpha = min(self.PARTICLE_ALPHA_MAX, particle.get_alpha())
+            if alpha < GAME_CONSTANTS.ANIMATION.PARTICLE_ALPHA_VISIBILITY_THRESHOLD:
+                continue
+            color = particle.get_color()
+            size = max(1, int(particle.size * (alpha / 255)))
+            glow_radius = size * 3
+            alpha_norm = alpha / 255.0
+            particle_data.append(
+                (
+                    particle.x,
+                    particle.y,
+                    float(size),
+                    float(glow_radius),
+                    alpha_norm,
+                    color[0],
+                    color[1],
+                    color[2],
+                )
+            )
+
+        if not particle_data:
+            return
+
+        # Render via Rust batch into a sub-region surface
+        screen_w, screen_h = surface.get_size()
+        buf = batch_render_particles(particle_data, screen_w, screen_h)
+        particle_surf = pygame.image.frombuffer(buf, (screen_w, screen_h), "RGBA")
+        surface.blit(particle_surf, (0, 0))
 
     def _render_main_particle(self, surface: pygame.Surface, particle: ExplosionParticle) -> None:
         """Render a main particle with soft glow — uses cached textures."""

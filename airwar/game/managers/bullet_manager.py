@@ -16,8 +16,10 @@ Usage:
     bullet_manager.update_all()
 """
 
+import struct
+
 from airwar.config import get_screen_height, get_screen_width
-from airwar.core_bindings import batch_update_bullets
+from airwar.core_bindings import batch_update_bullets, batch_update_bullets_buf
 
 from ..protocols import PlayerProtocol, SpawnControllerProtocol
 
@@ -121,12 +123,18 @@ class BulletManager:
         if cleanup:
             self._cleanup_enemy_bullets()
 
+    # Binary buffer format: Q(id) + f(x) + f(y) + f(vx) + f(vy) + B(is_laser) + xxx(pad) + f(screen_h) = 32 bytes
+    _BULLET_BUF_FMT = "<QffffBxxxf"
+    _BULLET_BUF_SIZE = struct.calcsize(_BULLET_BUF_FMT)
+
     def _update_bullets_batch(self, bullets: list, cleanup: bool) -> None:
         """Batch update bullets using Rust for position updates.
 
         Handles position updates and screen boundary checks in Rust,
         then applies results back. For laser bullets, still calls
         bullet.update() for trail management.
+
+        Uses binary buffer FFI for reduced overhead.
 
         Args:
             bullets: List of bullet entities
@@ -135,42 +143,43 @@ class BulletManager:
         if not bullets:
             return
 
-        # Build bullet data for Rust: (id, x, y, vx, vy, bullet_type, is_laser, screen_height)
-        # Use object id as unique identifier
-        # bullet_type: 0=normal, 1=single, 2=laser (not used in current Rust impl)
-        bullet_data = self._batch_bullet_data
         bullet_map = self._batch_bullet_map
-        bullet_data.clear()
         bullet_map.clear()
-        for _i, bullet in enumerate(bullets):
+        screen_h = float(get_screen_height())
+
+        # Pack bullets into binary buffer
+        active_bullets = []
+        for bullet in bullets:
             if not bullet.active:
                 continue
             self._update_release_delay(bullet)
             if getattr(bullet, "held", False):
                 continue
-            bullet_id = id(bullet)
-            vx = bullet.velocity.x
-            vy = bullet.velocity.y
-            is_laser = bullet.data.bullet_type == "laser" or bullet.data.is_laser
-            bullet_data.append(
-                (
-                    bullet_id,
-                    bullet.rect.x,
-                    bullet.rect.y,
-                    vx,
-                    vy,
-                    0,  # bullet_type (reserved for future use)
-                    is_laser,
-                    float(get_screen_height()),
-                )
-            )
-            bullet_map[bullet_id] = bullet
+            active_bullets.append(bullet)
+            bullet_map[id(bullet)] = bullet
 
-        if not bullet_data:
+        if not active_bullets:
             return
 
-        # Call Rust batch update
-        results = batch_update_bullets(bullet_data)
+        count = len(active_bullets)
+        buf = bytearray(count * self._BULLET_BUF_SIZE)
+        for i, bullet in enumerate(active_bullets):
+            is_laser = bullet.data.bullet_type == "laser" or bullet.data.is_laser
+            struct.pack_into(
+                self._BULLET_BUF_FMT,
+                buf,
+                i * self._BULLET_BUF_SIZE,
+                id(bullet),
+                float(bullet.rect.x),
+                float(bullet.rect.y),
+                bullet.velocity.x,
+                bullet.velocity.y,
+                1 if is_laser else 0,
+                screen_h,
+            )
+
+        # Call Rust batch update via binary buffer
+        results = batch_update_bullets_buf(bytes(buf))
 
         # Apply results back to bullets
         for bullet_id, new_x, new_y, is_active in results:
