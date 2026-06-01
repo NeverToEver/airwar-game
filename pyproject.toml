@@ -38,6 +38,7 @@ extend-exclude = [
     "build",
     "dist",
     "airwar_core/target",
+    "vulture_whitelist.py",
 ]
 
 [tool.ruff.lint]
