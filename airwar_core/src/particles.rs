@@ -97,11 +97,7 @@ type ParticleRenderData = (f32, f32, f32, f32, f32, u8, u8, u8);
 /// Each particle is rendered as a filled glow circle with additive blending.
 /// Returns raw RGBA pixel buffer of `screen_width * screen_height * 4` bytes.
 #[pyfunction]
-pub fn batch_render_particles(
-    particles: Vec<ParticleRenderData>,
-    screen_width: i32,
-    screen_height: i32,
-) -> Vec<u8> {
+pub fn batch_render_particles(particles: Vec<ParticleRenderData>, screen_width: i32, screen_height: i32) -> Vec<u8> {
     let width = screen_width as usize;
     let height = screen_height as usize;
     let mut buf = vec![0u8; width * height * 4];
@@ -127,9 +123,9 @@ pub fn batch_render_particles(
                 } else if dist <= size + glow_radius {
                     // Glow: fade out
                     let t = 1.0 - (dist - size) / glow_radius;
-                    alpha_f * t * t  // quadratic falloff
+                    alpha_f * t * t // quadratic falloff
                 } else {
-                    continue
+                    continue;
                 };
 
                 if a < 0.01 {
