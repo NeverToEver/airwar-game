@@ -58,6 +58,9 @@ jobs:
       - name: Run Ruff format check
         run: python -m ruff format --check .
 
+      - name: Run Vulture (dead code detection)
+        run: python -m vulture airwar/ --min-confidence 80 --exclude airwar/tests
+
       - name: Run mypy
         run: python -m mypy airwar/ --ignore-missing-imports --no-error-summary || true
 
@@ -72,4 +75,4 @@ jobs:
         env:
           SDL_VIDEODRIVER: dummy
           SDL_AUDIODRIVER: dummy
-        run: python -m pytest
+        run: python -m pytest --cov=airwar --cov-report=term-missing
