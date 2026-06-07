@@ -8,3 +8,8 @@ vulture>=0.10,<1
 pytest-cov>=5,<7
 mutmut>=2.0,<3
 hypothesis>=6.0
+# Optional in production (sound_manager uses it for sine-wave beep
+# generation and falls back to pure Python when missing), but required
+# by tests that exercise the audio lazy-import path (e.g. test_player_aiming,
+# test_core::test_player_fires_when_cooldown_ready, test_sound_manager).
+numpy>=1.24,<3

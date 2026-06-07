@@ -90,9 +90,16 @@ def test_two_single_steps_equal_one_double_step(params):
 @settings(max_examples=200, deadline=2000)
 @given(params=_movement_params())
 def test_timer_increases_monotonically(params):
-    """A single step must increase the timer by exactly 1.0."""
+    """A single step must increase the timer by exactly 1.0.
+
+    ``update_movement`` returns the new timer as ``f32`` (Rust), while
+    ``params["timer"]`` is a Python ``f64``; the cross-precision round-trip
+    can lose 1-2 ULP, so we use a relative tolerance matching the sibling
+    commutativity test above rather than strict ``==``.
+    """
     x, y, t = _step(params)
-    assert t == params["timer"] + 1.0
+    expected = params["timer"] + 1.0
+    assert abs(t - expected) < 1e-6 * max(1.0, abs(expected))
     # x, y stay finite for sane input
     assert math.isfinite(x)
     assert math.isfinite(y)
