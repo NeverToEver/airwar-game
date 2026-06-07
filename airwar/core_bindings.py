@@ -20,6 +20,7 @@ try:
         # Particle functions
         batch_update_particles,
         compute_boss_attack,
+        compute_starfield_positions,
         create_explosive_missile_glow,
         create_glow_circle,
         create_laser_bullet_glow,
@@ -182,6 +183,43 @@ except (ImportError, OSError):
         blend = 0.5 - 0.5 * math.cos(frac_x * math.pi)
         value = (v1 + v2 + v3) + ((v4 + v5 + v6) - (v1 + v2 + v3)) * blend
         return max(-1.0, min(1.0, value * 1.2))
+
+    def compute_starfield_positions(
+        stars: list[tuple[float, float, float, float, float, float]],
+        scroll_offset: float,
+        screen_w: float,
+        screen_h: float,
+        time: float,
+        sin_table: list[float],
+        sin_table_size: int,
+        sin_table_mask: int,
+        glow_threshold: int,
+        glow_alpha_divisor: int,
+        glow_alpha_cap: int,
+    ) -> list[tuple[int, int, int, int, bool, int]]:
+        """Python fallback for `compute_starfield_positions`.
+
+        Mirrors the Rust implementation exactly so visual output is
+        identical regardless of which path runs.
+        """
+        scale = sin_table_size / math.tau
+        results: list[tuple[int, int, int, int, bool, int]] = []
+        for x_frac, y_frac, size, brightness, twinkle_speed, twinkle_offset in stars:
+            y_norm = (y_frac + scroll_offset) % 1.0
+            x = int(x_frac * screen_w)
+            y_pos = int(y_norm * screen_h)
+            phase = (time * twinkle_speed + twinkle_offset) * scale
+            idx = int(phase) & sin_table_mask
+            twinkle = sin_table[idx]
+            b = int(brightness * (0.5 + 0.5 * twinkle) * 255.0)
+            core_b = max(0, min(255, b))
+            size_int = max(1, int(size))
+            has_glow = b > glow_threshold
+            glow_alpha = (b // glow_alpha_divisor) if has_glow else 0
+            if glow_alpha > glow_alpha_cap:
+                glow_alpha = glow_alpha_cap
+            results.append((x, y_pos, core_b, size_int, has_glow, glow_alpha))
+        return results
 
     def update_movement(
         move_type: int,
@@ -708,6 +746,7 @@ __all__ = [
     # Particle functions
     "batch_update_particles",
     "compute_boss_attack",
+    "compute_starfield_positions",
     "create_explosive_missile_glow",
     "create_glow_circle",
     "create_laser_bullet_glow",

@@ -159,22 +159,101 @@ class StarLayer:
 
     def _init_stars(self, screen_width: int, screen_height: int, count: int) -> None:
         self._stars = []
+        self._star_tuples: list[tuple] = []  # Pre-packed for Rust fast path
         for _ in range(count):
+            x = random.random()
+            y = random.random()
+            size = random.uniform(self._size_range[0], self._size_range[1])
+            brightness = random.uniform(0.5, 1.0)
+            twinkle_speed = random.uniform(self._twinkle_speed_range[0], self._twinkle_speed_range[1])
+            twinkle_offset = random.random() * math.tau
             self._stars.append(
                 {
-                    "x": random.random(),
-                    "y": random.random(),
-                    "size": random.uniform(self._size_range[0], self._size_range[1]),
-                    "brightness": random.uniform(0.5, 1.0),
-                    "twinkle_speed": random.uniform(self._twinkle_speed_range[0], self._twinkle_speed_range[1]),
-                    "twinkle_offset": random.random() * math.tau,
+                    "x": x,
+                    "y": y,
+                    "size": size,
+                    "brightness": brightness,
+                    "twinkle_speed": twinkle_speed,
+                    "twinkle_offset": twinkle_offset,
                 }
             )
+            self._star_tuples.append(
+                (x, y, size, brightness, twinkle_speed, twinkle_offset)
+            )
+        # Decide whether to use the Rust fast path. Default ON when Rust is
+        # available — the fallback is only used if Rust is missing.
+        from airwar.core_bindings import RUST_AVAILABLE
+
+        self._use_rust = RUST_AVAILABLE and bool(self._star_tuples)
 
     def update(self, delta_time: float = 1.0) -> None:
         self._scroll_offset += self._speed * delta_time
 
     def render(self, surface: pygame.Surface, time: float) -> None:
+        if self._use_rust:
+            self._render_rust(surface, time)
+        else:
+            self._render_python(surface, time)
+
+    def _render_rust(self, surface: pygame.Surface, time: float) -> None:
+        """Rust fast path: 210 stars → 1 FFI call → C-level draw.circle.
+
+        Replaces the per-star Python dict lookup + sin-table lookup +
+        conditional check with a single Rust function that returns the
+        per-star output as a flat list. Python then just iterates and
+        draws — no per-iteration attribute lookups.
+        """
+        from airwar.core_bindings import compute_starfield_positions
+
+        results = compute_starfield_positions(
+            self._star_tuples,
+            self._scroll_offset,
+            float(self._screen_width),
+            float(self._screen_height),
+            time,
+            self._sin_table,
+            self._sin_table_size,
+            self._sin_table_mask,
+            self.GLOW_BRIGHTNESS_THRESHOLD,
+            self.GLOW_ALPHA_DIVISOR,
+            self.GLOW_ALPHA_CAP,
+        )
+
+        color = self._color
+        glow_cache = self._glow_cache
+        core_blue_boost = self.CORE_BLUE_BOOST
+        glow_alpha_divisor = self.GLOW_ALPHA_DIVISOR
+        glow_alpha_cap = self.GLOW_ALPHA_CAP
+        glow_threshold = self.GLOW_BRIGHTNESS_THRESHOLD
+
+        for x, y_pos, core_b, size, has_glow, _glow_alpha_unused in results:
+            if has_glow:
+                # Recompute glow_alpha from core_b (cheap math; avoids extra
+                # FFI field). The Rust function uses the same formula.
+                glow_alpha = min(glow_alpha_cap, core_b // glow_alpha_divisor)
+                if glow_alpha <= 0:
+                    pass  # below cap, skip glow
+                else:
+                    glow_radius = size * 2
+                    cache_key = (glow_radius, glow_alpha)
+                    cached = glow_cache.get(cache_key)
+                    if cached is None:
+                        cached = pygame.Surface((glow_radius * 2, glow_radius * 2), pygame.SRCALPHA)
+                        pygame.draw.circle(cached, (*color, glow_alpha), (glow_radius, glow_radius), glow_radius)
+                        glow_cache[cache_key] = cached
+                    surface.blit(cached, (x - glow_radius, y_pos - glow_radius), special_flags=pygame.BLEND_RGBA_ADD)
+
+            pygame.draw.circle(
+                surface,
+                (core_b, core_b, min(255, core_b + core_blue_boost)),
+                (x, y_pos),
+                size,
+            )
+
+    def _render_python(self, surface: pygame.Surface, time: float) -> None:
+        """Python fallback (when Rust is unavailable). Identical to the
+        pre-optimization implementation; visual output matches the Rust
+        path byte-for-byte."""
         for star in self._stars:
             y = (star["y"] + self._scroll_offset) % 1.0
 

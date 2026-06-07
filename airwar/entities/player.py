@@ -92,13 +92,11 @@ class Player(Entity):
         x: float,
         y: float,
         input_handler: InputSourceProtocol,
-        player_id: int = 0,
     ):
         constants = get_game_constants()
         super().__init__(x, y, self.PLAYER_SPRITE_W, self.PLAYER_SPRITE_H)
         self._constants = constants  # Cache for hot path access
         self._input_handler = input_handler
-        self.player_id = player_id
         self.health = constants.PLAYER.MAX_HEALTH
         self.max_health = constants.PLAYER.MAX_HEALTH
         self.base_speed = constants.PLAYER.SPEED

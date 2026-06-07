@@ -5,6 +5,7 @@ pub mod collision;
 pub mod movement;
 pub mod particles;
 pub mod sprites;
+pub mod starfield;
 pub mod vector2;
 
 #[pymodule]
@@ -48,6 +49,9 @@ fn airwar_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(sprites::create_laser_bullet_glow, m)?)?;
     m.add_function(wrap_pyfunction!(sprites::create_explosive_missile_glow, m)?)?;
     m.add_function(wrap_pyfunction!(sprites::create_glow_circle, m)?)?;
+
+    // Starfield functions
+    m.add_function(wrap_pyfunction!(starfield::compute_starfield_positions, m)?)?;
 
     // Bullet functions
     m.add_function(wrap_pyfunction!(bullets::batch_update_bullets, m)?)?;
