@@ -142,9 +142,9 @@ unsafe fn simd_collide_rects_sse(a: &AABB, b: &AABB) -> bool {
 }
 
 #[cfg(not(target_feature = "sse2"))]
-unsafe fn simd_collide_rects_sse(_a: &AABB, _b: &AABB) -> bool {
+unsafe fn simd_collide_rects_sse(a: &AABB, b: &AABB) -> bool {
     // Fallback to scalar
-    _a.intersects(_b)
+    a.intersects(b)
 }
 
 pub fn check_collision(a: &AABB, b: &AABB) -> bool {

@@ -21,10 +21,11 @@ from airwar.config import (
 from airwar.config.constants_access import get_game_constants
 from airwar.core_bindings import update_movement as rust_update_movement
 
-from .base import EnemyData, Entity, Vector2
-from .bullet import Bullet, BulletData
-from .interfaces import IBulletSpawner
-from .movement_strategies import get_movement_strategy
+from ..base import EnemyData, Entity, Vector2
+from ..bullet import Bullet, BulletData
+from ..interfaces import IBulletSpawner
+from ..movement_strategies import get_movement_strategy
+from .boss import boss_attack, boss_movement, boss_render, boss_state
 
 
 class EnemyState(Enum):
@@ -917,7 +918,7 @@ class BossData:
     Attributes:
         health: Maximum health points.
         speed: Movement speed in pixels per frame.
-        score: Score awarded when defeated.
+        score: Score awarded when points are defeated.
         width: Width of the boss sprite.
         height: Height of the boss sprite.
         fire_rate: Frames between attacks.
@@ -936,71 +937,70 @@ class BossData:
 
 
 class Boss(Entity):
-    """Boss entity with phase-based attacks.
+    """Boss entity with phase-based attacks and enrage sub-machine.
 
-    Boss class handles movement, phase transitions, and multiple attack patterns
-    (spread, aim, wave). Boss has 3 phases that increase in difficulty. Boss will
-    escape after survival_timer reaches escape_time.
+    After the Phase 1 refactor (boss class split), this class is a thin
+    coordinator over four components:
 
-    Attributes:
-        data: BossData configuration.
-        health: Current health points.
-        max_health: Maximum health points.
-        phase: Current attack phase (1-3).
-        fire_timer: Timer for attack fire rate.
-        attack_pattern: Current attack pattern index (0-2).
-        survival_timer: Frames survived in battle.
-        is_escaped: Whether the boss has escaped.
-        _bullet_spawner: Optional spawner for bullets.
+    * :class:`BossStateMachine` -- lifecycle, enrage timers, damage-lock
+    * :class:`BossMovement`     -- 4-phase patrol, aim-dash, enrage path
+    * :class:`BossAttackPatterns` -- spread/aim/wave/snapshot attacks
+    * :class:`BossRenderer`     -- sprite blit, facing angle, trail
+
+    All public attributes and the most-used private methods are
+    preserved so callers (and the 79+ Boss tests) keep working without
+    any change.
     """
 
-    ATTACK_DIRECTIONS = ["down", "left", "right", "up"]
-    DEFAULT_PHASE_DURATION = 120
-    ENTRY_SPEED = 2
-    ESCAPE_DRIFT = 0.5
-    LERP_FACTOR = 0.025
-    MIN_Y = 50
-    CENTER_OFFSET = 60
-    SPREAD_DAMAGE_INCREMENT = 2
-    AIM_DAMAGE_INCREMENT = 3
-    AIM_BULLET_COUNT = 3
-    WAVE_BULLET_COUNT = 8
+    # Re-exported tuning constants so legacy ``Boss.ENRAGE_DURATION``
+    # style imports continue to work after the split.
+    ATTACK_DIRECTIONS = boss_attack.ATTACK_DIRECTIONS
+    DEFAULT_PHASE_DURATION = boss_movement.DEFAULT_PHASE_DURATION
+    ENTRY_SPEED = boss_movement.ENTRY_SPEED
+    ESCAPE_DRIFT = boss_movement.ESCAPE_DRIFT
+    LERP_FACTOR = boss_movement.LERP_FACTOR
+    MIN_Y = boss_movement.MIN_Y
+    CENTER_OFFSET = boss_movement.CENTER_OFFSET
+    SPREAD_DAMAGE_INCREMENT = boss_attack.SPREAD_DAMAGE_INCREMENT
+    AIM_DAMAGE_INCREMENT = boss_attack.AIM_DAMAGE_INCREMENT
+    AIM_BULLET_COUNT = boss_attack.AIM_BULLET_COUNT
+    WAVE_BULLET_COUNT = boss_attack.WAVE_BULLET_COUNT
     HITBOX_WIDTH_SCALE = 1.78
     HITBOX_HEIGHT_SCALE = 1.22
-    AIM_DASH_DISTANCE = 220
-    AIM_DASH_PHASE_BONUS = 35
-    AIM_DASH_MAX_DISTANCE_RATIO = 0.58
-    AIM_DASH_DURATION = 10
-    ENRAGE_TRIGGER_RATIO = 0.30
-    ENRAGE_DURATION = 360
-    ENRAGE_TRANSITION_DURATION = 54
-    ENRAGE_SLOW_FACTOR = 0.24
-    ENRAGE_BULLET_SPEED = 3.2
-    ENRAGE_LASER_SPEED = 3.7
-    ENRAGE_RELEASE_BULLET_SPEED = 1.55
-    ENRAGE_RELEASE_LASER_SPEED = 1.35
-    ENRAGE_ATTACK_INTERVAL = 42
-    ENRAGE_ATTACK_WINDUP = 24
-    ENRAGE_RELEASE_INTERVAL = 6
-    ENRAGE_SNAPSHOT_LASER_COUNT = 4
-    ENRAGE_SNAPSHOT_RING_COUNT = 8
-    ENRAGE_PATH_RADIUS_SCALE = 1.50
-    ENRAGE_SQUARE_PATH_RATIO = 0.48
-    ENRAGE_TRAIL_LENGTH = 42
-    ENRAGE_TRAIL_RENDER_MAX = 16
-    ENRAGE_TRAIL_FINAL_SCALE = 3.0
-    ENRAGE_TRAIL_SCALE = 0.5
-    ENRAGE_TRAIL_BLUR_PASSES = 2
-    ENRAGE_EXIT_BACK_OFFSET = 118
-    ENRAGE_MUZZLE_FLASH_DURATION = 12
-    ENRAGE_MUZZLE_FLASH_PULSES = 2
-    ENRAGE_MUZZLE_FORWARD_SCALE = 0.58
-    ENRAGE_MUZZLE_SIDE_SCALE = 0.34
-    ENRAGE_RELEASE_HOLD_DURATION = 42
-    ENRAGE_RETURN_DURATION = 48
-    ENRAGE_CORE_COLOR = (126, 220, 255)
-    ENRAGE_DANGER_COLOR = (230, 72, 68)
-    ENRAGE_TRAIL_TINT = (96, 154, 220)
+    AIM_DASH_DISTANCE = boss_movement.AIM_DASH_DISTANCE
+    AIM_DASH_PHASE_BONUS = boss_movement.AIM_DASH_PHASE_BONUS
+    AIM_DASH_MAX_DISTANCE_RATIO = boss_movement.AIM_DASH_MAX_DISTANCE_RATIO
+    AIM_DASH_DURATION = boss_movement.AIM_DASH_DURATION
+    ENRAGE_TRIGGER_RATIO = boss_state.ENRAGE_TRIGGER_RATIO
+    ENRAGE_DURATION = boss_state.ENRAGE_DURATION
+    ENRAGE_TRANSITION_DURATION = boss_state.ENRAGE_TRANSITION_DURATION
+    ENRAGE_SLOW_FACTOR = boss_state.ENRAGE_SLOW_FACTOR
+    ENRAGE_BULLET_SPEED = boss_state.ENRAGE_BULLET_SPEED
+    ENRAGE_LASER_SPEED = boss_state.ENRAGE_LASER_SPEED
+    ENRAGE_RELEASE_BULLET_SPEED = boss_state.ENRAGE_RELEASE_BULLET_SPEED
+    ENRAGE_RELEASE_LASER_SPEED = boss_state.ENRAGE_RELEASE_LASER_SPEED
+    ENRAGE_ATTACK_INTERVAL = boss_state.ENRAGE_ATTACK_INTERVAL
+    ENRAGE_ATTACK_WINDUP = boss_state.ENRAGE_ATTACK_WINDUP
+    ENRAGE_RELEASE_INTERVAL = boss_state.ENRAGE_RELEASE_INTERVAL
+    ENRAGE_SNAPSHOT_LASER_COUNT = boss_state.ENRAGE_SNAPSHOT_LASER_COUNT
+    ENRAGE_SNAPSHOT_RING_COUNT = boss_state.ENRAGE_SNAPSHOT_RING_COUNT
+    ENRAGE_PATH_RADIUS_SCALE = boss_state.ENRAGE_PATH_RADIUS_SCALE
+    ENRAGE_SQUARE_PATH_RATIO = boss_state.ENRAGE_SQUARE_PATH_RATIO
+    ENRAGE_TRAIL_LENGTH = boss_state.ENRAGE_TRAIL_LENGTH
+    ENRAGE_TRAIL_RENDER_MAX = boss_state.ENRAGE_TRAIL_RENDER_MAX
+    ENRAGE_TRAIL_FINAL_SCALE = boss_state.ENRAGE_TRAIL_FINAL_SCALE
+    ENRAGE_TRAIL_SCALE = boss_state.ENRAGE_TRAIL_SCALE
+    ENRAGE_TRAIL_BLUR_PASSES = boss_state.ENRAGE_TRAIL_BLUR_PASSES
+    ENRAGE_EXIT_BACK_OFFSET = boss_state.ENRAGE_EXIT_BACK_OFFSET
+    ENRAGE_MUZZLE_FLASH_DURATION = boss_state.ENRAGE_MUZZLE_FLASH_DURATION
+    ENRAGE_MUZZLE_FLASH_PULSES = boss_state.ENRAGE_MUZZLE_FLASH_PULSES
+    ENRAGE_MUZZLE_FORWARD_SCALE = boss_state.ENRAGE_MUZZLE_FORWARD_SCALE
+    ENRAGE_MUZZLE_SIDE_SCALE = boss_state.ENRAGE_MUZZLE_SIDE_SCALE
+    ENRAGE_RELEASE_HOLD_DURATION = boss_state.ENRAGE_RELEASE_HOLD_DURATION
+    ENRAGE_RETURN_DURATION = boss_state.ENRAGE_RETURN_DURATION
+    ENRAGE_CORE_COLOR = boss_state.ENRAGE_CORE_COLOR
+    ENRAGE_DANGER_COLOR = boss_state.ENRAGE_DANGER_COLOR
+    ENRAGE_TRAIL_TINT = boss_state.ENRAGE_TRAIL_TINT
 
     def __init__(self, x: float, y: float, data: BossData):
         super().__init__(x, y, data.width, data.height)
@@ -1027,6 +1027,7 @@ class Boss(Entity):
         self._bullet_spawner: IBulletSpawner | None = None
         self.entity_id = id(self)
         self._hitbox = pygame.Rect(0, 0, 0, 0)
+        # Aim-dash state (mirrored on Boss for backward compat with tests)
         self._aim_dash_elapsed = 0
         self._aim_dash_duration = 0
         self._aim_dash_start_x = 0.0
@@ -1034,28 +1035,23 @@ class Boss(Entity):
         self._aim_dash_target_x = 0.0
         self._aim_dash_target_y = 0.0
         self._aim_fire_target: tuple[float, float] | None = None
-        self._enraged = False
-        self._enrage_timer = 0
-        self._enrage_bullets_released = False
-        self._enrage_snapshot_target: tuple[float, float] | None = None
-        self._enrage_trail: list[tuple[float, float]] = []
-        self._enrage_trail_ghost = None
-        self._enrage_trail_ghost_key = None
-        self._enrage_health_lock_active = False
-        self._enrage_health_lock_value = data.health * self.ENRAGE_TRIGGER_RATIO
-        self._enrage_attack_timer = 0
-        self._enrage_attack_index = 0
-        self._enrage_transition_timer = 0
-        self._enrage_transition_origin: tuple[float, float] | None = None
+        # Enrage render-only state
         self._facing_angle = 90.0
         self._muzzle_flash_timer = 0
         self._muzzle_flash_positions: list[tuple[float, float]] = []
-        self._enrage_release_hold_timer = 0
-        self._enrage_release_anchor: tuple[float, float] | None = None
-        self._enrage_return_timer = 0
-        self._enrage_return_origin: tuple[float, float] | None = None
-        self._enrage_return_target: tuple[float, float] | None = None
+        self._enrage_trail: list[tuple[float, float]] = []
+        self._enrage_trail_ghost = None
+        self._enrage_trail_ghost_key = None
+        # ---- Components (Phase 1 split) ----
+        self._state = boss_state.BossStateMachine(self)
+        self._movement = boss_movement.BossMovement(self)
+        self._attack = boss_attack.BossAttackPatterns(self)
+        self._renderer = boss_render.BossRenderer(self)
         self.sync_hitbox()
+
+    # ------------------------------------------------------------------
+    # Hitbox
+    # ------------------------------------------------------------------
 
     def sync_hitbox(self) -> None:
         self._hitbox.width = int(self.rect.width * self.HITBOX_WIDTH_SCALE)
@@ -1066,25 +1062,9 @@ class Boss(Entity):
         self.sync_hitbox()
         return self._hitbox
 
-    def _get_direction_offsets(self) -> dict:
-        return {
-            "down": (-90, self.rect.bottom),
-            "left": (180, self.rect.centery),
-            "right": (0, self.rect.centery),
-            "up": (90, self.rect.y),
-        }
-
-    def _get_direction_sources(self) -> dict:
-        return {
-            "down": (self.rect.centerx, self.rect.bottom),
-            "left": (self.rect.left, self.rect.centery),
-            "right": (self.rect.right, self.rect.centery),
-            "up": (self.rect.centerx, self.rect.y),
-        }
-
-    def _get_target_offsets(self) -> dict:
-        d = get_game_constants().BOSS.ATTACK_DISTANCE
-        return {"down": (0, d), "left": (-d, 0), "right": (d, 0), "up": (0, -d)}
+    # ------------------------------------------------------------------
+    # Public lifecycle
+    # ------------------------------------------------------------------
 
     def update(
         self,
@@ -1096,63 +1076,89 @@ class Boss(Entity):
     ) -> None:
         """Update boss state each frame.
 
-        Handles entrance animation, survival timer, horizontal movement,
-        phase transitions, and attack firing based on fire rate.
-
-        Args:
-            enemies: List of active enemies (for context).
-            slow_factor: Time dilation factor from slow field buffs.
-            player_pos: (x, y) of the player for aim attacks.
+        After the Phase 1 split, this method is the single per-frame
+        entry point. The explicit state→movement→attack ordering is
+        preserved by consulting :class:`BossStateMachine` first and only
+        running movement/attack when appropriate.
         """
+        # 1. Entrance animation
         if self.is_entering:
-            self.rect.y += self.ENTRY_SPEED * slow_factor
-            if self.rect.y >= self.target_y:
-                self.rect.y = self.target_y
+            if self._movement.tick_entry(slow_factor):
                 self.is_entering = False
+                self._state.finish_entry()
             return
 
-        self._trigger_enrage_if_needed(player_pos, kwargs.get("player"))
-        if self._enrage_transition_timer > 0:
-            self._update_enrage_transition(player_pos, kwargs.get("player"))
-            return
-        if self._enrage_timer > 0:
-            self._update_enrage(player_pos, kwargs.get("player"))
-            return
-        if self._enrage_release_hold_timer > 0:
-            self._update_enrage_release_hold(player_pos, kwargs.get("player"))
-            return
-        if self._enrage_return_timer > 0:
-            self._update_enrage_return(player_pos, kwargs.get("player"))
+        player = kwargs.get("player")
+
+        # 2. Enrage trigger (idempotent, may transition the state machine)
+        self._trigger_enrage_if_needed(player_pos, player)
+
+        # 3. Enrage sub-state dispatch
+        if self._state.is_enrage_transitioning():
+            self._movement.tick_enrage_transition()
+            target = self._state.enrage_snapshot_target
+            if target is not None:
+                self._renderer.face_target(target)
+            self._attack.tick_muzzle_flash()
+            self._state.tick_enrage_transition_timer()
+            if self._state.enrage_transition_timer <= 0:
+                self._state.finish_enrage_transition()
             return
 
+        if self._state.is_enrage_active():
+            self._attack.tick_muzzle_flash()
+            self._state.tick_enrage_timer()
+            target = self._state.enrage_snapshot_target
+            if target is not None:
+                self._renderer.record_enrage_trail()
+                progress = self._state.enrage_progress()
+                self._movement.tick_enrage_active()
+                self._renderer.face_target(target)
+                self._update_enrage_snapshot_attacks(target, progress)
+            if self._state.enrage_timer <= 0:
+                self._move_behind_player_after_enrage(target)
+                self._release_enrage_bullets(target)
+            return
+
+        if self._state.is_enrage_release_holding():
+            target = (
+                self._current_player_target(player, player_pos)
+                or self._state.enrage_snapshot_target
+                or (get_screen_width() / 2, get_screen_height() / 2)
+            )
+            self._movement.tick_enrage_release_hold()
+            self._renderer.face_target(target)
+            self._attack.tick_muzzle_flash()
+            self._state.tick_enrage_release_hold_timer()
+            if self._state.enrage_release_hold_timer <= 0:
+                self._movement.start_enrage_return()
+            return
+
+        if self._state.is_enrage_returning():
+            target = self._current_player_target(player, player_pos) or self._state.enrage_snapshot_target
+            self._movement.tick_enrage_return()
+            if target is not None:
+                self._renderer.face_target(target)
+            self._attack.tick_muzzle_flash()
+            self._state.tick_enrage_return_timer()
+            if self._state.enrage_return_timer <= 0:
+                self._state.finish_enrage_return()
+            return
+
+        # 4. Active (non-enrage) frame
         self.survival_timer += 1
-
         if self.survival_timer >= self.data.escape_time:
             self.is_escaped = True
             self.active = False
+            self._state.mark_escaped()
             return
 
-        if self.survival_timer >= self.data.escape_time - get_game_constants().ENEMY.ESCAPE_WARNING:
-            self._show_escape_warning = True
-            self.rect.y -= self.ESCAPE_DRIFT
-
-        if self._is_aim_dashing():
-            self._update_aim_dash()
+        if self._movement.is_aim_dashing():
+            if self._movement.tick_aim_dash():
+                self._finish_aim_dash()
             return
 
-        self._move_phase_timer += 1
-        if self._move_phase_timer >= self._move_phase_duration:
-            self._move_phase_timer = 0
-            self._move_phase_duration = random.randint(90, 200)
-            self._select_next_target(player_pos)
-
-        lerp_speed = self.LERP_FACTOR * self.data.speed
-        self.rect.x = self.rect.x + (self._target_x - self.rect.x) * lerp_speed
-        self.rect.y = self.rect.y + (self._target_y - self.rect.y) * lerp_speed
-
-        self._clamp_to_arena()
-
-        self.rect.y += math.sin(self.survival_timer * 0.025) * 0.4
+        self._movement.tick_active(player_pos, slow_factor)
 
         self.phase_timer += 1
         if self.phase_timer >= get_game_constants().BOSS.PHASE_INTERVAL and self.phase < 3:
@@ -1164,81 +1170,123 @@ class Boss(Entity):
             self.fire_timer = 0
             self._fire(player_pos)
 
+    # ------------------------------------------------------------------
+    # Damage & death
+    # ------------------------------------------------------------------
+
+    def take_damage(self, damage: int) -> int:
+        """Apply damage to the boss. Returns score value if killed."""
+        new_health, score_delta = self._state.compute_take_damage(damage)
+        if new_health != self.health:
+            self.health = new_health
+        if score_delta:
+            self.active = False
+            self._state.mark_dead()
+        return score_delta
+
+    # ------------------------------------------------------------------
+    # Public enrage predicates (delegate to state machine)
+    # ------------------------------------------------------------------
+
+    def is_enraged(self) -> bool:
+        return self._state.enraged
+
+    def is_enrage_active(self) -> bool:
+        return self._state.is_enrage_active()
+
+    def is_enrage_transitioning(self) -> bool:
+        return self._state.is_enrage_transitioning()
+
+    def should_lock_player_movement(self) -> bool:
+        return self._state.should_lock_player_movement()
+
+    def enrage_slow_factor(self) -> float:
+        return self._state.enrage_slow_factor()
+
+    def enrage_visual_intensity(self) -> float:
+        return self._state.enrage_visual_intensity()
+
+    # ------------------------------------------------------------------
+    # Backward-compatible state-field shims
+    #
+    # Several tests (and a few non-test callers) used to read/write the
+    # enrage state flags directly on the Boss instance. After the
+    # Phase 1 split those flags live on :class:`BossStateMachine`; the
+    # shims below keep the legacy attribute access working until those
+    # callers are migrated.
+    # ------------------------------------------------------------------
+
+    @property
+    def _enraged(self) -> bool:
+        return self._state._enraged
+
+    @_enraged.setter
+    def _enraged(self, value: bool) -> None:
+        self._state._enraged = bool(value)
+
+    @property
+    def _enrage_health_lock_active(self) -> bool:
+        return self._state._enrage_health_lock_active
+
+    @_enrage_health_lock_active.setter
+    def _enrage_health_lock_active(self, value: bool) -> None:
+        self._state._enrage_health_lock_active = bool(value)
+
+    @property
+    def _enrage_health_lock_value(self) -> int:
+        return self._state._enrage_health_lock_value
+
+    @_enrage_health_lock_value.setter
+    def _enrage_health_lock_value(self, value: int) -> None:
+        self._state._enrage_health_lock_value = int(value)
+
+    @property
+    def _enrage_attack_index(self) -> int:
+        return self._state._enrage_attack_index
+
+    @_enrage_attack_index.setter
+    def _enrage_attack_index(self, value: int) -> None:
+        self._state._enrage_attack_index = int(value)
+
+    @property
+    def _enrage_attack_timer(self) -> int:
+        return self._state._enrage_attack_timer
+
+    @_enrage_attack_timer.setter
+    def _enrage_attack_timer(self, value: int) -> None:
+        self._state._enrage_attack_timer = int(value)
+
+    # ------------------------------------------------------------------
+    # Backward-compatible private method shims
+    #
+    # These exist so tests / callers that previously poked the old
+    # internal methods continue to work. The shims delegate to the
+    # appropriate component and exist only for the duration of the
+    # deprecation window. New code should call the components directly.
+    # ------------------------------------------------------------------
+
     def _clamp_to_arena(self) -> None:
-        self.rect.x, self.rect.y = self._clamped_arena_position(self.rect.x, self.rect.y)
+        self.rect.x, self.rect.y = self._movement.clamped_arena_position(self.rect.x, self.rect.y)
 
     def _clamped_arena_position(self, x: float, y: float) -> tuple[float, float]:
-        screen_w = get_screen_width()
-        screen_h = get_screen_height()
-        return (
-            max(0, min(x, screen_w - self.rect.width)),
-            max(self.MIN_Y, min(y, screen_h // 2 + self.CENTER_OFFSET)),
-        )
+        return self._movement.clamped_arena_position(x, y)
 
     def _select_next_target(self, player_pos=None) -> None:
-        """Pick next movement target based on cycling phase.
-
-        Cycles through 4 phases: PATROL → SWEEP → HOVER → CHASE.
-        All phases include both horizontal and vertical movement.
-        """
-        screen_w = get_screen_width()
-        screen_h = get_screen_height()
-        margin = 50
-        x_min = margin + 60
-        x_max = screen_w - self.rect.width - margin - 60
-        # Vertical band: from near top to middle of screen
-        y_min = 60
-        y_max = screen_h // 2
-
-        phase = self._move_phase % 4
-        self._move_phase += 1
-
-        if phase == 0:
-            # PATROL: move to opposite horizontal side with vertical drift
-            if self.rect.centerx < screen_w // 2:
-                self._target_x = x_max
-            else:
-                self._target_x = x_min
-            self._target_y = random.randint(y_min, y_max)
-
-        elif phase == 1:
-            # SWEEP: diagonal across screen to a new zone
-            self._target_x = random.randint(x_min, x_max)
-            self._target_y = random.randint(y_min, y_max)
-
-        elif phase == 2:
-            # HOVER: local repositioning with gentle drift
-            self._target_x = random.randint(
-                int(max(margin, self.rect.x - 130)), int(min(screen_w - self.rect.width - margin, self.rect.x + 130))
-            )
-            self._target_y = random.randint(int(max(y_min, self.rect.y - 80)), int(min(y_max, self.rect.y + 80)))
-
-        else:
-            # CHASE: drift toward player area with random offset
-            if player_pos:
-                self._target_x = max(x_min, min(player_pos[0] + random.randint(-60, 60), x_max))
-                self._target_y = max(y_min, min(player_pos[1] - random.randint(80, 160), y_max))
-            else:
-                self._target_x = random.randint(x_min, x_max)
-                self._target_y = random.randint(y_min, y_max)
+        self._movement.select_next_target(player_pos)
 
     def _fire(self, player_pos: tuple[float, float] | None = None) -> None:
-        bullets = []
-
-        self.attack_direction = random.choice(self.ATTACK_DIRECTIONS)
-
+        self.attack_direction = self._attack.choose_attack_direction()
+        bullets: list[Bullet] = []
         if self.attack_pattern == 0:
-            bullets = self._spread_attack()
+            bullets = self._attack.spread_attack()
         elif self.attack_pattern == 1:
-            if player_pos:
-                self._start_aim_dash(player_pos)
+            if player_pos and self._movement.start_aim_dash(player_pos):
+                self._aim_fire_target = (float(player_pos[0]), float(player_pos[1]))
                 return
-            bullets = self._aim_attack()
+            bullets = self._attack.aim_attack(player_pos)
         else:
-            bullets = self._wave_attack()
-
+            bullets = self._attack.wave_attack()
         self._spawn_bullets(bullets)
-
         self.attack_pattern = (self.attack_pattern + 1) % 3
 
     def _spawn_bullets(self, bullets: list[Bullet]) -> None:
@@ -1246,149 +1294,146 @@ class Boss(Entity):
             for bullet in bullets:
                 self._bullet_spawner.spawn_bullet(bullet)
 
-    def _trigger_enrage_if_needed(self, player_pos: tuple[int, int] | None = None, player=None) -> None:
-        if self._enraged or self.max_health <= 0:
+    def _aim_attack(self, player_pos: tuple[float, float] | None = None) -> list[Bullet]:
+        return self._attack.aim_attack(player_pos)
+
+    def _spread_attack(self) -> list[Bullet]:
+        return self._attack.spread_attack()
+
+    def _wave_attack(self) -> list[Bullet]:
+        return self._attack.wave_attack()
+
+    def _get_direction_offsets(self) -> dict:
+        return self._attack.get_direction_offsets()
+
+    def _get_direction_sources(self) -> dict:
+        return self._attack.get_direction_sources()
+
+    def _get_target_offsets(self) -> dict:
+        return self._attack.get_target_offsets()
+
+    def _select_attack_direction_for_target(self, player_pos: tuple[float, float]) -> None:
+        self._attack.select_attack_direction_for_target(player_pos)
+
+    def _boss_muzzle_positions(self) -> tuple[tuple[float, float], tuple[float, float]]:
+        return self._attack.boss_muzzle_positions()
+
+    def _primary_boss_muzzle_position(self) -> tuple[float, float]:
+        return self._attack.primary_muzzle_position()
+
+    def _trigger_muzzle_flash(self, position: tuple[float, float] | None = None) -> None:
+        self._attack.trigger_muzzle_flash(position)
+
+    def _update_muzzle_flash(self) -> None:
+        self._attack.tick_muzzle_flash()
+
+    def _face_target(self, target: tuple[float, float]) -> None:
+        self._renderer.face_target(target)
+
+    def _facing_vector(self):
+        return self._renderer.facing_vector()
+
+    def _is_aim_dashing(self) -> bool:
+        return self._movement.is_aim_dashing()
+
+    def _start_aim_dash(self, player_pos: tuple[float, float]) -> None:
+        if not self._movement.start_aim_dash(player_pos):
+            self._finish_aim_dash()
+
+    def _update_aim_dash(self) -> None:
+        if self._movement.tick_aim_dash():
+            self._finish_aim_dash()
+
+    def _finish_aim_dash(self) -> None:
+        self._movement.finish_aim_dash()
+        bullets = self._attack.aim_attack(self._aim_fire_target)
+        self._aim_fire_target = None
+        self._spawn_bullets(bullets)
+        self.attack_pattern = (self.attack_pattern + 1) % 3
+
+    def _enrage_spawned_bullets(self) -> list[Bullet]:
+        if hasattr(self._bullet_spawner, "get_bullets"):
+            return self._bullet_spawner.get_bullets()
+        if hasattr(self._bullet_spawner, "bullets"):
+            return self._bullet_spawner.bullets
+        if hasattr(self._bullet_spawner, "bullet_list"):
+            return self._bullet_spawner.bullet_list
+        return []
+
+    # ------------------------------------------------------------------
+    # Enrage orchestration
+    # ------------------------------------------------------------------
+
+    def _trigger_enrage_if_needed(
+        self,
+        player_pos: tuple[int, int] | None = None,
+        player=None,
+    ) -> None:
+        if self._state.enraged or self.max_health <= 0:
             return
         if self.health / self.max_health > self.ENRAGE_TRIGGER_RATIO:
             return
-
         target = self._center_player_for_enrage(player, player_pos)
-        self._enraged = True
-        self._enrage_timer = self.ENRAGE_DURATION
-        self._enrage_bullets_released = False
-        self._enrage_health_lock_active = True
-        self.health = max(self.health, self._enrage_health_lock_value)
-        self._enrage_snapshot_target = target
-        self._enrage_trail.clear()
-        self._enrage_trail_ghost = None
-        self._enrage_trail_ghost_key = None
-        self._enrage_attack_timer = self.ENRAGE_ATTACK_WINDUP
-        self._enrage_attack_index = 0
-        self._enrage_transition_timer = self.ENRAGE_TRANSITION_DURATION
-        self._enrage_transition_origin = (self.rect.centerx, self.rect.centery)
-        self._enrage_release_hold_timer = 0
-        self._enrage_release_anchor = None
-        self._enrage_return_timer = 0
-        self._enrage_return_origin = None
-        self._enrage_return_target = None
-        self._face_target(target)
-        self._muzzle_flash_timer = 0
-        self._muzzle_flash_positions = []
+        self._state.trigger_enrage(target)
+        self._renderer.face_target(target)
+        self._attack.trigger_muzzle_flash()
+        self._renderer.clear_enrage_trail()
 
-    def _center_player_for_enrage(self, player=None, player_pos: tuple[int, int] | None = None) -> tuple[float, float]:
+    def _center_player_for_enrage(
+        self,
+        player=None,
+        player_pos: tuple[int, int] | None = None,
+    ) -> tuple[float, float]:
         target = (get_screen_width() / 2, get_screen_height() / 2)
         if player is not None:
             player.rect.x = target[0] - player.rect.width / 2
             player.rect.y = target[1] - player.rect.height / 2
             return target
-        return (float(player_pos[0]), float(player_pos[1])) if player_pos else target
+        if player_pos:
+            return (float(player_pos[0]), float(player_pos[1]))
+        return target
 
-    def _update_enrage(self, player_pos: tuple[int, int] | None = None, player=None) -> None:
-        target = self._center_player_for_enrage(player, self._enrage_snapshot_target or player_pos)
-        self._enrage_snapshot_target = target
-        self._record_enrage_trail()
+    def _update_enrage_snapshot_attacks(
+        self,
+        target: tuple[float, float],
+        progress: float,
+    ) -> None:
+        if not self._bullet_spawner or self._state.enrage_timer <= 1:
+            return
+        self._state.tick_enrage_attack_timer()
+        if self._state.enrage_attack_timer > 0:
+            return
+        self._spawn_bullets(self._attack.create_enrage_snapshot_attack(target, progress))
+        self._state.reset_enrage_attack_timer()
 
-        progress = self._enrage_progress()
-        target_center_x, target_center_y = self._enrage_path_center(target, progress)
-        self.rect.x, self.rect.y = self._clamped_enrage_position(
-            target_center_x - self.rect.width / 2,
-            target_center_y - self.rect.height / 2,
-        )
-        self.sync_hitbox()
-        self._face_target(target)
-        self._update_muzzle_flash()
-        self._update_enrage_snapshot_attacks(target, progress)
+    def _create_enrage_snapshot_attack(self, target: tuple[float, float], progress: float) -> list[Bullet]:
+        return self._attack.create_enrage_snapshot_attack(target, progress)
 
-        self._enrage_timer -= 1
-        if self._enrage_timer <= 0:
-            self._move_behind_player_after_enrage(target)
-            self._release_enrage_bullets(target)
+    def _release_enrage_bullets(self, target: tuple[float, float]) -> None:
+        for bullet in self._enrage_spawned_bullets():
+            if not getattr(bullet, "clear_immune", False) or not getattr(bullet, "held", False):
+                continue
+            direction = getattr(bullet, "release_direction", None)
+            if direction is None or direction.length() <= 0:
+                direction = Vector2(target[0] - bullet.rect.centerx, target[1] - bullet.rect.centery)
+                direction = direction.normalize() if direction.length() > 0 else Vector2(0, 1)
+            bullet.release_direction = direction
+            bullet.enrage_release_pending = True
+            bullet.enrage_release_delay = max(0, getattr(bullet, "enrage_release_delay", 0))
+        # Compute the release anchor by walking the path all the way to 1.0.
+        behind_center_x, behind_center_y = self._movement.enrage_path_center(target, 1.0)
+        self._state.begin_enrage_release_hold((behind_center_x, behind_center_y))
+        self._renderer.clear_enrage_trail()
 
-    def _update_enrage_transition(self, player_pos: tuple[int, int] | None = None, player=None) -> None:
-        target = self._center_player_for_enrage(player, self._enrage_snapshot_target or player_pos)
-        self._enrage_snapshot_target = target
-
-        elapsed = self.ENRAGE_TRANSITION_DURATION - self._enrage_transition_timer
-        transition = max(0.0, min(1.0, elapsed / max(1, self.ENRAGE_TRANSITION_DURATION)))
-        eased = 1.0 - (1.0 - transition) ** 3
-
-        start = self._enrage_transition_origin or (self.rect.centerx, self.rect.centery)
-        orbit_progress = self._enrage_progress()
-        target_center_x, target_center_y = self._enrage_path_center(target, orbit_progress)
-        charge_shake_x = math.sin(transition * math.tau * 7.0) * (1.0 - transition) * 13.0
-        charge_shake_y = math.cos(transition * math.tau * 5.0) * (1.0 - transition) * 8.0
-        center_x = start[0] + (target_center_x - start[0]) * eased + charge_shake_x
-        center_y = start[1] + (target_center_y - start[1]) * eased + charge_shake_y
-        self.rect.x, self.rect.y = self._clamped_enrage_position(
-            center_x - self.rect.width / 2,
-            center_y - self.rect.height / 2,
-        )
-        self.sync_hitbox()
-        self._face_target(target)
-        self._update_muzzle_flash()
-
-        self._enrage_transition_timer -= 1
-        if self._enrage_transition_timer <= 0:
-            self._enrage_timer -= 1
-        if self._enrage_timer <= 0:
-            self._enrage_transition_timer = 0
-            self._move_behind_player_after_enrage(target)
-            self._release_enrage_bullets(target)
-        elif self._enrage_transition_timer <= 0:
-            self._enrage_transition_timer = 0
-            self._enrage_transition_origin = None
-
-    def _enrage_progress(self) -> float:
-        return max(0.0, min(1.0, 1.0 - self._enrage_timer / self.ENRAGE_DURATION))
-
-    def _update_enrage_release_hold(self, player_pos: tuple[int, int] | None = None, player=None) -> None:
-        target = (
-            self._current_player_target(player, player_pos)
-            or self._enrage_snapshot_target
-            or (
-                get_screen_width() / 2,
-                get_screen_height() / 2,
-            )
-        )
-        anchor = self._enrage_release_anchor or self._enrage_path_center(target, 1.0)
-        self.rect.x = anchor[0] - self.rect.width / 2
-        self.rect.y = anchor[1] - self.rect.height / 2
+    def _move_behind_player_after_enrage(self, target: tuple[float, float]) -> None:
+        behind_center_x, behind_center_y = self._movement.enrage_path_center(target, 1.0)
+        self.rect.x = behind_center_x - self.rect.width / 2
+        self.rect.y = behind_center_y - self.rect.height / 2
         self._target_x = self.rect.x
         self._target_y = self.rect.y
         self.sync_hitbox()
-        self._face_target(target)
-        self._update_muzzle_flash()
-        self._enrage_release_hold_timer -= 1
-        if self._enrage_release_hold_timer <= 0:
-            self._enrage_release_anchor = None
-            self._start_enrage_return()
-
-    def _start_enrage_return(self) -> None:
-        self._enrage_return_timer = self.ENRAGE_RETURN_DURATION
-        self._enrage_return_origin = (self.rect.x, self.rect.y)
-        target_x, target_y = self._clamped_arena_position(self.rect.x, self.rect.y)
-        self._enrage_return_target = (target_x, target_y)
-
-    def _update_enrage_return(self, player_pos: tuple[int, int] | None = None, player=None) -> None:
-        target = self._current_player_target(player, player_pos) or self._enrage_snapshot_target
-        elapsed = self.ENRAGE_RETURN_DURATION - self._enrage_return_timer
-        progress = max(0.0, min(1.0, elapsed / max(1, self.ENRAGE_RETURN_DURATION)))
-        eased = progress * progress * (3 - 2 * progress)
-        origin = self._enrage_return_origin or (self.rect.x, self.rect.y)
-        destination = self._enrage_return_target or self._clamped_arena_position(self.rect.x, self.rect.y)
-        self.rect.x = origin[0] + (destination[0] - origin[0]) * eased
-        self.rect.y = origin[1] + (destination[1] - origin[1]) * eased
-        self._target_x = destination[0]
-        self._target_y = destination[1]
-        self.sync_hitbox()
-        if target:
-            self._face_target(target)
-        self._update_muzzle_flash()
-        self._enrage_return_timer -= 1
-        if self._enrage_return_timer <= 0:
-            self.rect.x, self.rect.y = destination
-            self._enrage_return_origin = None
-            self._enrage_return_target = None
+        if target is not None:
+            self._renderer.face_target(target)
 
     def _current_player_target(
         self, player=None, player_pos: tuple[int, int] | None = None
@@ -1403,477 +1448,81 @@ class Boss(Entity):
             return (float(player_pos[0]), float(player_pos[1]))
         return None
 
-    def _enrage_path_radius(self, target: tuple[float, float]) -> float:
-        base_radius = max(self.rect.width, self.rect.height) * self.ENRAGE_PATH_RADIUS_SCALE
-        max_radius = max(
-            24.0,
-            min(
-                target[0] - self.rect.width / 2,
-                get_screen_width() - target[0] - self.rect.width / 2,
-                target[1] - self.MIN_Y - self.rect.height / 2,
-                get_screen_height() - target[1] - self.rect.height / 2,
-            ),
-        )
-        return min(base_radius, max_radius)
-
-    def _enrage_path_center(self, target: tuple[float, float], progress: float) -> tuple[float, float]:
-        progress = max(0.0, min(1.0, progress))
-        radius = self._enrage_path_radius(target)
-        if progress <= self.ENRAGE_SQUARE_PATH_RATIO:
-            square_progress = progress / max(0.0001, self.ENRAGE_SQUARE_PATH_RATIO)
-            return self._enrage_square_path_center(target, radius, square_progress)
-        circle_progress = (progress - self.ENRAGE_SQUARE_PATH_RATIO) / max(0.0001, 1.0 - self.ENRAGE_SQUARE_PATH_RATIO)
-        angle = math.pi / 2 + circle_progress * math.tau
-        return (
-            target[0] + math.cos(angle) * radius,
-            target[1] + math.sin(angle) * radius,
-        )
-
-    def _enrage_square_path_center(
-        self,
-        target: tuple[float, float],
-        radius: float,
-        progress: float,
-    ) -> tuple[float, float]:
-        progress = max(0.0, min(1.0, progress))
-        segment = min(3, int(progress * 4))
-        local = progress * 4 - segment
-        # Square path starts/ends at bottom (same as circle-path start) so
-        # the square→circle transition at ENRAGE_SQUARE_PATH_RATIO is seamless.
-        points = (
-            (target[0], target[1] + radius),
-            (target[0] - radius, target[1]),
-            (target[0], target[1] - radius),
-            (target[0] + radius, target[1]),
-            (target[0], target[1] + radius),
-        )
-        start = points[segment]
-        end = points[segment + 1]
-        return (
-            start[0] + (end[0] - start[0]) * local,
-            start[1] + (end[1] - start[1]) * local,
-        )
-
     def _record_enrage_trail(self) -> None:
-        self._enrage_trail.append((self.rect.centerx, self.rect.centery))
-        max_trail = max(self.ENRAGE_TRAIL_LENGTH, int(max(self.rect.width, self.rect.height) * 3 / 40))
-        if len(self._enrage_trail) > max_trail:
-            self._enrage_trail = self._enrage_trail[-max_trail:]
+        self._renderer.record_enrage_trail()
 
     def _clamped_enrage_position(self, x: float, y: float) -> tuple[float, float]:
-        return (
-            max(0, min(x, get_screen_width() - self.rect.width)),
-            max(self.MIN_Y, min(y, get_screen_height() - self.rect.height)),
+        return self._movement.clamped_enrage_position(x, y)
+
+    def _enrage_path_radius(self, target: tuple[float, float]) -> float:
+        return self._movement.enrage_path_radius(target)
+
+    def _enrage_path_center(self, target: tuple[float, float], progress: float) -> tuple[float, float]:
+        return self._movement.enrage_path_center(target, progress)
+
+    def _update_enrage(self, player_pos: tuple[int, int] | None = None, player=None) -> None:
+        """Legacy entrypoint — kept for tests that called it directly."""
+        target = self._center_player_for_enrage(player, self._state.enrage_snapshot_target or player_pos)
+        self._state._enrage_snapshot_target = target
+        self._renderer.record_enrage_trail()
+        progress = self._state.enrage_progress()
+        self._movement.tick_enrage_active()
+        self._renderer.face_target(target)
+        self._attack.tick_muzzle_flash()
+        self._update_enrage_snapshot_attacks(target, progress)
+        self._state.tick_enrage_timer()
+        if self._state.enrage_timer <= 0:
+            self._move_behind_player_after_enrage(target)
+            self._release_enrage_bullets(target)
+
+    def _update_enrage_transition(self, player_pos: tuple[int, int] | None = None, player=None) -> None:
+        target = self._center_player_for_enrage(player, self._state.enrage_snapshot_target or player_pos)
+        self._state._enrage_snapshot_target = target
+        self._movement.tick_enrage_transition()
+        self._renderer.face_target(target)
+        self._attack.tick_muzzle_flash()
+        self._state.tick_enrage_transition_timer()
+        if self._state.enrage_transition_timer <= 0:
+            self._state.finish_enrage_transition()
+
+    def _update_enrage_release_hold(self, player_pos: tuple[int, int] | None = None, player=None) -> None:
+        target = (
+            self._current_player_target(player, player_pos)
+            or self._state.enrage_snapshot_target
+            or (get_screen_width() / 2, get_screen_height() / 2)
         )
+        self._movement.tick_enrage_release_hold()
+        self._renderer.face_target(target)
+        self._attack.tick_muzzle_flash()
+        self._state.tick_enrage_release_hold_timer()
+        if self._state.enrage_release_hold_timer <= 0:
+            self._movement.start_enrage_return()
 
-    def _update_enrage_snapshot_attacks(self, target: tuple[float, float], progress: float) -> None:
-        if not self._bullet_spawner or self._enrage_timer <= 1:
-            return
-        self._enrage_attack_timer -= 1
-        if self._enrage_attack_timer > 0:
-            return
-        self._spawn_bullets(self._create_enrage_snapshot_attack(target, progress))
-        self._enrage_attack_timer = self.ENRAGE_ATTACK_INTERVAL
-        self._enrage_attack_index += 1
+    def _start_enrage_return(self) -> None:
+        self._movement.start_enrage_return()
 
-    def _create_enrage_snapshot_attack(self, target: tuple[float, float], progress: float) -> list[Bullet]:
-        bullets = []
-        source = self._primary_boss_muzzle_position()
-        bullets.extend(self._create_enrage_snapshot_lasers(source, target, progress))
-        bullets.extend(self._create_enrage_snapshot_ring_bullets(target, progress))
-        release_index = self._enrage_attack_index
-        for bullet in bullets:
-            bullet.held = True
-            bullet.clear_immune = True
-            bullet.enrage_release_delay = release_index * self.ENRAGE_RELEASE_INTERVAL
-        return bullets
+    def _update_enrage_return(self, player_pos: tuple[int, int] | None = None, player=None) -> None:
+        target = self._current_player_target(player, player_pos) or self._state.enrage_snapshot_target
+        self._movement.tick_enrage_return()
+        if target is not None:
+            self._renderer.face_target(target)
+        self._attack.tick_muzzle_flash()
+        self._state.tick_enrage_return_timer()
+        if self._state.enrage_return_timer <= 0:
+            self._state.finish_enrage_return()
 
-    def _create_enrage_snapshot_lasers(
-        self,
-        source: tuple[float, float],
-        target: tuple[float, float],
-        progress: float,
-    ) -> list[Bullet]:
-        aim = Vector2(target[0] - source[0], target[1] - source[1])
-        if aim.length() <= 0:
-            aim = Vector2(0, 1)
-        aim = aim.normalize()
-        side_axis = Vector2(-aim.y, aim.x)
-        burst_axis = 1 if self._enrage_attack_index % 2 == 0 else -1
-        bullet_data = BulletData(
-            damage=get_game_constants().BOSS.AIM_BULLET_DAMAGE_BASE + self.phase * self.AIM_DAMAGE_INCREMENT,
-            speed=self.ENRAGE_LASER_SPEED,
-            owner="enemy",
-            bullet_type="laser",
-        )
-        bullets = []
-        spread = max(self.rect.width * 0.22, 34)
-        for index in range(self.ENRAGE_SNAPSHOT_LASER_COUNT):
-            offset = (index - (self.ENRAGE_SNAPSHOT_LASER_COUNT - 1) / 2) * spread
-            phase_bias = math.sin(progress * math.tau * 4 + index) * 0.22 * burst_axis
-            direction = Vector2(
-                aim.x + side_axis.x * phase_bias,
-                aim.y + side_axis.y * phase_bias,
-            ).normalize()
-            bullet_x = source[0] + side_axis.x * offset
-            bullet_y = source[1] + side_axis.y * offset
-            bullet = Bullet(bullet_x, bullet_y, bullet_data)
-            bullet.velocity = Vector2(0, 0)
-            bullet.release_direction = direction
-            bullet.enrage_release_speed = self.ENRAGE_RELEASE_LASER_SPEED
-            bullets.append(bullet)
-            self._trigger_muzzle_flash((bullet_x, bullet_y))
-        return bullets
+    def _enrage_progress(self) -> float:
+        return self._state.enrage_progress()
 
-    def _create_enrage_snapshot_ring_bullets(self, target: tuple[float, float], progress: float) -> list[Bullet]:
-        cx, cy = target
-        bullet_data = BulletData(
-            damage=get_game_constants().BOSS.WAVE_BULLET_DAMAGE,
-            speed=self.ENRAGE_BULLET_SPEED,
-            owner="enemy",
-            bullet_type="single",
-        )
-        bullets = []
-        muzzles = self._boss_muzzle_positions()
-        radius = max(self.rect.width, self.rect.height) * (1.65 + 0.25 * math.sin(progress * math.tau * 5))
-        base_angle = progress * math.tau * 2.8 + self._enrage_attack_index * 0.47
-        gap_index = self._enrage_attack_index % self.ENRAGE_SNAPSHOT_RING_COUNT
-        for index in range(self.ENRAGE_SNAPSHOT_RING_COUNT):
-            if index == gap_index:
-                continue
-            angle = base_angle + math.tau * index / self.ENRAGE_SNAPSHOT_RING_COUNT
-            bullet_x = cx + math.cos(angle) * radius
-            bullet_y = cy + math.sin(angle) * radius * 0.78
-            direction = Vector2(cx - bullet_x, cy - bullet_y).normalize()
-            if direction.length() <= 0:
-                direction = Vector2(0, 1)
-            bullet = Bullet(bullet_x, bullet_y, bullet_data)
-            bullet.velocity = Vector2(0, 0)
-            bullet.release_direction = direction
-            bullet.enrage_release_speed = self.ENRAGE_RELEASE_BULLET_SPEED
-            bullets.append(bullet)
-            self._trigger_muzzle_flash(muzzles[(len(bullets) - 1) % len(muzzles)])
-        return bullets
+    # ------------------------------------------------------------------
+    # Renderer
+    # ------------------------------------------------------------------
 
-    def _release_enrage_bullets(self, target: tuple[float, float]) -> None:
-        for bullet in self._enrage_spawned_bullets():
-            if not getattr(bullet, "clear_immune", False) or not getattr(bullet, "held", False):
-                continue
-            direction = getattr(bullet, "release_direction", None)
-            if direction is None or direction.length() <= 0:
-                direction = Vector2(target[0] - bullet.rect.centerx, target[1] - bullet.rect.centery)
-                direction = direction.normalize() if direction.length() > 0 else Vector2(0, 1)
-            bullet.release_direction = direction
-            bullet.enrage_release_pending = True
-            bullet.enrage_release_delay = max(0, getattr(bullet, "enrage_release_delay", 0))
-        self._enrage_bullets_released = True
-        self._enrage_health_lock_active = False
-        self._enrage_timer = 0
-        self._enrage_release_hold_timer = self.ENRAGE_RELEASE_HOLD_DURATION
-        self._enrage_trail.clear()
-        self._enrage_trail_ghost = None
-        self._enrage_trail_ghost_key = None
-
-    def _move_behind_player_after_enrage(self, target: tuple[float, float]) -> None:
-        behind_center_x, behind_center_y = self._enrage_path_center(target, 1.0)
-        self._enrage_release_anchor = (behind_center_x, behind_center_y)
-        self.rect.x = behind_center_x - self.rect.width / 2
-        self.rect.y = behind_center_y - self.rect.height / 2
-        self._target_x = self.rect.x
-        self._target_y = self.rect.y
-        self.sync_hitbox()
-        self._face_target(target)
-
-    def _face_target(self, target: tuple[float, float]) -> None:
-        dx = target[0] - self.rect.centerx
-        dy = target[1] - self.rect.centery
-        if dx == 0 and dy == 0:
-            return
-        self._facing_angle = math.degrees(math.atan2(dy, dx))
-
-    def _facing_vector(self) -> Vector2:
-        radians = math.radians(self._facing_angle)
-        return Vector2(math.cos(radians), math.sin(radians))
-
-    def _boss_muzzle_positions(self) -> tuple[tuple[float, float], tuple[float, float]]:
-        forward = self._facing_vector().normalize()
-        if forward.length() <= 0:
-            forward = Vector2(0, 1)
-        side_axis = Vector2(-forward.y, forward.x)
-        muzzle_center_x = self.rect.centerx + forward.x * self.rect.height * self.ENRAGE_MUZZLE_FORWARD_SCALE
-        muzzle_center_y = self.rect.centery + forward.y * self.rect.height * self.ENRAGE_MUZZLE_FORWARD_SCALE
-        side_offset = self.rect.width * self.ENRAGE_MUZZLE_SIDE_SCALE
-        return (
-            (muzzle_center_x + side_axis.x * side_offset, muzzle_center_y + side_axis.y * side_offset),
-            (muzzle_center_x - side_axis.x * side_offset, muzzle_center_y - side_axis.y * side_offset),
-        )
-
-    def _primary_boss_muzzle_position(self) -> tuple[float, float]:
-        muzzles = self._boss_muzzle_positions()
-        return (
-            (muzzles[0][0] + muzzles[1][0]) / 2,
-            (muzzles[0][1] + muzzles[1][1]) / 2,
-        )
-
-    def _trigger_muzzle_flash(self, position: tuple[float, float] | None = None) -> None:
-        self._muzzle_flash_timer = self.ENRAGE_MUZZLE_FLASH_DURATION
-        if position is None:
-            self._muzzle_flash_positions = list(self._boss_muzzle_positions())
-            return
-        self._muzzle_flash_positions.append(position)
-
-    def _update_muzzle_flash(self) -> None:
-        if self._muzzle_flash_timer <= 0:
-            return
-        self._muzzle_flash_timer -= 1
-        if self._muzzle_flash_timer <= 0:
-            self._muzzle_flash_positions = []
-
-    def _enrage_spawned_bullets(self) -> list[Bullet]:
-        if hasattr(self._bullet_spawner, "get_bullets"):
-            return self._bullet_spawner.get_bullets()
-        if hasattr(self._bullet_spawner, "bullets"):
-            return self._bullet_spawner.bullets
-        if hasattr(self._bullet_spawner, "bullet_list"):
-            return self._bullet_spawner.bullet_list
-        return []
-
-    def _is_aim_dashing(self) -> bool:
-        return self._aim_dash_duration > 0
-
-    def _start_aim_dash(self, player_pos: tuple[float, float]) -> None:
-        if not player_pos:
-            return
-
-        self._aim_fire_target = (float(player_pos[0]), float(player_pos[1]))
-        dx = player_pos[0] - self.rect.centerx
-        dy = player_pos[1] - self.rect.centery
-        distance = math.hypot(dx, dy)
-        if distance <= 0:
-            self._finish_aim_dash()
-            return
-
-        dash_distance = self.AIM_DASH_DISTANCE + self.phase * self.AIM_DASH_PHASE_BONUS
-        dash_distance = min(dash_distance, distance * self.AIM_DASH_MAX_DISTANCE_RATIO)
-        target_center_x = self.rect.centerx + dx / distance * dash_distance
-        target_center_y = self.rect.centery + dy / distance * dash_distance
-        target_x = target_center_x - self.rect.width / 2
-        target_y = target_center_y - self.rect.height / 2
-        target_x, target_y = self._clamped_arena_position(target_x, target_y)
-
-        if abs(target_x - self.rect.x) < 1 and abs(target_y - self.rect.y) < 1:
-            self._finish_aim_dash()
-            return
-
-        self._aim_dash_elapsed = 0
-        self._aim_dash_duration = self.AIM_DASH_DURATION
-        self._aim_dash_start_x = self.rect.x
-        self._aim_dash_start_y = self.rect.y
-        self._aim_dash_target_x = target_x
-        self._aim_dash_target_y = target_y
-        self._target_x = target_x
-        self._target_y = target_y
-
-    def _update_aim_dash(self) -> None:
-        self._aim_dash_elapsed += 1
-        progress = min(1.0, self._aim_dash_elapsed / self._aim_dash_duration)
-        self.rect.x = self._aim_dash_start_x + (self._aim_dash_target_x - self._aim_dash_start_x) * progress
-        self.rect.y = self._aim_dash_start_y + (self._aim_dash_target_y - self._aim_dash_start_y) * progress
-        self._clamp_to_arena()
-
-        if progress >= 1.0:
-            self._finish_aim_dash()
-
-    def _finish_aim_dash(self) -> None:
-        self._aim_dash_duration = 0
-        self._aim_dash_elapsed = 0
-        bullets = self._aim_attack(self._aim_fire_target)
-        self._aim_fire_target = None
-        self._spawn_bullets(bullets)
-        self.attack_pattern = (self.attack_pattern + 1) % 3
-
-    def _select_attack_direction_for_target(self, player_pos: tuple[float, float]) -> None:
-        dx = player_pos[0] - self.rect.centerx
-        dy = player_pos[1] - self.rect.centery
-        if abs(dx) > abs(dy) * 1.2:
-            self.attack_direction = "right" if dx > 0 else "left"
-        else:
-            self.attack_direction = "down" if dy >= 0 else "up"
-
-    def _spread_attack(self) -> list[Bullet]:
-        B = get_game_constants().BOSS
-        bullets = []
-
-        direction_offsets = self._get_direction_offsets()
-
-        base_angle, y_pos = direction_offsets.get(self.attack_direction, (-90, self.rect.bottom))
-        center_x = self.rect.centerx
-        bullet_count = B.SPREAD_BULLET_COUNT_BASE + self.phase
-
-        for i in range(bullet_count):
-            if self.attack_direction == "left" or self.attack_direction == "right":
-                angle = base_angle + (B.SIDE_ANGLE_RANGE / (bullet_count - 1)) * i - B.SIDE_ANGLE_OFFSET
-            else:
-                angle = base_angle + (B.SPREAD_ANGLE_RANGE / (bullet_count - 1)) * i
-
-            rad = math.radians(angle)
-            speed = B.SPREAD_SPEED
-            vx = math.cos(rad) * speed
-            vy = math.sin(rad) * speed
-
-            bullet_data = BulletData(
-                damage=B.BULLET_DAMAGE_BASE + self.phase * self.SPREAD_DAMAGE_INCREMENT,
-                speed=B.SPREAD_SPEED,
-                owner="enemy",
-                bullet_type="spread",
-            )
-            bullet = Bullet(center_x, y_pos, bullet_data)
-            bullet.velocity = Vector2(vx, vy)
-            bullets.append(bullet)
-
-        return bullets
-
-    def _aim_attack(self, player_pos: tuple[float, float] | None = None) -> list[Bullet]:
-        bullets = []
-
-        if player_pos:
-            self._select_attack_direction_for_target(player_pos)
-
-        direction_sources = self._get_direction_sources()
-
-        source_x, source_y = direction_sources.get(self.attack_direction, (self.rect.centerx, self.rect.bottom))
-
-        if player_pos:
-            aim_dx = player_pos[0] - source_x
-            aim_dy = player_pos[1] - source_y
-        else:
-            target_offsets = self._get_target_offsets()
-            aim_dx, aim_dy = target_offsets.get(self.attack_direction, (0, get_game_constants().BOSS.ATTACK_DISTANCE))
-
-        aim_vector = Vector2(aim_dx, aim_dy)
-        if aim_vector.length() <= 0:
-            aim_vector = Vector2(0, get_game_constants().BOSS.ATTACK_DISTANCE)
-        aim_vector = aim_vector.normalize()
-        spread_axis = Vector2(-aim_vector.y, aim_vector.x)
-
-        bullet_data = BulletData(
-            damage=get_game_constants().BOSS.AIM_BULLET_DAMAGE_BASE + self.phase * self.AIM_DAMAGE_INCREMENT,
-            speed=get_game_constants().BOSS.AIM_SPEED,
-            owner="enemy",
-            bullet_type="laser",
-        )
-
-        for i in range(self.AIM_BULLET_COUNT):
-            offset = (i - (self.AIM_BULLET_COUNT - 1) / 2) * get_game_constants().BOSS.BULLET_OFFSET_X
-            bullet_x = source_x + spread_axis.x * offset
-            bullet_y = source_y + spread_axis.y * offset
-            bullet = Bullet(bullet_x, bullet_y, bullet_data)
-            if player_pos:
-                velocity = Vector2(player_pos[0] - bullet_x, player_pos[1] - bullet_y)
-                velocity = aim_vector if velocity.length() <= 0 else velocity.normalize()
-            else:
-                velocity = aim_vector
-            bullet.velocity = velocity * get_game_constants().BOSS.AIM_SPEED
-            bullets.append(bullet)
-
-        return bullets
-
-    def _wave_attack(self) -> list[Bullet]:
-        bullets = []
-
-        direction_sources = self._get_direction_sources()
-
-        center_x, center_y = direction_sources.get(self.attack_direction, (self.rect.centerx, self.rect.centery))
-
-        for i in range(self.WAVE_BULLET_COUNT):
-            if self.attack_direction == "left":
-                angle = 180 + get_game_constants().BOSS.WAVE_ANGLE_INTERVAL * i
-            elif self.attack_direction == "right":
-                angle = 0 + get_game_constants().BOSS.WAVE_ANGLE_INTERVAL * i
-            elif self.attack_direction == "up":
-                angle = 90 + get_game_constants().BOSS.WAVE_ANGLE_INTERVAL * i
-            else:
-                angle = -90 + get_game_constants().BOSS.WAVE_ANGLE_INTERVAL * i
-
-            rad = math.radians(angle)
-            speed = get_game_constants().BOSS.WAVE_SPEED
-
-            bullet_data = BulletData(
-                damage=get_game_constants().BOSS.WAVE_BULLET_DAMAGE, speed=speed, owner="enemy", bullet_type="single"
-            )
-            bullet = Bullet(center_x, center_y, bullet_data)
-            bullet.velocity = Vector2(math.cos(rad) * speed, math.sin(rad) * speed)
-            bullets.append(bullet)
-
-        return bullets
+    def render(self, surface: pygame.Surface) -> None:
+        self._renderer.draw(surface)
 
     def set_bullet_spawner(self, spawner: IBulletSpawner) -> None:
         self._bullet_spawner = spawner
-
-    def render(self, surface: pygame.Surface) -> None:
-        if self._sprite:
-            surface.blit(self._sprite, self.get_rect())
-
-    def take_damage(self, damage: int) -> int:
-        """Apply damage to the boss.
-
-        Reduces health and returns the score value if the boss is killed.
-
-        Args:
-        damage: Amount of damage to apply.
-
-        Returns:
-        Score value if boss is killed, 0 otherwise.
-        """
-        if damage is None or damage < 0:
-            return 0
-        if not self._enraged and self.max_health > 0:
-            projected_health = self.health - damage
-            if projected_health <= self._enrage_health_lock_value:
-                self.health = self._enrage_health_lock_value
-                return 0
-        if self._enrage_health_lock_active:
-            self.health = max(self.health, self._enrage_health_lock_value)
-            return 0
-        self.health -= damage
-        if self.health <= 0:
-            self.active = False
-            return self.data.score
-        return 0
-
-    def is_enraged(self) -> bool:
-        return self._enraged
-
-    def is_enrage_active(self) -> bool:
-        return self._enrage_timer > 0
-
-    def should_lock_player_movement(self) -> bool:
-        return self._enrage_timer > 0 and not self._enrage_bullets_released
-
-    def enrage_slow_factor(self) -> float:
-        return self.ENRAGE_SLOW_FACTOR if self._enrage_timer > 0 else 1.0
-
-    def enrage_visual_intensity(self) -> float:
-        if self._enrage_timer > 0:
-            progress = self._enrage_progress()
-            eased = progress * progress * (3 - 2 * progress)
-            transition_ramp = 1.0
-            if self._enrage_transition_timer > 0:
-                elapsed = self.ENRAGE_TRANSITION_DURATION - self._enrage_transition_timer
-                transition = max(0.0, min(1.0, elapsed / max(1, self.ENRAGE_TRANSITION_DURATION)))
-                transition_ramp = transition * transition * (3 - 2 * transition)
-            return max(0.0, min(0.88, (0.18 + 0.70 * eased) * transition_ramp))
-        if self._enrage_release_hold_timer > 0:
-            hold = self._enrage_release_hold_timer / max(1, self.ENRAGE_RELEASE_HOLD_DURATION)
-            return max(0.0, min(0.74, 0.52 + 0.22 * hold))
-        if self._enrage_return_timer > 0:
-            fade = self._enrage_return_timer / max(1, self.ENRAGE_RETURN_DURATION)
-            eased = fade * fade * (3 - 2 * fade)
-            return max(0.0, min(0.52, 0.52 * eased))
-        return 0.0
-
-    def is_enrage_transitioning(self) -> bool:
-        return self._enrage_transition_timer > 0
 
     def get_time_remaining(self) -> float:
         remaining = self.data.escape_time - self.survival_timer

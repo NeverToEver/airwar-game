@@ -22,12 +22,13 @@ from airwar.config import (
 from airwar.config.constants_access import get_game_constants
 
 # === Local: different package in airwar ===
-from airwar.input.input_handler import InputHandler
+from airwar.protocols import InputSourceProtocol
 from airwar.utils.sprites import get_player_sprite
 
 # === Local: same package ===
 from .base import Entity, Vector2
 from .bullet import Bullet, BulletData
+from .player_state import PlayerStateMachine
 
 
 class PhaseDashState(Enum):
@@ -86,7 +87,7 @@ class Player(Entity):
 
     # 1. Special methods
 
-    def __init__(self, x: float, y: float, input_handler: InputHandler):
+    def __init__(self, x: float, y: float, input_handler: InputSourceProtocol):
         constants = get_game_constants()
         super().__init__(x, y, self.PLAYER_SPRITE_W, self.PLAYER_SPRITE_H)
         self._constants = constants  # Cache for hot path access
@@ -138,6 +139,8 @@ class Player(Entity):
         self._facing_angle_degrees = 0.0
         self._facing_direction = Vector2(0, -1)
         self._rotated_sprite_cache: dict[tuple[int, int, int], pygame.Surface] = {}
+        # --- Phase 3: HSM ---
+        self._state = PlayerStateMachine(self)
 
     # 2. Properties
 
@@ -343,6 +346,23 @@ class Player(Entity):
 
     def is_phase_dashing(self) -> bool:
         return self._phase_dash_state in {PhaseDashState.WINDUP, PhaseDashState.ACTIVE, PhaseDashState.RECOVERY}
+
+    # --- HSM predicates (Phase 3) ---
+
+    def is_alive(self) -> bool:
+        return self._state.is_alive()
+
+    def is_dying(self) -> bool:
+        return self._state.is_dying()
+
+    def is_dead(self) -> bool:
+        return self._state.is_dead()
+
+    def alive_substate(self):
+        return self._state.alive_substate
+
+    def is_alive_substate(self, sub) -> bool:
+        return self._state.alive_substate == sub
 
     def is_phase_dash_invincible(self) -> bool:
         return self._phase_dash_state in {PhaseDashState.WINDUP, PhaseDashState.ACTIVE, PhaseDashState.RECOVERY}

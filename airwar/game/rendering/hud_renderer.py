@@ -6,6 +6,7 @@ import math
 import pygame
 
 from airwar.config.design_tokens import SystemColors, SystemUI, get_design_tokens
+from airwar.game.buffs.buff_registry import create_buff
 from airwar.ui.buff_stats_panel import AttackModePanel, BuffStatsPanel
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.ui.scene_rendering_utils import render_cached_text
@@ -86,7 +87,7 @@ class HUDRenderer:
         self._boss_warning_font = get_cjk_font(SystemUI.MILITARY_SMALL_SIZE)
         self._boss_timer_font = get_cjk_font(self.BOSS_TIMER_FONT_SIZE)
         self._boss_hurry_font = get_cjk_font(self.BOSS_HURRY_FONT_SIZE)
-        self._buff_stats_panel = BuffStatsPanel()
+        self._buff_stats_panel = BuffStatsPanel(buff_factory=create_buff)
         self._attack_mode_panel = AttackModePanel()
         self._text_cache: dict = {}
 

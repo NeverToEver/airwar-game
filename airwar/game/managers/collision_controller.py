@@ -521,6 +521,7 @@ class CollisionController:
                 if score_reward > 0:
                     score_gained += score_reward
                     boss_killed = True
+                    break  # Boss killed -- stop iterating, remaining bullets would hit a corpse
                 if piercing_level <= 0:
                     bullet.active = False
 

@@ -1,14 +1,10 @@
 """Difficulty coefficient panel — visual indicator of current difficulty."""
 
-from typing import TYPE_CHECKING
-
 import pygame
 
 from airwar.config.design_tokens import Colors, SystemColors
+from airwar.protocols import DifficultyManagerProtocol
 from airwar.utils.fonts import get_cjk_font
-
-if TYPE_CHECKING:
-    from airwar.game.systems.difficulty_manager import DifficultyManager
 
 
 class DifficultyCoefficientPanel:
@@ -32,7 +28,7 @@ class DifficultyCoefficientPanel:
     _bg_surface_cache = None
     _glow_surface_cache = {}
 
-    def __init__(self, difficulty_manager: "DifficultyManager"):
+    def __init__(self, difficulty_manager: DifficultyManagerProtocol):
         self._manager = difficulty_manager
         self._initial_multiplier = difficulty_manager.initial_multiplier
         self._last_multiplier = difficulty_manager.get_current_multiplier()

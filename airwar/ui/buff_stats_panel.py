@@ -2,12 +2,13 @@
 
 import logging
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import pygame
 
 from airwar.config.design_tokens import Colors, SystemColors, SystemUI, get_design_tokens
-from airwar.game.buffs.buff_registry import create_buff
+from airwar.protocols import BuffFactory
 from airwar.utils.fonts import get_cjk_font
 
 from .buff_display import get_buff_display_name
@@ -33,9 +34,10 @@ class BuffStatEntry:
 class BuffStatsAggregator:
     """Buff stats aggregator — computes combined buff effect values."""
 
-    def __init__(self):
+    def __init__(self, buff_factory: BuffFactory):
         self._stat_formatters = self._init_stat_formatters()
         self._category_order = ["offense", "defense", "health", "utility"]
+        self._buff_factory: Callable[[str], object] = buff_factory
 
     def _init_stat_formatters(self) -> dict[str, callable]:
         return {
@@ -70,7 +72,7 @@ class BuffStatsAggregator:
 
     def _get_buff_color(self, name: str, reward_system) -> tuple[int, int, int]:
         try:
-            return create_buff(name).get_color()
+            return self._buff_factory(name).get_color()
         except (ValueError, AttributeError):
             return SystemColors.STATS_TEXT
 
@@ -209,7 +211,7 @@ class BuffStatsPanel:
             cls._panel_surface_cache.clear()
         cls._panel_surface_cache[key] = surface
 
-    def __init__(self):
+    def __init__(self, buff_factory: BuffFactory | None = None):
         pygame.font.init()
 
         self._tokens = get_design_tokens()
@@ -233,7 +235,7 @@ class BuffStatsPanel:
         self._title_color = colors.TEXT_SECONDARY
         self._summary_bg_color = (*colors.BACKGROUND_PANEL, 30)
 
-        self._aggregator = BuffStatsAggregator()
+        self._aggregator = BuffStatsAggregator(buff_factory=buff_factory)
         self._cached_surface: pygame.Surface | None = None
         self._cache_valid = False
 

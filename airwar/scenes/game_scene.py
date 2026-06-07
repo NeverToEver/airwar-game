@@ -52,6 +52,7 @@ from airwar.ui.warning_banner import WarningBanner
 from airwar.utils.mouse_interaction import MouseInteractiveMixin
 from airwar.utils.sprites import prewarm_glow_caches, prewarm_ship_sprite_caches
 
+from .game_scene_renderer import GameSceneRenderer
 from .scene import Scene
 
 
@@ -80,6 +81,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     DOCKING_INVINCIBILITY_FRAMES = 1200  # 20 seconds at 60fps
 
     AUTO_SAVE_INTERVAL = 1800  # 30 seconds at 60fps
+    BULLET_CLEAR_DEDUP_FRAMES = 1  # Skip _clear_nearby_enemy_bullets if it ran this frame
 
     def __init__(self):
         Scene.__init__(self)
@@ -127,6 +129,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._viewport = None
         self._phase_dash_invincibility_active = False
         self._survival_frames = 0
+        self._last_bullet_clear_frame = -(10**9)
 
     def enter(self, **kwargs) -> None:
         """Initialize the game scene.
@@ -209,6 +212,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._ammo_magazine = AmmoMagazine()
         self._warning_banner = WarningBanner()
         self._aim_crosshair = AimCrosshair()
+        self._scene_renderer = GameSceneRenderer(self)
 
         self._setup_reward_selector()
         self._init_mother_ship_system(screen_width, screen_height)
@@ -568,9 +572,15 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
         Preserves distant bullets as ongoing pressure while giving the player
         a breather from immediate threats near the impact point.
+
+        Dedup: the O(n) scan runs at most once per frame, so multi-bullet hits
+        in a single collision pass do not repeat the work.
         """
         if not self.spawn_controller:
             return
+        if self._survival_frames - self._last_bullet_clear_frame < self.BULLET_CLEAR_DEDUP_FRAMES:
+            return
+        self._last_bullet_clear_frame = self._survival_frames
         px = player.rect.centerx
         py = player.rect.centery
         r2 = self.BULLET_CLEAR_RADIUS * self.BULLET_CLEAR_RADIUS
@@ -713,96 +723,13 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     def render(self, surface: pygame.Surface) -> None:
         """Render the game scene.
 
+        After the Phase 4 split, the actual rendering pipeline lives in
+        :class:`GameSceneRenderer`. This method is a thin delegation.
+
         Args:
             surface: pygame rendering surface.
         """
-        is_docked_render = self._mother_ship_integrator and self._mother_ship_integrator.is_docked()
-        if self.game_renderer:
-            self.game_renderer.entity_renderer.player_docked = is_docked_render
-        if self._ui_manager:
-            self._ui_manager.set_player_docked(is_docked_render)
-
-        self._ui_manager.render_game(surface, self.player, self.spawn_controller.enemies, self.spawn_controller.boss)
-        self._render_haunting_world(surface)
-
-        self._ui_manager.render_bullets(surface, self.player, self.spawn_controller.enemy_bullets)
-        self._render_haunting_post_bullets(surface)
-        self._ui_manager.render_hud(surface, self.player)
-        self._ui_manager.render_buff_stats_panel(surface, self.player)
-
-        self._render_pause_button(surface)
-
-        # Boost gauge -- bottom-left dashboard indicator
-        if self._boost_gauge is not None:
-            status = self.player.get_boost_status()
-            self._boost_gauge.render(surface, status["current"], status["max"], status["active"], status)
-
-        # Ammo magazine -- left-side vertical ammo rack
-        if self._ammo_magazine and self._mother_ship_integrator:
-            ms_data = self._mother_ship_integrator.get_status_data()
-            self._ammo_magazine.render(
-                surface,
-                ammo_count=ms_data.get("ammo_count", 0.0),
-                ammo_max=ms_data.get("ammo_max", 10.0),
-                is_cooldown=ms_data.get("is_in_cooldown", False),
-                is_docked=ms_data.get("is_docked", False),
-                is_warning=ms_data.get("ammo_warning", False),
-                is_present=ms_data.get("is_present", False),
-                cooldown_remaining=ms_data.get("cooldown_remaining", 0.0),
-                cooldown_reduction=ms_data.get("cooldown_reduction", 0.0),
-            )
-
-        if self._mother_ship_integrator:
-            self._mother_ship_integrator.render(surface)
-
-        boss = self.spawn_controller.boss if self.spawn_controller else None
-        if not is_docked_render:
-            self._boss_enrage_renderer.render(surface, boss)
-
-        self._game_loop_manager.render_explosions(surface)
-        self._input_coordinator.render_give_up(surface)
-        if self._homecoming_ui and self._homecoming_detector and self._homecoming_detector.is_active():
-            self._homecoming_ui.render_progress(surface)
-
-        # Warning banner -- top-of-screen scrolling ammo depletion alert
-        if self._warning_banner:
-            self._warning_banner.render(surface)
-
-        self._render_aim_crosshair(surface)
-
-        if self._haunting_renderer and not self._should_suppress_haunting():
-            self._haunting_renderer.render_hud_corruption(surface)
-
-        if self._homecoming_ui and self._homecoming_sequence:
-            self._homecoming_ui.render_sequence(surface, self._homecoming_sequence, self.player)
-
-        if self._homecoming_base_pending and self._base_talent_console and self._talent_balance_manager:
-            mothership_status = self._mother_ship_integrator.get_status_data() if self._mother_ship_integrator else None
-            self._base_talent_console.render(
-                surface,
-                self._talent_balance_manager,
-                self.reward_system,
-                player=self.player,
-                game_controller=self.game_controller,
-                mothership_status=mothership_status,
-                requisition_points=self.game_controller.state.requisition_points if self.game_controller else 0,
-                missions=self._base_talent_console.get_missions() if self._base_talent_console else None,
-            )
-            # Keep mission progress in sync with actual game state
-            if self._homecoming_coordinator:
-                self._homecoming_coordinator.sync_mission_progress(self.game_controller, self._survival_frames)
-
-        # Reward selector must render above game elements. Homecoming blocks
-        # reward selection, but keep the normal layering contract intact.
-        if self.reward_selector.visible:
-            self.reward_selector.render(surface)
-
-        # Render notifications above reward selector so critical messages are not obscured
-        self._ui_manager.render_notification(surface)
-        self._render_haunting_foreground(surface)
-
-        if self._haunting_renderer and not self._should_suppress_haunting():
-            self._haunting_renderer.render_transition_flicker(surface)
+        self._scene_renderer.render(surface)
 
     def _sync_player_aim_target(self) -> None:
         if self.player:

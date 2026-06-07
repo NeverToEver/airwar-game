@@ -224,7 +224,7 @@ class GameLoopManager:
                             exc_info=True,
                         )
                         continue
-                    if base is not None:
+                    if base is not None and extra is not None:
                         # Pack base: (move_type:u8, pad, timer, active_x, active_y,
                         #   move_range_x, move_range_y, offset, amplitude, frequency,
                         #   speed, direction, zigzag_interval)
@@ -262,9 +262,17 @@ class GameLoopManager:
                             )
                         )
                         batch_indices.append(i)
-                elif batch_update_movements is not None:
-                    # Fallback to tuple path if buffer variant unavailable
-                    pass
+                    elif base is None and extra is None:
+                        # enemy not ready for batch — fine
+                        continue
+                    else:
+                        logger.error(
+                            "get_rust_batch_params returned mismatched pair: base=%r extra=%r for %r",
+                            base,
+                            extra,
+                            enemy,
+                        )
+                        continue
 
             if base_buf_parts:
                 base_buf = b"".join(base_buf_parts)
@@ -284,10 +292,21 @@ class GameLoopManager:
                         base, extra = enemy.get_rust_batch_params()
                     except (ValueError, TypeError):
                         continue
-                    if base is not None:
+                    if base is not None and extra is not None:
                         base_list.append(base)
                         extra_list.append(extra)
                         batch_indices.append(i)
+                    elif base is None and extra is None:
+                        # enemy not ready for batch — fine
+                        continue
+                    else:
+                        logger.error(
+                            "get_rust_batch_params returned mismatched pair: base=%r extra=%r for %r",
+                            base,
+                            extra,
+                            enemy,
+                        )
+                        continue
             if base_list:
                 results = batch_update_movements(base_list, extra_list)
                 for j, (new_x, new_y, new_timer) in enumerate(results):

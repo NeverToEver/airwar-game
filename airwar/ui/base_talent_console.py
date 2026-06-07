@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 import pygame
 
-from airwar.game.constants import GAME_CONSTANTS
+from airwar.config.constants_access import get_game_constants
 from airwar.utils.fonts import get_cjk_font
 
 from .chamfered_panel import draw_chamfered_panel
@@ -418,8 +418,9 @@ class BaseTalentConsole:
 
         # Right side: actionable repair/recharge buttons + info cards
         rp = requisition_points
-        repair_cost = GAME_CONSTANTS.REQUISITION.REPAIR_COST
-        recharge_cost = GAME_CONSTANTS.REQUISITION.RECHARGE_COST
+        requisition = get_game_constants().REQUISITION
+        repair_cost = requisition.REPAIR_COST
+        recharge_cost = requisition.RECHARGE_COST
         can_repair = rp >= repair_cost and status["health_ratio"] < 1.0
         can_recharge = rp >= recharge_cost and status["boost_ratio"] < 1.0
 

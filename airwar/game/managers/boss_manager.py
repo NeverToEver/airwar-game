@@ -120,10 +120,14 @@ class BossManager:
         Args:
             score: Score gained from the hit.
         """
-        self._game_controller.show_notification(f"+{score} BOSS 分数!")
+        # Per-hit score notifications skipped — too noisy. The boss-kill notification
+        # from on_boss_killed() and the milestone check handle player feedback.
+        boss = self._spawn_controller.boss
         self._game_controller.state.score = normalize_score(self._game_controller.state.score + score)
-
-        if not self._spawn_controller.boss.active:
+        if boss is None:
+            return
+        if not boss.active and not getattr(boss, "_death_consumed", False):
+            boss._death_consumed = True
             self.on_boss_killed()
 
     def on_boss_killed(self) -> None:
