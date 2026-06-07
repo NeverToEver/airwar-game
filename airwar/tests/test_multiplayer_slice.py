@@ -124,15 +124,9 @@ class TestPygameInputHandlerBindings:
         # Boost/precision and pause are allowed to be global; only
         # the *movement* key sets must be disjoint.
         shared = {"boost", "precision", "pause"}
-        p1_movement = {
-            v for k, v in PygameInputHandler.DEFAULT_BINDINGS.items() if k not in shared
-        }
-        p2_movement = {
-            v for k, v in PygameInputHandler.PLAYER2_BINDINGS.items() if k not in shared
-        }
-        assert p1_movement.isdisjoint(p2_movement), (
-            "P1 and P2 movement keys must not overlap"
-        )
+        p1_movement = {v for k, v in PygameInputHandler.DEFAULT_BINDINGS.items() if k not in shared}
+        p2_movement = {v for k, v in PygameInputHandler.PLAYER2_BINDINGS.items() if k not in shared}
+        assert p1_movement.isdisjoint(p2_movement), "P1 and P2 movement keys must not overlap"
 
     def test_handler_uses_custom_bindings(self):
         """PygameInputHandler with custom bindings must read the right keys."""

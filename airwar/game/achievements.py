@@ -140,11 +140,7 @@ class AchievementRegistry:
         """
         if self._user_db is None or self._user_id is None:
             return False
-        payload = {
-            ach.id: ach.unlocked_at
-            for ach in self._achievements.values()
-            if ach.is_unlocked
-        }
+        payload = {ach.id: ach.unlocked_at for ach in self._achievements.values() if ach.is_unlocked}
         return self._user_db.update_user_data(self._user_id, {USER_DATA_FIELD: payload})
 
     def load(self) -> int:

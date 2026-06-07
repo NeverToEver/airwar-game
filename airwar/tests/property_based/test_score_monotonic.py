@@ -57,6 +57,7 @@ def test_normalize_score_clamps_negatives_to_zero(value):
 @given(initial=INITIAL_SCORE, deltas=SCORE_SEQUENCE)
 def test_score_replay_is_deterministic(initial, deltas):
     """Replaying the same delta sequence always yields the same final score."""
+
     def run() -> int:
         score = initial
         for delta in deltas:

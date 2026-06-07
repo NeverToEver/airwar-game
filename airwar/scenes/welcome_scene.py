@@ -43,7 +43,6 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
     CHAMFER = 12
     INPUT_W = 370
     INPUT_H = 54
-    BTN_W = 180
     BTN_H = 48
     LOGIN_PAD_X = 36
     LOGIN_LABEL_W = 104
@@ -83,7 +82,6 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         self.clear_buttons()
         self.db = UserDB()
         self.running = True
-        self.mode = "login"
         self.username = ""
         self.password = ""
         self.message = ""
@@ -445,7 +443,6 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             self.message = "注册成功！现在可以开始游戏了"
             self._is_error = False
             self.message_timer = self.MESSAGE_DISPLAY_FRAMES
-            self.mode = "login"
             self.password = ""
             self._load_known_usernames()
         else:

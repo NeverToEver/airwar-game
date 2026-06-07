@@ -8,7 +8,10 @@ from ..config import FPS, set_display_size
 from ..scenes import GameScene, SceneManager
 from ..scenes.scene import ExitConfirmAction, PauseAction
 from ..utils.database import DatabaseError
+from .achievements import AchievementRegistry, build_default_registry
 from .mother_ship import GameSaveData, PersistenceManager
+from .mother_ship.event_bus import EVENT_DOCKING_COMPLETE
+from .mother_ship.interfaces import IEventBus
 from .scaled_viewport import ScaledViewport
 
 
@@ -36,6 +39,14 @@ class SceneDirector:
         self._pending_save_data = None
         self._save_dir = None
         self._settings_ref = {"ctrl_mode": "hold", "shift_boost_mode": "hold"}
+        # Achievement system — populated by _create_achievement_registry
+        # after a successful welcome flow. None for guest sessions or
+        # when no UserDB is wired up.
+        self._achievement_registry: AchievementRegistry | None = None
+        # Per-run counter incremented on EVENT_DOCKING_COMPLETE.
+        # Reset to 0 in _run_welcome_flow on every welcome iteration
+        # so a restart-from-menu starts fresh.
+        self._mothership_dock_count: int = 0
         self._update_viewport_from_window()
 
     @property
@@ -105,7 +116,13 @@ class SceneDirector:
             if welcome.is_ready():
                 self._current_user = welcome.get_username()
                 self._selected_difficulty = welcome.get_difficulty()
+                # Reset per-run achievement state so a restart-from-menu
+                # does not carry over the previous run's dock count or
+                # registry reference.
+                self._mothership_dock_count = 0
+                self._achievement_registry = None
                 self._load_user_settings()
+                self._create_achievement_registry()
                 save_data = self._check_and_get_saved_game(self._current_user)
                 return (True, save_data)
             return (True, None)
@@ -359,6 +376,9 @@ class SceneDirector:
         boss_kills = game_scene.get_boss_kill_count()
         self._update_user_stats(final_score, kills)
         self._submit_leaderboard_score(final_score)
+        # Final achievement pass — must run before the death scene so
+        # any per-run unlocks are evaluated against the final stats.
+        self._evaluate_achievements(game_scene)
 
         death_scene = self._scene_manager.get_scene("death")
         if not death_scene:
@@ -409,6 +429,113 @@ class SceneDirector:
         except DatabaseError:
             self._logger.warning("Failed to submit leaderboard score", exc_info=True)
             return 0
+
+    def _create_achievement_registry(self) -> None:
+        """Build the per-run :class:`AchievementRegistry` for the current user.
+
+        No-op for guest sessions and when no :class:`UserDB` is wired up.
+        On success, builds the default registry, hydrates prior unlocks
+        from the user record, and subscribes to the in-game event bus
+        (when accessible) so docking events can trigger a re-check.
+
+        Database errors are logged and swallowed; a missing registry
+        must never block gameplay.
+        """
+        if not self._current_user or self._current_user == "Guest":
+            return
+        if self._user_db is None:
+            return
+        try:
+            registry = build_default_registry(
+                user_db=self._user_db,
+                user_id=self._current_user,
+            )
+            restored = registry.load()
+            self._achievement_registry = registry
+            self._logger.info(
+                "AchievementRegistry ready for user=%s (restored=%d)",
+                self._current_user,
+                restored,
+            )
+        except DatabaseError:
+            self._logger.warning("Failed to load achievements", exc_info=True)
+            self._achievement_registry = None
+            return
+
+        # Subscribe to the in-game event bus if GameScene exposes one.
+        # If the bus is not yet accessible (scene not initialised), the
+        # dock counter still accumulates in this director and the final
+        # _evaluate_achievements call at game-over will see the bumped
+        # count.
+        bus = self._acquire_event_bus()
+        if bus is not None:
+            try:
+                bus.subscribe(EVENT_DOCKING_COMPLETE, self._on_mothership_docking_complete)
+            except (ValueError, RuntimeError) as exc:  # defensive: cap reached / bus closed
+                self._logger.warning("Failed to subscribe to EVENT_DOCKING_COMPLETE: %s", exc)
+
+    def _acquire_event_bus(self) -> IEventBus | None:
+        """Return the active scene's event bus, or ``None`` if unavailable.
+
+        Looks up the current scene from the scene manager and returns
+        its ``event_bus`` attribute when present. Returns ``None``
+        when the scene is not a :class:`GameScene` or the property
+        has not been wired yet.
+        """
+        try:
+            scene = self._scene_manager.get_current_scene()
+        except Exception:  # defensive
+            return None
+        return getattr(scene, "event_bus", None)
+
+    def _on_mothership_docking_complete(self, **_kwargs: object) -> None:
+        """Event-bus callback: bump the dock counter, then re-check.
+
+        Registered on :data:`EVENT_DOCKING_COMPLETE` so the
+        :class:`mothership_dock` achievement can be unlocked at
+        runtime. The counter increment is what makes the
+        achievement condition reachable in the first place; without
+        it, the per-frame :meth:`_evaluate_achievements` pass at
+        game-over would always see a zero count.
+        """
+        self._mothership_dock_count += 1
+        registry = self._achievement_registry
+        if registry is None:
+            return
+        try:
+            registry.check_all({"mothership_dock_count": self._mothership_dock_count})
+        except DatabaseError:
+            self._logger.warning("Docking event achievement check failed", exc_info=True)
+
+    def _evaluate_achievements(self, game_scene: GameScene) -> list[str]:
+        """Run the final achievement check at game over and persist.
+
+        Aggregates the run's score, kill counts, and per-run
+        mothership dock counter into a snapshot and passes it to
+        the registry. Failures from a missing registry or a
+        database error are logged and swallowed; the death-scene
+        flow must not depend on achievement persistence.
+
+        Returns:
+            The list of achievement IDs unlocked on this call.
+            Empty when no registry is wired up.
+        """
+        registry = self._achievement_registry
+        if registry is None:
+            return []
+        snapshot = {
+            "score": game_scene.score,
+            "kill_count": game_scene.get_kill_count(),
+            "boss_kill_count": game_scene.get_boss_kill_count(),
+            "mothership_dock_count": self._mothership_dock_count,
+        }
+        try:
+            newly = registry.check_all(snapshot)
+        except DatabaseError:
+            self._logger.warning("Failed to check achievements", exc_info=True)
+            return []
+        self._mothership_dock_count = 0
+        return [a.id for a in newly]
 
     def _handle_scene_events(self, events: list[pygame.event.Event], skip_escape: bool = False) -> None:
         for event in events:

@@ -55,8 +55,10 @@ def test_init_returns_false_when_mixer_init_fails():
     # `if mixer is live, skip` short-circuit would bypass the patch.
     # Patch get_init to look uninitialized so the manager actually
     # calls mixer.init() (which then raises).
-    with patch.object(pygame.mixer, "get_init", return_value=None), \
-         patch.object(pygame.mixer, "init", side_effect=pygame.error("no device")):
+    with (
+        patch.object(pygame.mixer, "get_init", return_value=None),
+        patch.object(pygame.mixer, "init", side_effect=pygame.error("no device")),
+    ):
         assert manager.init() is False
         assert manager.is_initialized() is False
     # Subsequent calls must remain no-ops and stay in failed state.
@@ -65,9 +67,11 @@ def test_init_returns_false_when_mixer_init_fails():
 
 def test_init_swallows_mixer_error_logged_as_warning(caplog):
     manager = SoundManager()
-    with caplog.at_level(logging.WARNING, logger="airwar.audio.sound_manager"), \
-         patch.object(pygame.mixer, "get_init", return_value=None), \
-         patch.object(pygame.mixer, "init", side_effect=pygame.error("nope")):
+    with (
+        caplog.at_level(logging.WARNING, logger="airwar.audio.sound_manager"),
+        patch.object(pygame.mixer, "get_init", return_value=None),
+        patch.object(pygame.mixer, "init", side_effect=pygame.error("nope")),
+    ):
         manager.init()
     assert any("mixer init failed" in rec.message for rec in caplog.records)
 

@@ -133,12 +133,8 @@ def test_game_runs_for_short_window_on_real_display() -> None:
     # Assertion 2: the main loop actually ran (not blocked or hung).
     # Allow a small grace window on the lower bound; the upper bound catches
     # infinite-loop regressions (a 3s budget should not exceed ~13s).
-    assert elapsed >= duration - 0.5, (
-        f"Game loop returned too early: {elapsed:.2f}s (expected ~{duration:.2f}s)"
-    )
-    assert elapsed < duration + 10.0, (
-        f"Game loop took too long: {elapsed:.2f}s (expected ~{duration:.2f}s)"
-    )
+    assert elapsed >= duration - 0.5, f"Game loop returned too early: {elapsed:.2f}s (expected ~{duration:.2f}s)"
+    assert elapsed < duration + 10.0, f"Game loop took too long: {elapsed:.2f}s (expected ~{duration:.2f}s)"
 
     # Assertion 3: synthetic events were actually delivered to the queue.
     assert events_posted > 0, "No synthetic events were posted to the SDL queue"

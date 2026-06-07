@@ -860,6 +860,17 @@ class GameIntegrator:
     def is_docked(self) -> bool:
         return self._state_machine.current_state == MotherShipState.DOCKED
 
+    @property
+    def event_bus(self) -> "EventBus":
+        """Expose the mothership event bus for external subscribers.
+
+        Callers must not mutate the returned bus's internal
+        subscriber lists; they may subscribe to events via the
+        public :meth:`EventBus.subscribe` API. The bus is owned by
+        the integrator and outlives this property accessor.
+        """
+        return self._event_bus
+
     def get_current_state(self) -> MotherShipState:
         """Return the current mothership state machine state."""
         return self._state_machine.current_state

@@ -914,6 +914,20 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             return False
         return self._mother_ship_integrator.is_docked()
 
+    @property
+    def event_bus(self) -> EventBus | None:
+        """Expose the in-game event bus for achievement integration.
+
+        Returns the :class:`EventBus` owned by the
+        :class:`MotherShipGameIntegrator`, or ``None`` when the
+        mothership subsystem has not been initialized yet.
+        Callers must not mutate the returned subscriber list; they
+        may subscribe via the public :meth:`EventBus.subscribe` API.
+        """
+        if not self._mother_ship_integrator:
+            return None
+        return self._mother_ship_integrator.event_bus
+
     # IGameScene implementation for GameIntegrator layer compliance
 
     def set_player_position(self, x: float, y: float) -> None:

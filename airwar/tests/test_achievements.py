@@ -60,9 +60,7 @@ def test_condition_fn_drives_unlock_state() -> None:
 def test_persist_and_load_roundtrip_via_user_db(user_db: UserDB) -> None:
     registry = build_default_registry(user_db=user_db, user_id="pilot")
 
-    newly = registry.check_all(
-        {"kill_count": 10, "score": 5_000, "boss_kill_count": 0, "mothership_dock_count": 0}
-    )
+    newly = registry.check_all({"kill_count": 10, "score": 5_000, "boss_kill_count": 0, "mothership_dock_count": 0})
     unlocked_ids = sorted(a.id for a in newly)
     assert unlocked_ids == ["first_kill", "score_1k"]
 

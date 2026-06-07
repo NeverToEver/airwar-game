@@ -56,7 +56,6 @@ class SoundManager:
         self._volume: float = 0.6
         self._muted: bool = False
         self._sfx_cache: dict[str, pygame.mixer.Sound] = {}
-        self._bgm_channel: pygame.mixer.Channel | None = None
         self._bgm_track: str | None = None
 
     # ------------------------------------------------------------------
@@ -84,12 +83,6 @@ class SoundManager:
             return False
 
         self._initialized = True
-        # Reserve channel 0 for BGM so SFX can play over it.
-        try:
-            self._bgm_channel = pygame.mixer.Channel(0)
-        except pygame.error as exc:  # pragma: no cover - defensive
-            logger.warning("Could not reserve BGM channel: %s", exc)
-            self._bgm_channel = None
         self._apply_volume()
         return True
 
