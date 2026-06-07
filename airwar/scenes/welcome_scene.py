@@ -7,6 +7,7 @@ import pygame
 
 from airwar.config.design_tokens import SceneColors, get_design_tokens
 from airwar.ui.chamfered_panel import draw_chamfered_panel
+from airwar.ui.leaderboard_view import LeaderboardView
 from airwar.ui.menu_background import MenuBackground
 from airwar.ui.particles import ParticleSystem
 from airwar.ui.scene_rendering_utils import fit_text_to_width, wrap_text
@@ -67,6 +68,17 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         self._is_error = False
 
     def enter(self, **kwargs) -> None:
+        """Initialize welcome-scene state when the scene becomes active.
+
+        Resets the mouse hover/button registries, opens the user
+        database, restores the last logged-in username, sets up fonts
+        and background, and seeds the particle system. Accepts
+        `**kwargs` to satisfy the `Scene` contract; no keyword
+        arguments are interpreted.
+
+        Args:
+            **kwargs: Ignored scene-enter arguments.
+        """
         self.clear_hover()
         self.clear_buttons()
         self.db = UserDB()
@@ -90,6 +102,8 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         self.cursor_timer = 0
         self.known_usernames = []
         self.show_user_dropdown = False
+        self.show_leaderboard = False
+        self.leaderboard_view = None  # lazy-initialized on first render
 
         # Difficulty
         self.difficulty_options = ["easy", "medium", "hard"]
@@ -121,6 +135,16 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
     # -- Event handling -------------------------------------------------
 
     def handle_events(self, event: pygame.event.Event) -> None:
+        """Dispatch a single pygame event to the appropriate handler.
+
+        Routes keydown, mouse motion, and mouse button events to
+        keyboard handling, mouse interaction, and the dropdown / modal
+        click paths. Drops user-dropdown when the user clicks
+        elsewhere.
+
+        Args:
+            event: The pygame event to process this frame.
+        """
         if event.type == pygame.KEYDOWN:
             self._handle_keydown(event)
         elif event.type == pygame.MOUSEMOTION:
@@ -256,6 +280,8 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             "delete_user": self._request_delete_user,
             "delete_confirm_yes": self._do_delete_user,
             "delete_confirm_no": self._dismiss_delete_confirm,
+            "leaderboard": self._open_leaderboard,
+            "leaderboard_close": self._close_leaderboard,
         }
         handler = handlers.get(button_name)
         if handler:
@@ -283,6 +309,12 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
     def _request_settings(self) -> None:
         self.settings_requested = True
         self.running = False
+
+    def _open_leaderboard(self) -> None:
+        self.show_leaderboard = True
+
+    def _close_leaderboard(self) -> None:
+        self.show_leaderboard = False
 
     def _focus_username_field(self) -> None:
         self.focus = "username"
@@ -455,6 +487,17 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
     # -- Update ---------------------------------------------------------
 
     def update(self, *args, **kwargs) -> None:
+        """Advance welcome-scene animations and timers by one frame.
+
+        Updates the global animation clock, ticks the message-display
+        timer (clearing expired messages), blinks the text-input cursor
+        at 30-frame intervals, and forwards updates to the background
+        and particle systems so they animate consistently with the HUD.
+
+        Args:
+            *args: Ignored (uniform signature with other scenes).
+            **kwargs: Ignored (uniform signature with other scenes).
+        """
         self.animation_time += 1
         if self.message_timer > 0:
             self.message_timer -= 1
@@ -473,6 +516,16 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
     # -- Render ---------------------------------------------------------
 
     def render(self, surface: pygame.Surface) -> None:
+        """Render the welcome scene to the given surface for this frame.
+
+        Draws the animated background and particles, the title, the
+        login and difficulty panels, the bottom hint, the message line
+        (if any), the fullscreen button, and finally the leaderboard,
+        guest-confirm, and delete-confirm overlays (topmost).
+
+        Args:
+            surface: Target pygame surface, typically the game window.
+        """
         SC = SceneColors
         sw, sh = surface.get_width(), surface.get_height()
 
@@ -507,6 +560,10 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
         # Fullscreen button
         self._render_fullscreen_button(surface, sw, sh)
+
+        # Leaderboard overlay (topmost non-modal layer)
+        if self.show_leaderboard:
+            self._render_leaderboard(surface, sw, sh)
 
         # Guest confirmation overlay (topmost)
         if self.show_guest_confirm:
@@ -811,6 +868,17 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         )
         tips_label = self.hint_font.render("操作说明", True, SC.TEXT_DIM)
         surface.blit(tips_label, (px + 35, tips_title_y))
+
+        # -- Leaderboard button (compact, near bottom) --
+        lb_btn_w = 120
+        lb_btn_h = 36
+        lb_rect = pygame.Rect(
+            px + self.PANEL_W - lb_btn_w - 20,
+            py + self.PANEL_H - lb_btn_h - 16,
+            lb_btn_w,
+            lb_btn_h,
+        )
+        self._draw_ghost_button(surface, lb_rect, "排行榜", "leaderboard")
 
         controls = [
             ("WASD / 方向键", "移动战机"),
@@ -1173,25 +1241,97 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         fs_surf = self.tip_font.render(fs_text, True, SC.TEXT_PRIMARY if hover else SC.TEXT_DIM)
         surface.blit(fs_surf, fs_surf.get_rect(center=rect.center))
 
+    def _render_leaderboard(self, surface, sw, sh):
+        """Render the leaderboard panel and a close button on top."""
+        SC = SceneColors
+
+        # Dim overlay
+        dim = pygame.Surface((sw, sh), pygame.SRCALPHA)
+        dim.fill((0, 0, 0, 140))
+        surface.blit(dim, (0, 0))
+
+        if self.leaderboard_view is None:
+            self.leaderboard_view = LeaderboardView(self.db)
+        self.leaderboard_view.render(surface, sw, sh)
+
+        # Close button at top-right of the panel
+        close_size = 36
+        panel_w = LeaderboardView.PANEL_W
+        panel_x = (sw - panel_w) // 2
+        panel_y = (sh - LeaderboardView.PANEL_H) // 2
+        close_rect = pygame.Rect(
+            panel_x + panel_w - close_size - 12,
+            panel_y + 12,
+            close_size,
+            close_size,
+        )
+        self.register_button("leaderboard_close", close_rect)
+        hover = self.is_button_hovered("leaderboard_close")
+        close_color = SC.GOLD_PRIMARY if hover else SC.TEXT_DIM
+        x_surf = self.title_font.render("×", True, close_color)
+        surface.blit(x_surf, x_surf.get_rect(center=close_rect.center))
+
     # -- Public interface (used by SceneDirector) -----------------------
 
     def get_username(self) -> str:
+        """Return the entered username, falling back to "Guest".
+
+        Returns:
+            str: The username the player typed, or the literal "Guest"
+            when the input is empty.
+        """
         return self.username if self.username else "Guest"
 
     def get_difficulty(self) -> str:
+        """Return the currently selected difficulty level.
+
+        Returns:
+            str: One of "easy", "medium", or "hard".
+        """
         return self.selected_difficulty
 
     def is_running(self) -> bool:
+        """Return whether the scene is still accepting input.
+
+        Returns:
+            bool: True while the scene has not produced a result yet
+            (login not submitted, no navigation requested).
+        """
         return self.running
 
     def is_ready(self) -> bool:
+        """Return whether the scene is ready to advance to gameplay.
+
+        The scene is ready when the player has finished entering
+        credentials and has not requested a side flow (tutorial,
+        settings) or a quit.
+
+        Returns:
+            bool: True if the scene should hand off to the next scene.
+        """
         return not self.running and not self.tutorial_requested and not self.want_to_quit
 
     def should_quit(self) -> bool:
+        """Return whether the user requested to quit from this scene.
+
+        Returns:
+            bool: True if the quit button (or ESC) was triggered.
+        """
         return self.want_to_quit
 
     def should_open_tutorial(self) -> bool:
+        """Return whether the user requested the tutorial scene.
+
+        Returns:
+            bool: True if the tutorial button (or "新手教程" CTA) was
+            triggered.
+        """
         return self.tutorial_requested
 
     def should_open_settings(self) -> bool:
+        """Return whether the user requested the settings scene.
+
+        Returns:
+            bool: True if the settings button was triggered.
+        """
         return self.settings_requested

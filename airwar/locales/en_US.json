@@ -1,0 +1,17 @@
+{
+  "pause.title": "Paused",
+  "pause.option.resume": "Resume Game",
+  "pause.option.main_menu": "Return to Main Menu",
+  "pause.option.save_quit": "Save and Quit",
+  "pause.option.quit_no_save": "Quit Without Saving",
+  "pause.option.settings": "Settings",
+  "pause.hint.confirm": "Click or press Enter to confirm",
+  "pause.hint.navigate": "Click or W/S to select",
+  "pause.hint.esc": "ESC to resume",
+  "death.title": "Game Over",
+  "death.score_label": "Score: {score}",
+  "death.kills_label": "Kills: {kills}",
+  "death.boss_kills_label": "Boss Kills: {boss_kills}",
+  "death.option.menu": "Return to Main Menu",
+  "death.option.quit": "Quit Game"
+}

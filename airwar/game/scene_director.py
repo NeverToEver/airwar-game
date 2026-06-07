@@ -358,6 +358,7 @@ class SceneDirector:
         kills = game_scene.get_kill_count()
         boss_kills = game_scene.get_boss_kill_count()
         self._update_user_stats(final_score, kills)
+        self._submit_leaderboard_score(final_score)
 
         death_scene = self._scene_manager.get_scene("death")
         if not death_scene:
@@ -389,6 +390,25 @@ class SceneDirector:
         except DatabaseError:
             self._logger.warning("Failed to update user stats", exc_info=True)
             return None
+
+    def _submit_leaderboard_score(self, score: int) -> int:
+        """Record the final score on the local leaderboard.
+
+        Args:
+            score: Final score for the just-ended run.
+
+        Returns:
+            1-indexed rank if it made the top 10, otherwise ``0``. Returns
+            ``0`` when no user is logged in or no database is wired up.
+        """
+        if not self._user_db:
+            return 0
+        name = self._current_user if self._current_user else "Guest"
+        try:
+            return self._user_db.submit_score(name, score)
+        except DatabaseError:
+            self._logger.warning("Failed to submit leaderboard score", exc_info=True)
+            return 0
 
     def _handle_scene_events(self, events: list[pygame.event.Event], skip_escape: bool = False) -> None:
         for event in events:

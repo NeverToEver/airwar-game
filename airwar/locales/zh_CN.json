@@ -1,0 +1,17 @@
+{
+  "pause.title": "已暂停",
+  "pause.option.resume": "继续游戏",
+  "pause.option.main_menu": "返回主菜单",
+  "pause.option.save_quit": "保存并退出",
+  "pause.option.quit_no_save": "不保存退出",
+  "pause.option.settings": "设置",
+  "pause.hint.confirm": "点击或回车确认",
+  "pause.hint.navigate": "点击或 W/S 选择",
+  "pause.hint.esc": "ESC 继续游戏",
+  "death.title": "游戏结束",
+  "death.score_label": "分数: {score}",
+  "death.kills_label": "击杀: {kills}",
+  "death.boss_kills_label": "BOSS击杀: {boss_kills}",
+  "death.option.menu": "返回主菜单",
+  "death.option.quit": "退出游戏"
+}

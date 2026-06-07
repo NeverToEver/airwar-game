@@ -3,6 +3,7 @@
 import pygame
 
 from airwar.config.design_tokens import SceneColors, get_design_tokens
+from airwar.i18n import t
 from airwar.ui.effects import EffectsRenderer
 from airwar.ui.menu_background import MenuBackground
 from airwar.ui.particles import ParticleSystem
@@ -28,7 +29,13 @@ class PauseScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
     def enter(self, **kwargs) -> None:
         self.running = True
         self.result: PauseAction = None
-        self.options = ["继续游戏", "返回主菜单", "保存并退出", "不保存退出", "设置"]
+        self.options = [
+            t("pause.option.resume"),
+            t("pause.option.main_menu"),
+            t("pause.option.save_quit"),
+            t("pause.option.quit_no_save"),
+            t("pause.option.settings"),
+        ]
         self.selected_index = 0
         self.animation_time = 0
         self.glow_offset = 0
@@ -133,11 +140,11 @@ class PauseScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
 
         title_y = height // 3 + self.glow_offset * 0.3
         if self.use_themed_style:
-            self._draw_themed_title(surface, "已暂停", self.title_font, (width // 2, title_y))
+            self._draw_themed_title(surface, t("pause.title"), self.title_font, (width // 2, title_y))
         else:
             SceneRenderingUtils.draw_glow_text(
                 surface,
-                "已暂停",
+                t("pause.title"),
                 self.title_font,
                 (width // 2, title_y),
                 self.colors["title"],
@@ -188,16 +195,16 @@ class PauseScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
 
         blink_interval = self._tokens.animation.BLINK_INTERVAL
         blink = (self.animation_time // blink_interval) % 2 == 0
-        hint_text = "点击或回车确认" if blink else "               "
+        hint_text = t("pause.hint.confirm") if blink else "               "
         hint_color = SceneColors.TEXT_DIM if self.use_themed_style else self.colors["hint"]
         hint = self.hint_font.render(hint_text, True, hint_color)
         surface.blit(hint, hint.get_rect(center=(width // 2, height - ResponsiveHelper.scale(120, scale))))
 
         controls_color = SceneColors.TEXT_DIM if self.use_themed_style else (60, 60, 100)
-        controls = self.desc_font.render("点击或 W/S 选择", True, controls_color)
+        controls = self.desc_font.render(t("pause.hint.navigate"), True, controls_color)
         surface.blit(controls, controls.get_rect(center=(width // 2, height - ResponsiveHelper.scale(80, scale))))
 
-        esc_hint = self.desc_font.render("ESC 继续游戏", True, controls_color)
+        esc_hint = self.desc_font.render(t("pause.hint.esc"), True, controls_color)
         surface.blit(esc_hint, esc_hint.get_rect(center=(width // 2, height - ResponsiveHelper.scale(50, scale))))
 
     def get_result(self) -> PauseAction:

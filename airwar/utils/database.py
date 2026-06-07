@@ -6,6 +6,7 @@ import logging
 import os
 import secrets
 import shutil
+from datetime import datetime, timezone
 
 from airwar.utils.platform_paths import user_data_dir
 
@@ -16,6 +17,9 @@ _AIRWAR_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _LEGACY_DB_PATH = os.path.join(_AIRWAR_DIR, "data", "users.json")
 
 _HASH_ITERATIONS = 100_000
+
+LEADERBOARD_CAP = 10
+_LEADERBOARD_KEY = "_leaderboard"
 
 
 class DatabaseError(RuntimeError):
@@ -177,6 +181,79 @@ class UserDB(SimpleDB):
             self._save(data)
             return True
         return False
+
+    # -- Leaderboard ---------------------------------------------------
+
+    def _get_or_init_leaderboard(self, data: dict) -> list:
+        """Return the leaderboard list from data, creating it if missing.
+
+        Args:
+            data: The full user-database dict (will be mutated in place).
+
+        Returns:
+            The list of leaderboard entries (may be empty).
+        """
+        entries = data.get(_LEADERBOARD_KEY)
+        if not isinstance(entries, list):
+            entries = []
+            data[_LEADERBOARD_KEY] = entries
+        return entries
+
+    def get_leaderboard(self) -> list[dict]:
+        """Return the top ``LEADERBOARD_CAP`` scores sorted by score desc.
+
+        Returns:
+            A new list of ``{player_name, score, timestamp}`` dicts. Ties
+            break by earlier timestamp. Empty list if no scores recorded.
+        """
+        data = self._load()
+        entries = data.get(_LEADERBOARD_KEY, [])
+        if not isinstance(entries, list):
+            return []
+        return sorted(
+            (entry for entry in entries if isinstance(entry, dict)),
+            key=lambda entry: (-int(entry.get("score", 0)), entry.get("timestamp", "")),
+        )[:LEADERBOARD_CAP]
+
+    def submit_score(self, name: str, score: int) -> int:
+        """Record a score and return its 1-indexed rank (0 if not in top 10).
+
+        Args:
+            name: Player display name. Falsy or non-string values default to
+                ``"Guest"``.
+            score: Non-negative integer score. Negatives are clamped to zero.
+
+        Returns:
+            1-indexed rank within the post-insert leaderboard, or ``0`` if
+            the score did not make the top 10.
+        """
+        if not isinstance(score, int) or isinstance(score, bool):
+            try:
+                score = int(score)
+            except (TypeError, ValueError):
+                return 0
+        if score < 0:
+            score = 0
+        player_name = name if isinstance(name, str) and name else "Guest"
+
+        data = self._load()
+        entries = self._get_or_init_leaderboard(data)
+        entry = {
+            "player_name": player_name,
+            "score": score,
+            "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),  # noqa: UP017
+        }
+        entries.append(entry)
+        data[_LEADERBOARD_KEY] = sorted(
+            entries,
+            key=lambda item: (-int(item.get("score", 0)), item.get("timestamp", "")),
+        )[:LEADERBOARD_CAP]
+        self._save(data)
+
+        for rank, item in enumerate(data[_LEADERBOARD_KEY], start=1):
+            if item is entry:
+                return rank
+        return 0
 
     DEFAULT_SETTINGS = {
         "ctrl_mode": "hold",

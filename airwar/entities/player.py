@@ -87,11 +87,18 @@ class Player(Entity):
 
     # 1. Special methods
 
-    def __init__(self, x: float, y: float, input_handler: InputSourceProtocol):
+    def __init__(
+        self,
+        x: float,
+        y: float,
+        input_handler: InputSourceProtocol,
+        player_id: int = 0,
+    ):
         constants = get_game_constants()
         super().__init__(x, y, self.PLAYER_SPRITE_W, self.PLAYER_SPRITE_H)
         self._constants = constants  # Cache for hot path access
         self._input_handler = input_handler
+        self.player_id = player_id
         self.health = constants.PLAYER.MAX_HEALTH
         self.max_health = constants.PLAYER.MAX_HEALTH
         self.base_speed = constants.PLAYER.SPEED
@@ -239,6 +246,11 @@ class Player(Entity):
         if self._fire_cooldown <= 0:
             self._fire_cooldown = self._fire_interval
             self._create_bullets_for_shot_mode()
+            # Lazy import: audio subsystem stays out of the player
+            # import graph so headless tests can omit pygame.mixer.
+            from airwar.audio import get_sound_manager
+
+            get_sound_manager().play_sfx("bullet_fire")
 
     def activate_shotgun(self) -> None:
         """Enable spread-shot weapon mode."""

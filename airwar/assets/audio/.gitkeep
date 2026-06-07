@@ -1,0 +1,7 @@
+# Audio assets live in this directory.
+#
+# The vertical slice does not ship binary audio; ``bullet_fire`` is
+# generated procedurally by ``airwar/audio/sound_manager.py`` using
+# pygame.sndarray. Once real BGM/SFX files (e.g. ``bgm_menu.ogg``,
+# ``bullet_fire.wav``) are available, drop them here and wire
+# ``SoundManager.play_bgm`` / ``play_sfx`` to load from this path.

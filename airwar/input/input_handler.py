@@ -24,6 +24,23 @@ class InputHandler(ABC):
         "precision": pygame.K_LCTRL,
     }
 
+    # Player 2 preset for shared-keyboard split-screen co-op.
+    # Movement uses IJKL (home row). Boost = U, Precision = O.
+    # Pause is intentionally shared (ESC) — pause is a global concern.
+    PLAYER2_BINDINGS: dict[str, int] = {
+        "left": pygame.K_j,
+        "left_alt": pygame.K_f,
+        "right": pygame.K_l,
+        "right_alt": pygame.K_h,
+        "up": pygame.K_i,
+        "up_alt": pygame.K_t,
+        "down": pygame.K_k,
+        "down_alt": pygame.K_g,
+        "pause": pygame.K_ESCAPE,
+        "boost": pygame.K_u,
+        "precision": pygame.K_o,
+    }
+
     @abstractmethod
     def get_movement_direction(self) -> Vector2:
         pass
