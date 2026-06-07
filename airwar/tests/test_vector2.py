@@ -4,8 +4,8 @@ import math
 
 import pytest
 
-from airwar.entities.base import Vector2
 from airwar.core_bindings import RUST_AVAILABLE
+from airwar.entities.base import Vector2
 
 
 def test_construct_default():
