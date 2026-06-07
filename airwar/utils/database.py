@@ -1,5 +1,7 @@
 """Database — SimpleDB and UserDB for player statistics persistence."""
 
+from __future__ import annotations
+
 import hashlib
 import json
 import logging
@@ -7,6 +9,7 @@ import os
 import secrets
 import shutil
 from datetime import datetime, timezone
+from typing import Any
 
 from airwar.utils.platform_paths import user_data_dir
 
@@ -20,6 +23,16 @@ _HASH_ITERATIONS = 100_000
 
 LEADERBOARD_CAP = 10
 _LEADERBOARD_KEY = "_leaderboard"
+
+# Shape aliases. The on-disk JSON is a free-form mapping, so we keep the
+# leaf type loose (``Any``) where the value is genuinely heterogeneous
+# (user records, leaderboard entries). For container slots we still
+# prefer concrete generics over bare ``dict``/``list`` so mypy --strict
+# stops emitting ``type-arg`` errors.
+UserRecord = dict[str, Any]
+LeaderboardEntry = dict[str, Any]
+UserData = dict[str, UserRecord]
+Leaderboard = list[LeaderboardEntry]
 
 
 class DatabaseError(RuntimeError):
@@ -51,16 +64,17 @@ class SimpleDB:
             return
         shutil.copy2(_LEGACY_DB_PATH, self.db_path)
 
-    def _load(self) -> dict:
+    def _load(self) -> dict[str, Any]:
         try:
             with open(self.db_path, encoding="utf-8") as f:
-                return json.load(f)
+                result: dict[str, Any] = json.load(f)
+                return result
         except json.JSONDecodeError as e:
             raise DatabaseError(f"Account database is corrupted: {self.db_path}") from e
         except OSError as e:
             raise DatabaseError(f"Failed to load account database: {self.db_path}") from e
 
-    def _save(self, data: dict) -> None:
+    def _save(self, data: dict[str, Any]) -> None:
         tmp_path = self.db_path + ".tmp"
         try:
             with open(tmp_path, "w", encoding="utf-8") as f:
@@ -160,11 +174,12 @@ class UserDB(SimpleDB):
         self._save(data)
         return True
 
-    def get_user_data(self, user_id: str) -> dict:
+    def get_user_data(self, user_id: str) -> UserRecord:
         data = self._load()
-        return data.get(user_id, {})
+        record: UserRecord = data.get(user_id, {})
+        return record
 
-    def update_user_data(self, user_id: str, updates: dict) -> bool:
+    def update_user_data(self, user_id: str, updates: dict[str, Any]) -> bool:
         data = self._load()
         if user_id not in data:
             return False
@@ -184,7 +199,7 @@ class UserDB(SimpleDB):
 
     # -- Leaderboard ---------------------------------------------------
 
-    def _get_or_init_leaderboard(self, data: dict) -> list:
+    def _get_or_init_leaderboard(self, data: dict[str, Any]) -> Leaderboard:
         """Return the leaderboard list from data, creating it if missing.
 
         Args:
@@ -199,7 +214,7 @@ class UserDB(SimpleDB):
             data[_LEADERBOARD_KEY] = entries
         return entries
 
-    def get_leaderboard(self) -> list[dict]:
+    def get_leaderboard(self) -> list[LeaderboardEntry]:
         """Return the top ``LEADERBOARD_CAP`` scores sorted by score desc.
 
         Returns:
@@ -238,7 +253,7 @@ class UserDB(SimpleDB):
 
         data = self._load()
         entries = self._get_or_init_leaderboard(data)
-        entry = {
+        entry: LeaderboardEntry = {
             "player_name": player_name,
             "score": score,
             "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),  # noqa: UP017
@@ -255,19 +270,19 @@ class UserDB(SimpleDB):
                 return rank
         return 0
 
-    DEFAULT_SETTINGS = {
+    DEFAULT_SETTINGS: dict[str, str] = {
         "ctrl_mode": "hold",
         "shift_boost_mode": "hold",
     }
 
-    def get_user_settings(self, user_id: str) -> dict:
+    def get_user_settings(self, user_id: str) -> dict[str, str]:
         data = self._load()
         if user_id not in data:
             return dict(self.DEFAULT_SETTINGS)
         saved = data[user_id].get("settings", {})
         return {**self.DEFAULT_SETTINGS, **saved}
 
-    def update_user_settings(self, user_id: str, settings: dict) -> bool:
+    def update_user_settings(self, user_id: str, settings: dict[str, str]) -> bool:
         return self.update_user_data(user_id, {"settings": settings})
 
     def delete_user(self, user_id: str, password: str | None = None) -> bool:

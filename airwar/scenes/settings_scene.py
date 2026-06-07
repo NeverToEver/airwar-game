@@ -6,6 +6,7 @@ import math
 import pygame
 
 from airwar.config.design_tokens import SceneColors, get_design_tokens
+from airwar.i18n import t
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.ui.menu_background import MenuBackground
 from airwar.ui.particles import ParticleSystem
@@ -45,8 +46,8 @@ class SettingsScene(Scene, MouseInteractiveMixin):
     BOTTOM_HINT_Y_OFFSET = 60
 
     LABEL_OPTIONS = {
-        "ctrl_mode": ("Ctrl 减速", "按住", "点按"),
-        "shift_boost_mode": ("Shift 加速", "按住", "点按"),
+        "ctrl_mode": ("settings.ctrl_mode_label", "settings.hold_label", "settings.toggle_label"),
+        "shift_boost_mode": ("settings.shift_boost_label", "settings.hold_label", "settings.toggle_label"),
     }
 
     def __init__(self):
@@ -148,7 +149,12 @@ class SettingsScene(Scene, MouseInteractiveMixin):
     def _set_setting(self, key: str, value: str) -> None:
         self._settings_ref[key] = value
         self._save_to_db()
-        self._message = f"{self.LABEL_OPTIONS[key][0]}: {'点按' if value == 'toggle' else '按住'}"
+        label_key = self.LABEL_OPTIONS[key][0]
+        label = t(label_key)
+        if value == "toggle":
+            self._message = t("settings.change_toggle", label=label)
+        else:
+            self._message = t("settings.change_hold", label=label)
         self._message_timer = 90
 
     def _save_to_db(self) -> None:
@@ -203,14 +209,14 @@ class SettingsScene(Scene, MouseInteractiveMixin):
         ty = max(50, int(title_size * 0.7)) + math.sin(self._animation_time * 0.04) * 2
 
         for blur, alpha, color in [(4, 18, SC.GOLD_DIM), (2, 30, SC.GOLD_PRIMARY)]:
-            glow = font.render("设置", True, color)
+            glow = font.render(t("settings.title"), True, color)
             glow.set_alpha(alpha)
             for ox in range(-blur, blur + 1, 2):
                 for oy in range(-blur, blur + 1, 2):
                     if ox * ox + oy * oy <= blur * blur:
                         r = glow.get_rect(center=(sw // 2 + ox, int(ty) + oy))
                         surface.blit(glow, r)
-        title = font.render("设置", True, SC.GOLD_PRIMARY)
+        title = font.render(t("settings.title"), True, SC.GOLD_PRIMARY)
         surface.blit(title, title.get_rect(center=(sw // 2, int(ty))))
 
     def _render_settings(self, surface: pygame.Surface, sw: int, sh: int) -> None:
@@ -244,7 +250,10 @@ class SettingsScene(Scene, MouseInteractiveMixin):
     ) -> None:
         SC = SceneColors
         current = self._settings_ref.get(key, "hold")
-        label, hold_text, toggle_text = self.LABEL_OPTIONS[key]
+        label_key, hold_key, toggle_key = self.LABEL_OPTIONS[key]
+        label = t(label_key)
+        hold_text = t(hold_key)
+        toggle_text = t(toggle_key)
 
         # Draw row background if focused
         row_x = panel_x + 16
@@ -328,14 +337,14 @@ class SettingsScene(Scene, MouseInteractiveMixin):
             6,
         )
         txt_color = SC.TEXT_PRIMARY if (is_focused or hover) else SC.TEXT_DIM
-        txt_surf = fit_text_to_width(self.body_font, "返回", txt_color, btn_w - 24)
+        txt_surf = fit_text_to_width(self.body_font, t("settings.back"), txt_color, btn_w - 24)
         surface.blit(txt_surf, txt_surf.get_rect(center=(btn_x + btn_w // 2, btn_y + btn_h // 2)))
 
     def _render_hint(self, surface: pygame.Surface, sw: int, sh: int) -> None:
         SC = SceneColors
         blink = (self._animation_time // 30) % 2 == 0
         color = SC.TEXT_DIM if blink else SC.TEXT_PRIMARY
-        hints = "TAB: 切换  |  ← →: 更改  |  ENTER: 确认  |  ESC: 返回"
+        hints = t("settings.hint")
         hint_surf = self.hint_font.render(hints, True, color)
         surface.blit(hint_surf, hint_surf.get_rect(center=(sw // 2, sh - 50)))
 

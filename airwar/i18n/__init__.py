@@ -143,6 +143,11 @@ def t(key: str, **kwargs: Any) -> str:
     return get_translator().t(key, **kwargs)
 
 
+def set_locale(locale: str) -> None:
+    """Convenience wrapper around the singleton's :meth:`Translator.set_locale`."""
+    get_translator().set_locale(locale)
+
+
 def reset_translator_for_tests(translator: Translator | None = None) -> Translator:
     """Replace the singleton. Intended for tests; not for production use."""
     global _singleton

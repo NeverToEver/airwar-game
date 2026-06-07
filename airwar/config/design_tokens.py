@@ -1,5 +1,12 @@
 """Design tokens — color themes, typography, spacing, and animation values."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import pygame
+
 from airwar.utils.fonts import get_cjk_font
 
 
@@ -399,34 +406,34 @@ MilitaryUI = SystemUI
 ForestColors = SceneColors
 
 # Legacy constant aliases on SystemColors
-SystemColors.AMBER_PRIMARY = SystemColors.ACCENT_PRIMARY
-SystemColors.AMBER_DIM = SystemColors.ACCENT_DIM
-SystemColors.AMBER_BRIGHT = SystemColors.ACCENT_BRIGHT
-SystemColors.AMBER_GLOW = SystemColors.ACCENT_GLOW
-SystemColors.MILITARY_GREEN = SystemColors.ACCENT_TEAL
-SystemColors.MILITARY_GREEN_DIM = SystemColors.ACCENT_TEAL_DIM
-SystemColors.WARNING_AMBER = SystemColors.WARNING_ACCENT
-SystemColors.MILITARY_LABEL_SIZE = SystemUI.HUD_LABEL_SIZE
-SystemColors.MILITARY_VALUE_SIZE = SystemUI.HUD_VALUE_SIZE
-SystemColors.MILITARY_TITLE_SIZE = SystemUI.HUD_TITLE_SIZE
-SystemColors.MILITARY_SMALL_SIZE = SystemUI.HUD_SMALL_SIZE
+SystemColors.AMBER_PRIMARY = SystemColors.ACCENT_PRIMARY  # type: ignore[attr-defined]
+SystemColors.AMBER_DIM = SystemColors.ACCENT_DIM  # type: ignore[attr-defined]
+SystemColors.AMBER_BRIGHT = SystemColors.ACCENT_BRIGHT  # type: ignore[attr-defined]
+SystemColors.AMBER_GLOW = SystemColors.ACCENT_GLOW  # type: ignore[attr-defined]
+SystemColors.MILITARY_GREEN = SystemColors.ACCENT_TEAL  # type: ignore[attr-defined]
+SystemColors.MILITARY_GREEN_DIM = SystemColors.ACCENT_TEAL_DIM  # type: ignore[attr-defined]
+SystemColors.WARNING_AMBER = SystemColors.WARNING_ACCENT  # type: ignore[attr-defined]
+SystemColors.MILITARY_LABEL_SIZE = SystemUI.HUD_LABEL_SIZE  # type: ignore[attr-defined]
+SystemColors.MILITARY_VALUE_SIZE = SystemUI.HUD_VALUE_SIZE  # type: ignore[attr-defined]
+SystemColors.MILITARY_TITLE_SIZE = SystemUI.HUD_TITLE_SIZE  # type: ignore[attr-defined]
+SystemColors.MILITARY_SMALL_SIZE = SystemUI.HUD_SMALL_SIZE  # type: ignore[attr-defined]
 
 # Legacy constant aliases on SceneColors
-SceneColors.GOLD_PRIMARY = SceneColors.ACCENT_PRIMARY
-SceneColors.GOLD_DIM = SceneColors.ACCENT_DIM
-SceneColors.GOLD_BRIGHT = SceneColors.ACCENT_BRIGHT
-SceneColors.GOLD_GLOW = SceneColors.ACCENT_GLOW
-SceneColors.FOREST_GREEN = SceneColors.ACCENT_TEAL
-SceneColors.FOREST_GREEN_DIM = SceneColors.ACCENT_TEAL_DIM
-SceneColors.FOREST_GREEN_BRIGHT = SceneColors.ACCENT_TEAL_BRIGHT
-SceneColors.BORDER_FOREST = SceneColors.BORDER_TEAL
-SceneColors.WARNING_AMBER = SceneColors.WARNING_ACCENT
+SceneColors.GOLD_PRIMARY = SceneColors.ACCENT_PRIMARY  # type: ignore[attr-defined]
+SceneColors.GOLD_DIM = SceneColors.ACCENT_DIM  # type: ignore[attr-defined]
+SceneColors.GOLD_BRIGHT = SceneColors.ACCENT_BRIGHT  # type: ignore[attr-defined]
+SceneColors.GOLD_GLOW = SceneColors.ACCENT_GLOW  # type: ignore[attr-defined]
+SceneColors.FOREST_GREEN = SceneColors.ACCENT_TEAL  # type: ignore[attr-defined]
+SceneColors.FOREST_GREEN_DIM = SceneColors.ACCENT_TEAL_DIM  # type: ignore[attr-defined]
+SceneColors.FOREST_GREEN_BRIGHT = SceneColors.ACCENT_TEAL_BRIGHT  # type: ignore[attr-defined]
+SceneColors.BORDER_FOREST = SceneColors.BORDER_TEAL  # type: ignore[attr-defined]
+SceneColors.WARNING_AMBER = SceneColors.WARNING_ACCENT  # type: ignore[attr-defined]
 
 # Legacy constant aliases on SystemUI
-SystemUI.MILITARY_LABEL_SIZE = SystemUI.HUD_LABEL_SIZE
-SystemUI.MILITARY_VALUE_SIZE = SystemUI.HUD_VALUE_SIZE
-SystemUI.MILITARY_TITLE_SIZE = SystemUI.HUD_TITLE_SIZE
-SystemUI.MILITARY_SMALL_SIZE = SystemUI.HUD_SMALL_SIZE
+SystemUI.MILITARY_LABEL_SIZE = SystemUI.HUD_LABEL_SIZE  # type: ignore[attr-defined]
+SystemUI.MILITARY_VALUE_SIZE = SystemUI.HUD_VALUE_SIZE  # type: ignore[attr-defined]
+SystemUI.MILITARY_TITLE_SIZE = SystemUI.HUD_TITLE_SIZE  # type: ignore[attr-defined]
+SystemUI.MILITARY_SMALL_SIZE = SystemUI.HUD_SMALL_SIZE  # type: ignore[attr-defined]
 
 
 # ─── DesignTokens singleton ───────────────────────────────────────────────
@@ -435,28 +442,28 @@ SystemUI.MILITARY_SMALL_SIZE = SystemUI.HUD_SMALL_SIZE
 class DesignTokens:
     """Design tokens singleton — centralized visual design system."""
 
-    def __init__(self):
-        self.colors = Colors
-        self.typography = Typography
-        self.spacing = Spacing
-        self.animation = Animation
-        self.components = UIComponents
-        self.system = SystemColors
-        self.system_ui = SystemUI
-        self.scene = SceneColors
+    def __init__(self) -> None:
+        self.colors: type[Colors] = Colors
+        self.typography: type[Typography] = Typography
+        self.spacing: type[Spacing] = Spacing
+        self.animation: type[Animation] = Animation
+        self.components: type[UIComponents] = UIComponents
+        self.system: type[SystemColors] = SystemColors
+        self.system_ui: type[SystemUI] = SystemUI
+        self.scene: type[SceneColors] = SceneColors
         # Backward-compatible aliases
-        self.military = SystemColors
-        self.military_ui = SystemUI
-        self.forest = SceneColors
+        self.military: type[SystemColors] = SystemColors
+        self.military_ui: type[SystemUI] = SystemUI
+        self.forest: type[SceneColors] = SceneColors
 
-    def get_font(self, size: int):
+    def get_font(self, size: int) -> pygame.font.Font:
         return get_cjk_font(size)
 
-    def get_scaled_font(self, base_size: int, scale: float):
+    def get_scaled_font(self, base_size: int, scale: float) -> pygame.font.Font:
         return get_cjk_font(int(base_size * scale))
 
 
-_tokens_instance = None
+_tokens_instance: DesignTokens | None = None
 
 
 def get_design_tokens() -> DesignTokens:
@@ -466,5 +473,5 @@ def get_design_tokens() -> DesignTokens:
     return _tokens_instance
 
 
-def get_colors() -> type:
+def get_colors() -> type[Colors]:
     return Colors

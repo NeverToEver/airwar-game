@@ -1,5 +1,9 @@
 """Game config — singleton configuration with fixed logical sizing."""
 
+from __future__ import annotations
+
+from typing import ClassVar
+
 import pygame
 
 
@@ -10,21 +14,21 @@ class GameConfig:
     size is tracked separately for the window and scaled rendering.
     """
 
-    _instance = None
-    LOGICAL_WIDTH = 1920
-    LOGICAL_HEIGHT = 1080
+    _instance: ClassVar[GameConfig | None] = None
+    LOGICAL_WIDTH: ClassVar[int] = 1920
+    LOGICAL_HEIGHT: ClassVar[int] = 1080
 
-    def __init__(self):
+    def __init__(self) -> None:
         if GameConfig._instance is not None:
             raise RuntimeError("Use get_instance() to get GameConfig")
-        self._screen_width = self.LOGICAL_WIDTH
-        self._screen_height = self.LOGICAL_HEIGHT
-        self._display_width = self.LOGICAL_WIDTH
-        self._display_height = self.LOGICAL_HEIGHT
-        self._fps = 60
+        self._screen_width: int = self.LOGICAL_WIDTH
+        self._screen_height: int = self.LOGICAL_HEIGHT
+        self._display_width: int = self.LOGICAL_WIDTH
+        self._display_height: int = self.LOGICAL_HEIGHT
+        self._fps: int = 60
 
     @classmethod
-    def get_instance(cls):
+    def get_instance(cls) -> GameConfig:
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
@@ -112,3 +116,4 @@ def get_display_height() -> int:
 
 def set_display_size(width: int, height: int) -> None:
     GameConfig.get_instance().set_display_size(width, height)
+

@@ -13,6 +13,7 @@ import pygame
 
 from airwar.config import TUTORIAL_STAGES
 from airwar.config.design_tokens import SceneColors
+from airwar.i18n import t
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.ui.scene_rendering_utils import fit_text_to_width, wrap_text
 from airwar.utils.sprites import draw_boss_ship, draw_bullet, draw_enemy_ship, draw_player_ship
@@ -227,7 +228,7 @@ class TutorialSceneRenderer:
         )
         surface.blit(badge_layer, badge_layer.get_rect(center=badge_rect.center))
 
-        badge_top = s._tiny_font.render("阶段", True, SceneColors.TEXT_DIM)
+        badge_top = s._tiny_font.render(t("tutorial.badge_stage"), True, SceneColors.TEXT_DIM)
         badge_num = s._body_font.render(str(s._stage_index + 1), True, SceneColors.TEXT_BRIGHT)
         surface.blit(badge_top, badge_top.get_rect(center=(badge_rect.centerx, badge_rect.centery - 12)))
         surface.blit(badge_num, badge_num.get_rect(center=(badge_rect.centerx, badge_rect.centery + 12)))
@@ -235,7 +236,7 @@ class TutorialSceneRenderer:
         title = s._heading_font.render(s._stage.title, True, SceneColors.ACCENT_TEAL_BRIGHT)
         surface.blit(title, title.get_rect(midleft=(content_left, y + 32)))
 
-        objective = f"目标: {s._stage.objective}"
+        objective = f"{t('tutorial.objective_prefix')}{s._stage.objective}"
         obj_surf = fit_text_to_width(s._small_font, objective, SceneColors.ACCENT_PRIMARY, max_text_w)
         surface.blit(obj_surf, obj_surf.get_rect(midleft=(content_left, y + 66)))
 
@@ -257,7 +258,7 @@ class TutorialSceneRenderer:
             (*SceneColors.ACCENT_TEAL_BRIGHT, 38),
             8,
         )
-        counter_label = s._tiny_font.render("进度", True, SceneColors.TEXT_DIM)
+        counter_label = s._tiny_font.render(t("tutorial.badge_progress"), True, SceneColors.TEXT_DIM)
         counter = self._objective_counter_text()
         counter_surf = fit_text_to_width(s._body_font, counter, SceneColors.TEXT_BRIGHT, counter_rect.width - 20)
         surface.blit(counter_label, counter_label.get_rect(midtop=(counter_rect.centerx, counter_rect.y + 5)))
@@ -273,31 +274,31 @@ class TutorialSceneRenderer:
         if s._stage.id == "mothership_docking":
             if s._dock_sub_phase == "approach":
                 return [
-                    "按住 H 时母舰虚影会逐渐显现，进度条满后战机会自动对接。",
+                    t("tutorial.approach_text"),
                 ]
             if s._dock_sub_phase == "entering":
                 return [
-                    "呼叫完成。战机正在沿停靠航线进入母舰对接口，控制会短暂锁定。",
+                    t("tutorial.entering_text"),
                 ]
             if s._dock_sub_phase == "docked":
                 return [
-                    "停靠完成。母舰正在发射导弹清剿敌方单位，弹药随时间消耗。耗尽后自动脱离。",
+                    t("tutorial.docked_text"),
                 ]
             return [
-                "弹匣耗尽，战机先被弹出停靠舱，随后母舰加速上升脱离战场。",
+                t("tutorial.eject_text"),
             ]
 
         if s._stage.id == "homecoming_base":
             if s._base_sub_phase == "combat":
                 return [
-                    "战斗中按住 B 启动返航。返航后可在基地恢复机体、充能燃料、切换天赋配置。",
+                    t("tutorial.homecoming_combat_text"),
                 ]
             if s._base_sub_phase == "base":
                 return [
-                    "基地指挥中心。你可以维修机体、补给燃料、切换天赋路线。准备完成后点击「继续出击」。",
+                    t("tutorial.homecoming_base_text"),
                 ]
             return [
-                "轨道导弹清场完成，已返回战场。",
+                t("tutorial.homecoming_depart_text"),
             ]
 
         return s._stage.instructions
@@ -305,25 +306,27 @@ class TutorialSceneRenderer:
     def _objective_counter_text(self) -> str:
         s = self._scene
         if s._stage.id == "mothership_docking" and s._dock_sub_phase == "approach":
-            return f"{int(s._hold_h_frames / s.DOCK_HOLD_FRAMES * 100)}%"
+            return t("tutorial.objective.dock_percent", percent=int(s._hold_h_frames / s.DOCK_HOLD_FRAMES * 100))
         if s._stage.id == "mothership_docking" and s._dock_sub_phase == "entering":
-            return "对接"
+            return t("tutorial.objective.dock")
         if s._stage.id == "mothership_docking" and s._dock_sub_phase == "docked":
             return f"{s._mothership_ammo:.1f}"
         if s._stage.id == "mothership_docking" and s._dock_sub_phase == "eject_player":
-            return "弹出" if s._dock_undock_phase == "player" else "脱离"
+            if s._dock_undock_phase == "player":
+                return t("tutorial.objective.dock_eject")
+            return t("tutorial.objective.dock_undock")
         if s._stage.id == "homecoming_base" and s._base_sub_phase == "combat":
-            return f"返航引擎预热 {int(s._hold_b_frames / s.HOME_HOLD_FRAMES * 100)}%"
+            return t("tutorial.objective.homecoming_percent", percent=int(s._hold_b_frames / s.HOME_HOLD_FRAMES * 100))
         if s._stage.id == "homecoming_base" and s._base_sub_phase == "base":
-            return "整备"
+            return t("tutorial.objective.base")
         if s._stage.id == "homecoming_base" and s._base_sub_phase == "depart":
-            return "出击"
+            return t("tutorial.objective.depart")
         if s._stage.id == "boss_encounter" and s._boss is None and s._escape_timer > 0:
             seconds = max(0, math.ceil(s._escape_timer / 60))
-            return f"撤离 {seconds}s"
+            return t("tutorial.objective.escape", seconds=seconds)
         if s._stage_completed:
-            return "完成"
-        return f"{s._stage_progress}/{s._stage.objective_count}"
+            return t("tutorial.objective.completed")
+        return t("tutorial.objective.progress", current=s._stage_progress, total=s._stage.objective_count)
 
     def _stage_hold_ratio(self) -> float | None:
         s = self._scene
@@ -373,8 +376,8 @@ class TutorialSceneRenderer:
             8,
         )
 
-        score_text = s._small_font.render(f"得分 {s._score:04d}", True, SceneColors.TEXT_PRIMARY)
-        kills_text = s._small_font.render(f"击杀 {s._kills}", True, SceneColors.ACCENT_PRIMARY)
+        score_text = s._small_font.render(t("tutorial.status_score", score=s._score), True, SceneColors.TEXT_PRIMARY)
+        kills_text = s._small_font.render(t("tutorial.status_kills", kills=s._kills), True, SceneColors.ACCENT_PRIMARY)
         metric_gap = 58
         total_w = score_text.get_width() + metric_gap + kills_text.get_width()
         start_x = panel.centerx - total_w // 2
@@ -431,7 +434,7 @@ class TutorialSceneRenderer:
         fill.width = int(bar.width * ratio)
         pygame.draw.rect(surface, color, fill, border_radius=4)
         pygame.draw.rect(surface, SceneColors.BORDER_DIM, bar, 1, border_radius=4)
-        label = "首领装甲  激怒" if boss.enraged else "首领装甲"
+        label = t("tutorial.boss_armor_enrage") if boss.enraged else t("tutorial.boss_armor")
         text = s._small_font.render(label, True, color)
         surface.blit(text, text.get_rect(midbottom=(bar.centerx, bar.y - 3)))
 
@@ -452,7 +455,7 @@ class TutorialSceneRenderer:
     def _render_boss_enrage_warning(self, surface: pygame.Surface, boss) -> None:
         s = self._scene
         pulse = 0.55 + 0.45 * math.sin(s._animation_time * 0.13)
-        text = s._heading_font.render("核心过载", True, SceneColors.ACCENT_TEAL_BRIGHT)
+        text = s._heading_font.render(t("tutorial.core_overload"), True, SceneColors.ACCENT_TEAL_BRIGHT)
         text.set_alpha(int(150 + 80 * pulse))
         surface.blit(text, text.get_rect(center=(boss.rect.centerx, boss.rect.y - 34)))
 
@@ -498,7 +501,7 @@ class TutorialSceneRenderer:
         overlay = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 138))
         surface.blit(overlay, (0, 0))
-        text = s._heading_font.render("轨道导弹清场完成，已返回战场", True, SceneColors.ACCENT_TEAL_BRIGHT)
+        text = s._heading_font.render(t("tutorial.homecoming_depart_text"), True, SceneColors.ACCENT_TEAL_BRIGHT)
         surface.blit(text, text.get_rect(center=(surface.get_width() // 2, surface.get_height() // 2)))
 
     # -- Base talent console ---------------------------------------------
@@ -536,13 +539,13 @@ class TutorialSceneRenderer:
         pygame.draw.ellipse(gate_layer, (*SceneColors.ACCENT_PRIMARY, 45), gate_layer.get_rect().inflate(-70, -52), 2)
         surface.blit(gate_layer, gate_rect)
         if s._boost_feedback_timer > 0:
-            text = s._heading_font.render("相位突进", True, SceneColors.ACCENT_TEAL_BRIGHT)
+            text = s._heading_font.render(t("tutorial.boost_label"), True, SceneColors.ACCENT_TEAL_BRIGHT)
             surface.blit(text, text.get_rect(center=(gate_rect.centerx, gate_rect.centery)))
 
     def _render_escape_countdown(self, surface: pygame.Surface) -> None:
         s = self._scene
         seconds = max(0, math.ceil(s._escape_timer / 60))
-        text = s._title_font.render(f"撤离窗口 {seconds}", True, SceneColors.WARNING_ACCENT)
+        text = s._title_font.render(t("tutorial.boost_escape_label", seconds=seconds), True, SceneColors.WARNING_ACCENT)
         surface.blit(text, text.get_rect(center=(surface.get_width() // 2, 250)))
 
     # -- Skip button -----------------------------------------------------
@@ -560,7 +563,8 @@ class TutorialSceneRenderer:
         fill = SceneColors.BG_PANEL_LIGHT if hover else SceneColors.BG_PANEL
         border = SceneColors.ACCENT_PRIMARY if hover else SceneColors.BORDER_DIM
         draw_chamfered_panel(surface, rect.x, rect.y, rect.width, rect.height, fill, border, None, 6)
-        text = s._small_font.render("跳过教程", True, SceneColors.TEXT_PRIMARY if hover else SceneColors.TEXT_DIM)
+        skip_label = t("tutorial.skip_button")
+        text = s._small_font.render(skip_label, True, SceneColors.TEXT_PRIMARY if hover else SceneColors.TEXT_DIM)
         surface.blit(text, text.get_rect(center=rect.center))
 
     # -- Summary ---------------------------------------------------------
@@ -583,11 +587,11 @@ class TutorialSceneRenderer:
             12,
         )
 
-        title = s._title_font.render("教程完成", True, SceneColors.ACCENT_TEAL_BRIGHT)
+        title = s._title_font.render(t("tutorial.summary_title"), True, SceneColors.ACCENT_TEAL_BRIGHT)
         surface.blit(title, title.get_rect(center=(panel.centerx, panel.y + 54)))
 
         summary = s._body_font.render(
-            f"已完成 {len(s._cleared_stage_ids)}/{len(TUTORIAL_STAGES)} 个训练阶段",
+            t("tutorial.summary_progress", cleared=len(s._cleared_stage_ids), total=len(TUTORIAL_STAGES)),
             True,
             SceneColors.TEXT_PRIMARY,
         )
@@ -602,7 +606,7 @@ class TutorialSceneRenderer:
             y += 36
 
         wrap_y = y + 10
-        tip_text = "进入正式战斗后，优先保持移动，适时使用加速、母舰停靠和基地返航。"
+        tip_text = t("tutorial.summary_tip")
         for line in wrap_text(tip_text, s._small_font, panel.width - 112, max_lines=3):
             surface.blit(s._small_font.render(line, True, SceneColors.TEXT_DIM), (panel.x + 56, wrap_y))
             wrap_y += 26
@@ -621,7 +625,7 @@ class TutorialSceneRenderer:
             None,
             6,
         )
-        btn_text = s._body_font.render("返回主菜单", True, SceneColors.TEXT_BRIGHT)
+        btn_text = s._body_font.render(t("tutorial.summary_return_menu"), True, SceneColors.TEXT_BRIGHT)
         surface.blit(btn_text, btn_text.get_rect(center=btn.center))
 
     # -- Fade ------------------------------------------------------------
@@ -676,7 +680,8 @@ class TutorialSceneRenderer:
             14,
         )
 
-        stage_text = s._body_font.render(f"第{s._stage_index + 1}阶段", True, SceneColors.ACCENT_PRIMARY)
+        stage_label = t("tutorial.stage_label", index=s._stage_index + 1)
+        stage_text = s._body_font.render(stage_label, True, SceneColors.ACCENT_PRIMARY)
         title_text = fit_text_to_width(s._heading_font, s._stage.title, SceneColors.TEXT_BRIGHT, card_w - 96)
         card.blit(stage_text, stage_text.get_rect(center=(card_w // 2, 34)))
         card.blit(title_text, title_text.get_rect(center=(card_w // 2, 76)))

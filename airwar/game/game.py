@@ -31,6 +31,9 @@ class Game:
     """
 
     def __init__(self):
+        from airwar.i18n import set_locale
+
+        set_locale("zh_CN")
         self._window = create_window(SCREEN_WIDTH, SCREEN_HEIGHT, "Air War - Sky Combat", resizable=True)
         self._viewport = ScaledViewport(SCREEN_WIDTH, SCREEN_HEIGHT)
         self._viewport.update(*self._window.get_size())

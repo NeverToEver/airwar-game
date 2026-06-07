@@ -5,6 +5,7 @@ import math
 import pygame
 
 from airwar.config.design_tokens import SceneColors, get_design_tokens
+from airwar.i18n import t
 from airwar.ui.effects import EffectsRenderer
 from airwar.ui.menu_background import MenuBackground
 from airwar.ui.particles import ParticleSystem
@@ -27,7 +28,11 @@ class ExitConfirmScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
     def enter(self, **kwargs) -> None:
         self.running = True
         self.result: ExitConfirmAction = None
-        self.options = ["返回主菜单", "新游戏", "退出游戏"]
+        self.options = [
+            t("exit_confirm.option.main_menu"),
+            t("exit_confirm.option.new_game"),
+            t("exit_confirm.option.quit"),
+        ]
         self.selected_index = 0
         self.saved = kwargs.get("saved", False)
         self.difficulty = kwargs.get("difficulty", "medium")
@@ -120,7 +125,7 @@ class ExitConfirmScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
 
     def _draw_success_indicator(self, surface: pygame.Surface, center_x: int, y: int, scale: float = 1.0) -> None:
         if self.saved:
-            check_text = "[OK] 游戏已保存"
+            check_text = t("exit_confirm.saved_badge_legacy")
             check_surface = self.hint_font.render(check_text, True, self.colors["success"])
             check_rect = check_surface.get_rect(center=(center_x, y))
             pulse = math.sin(self.animation_time * 0.1)
@@ -141,7 +146,7 @@ class ExitConfirmScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
         center_x = width // 2
 
         title_y = height // 3 + self.glow_offset * 0.3
-        title_text = "游戏已保存" if self.saved else "退出游戏"
+        title_text = t("exit_confirm.title_saved") if self.saved else t("exit_confirm.title_quit")
 
         if self.use_themed_style:
             self._draw_themed_title(surface, title_text, self.title_font, (center_x, title_y))
@@ -206,23 +211,23 @@ class ExitConfirmScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
 
         blink_interval = self._tokens.animation.BLINK_INTERVAL
         blink = (self.animation_time // blink_interval) % 2 == 0
-        hint_text = "点击或回车确认" if blink else "               "
+        hint_text = t("exit_confirm.hint.confirm") if blink else "               "
         hint_color = SceneColors.TEXT_DIM if self.use_themed_style else self.colors["hint"]
         hint = self.hint_font.render(hint_text, True, hint_color)
         surface.blit(hint, hint.get_rect(center=(center_x, height - ResponsiveHelper.scale(120, scale))))
 
         controls_color = SceneColors.TEXT_DIM if self.use_themed_style else (60, 60, 100)
-        controls = self.desc_font.render("点击或 W/S 选择", True, controls_color)
+        controls = self.desc_font.render(t("exit_confirm.hint.navigate"), True, controls_color)
         surface.blit(controls, controls.get_rect(center=(center_x, height - ResponsiveHelper.scale(80, scale))))
 
-        esc_hint = self.desc_font.render("ESC 返回菜单", True, controls_color)
+        esc_hint = self.desc_font.render(t("exit_confirm.hint.esc"), True, controls_color)
         surface.blit(esc_hint, esc_hint.get_rect(center=(center_x, height - ResponsiveHelper.scale(50, scale))))
 
     def _draw_themed_success_indicator(
         self, surface: pygame.Surface, center_x: int, y: int, scale: float = 1.0
     ) -> None:
         if self.saved:
-            check_text = ">> 游戏已保存 <<"
+            check_text = t("exit_confirm.saved_badge_themed")
             check_surface = self.hint_font.render(check_text, True, SceneColors.FOREST_GREEN)
             check_rect = check_surface.get_rect(center=(center_x, y))
             pulse = math.sin(self.animation_time * 0.1)

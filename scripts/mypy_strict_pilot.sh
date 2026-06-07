@@ -28,12 +28,17 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 # Modules that are already strict-clean. The audio module has no airwar
-# imports, the config/settings module only depends on the stdlib + pygame,
-# and the achievements module was authored with type annotations in mind
-# (and was the pilot for the [[tool.mypy.overrides]] approach).
+# imports, the config modules only depend on the stdlib + pygame, the
+# achievements module was authored with type annotations in mind (and
+# was the pilot for the [[tool.mypy.overrides]] approach), and the
+# database module is a focused JSON-backed store with no pygame
+# surface. See docs/mypy_status.md for the rollout plan.
 DEFAULT_TARGETS=(
   "airwar/audio/sound_manager.py"
   "airwar/config/settings.py"
+  "airwar/config/design_tokens.py"
+  "airwar/config/game_config.py"
+  "airwar/utils/database.py"
   "airwar/game/achievements.py"
 )
 

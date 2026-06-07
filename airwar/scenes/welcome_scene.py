@@ -6,6 +6,7 @@ import math
 import pygame
 
 from airwar.config.design_tokens import SceneColors, get_design_tokens
+from airwar.i18n import t
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.ui.leaderboard_view import LeaderboardView
 from airwar.ui.menu_background import MenuBackground
@@ -105,7 +106,11 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
         # Difficulty
         self.difficulty_options = ["easy", "medium", "hard"]
-        self.difficulty_labels = {"easy": "简单", "medium": "中等", "hard": "困难"}
+        self.difficulty_labels = {
+            "easy": t("welcome.difficulty.easy"),
+            "medium": t("welcome.difficulty.medium"),
+            "hard": t("welcome.difficulty.hard"),
+        }
         self.selected_difficulty = "medium"
         self.difficulty_index = 1
 
@@ -344,19 +349,19 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             self.show_delete_confirm = True
             self.delete_confirm_focus = "no"
         else:
-            self.message = "请先输入用户名"
+            self.message = t("welcome.error.delete_user_missing")
             self._is_error = True
             self.message_timer = self.MESSAGE_DISPLAY_FRAMES
 
     def _do_delete_user(self) -> None:
         if not self.delete_username:
-            self.message = "请输入用户名"
+            self.message = t("welcome.error.delete_user_missing")
             self._is_error = True
             self.message_timer = self.MESSAGE_DISPLAY_FRAMES
             self.show_delete_confirm = False
             return
         if not self.password:
-            self.message = "请输入当前密码后再删除"
+            self.message = t("welcome.error.delete_requires_password")
             self._is_error = True
             self.message_timer = self.MESSAGE_DISPLAY_FRAMES
             self.show_delete_confirm = False
@@ -366,27 +371,27 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             deleted = self.db.delete_user(self.delete_username, self.password)
         except DatabaseError:
             logger.warning("Failed to delete user account data", exc_info=True)
-            self.message = "账户数据保存失败"
+            self.message = t("welcome.error.delete_db_failed")
             self._is_error = True
             self.message_timer = self.MESSAGE_DISPLAY_FRAMES
             self.show_delete_confirm = False
             return
         if deleted:
-            self.message = f"用户 {self.delete_username} 已删除"
+            self.message = t("welcome.info.delete_success", username=self.delete_username)
             self._is_error = False
             self.message_timer = self.MESSAGE_DISPLAY_FRAMES
             self.username = ""
             self.password = ""
             self._load_known_usernames()
         else:
-            self.message = "用户不存在或密码错误"
+            self.message = t("welcome.error.delete_failed")
             self._is_error = True
             self.message_timer = self.MESSAGE_DISPLAY_FRAMES
         self.show_delete_confirm = False
 
     def _do_login(self) -> None:
         if not self.username or not self.password:
-            self.message = "请输入用户名和密码"
+            self.message = t("welcome.error.empty_credentials")
             self._is_error = True
             self.message_timer = self.MESSAGE_DISPLAY_FRAMES
             return
@@ -394,7 +399,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             verified = self.db.verify_user(self.username, self.password)
         except DatabaseError:
             logger.warning("Failed to verify user credentials", exc_info=True)
-            self.message = "账户数据读取失败"
+            self.message = t("welcome.error.db_read_failed")
             self._is_error = True
             self.message_timer = self.MESSAGE_DISPLAY_FRAMES
             return
@@ -403,7 +408,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
                 self.db.record_login(self.username)
             except DatabaseError:
                 logger.warning("Failed to record user login", exc_info=True)
-                self.message = "账户数据保存失败"
+                self.message = t("welcome.error.delete_db_failed")
                 self._is_error = True
                 self.message_timer = self.MESSAGE_DISPLAY_FRAMES
                 return
@@ -411,23 +416,23 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             self._is_error = False
             self.running = False
         else:
-            self.message = "用户名或密码错误"
+            self.message = t("welcome.error.wrong_credentials")
             self._is_error = True
             self.message_timer = self.MESSAGE_DISPLAY_FRAMES
 
     def _do_register(self) -> None:
         if not self.username or not self.password:
-            self.message = "请输入用户名和密码"
+            self.message = t("welcome.error.empty_credentials")
             self._is_error = True
             self.message_timer = self.MESSAGE_DISPLAY_FRAMES
             return
         if len(self.username) < 3:
-            self.message = "用户名至少3个字符"
+            self.message = t("welcome.error.short_username")
             self._is_error = True
             self.message_timer = self.MESSAGE_DISPLAY_FRAMES
             return
         if len(self.password) < 3:
-            self.message = "密码至少3个字符"
+            self.message = t("welcome.error.short_password")
             self._is_error = True
             self.message_timer = self.MESSAGE_DISPLAY_FRAMES
             return
@@ -435,18 +440,18 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             created = self.db.create_user(self.username, self.password)
         except DatabaseError:
             logger.warning("Failed to create user account", exc_info=True)
-            self.message = "账户数据保存失败"
+            self.message = t("welcome.error.delete_db_failed")
             self._is_error = True
             self.message_timer = self.MESSAGE_DISPLAY_FRAMES
             return
         if created:
-            self.message = "注册成功！现在可以开始游戏了"
+            self.message = t("welcome.info.register_success")
             self._is_error = False
             self.message_timer = self.MESSAGE_DISPLAY_FRAMES
             self.password = ""
             self._load_known_usernames()
         else:
-            self.message = "用户名已存在"
+            self.message = t("welcome.error.username_exists")
             self._is_error = True
             self.message_timer = self.MESSAGE_DISPLAY_FRAMES
 
@@ -605,14 +610,14 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         ty = max(62, int(title_size * 0.72)) + math.sin(self.animation_time * 0.04) * 3
 
         for blur, alpha, color in [(4, 18, SC.GOLD_DIM), (2, 30, SC.GOLD_PRIMARY)]:
-            glow = title_font.render("空 战", True, color)
+            glow = title_font.render(t("welcome.title"), True, color)
             glow.set_alpha(alpha)
             for ox in range(-blur, blur + 1, 2):
                 for oy in range(-blur, blur + 1, 2):
                     if ox * ox + oy * oy <= blur * blur:
                         r = glow.get_rect(center=(sw // 2 + ox, int(ty) + oy))
                         surface.blit(glow, r)
-        title = title_font.render("空 战", True, SC.GOLD_PRIMARY)
+        title = title_font.render(t("welcome.title"), True, SC.GOLD_PRIMARY)
         surface.blit(title, title.get_rect(center=(sw // 2, int(ty))))
 
     def _render_left_panel(self, surface, px, py):
@@ -625,7 +630,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         )
 
         # Section title
-        title = self.section_font.render("飞行员登录", True, SC.GOLD_PRIMARY)
+        title = self.section_font.render(t("welcome.login_title"), True, SC.GOLD_PRIMARY)
         surface.blit(title, title.get_rect(center=layout["title_center"]))
 
         # Decorative separator
@@ -636,7 +641,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             surface,
             layout["username_label"],
             layout["username_field"],
-            "用户名",
+            t("welcome.username_label"),
             self.username,
             self.focus == "username",
             "username_field",
@@ -646,17 +651,24 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             surface,
             layout["password_label"],
             layout["password_field"],
-            "密码",
+            t("welcome.password_label"),
             self.password,
             self.focus == "password",
             "password_field",
             is_password=True,
         )
 
-        self._draw_button(surface, layout["login"], "登录", "login", SceneColors.FOREST_GREEN, is_primary=True)
-        self._draw_button(surface, layout["register"], "注册", "register", SceneColors.GOLD_DIM)
+        self._draw_button(
+            surface,
+            layout["login"],
+            t("welcome.login_button"),
+            "login",
+            SceneColors.FOREST_GREEN,
+            is_primary=True,
+        )
+        self._draw_button(surface, layout["register"], t("welcome.register_button"), "register", SceneColors.GOLD_DIM)
 
-        self._draw_ghost_button(surface, layout["guest"], "游客模式", "skip_login")
+        self._draw_ghost_button(surface, layout["guest"], t("welcome.guest_button"), "skip_login")
 
         # Settings button
         settings_rect = layout["settings"]
@@ -677,7 +689,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         )
         settings_color = (160, 220, 240) if settings_hover else SC.TEXT_DIM
         settings_font = get_cjk_font(self._tokens.typography.SMALL_SIZE)
-        settings_text = settings_font.render("设置", True, settings_color)
+        settings_text = settings_font.render(t("welcome.settings_button"), True, settings_color)
         surface.blit(settings_text, settings_text.get_rect(center=settings_rect.center))
 
         delete_rect = layout["delete"]
@@ -698,7 +710,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         )
         delete_color = (255, 100, 100) if delete_hover else SC.TEXT_DIM
         delete_font = get_cjk_font(self._tokens.typography.SMALL_SIZE)
-        delete_text = delete_font.render("删除用户", True, delete_color)
+        delete_text = delete_font.render(t("welcome.delete_button"), True, delete_color)
         surface.blit(delete_text, delete_text.get_rect(center=delete_rect.center))
         self._render_user_dropdown(surface, layout["username_dropdown"])
 
@@ -834,7 +846,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         )
 
         # Section title
-        title = self.section_font.render("任务简报", True, SC.GOLD_PRIMARY)
+        title = self.section_font.render(t("welcome.briefing_title"), True, SC.GOLD_PRIMARY)
         surface.blit(title, title.get_rect(center=(px + self.PANEL_W // 2, py + 32)))
 
         sep_y = py + 58
@@ -847,7 +859,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
         # -- Difficulty selection --
         diff_title_y = tutorial_rect.bottom + 14
-        diff_label = self.hint_font.render("难度", True, SC.TEXT_DIM)
+        diff_label = self.hint_font.render(t("welcome.difficulty_label"), True, SC.TEXT_DIM)
         surface.blit(diff_label, (px + 35, diff_title_y))
 
         diff_start_y = diff_title_y + 26
@@ -863,7 +875,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             + (len(self.difficulty_options) - 1) * self.DIFF_GAP
             + 12
         )
-        tips_label = self.hint_font.render("操作说明", True, SC.TEXT_DIM)
+        tips_label = self.hint_font.render(t("welcome.controls_label"), True, SC.TEXT_DIM)
         surface.blit(tips_label, (px + 35, tips_title_y))
 
         # -- Leaderboard button (compact, near bottom) --
@@ -875,16 +887,16 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             lb_btn_w,
             lb_btn_h,
         )
-        self._draw_ghost_button(surface, lb_rect, "排行榜", "leaderboard")
+        self._draw_ghost_button(surface, lb_rect, t("welcome.leaderboard_button"), "leaderboard")
 
         controls = [
-            ("WASD / 方向键", "移动战机"),
-            ("SHIFT (按住)", "加速"),
-            ("B (按住2.4秒)", "返航基地"),
-            ("H (按住3秒)", "停靠母舰"),
-            ("K (按住3秒)", "投降"),
-            ("ESC", "暂停游戏"),
-            ("L", "切换HUD面板"),
+            (t("welcome.controls.move_key"), t("welcome.controls.move")),
+            (t("welcome.controls.boost_key"), t("welcome.controls.boost")),
+            (t("welcome.controls.home_key"), t("welcome.controls.home")),
+            (t("welcome.controls.dock_key"), t("welcome.controls.dock")),
+            (t("welcome.controls.surrender_key"), t("welcome.controls.surrender")),
+            (t("welcome.controls.pause_key"), t("welcome.controls.pause")),
+            (t("welcome.controls.hud_key"), t("welcome.controls.hud")),
         ]
         tip_y = tips_title_y + 26
         key_x = px + 35
@@ -963,7 +975,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         pygame.draw.polygon(surface, gold, accent_points)
 
         text_color = SC.TEXT_BRIGHT if hover else (224, 248, 248)
-        text = fit_text_to_width(self.input_font, "新手教程", text_color, rect.width - 112)
+        text = fit_text_to_width(self.input_font, t("welcome.tutorial_cta"), text_color, rect.width - 112)
         surface.blit(text, text.get_rect(midleft=(rect.x + 32, rect.centery)))
 
         chevron_x = rect.right - 42 + int(3 * pulse)
@@ -1009,7 +1021,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
 
         # Placeholder
         if not text:
-            ph = "输入用户名..." if not is_password else "输入密码..."
+            ph = t("welcome.username_placeholder") if not is_password else t("welcome.password_placeholder")
             ph_surf = self.input_font.render(ph, True, SC.TEXT_DIM)
             ph_rect = ph_surf.get_rect(midleft=(rect.x + 16, rect.centery))
             surface.blit(ph_surf, ph_rect)
@@ -1075,10 +1087,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         SC = SceneColors
         blink = (self.animation_time // 30) % 2 == 0
         color = SC.TEXT_DIM if blink else SC.TEXT_PRIMARY
-        if self.show_guest_confirm:
-            hints = "← → : 选择  |  ENTER: 确认  |  ESC: 返回"
-        else:
-            hints = "TAB: 切换焦点  |  ENTER: 确认  |  ESC: 退出"
+        hints = t("welcome.hint.guest_confirm") if self.show_guest_confirm else t("welcome.hint.default")
         hint_surf = self.hint_font.render(hints, True, color)
         surface.blit(hint_surf, hint_surf.get_rect(center=(sw // 2, sh - 40)))
 
@@ -1105,14 +1114,14 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         draw_chamfered_panel(surface, dlg_x, dlg_y, dlg_w, dlg_h, SC.BG_PANEL_LIGHT, SC.GOLD_PRIMARY, SC.GOLD_GLOW, 12)
 
         # Title
-        title = self.section_font.render("游客模式", True, SC.GOLD_PRIMARY)
+        title = self.section_font.render(t("welcome.guest_confirm_title"), True, SC.GOLD_PRIMARY)
         surface.blit(title, title.get_rect(center=(sw // 2, dlg_y + 50)))
 
         self._render_dialog_lines(
             surface,
             [
-                "不登录也可以开始游戏。",
-                "游客模式不会保存进度和最高分。",
+                t("welcome.guest_confirm_line1"),
+                t("welcome.guest_confirm_line2"),
             ],
             sw // 2,
             dlg_y + 112,
@@ -1131,7 +1140,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         self._draw_button(
             surface,
             confirm_rect,
-            "游客进入",
+            t("welcome.guest_confirm_yes"),
             "guest_confirm_yes",
             SC.FOREST_GREEN,
             is_primary=True,
@@ -1141,7 +1150,12 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         # Cancel button (secondary)
         cancel_rect = pygame.Rect(btn_start_x + btn_w + gap, btn_y, btn_w, btn_h)
         self._draw_button(
-            surface, cancel_rect, "返回", "guest_confirm_no", SC.GOLD_DIM, is_focused=(self.guest_confirm_focus == "no")
+            surface,
+            cancel_rect,
+            t("welcome.guest_confirm_no"),
+            "guest_confirm_no",
+            SC.GOLD_DIM,
+            is_focused=(self.guest_confirm_focus == "no"),
         )
 
     def _render_delete_confirm(self, surface):
@@ -1161,14 +1175,14 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         draw_chamfered_panel(surface, dlg_x, dlg_y, dlg_w, dlg_h, SC.BG_PANEL_LIGHT, SC.GOLD_PRIMARY, SC.GOLD_GLOW, 12)
 
         # Title
-        title = self.section_font.render("删除用户", True, SC.DANGER_RED)
+        title = self.section_font.render(t("welcome.delete_confirm_title"), True, SC.DANGER_RED)
         surface.blit(title, title.get_rect(center=(sw // 2, dlg_y + 50)))
 
         self._render_dialog_lines(
             surface,
             [
-                f'确定要删除用户 "{self.delete_username}" 吗？',
-                "此操作不可撤销，所有数据将被永久删除。",
+                t("welcome.delete_confirm_line1", username=self.delete_username),
+                t("welcome.delete_confirm_line2"),
             ],
             sw // 2,
             dlg_y + 104,
@@ -1187,7 +1201,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         self._draw_button(
             surface,
             confirm_rect,
-            "确认删除",
+            t("welcome.delete_confirm_yes"),
             "delete_confirm_yes",
             SC.DANGER_RED,
             is_primary=True,
@@ -1199,7 +1213,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         self._draw_button(
             surface,
             cancel_rect,
-            "取消",
+            t("welcome.delete_confirm_no"),
             "delete_confirm_no",
             SC.GOLD_DIM,
             is_focused=(self.delete_confirm_focus == "no"),
@@ -1216,7 +1230,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
     def _render_fullscreen_button(self, surface, sw, sh):
         SC = SceneColors
         window = get_window()
-        fs_text = "退出全屏" if window.is_fullscreen() else "全屏"
+        fs_text = t("welcome.fullscreen_exit") if window.is_fullscreen() else t("welcome.fullscreen_enter")
         scale = ResponsiveHelper.get_scale_factor(sw, sh)
         btn_w = ResponsiveHelper.scale(160, scale)
         btn_h = ResponsiveHelper.scale(38, scale)
