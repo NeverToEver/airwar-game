@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 
 import pygame
 
 from airwar.config import TUTORIAL_STAGES, TutorialStage, get_screen_height, get_screen_width
 from airwar.config.design_tokens import SceneColors, get_design_tokens
-from airwar.game.constants import GAME_CONSTANTS
 from airwar.game.mother_ship import MotherShip
 from airwar.game.rendering import GameRenderer
 from airwar.game.systems.reward_system import RewardSystem
@@ -24,6 +22,9 @@ from airwar.utils.fonts import get_cjk_font
 from airwar.utils.mouse_interaction import MouseInteractiveMixin
 
 from .scene import Scene
+from .tutorial import aim_assist, base_console, entities
+from .tutorial.models import TutorialBaseGameController, TutorialBasePlayerStatus
+from .tutorial.stages import BaseStage, build_stage
 from .tutorial_scene_renderer import TutorialSceneRenderer
 
 
@@ -68,67 +69,11 @@ class TutorialBoss:
     enraged: bool = False
 
 
-@dataclass
-class TutorialBasePlayerStatus:
-    """Minimal player-shaped status object for the real base console."""
-
-    health: int = 78
-    max_health: int = 120
-    boost_current: float = 64.0
-    boost_max: float = 100.0
-    bullet_damage: int = 62
-    fire_interval: int = 7
-    boost_recovery_rate: float = 1.0
-    phase_dash_enabled: bool = True
-    mothership_cooldown_mult: float = 0.5
-
-    def get_boost_status(self) -> dict:
-        return {
-            "current": self.boost_current,
-            "max": self.boost_max,
-            "active": False,
-            "dash_enabled": self.is_phase_dash_enabled,
-            "dash_cooldown": 0,
-        }
-
-    def set_weapon_modifiers(self, spread: bool, laser: bool, explosive: bool) -> None:
-        self.weapon_spread = spread
-        self.weapon_laser = laser
-        self.weapon_explosive = explosive
-
-    def activate_shotgun(self) -> None:
-        self.weapon_spread = True
-
-    def activate_laser(self, _duration: int) -> None:
-        self.weapon_laser = True
-
-    def activate_explosive(self) -> None:
-        self.weapon_explosive = True
-
-    def activate_phase_dash(self) -> None:
-        self.is_phase_dash_enabled = True
-
-
-@dataclass
-class TutorialBaseGameState:
-    score: int = 860
-    kill_count: int = 5
-    boss_kill_count: int = 1
-    difficulty: str = "medium"
-    requisition_points: int = 80
-
-
-class TutorialBaseGameController:
-    """Small controller facade with the methods read by BaseTalentConsole."""
-
-    def __init__(self) -> None:
-        self.state = TutorialBaseGameState()
-
-    def get_next_progress(self) -> int:
-        return 72
-
-    def get_next_threshold(self) -> int:
-        return 1200
+# Re-export the base-console data classes so existing imports
+# (``from airwar.scenes.tutorial_scene import TutorialBasePlayerStatus``)
+# keep working. The canonical definitions live in
+# :mod:`airwar.scenes.tutorial.models` so other submodules can import
+# them without a circular import.
 
 
 class TutorialScene(Scene, MouseInteractiveMixin):
@@ -198,6 +143,9 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         self._base_game_controller: TutorialBaseGameController | None = None
         self._viewport = None
         self._renderer: TutorialSceneRenderer | None = None
+        # Active per-stage logic instance. Rebuilt by ``_load_stage``;
+        # ``None`` until ``enter()`` runs.
+        self._stage_instance: BaseStage | None = None
         self.running = False
         self.skipped = False
 
@@ -460,6 +408,9 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         if self._is_summary_stage():
             self._mark_current_stage_cleared()
 
+        # Build the per-frame stage instance for the active stage.
+        self._stage_instance = build_stage(self._stage.id, self)
+
     def _start_stage_transition(self, next_index: int) -> None:
         if self._fade_phase:
             return
@@ -536,25 +487,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         return self._stage.id == "tutorial_complete"
 
     def _setup_base_console_data(self) -> None:
-        self._base_player_status = TutorialBasePlayerStatus()
-        self._base_game_controller = TutorialBaseGameController()
-        self._base_reward_system = RewardSystem("medium")
-        earned_levels = {
-            "Spread Shot": 1,
-            "Laser": 1,
-            "Phase Dash": 1,
-            "Mothership Recall": 1,
-            "Power Shot": 1,
-            "Boost Recovery": 1,
-        }
-        self._talent_balance_manager = TalentBalanceManager(
-            earned_levels,
-            {"offense": "Laser", "support": "Mothership Recall"},
-        )
-        self._talent_balance_manager.apply_to_reward_system(
-            self._base_reward_system,
-            self._base_player_status,
-        )
+        base_console.setup_base_console_data(self)
 
     # -- Input and player ----------------------------------------------
 
@@ -574,79 +507,16 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         return True
 
     def _handle_base_console_action(self, action: BaseTalentConsoleAction) -> None:
-        if action.kind == BaseTalentConsoleAction.CONTINUE:
-            if self._stage.id == "homecoming_base" and self._base_sub_phase == "base":
-                self._base_sub_phase = "depart"
-                self._depart_timer = self.DEPART_FRAMES
-                self._stage_progress = 0
-                self._fade_phase = "out"
-                self._fade_alpha = 0
-            return
-
-        if action.kind == BaseTalentConsoleAction.RESUPPLY:
-            self._resupply_at_tutorial_base()
-            return
-
-        if action.kind == BaseTalentConsoleAction.REPAIR:
-            self._repair_at_tutorial_base()
-            return
-
-        if action.kind == BaseTalentConsoleAction.RECHARGE:
-            self._recharge_at_tutorial_base()
-            return
-
-        if action.kind == BaseTalentConsoleAction.SELECT_MODULE:
-            return
-
-        if action.kind == BaseTalentConsoleAction.SELECT_ROUTE and action.route:
-            self._talent_balance_manager.next_option(action.route)
-            if self._base_reward_system and self._base_player_status:
-                self._talent_balance_manager.apply_to_reward_system(
-                    self._base_reward_system,
-                    self._base_player_status,
-                )
+        base_console.handle_base_console_action(self, action)
 
     def _repair_at_tutorial_base(self) -> None:
-        if not self._base_game_controller or not self._base_player_status:
-            return
-        cost = GAME_CONSTANTS.REQUISITION.REPAIR_COST
-        if self._base_game_controller.state.requisition_points < cost:
-            return
-        if self._base_player_status.health >= self._base_player_status.max_health:
-            return
-        self._base_game_controller.state.requisition_points -= cost
-        self._base_player_status.health = self._base_player_status.max_health
+        base_console.repair_at_tutorial_base(self)
 
     def _recharge_at_tutorial_base(self) -> None:
-        if not self._base_game_controller or not self._base_player_status:
-            return
-        cost = GAME_CONSTANTS.REQUISITION.RECHARGE_COST
-        if self._base_game_controller.state.requisition_points < cost:
-            return
-        if self._base_player_status.boost_current >= self._base_player_status.boost_max:
-            return
-        self._base_game_controller.state.requisition_points -= cost
-        self._base_player_status.boost_current = self._base_player_status.boost_max
+        base_console.recharge_at_tutorial_base(self)
 
     def _resupply_at_tutorial_base(self) -> None:
-        if not self._base_game_controller or not self._base_player_status:
-            return
-        need_health = self._base_player_status.health < self._base_player_status.max_health
-        need_boost = self._base_player_status.boost_current < self._base_player_status.boost_max
-        if not need_health and not need_boost:
-            return
-        cost = 0
-        if need_health:
-            cost += GAME_CONSTANTS.REQUISITION.REPAIR_COST
-        if need_boost:
-            cost += GAME_CONSTANTS.REQUISITION.RECHARGE_COST
-        if self._base_game_controller.state.requisition_points < cost:
-            return
-        self._base_game_controller.state.requisition_points -= cost
-        if need_health:
-            self._base_player_status.health = self._base_player_status.max_health
-        if need_boost:
-            self._base_player_status.boost_current = self._base_player_status.boost_max
+        base_console.resupply_at_tutorial_base(self)
 
     def _return_to_menu(self, *, skipped: bool) -> None:
         self.skipped = skipped
@@ -718,123 +588,33 @@ class TutorialScene(Scene, MouseInteractiveMixin):
             return self._viewport.screen_to_logical(*pos)
         return pos
 
+    def _get_screen_dimensions(self) -> tuple[int, int]:
+        """Return ``(width, height)`` of the active logical viewport."""
+        return get_screen_width(), get_screen_height()
+
     def _update_aim_assist(self) -> None:
-        self._update_smoothed_raw_aim_position()
-        target = self._resolve_aim_assist_target()
-        self._aim_pos = target.rect.center if target is not None else self._smoothed_raw_aim_position
+        aim_assist.update_aim_assist(self)
 
     def _update_smoothed_raw_aim_position(self) -> None:
-        sx, sy = self._smoothed_raw_aim_position
-        rx, ry = self._raw_aim_position
-        dx = rx - sx
-        dy = ry - sy
-        if dx * dx + dy * dy <= self.AIM_INPUT_SNAP_DISTANCE * self.AIM_INPUT_SNAP_DISTANCE:
-            self._smoothed_raw_aim_position = self._raw_aim_position
-            return
-        self._smoothed_raw_aim_position = (
-            sx + dx * self.AIM_INPUT_DELAY_BLEND,
-            sy + dy * self.AIM_INPUT_DELAY_BLEND,
-        )
+        aim_assist.update_smoothed_raw_aim_position(self)
 
-    def _resolve_aim_assist_target(self) -> TutorialEnemy | TutorialBoss | None:
-        if self._stage.id not in ("movement_aiming", "combat_basics", "boss_encounter"):
-            self._aim_assist_target = None
-            return None
+    def _resolve_aim_assist_target(self):
+        return aim_assist.resolve_aim_assist_target(self)
 
-        raw_x, raw_y = self._smoothed_raw_aim_position
-        candidates = self._aim_assist_candidates()
-        if not candidates:
-            self._aim_assist_target = None
-            return None
+    def _aim_assist_candidates(self):
+        return aim_assist.aim_assist_candidates(self)
 
-        movement = self._raw_aim_movement()
-        movement_len_sq = movement[0] * movement[0] + movement[1] * movement[1]
-        if movement_len_sq >= self.AIM_ASSIST_RELEASE_DISTANCE * self.AIM_ASSIST_RELEASE_DISTANCE:
-            self._aim_assist_target = None
-            self._aim_assist_release_timer = self.AIM_ASSIST_RELEASE_FRAMES
-            return None
-
-        if self._aim_assist_release_timer > 0:
-            self._aim_assist_release_timer -= 1
-            self._aim_assist_target = None
-            return None
-
-        if movement_len_sq >= self.AIM_ASSIST_SWITCH_DISTANCE * self.AIM_ASSIST_SWITCH_DISTANCE:
-            directional_target = self._target_in_movement_direction(candidates, movement)
-            if directional_target is not None:
-                self._aim_assist_target = directional_target
-                return directional_target
-            if self._aim_assist_target in candidates:
-                return self._aim_assist_target
-
-        if self._aim_assist_target in candidates and self._is_aim_assist_locked(self._aim_assist_target, raw_x, raw_y):
-            return self._aim_assist_target
-
-        for target in candidates:
-            if target.rect.collidepoint(raw_x, raw_y):
-                self._aim_assist_target = target
-                return target
-
-        target = min(candidates, key=lambda candidate: self._distance_sq_to_target(candidate, raw_x, raw_y))
-        self._aim_assist_target = target
-        return target
-
-    def _aim_assist_candidates(self) -> list[TutorialEnemy | TutorialBoss]:
-        targets: list[TutorialEnemy | TutorialBoss] = [enemy for enemy in self._enemies if enemy.active]
-        if self._boss is not None and self._boss.active:
-            targets.append(self._boss)
-        return targets
-
-    def _is_aim_assist_locked(self, target: TutorialEnemy | TutorialBoss, raw_x: float, raw_y: float) -> bool:
-        if not target.active:
-            return False
-        if target.rect.collidepoint(raw_x, raw_y):
-            return True
-        return self._distance_sq_to_target(target, raw_x, raw_y) <= (
-            self.AIM_ASSIST_RELEASE_DISTANCE * self.AIM_ASSIST_RELEASE_DISTANCE
-        )
+    def _is_aim_assist_locked(self, target, raw_x: float, raw_y: float) -> bool:
+        return aim_assist.is_aim_assist_locked(self, target, raw_x, raw_y)
 
     def _raw_aim_movement(self) -> tuple[float, float]:
-        return (
-            self._raw_aim_position[0] - self._previous_raw_aim_position[0],
-            self._raw_aim_position[1] - self._previous_raw_aim_position[1],
-        )
+        return aim_assist.raw_aim_movement(self)
 
-    def _target_in_movement_direction(
-        self,
-        candidates: list[TutorialEnemy | TutorialBoss],
-        movement: tuple[float, float],
-    ) -> TutorialEnemy | TutorialBoss | None:
-        if self._aim_assist_target in candidates:
-            origin = self._aim_assist_target.rect.center
-        else:
-            origin = self._raw_aim_position
-        movement_len = math.hypot(movement[0], movement[1])
-        if movement_len <= 0:
-            return None
+    def _target_in_movement_direction(self, candidates, movement):
+        return aim_assist.target_in_movement_direction(self, candidates, movement)
 
-        move_x = movement[0] / movement_len
-        move_y = movement[1] / movement_len
-        best_target = None
-        best_score = 0.0
-        for target in candidates:
-            if target is self._aim_assist_target:
-                continue
-            tx = target.rect.centerx - origin[0]
-            ty = target.rect.centery - origin[1]
-            distance = math.hypot(tx, ty)
-            if distance <= 0:
-                continue
-            dot = (tx / distance) * move_x + (ty / distance) * move_y
-            if dot > best_score and dot >= self.AIM_ASSIST_DIRECTION_CONE_DOT:
-                best_score = dot
-                best_target = target
-        return best_target
-
-    def _distance_sq_to_target(self, target: TutorialEnemy | TutorialBoss, raw_x: float, raw_y: float) -> float:
-        dx = raw_x - target.rect.centerx
-        dy = raw_y - target.rect.centery
-        return dx * dx + dy * dy
+    def _distance_sq_to_target(self, target, raw_x: float, raw_y: float) -> float:
+        return aim_assist.distance_sq_to_target(target, raw_x, raw_y)
 
     def _update_player(self) -> None:
         if self._dash_frames > 0:
@@ -885,164 +665,38 @@ class TutorialScene(Scene, MouseInteractiveMixin):
             )
 
     # -- Stage logic ---------------------------------------------------
+    #
+    # The per-stage bodies live in :mod:`airwar.scenes.tutorial.stages`.
+    # The methods below are thin back-compat wrappers so existing tests
+    # (and :class:`TutorialStageCoordinator`) can call them directly;
+    # :meth:`_update_stage_logic` is the single dispatch site the
+    # scene's per-frame update() flow uses.
 
     def _update_stage_logic(self) -> None:
-        if self._stage.id == "mothership_docking":
-            self._update_docking_stage()
-            if self._stage_completed:
-                self._advance_after_delay()
+        if self._stage_instance is not None:
+            self._stage_instance.update()
             return
-
-        if self._stage.id == "homecoming_base":
-            self._update_homecoming_stage()
-            if self._stage_completed:
-                self._advance_after_delay()
-            return
-
         if self._stage_completed:
             self._advance_after_delay()
-            return
-
-        if self._stage.id == "combat_basics":
-            if len(self._enemies) < 3 and self._stage_spawned < self._stage.objective_count:
-                if self._animation_time % 38 == 0:
-                    self._spawn_easy_enemy_wave(initial=False)
-        elif self._stage.id == "boss_encounter":
-            self._update_escape_timer()
 
     def _update_docking_stage(self) -> None:
-        if self._mothership:
-            sw, sh = get_screen_width(), get_screen_height()
-            mothership_departing = self._dock_sub_phase == "eject_player" and self._dock_undock_phase == "mothership"
-            if not mothership_departing:
-                self._mothership.show()
-            self._mothership.set_player_input(0, 0)
-            if not mothership_departing:
-                self._mothership.set_position(sw // 2, max(190, int(sh * 0.32)))
-            self._mothership.update()
-
-        if self._dock_sub_phase == "approach":
-            self._update_docking_approach()
-        elif self._dock_sub_phase == "entering":
-            self._update_docking_entering()
-        elif self._dock_sub_phase == "docked":
-            self._update_docked_mothership_support()
-        elif self._dock_sub_phase == "eject_player":
-            self._update_docking_eject()
-
-    def _update_docking_approach(self) -> None:
-        if self._mothership:
-            self._mothership.show()
-            self._mothership.show_phantom()
-
-        if pygame.K_h in self._keys_down:
-            self._hold_h_frames = min(self.DOCK_HOLD_FRAMES, self._hold_h_frames + 1)
-        else:
-            self._hold_h_frames = max(0, self._hold_h_frames - 3)
-
-        if self._hold_h_frames < self.DOCK_HOLD_FRAMES:
+        """Back-compat wrapper around the mothership-docking stage."""
+        if self._stage_instance is not None and self._stage.id == "mothership_docking":
+            self._stage_instance.update()
             return
+        # Fallback before ``_load_stage`` has built an instance: keep
+        # the legacy behaviour (no advance) for the test path.
+        return
 
-        self._dock_sub_phase = "entering"
-        self._player_enter_timer = 0
-        self._player_enter_start_center = pygame.Vector2(self._player.center)
-        self._docked = False
-        self._bullets.clear()
-        self._enemy_bullets.clear()
-        if self._mothership:
-            self._mothership.hide_phantom()
-
-    def _update_docking_entering(self) -> None:
-        self._player_enter_timer = min(self.DOCK_ENTER_FRAMES, self._player_enter_timer + 1)
-        t = self._player_enter_timer / self.DOCK_ENTER_FRAMES
-        eased = t * t
-        target = pygame.Vector2(self._docking_player_center())
-        current = self._player_enter_start_center.lerp(target, eased)
-        self._player.center = (round(current.x), round(current.y))
-
-        if self._player_enter_timer < self.DOCK_ENTER_FRAMES:
-            return
-
-        self._dock_sub_phase = "docked"
-        self._docked = True
-        self._mothership_ammo = self.MOTHERSHIP_STARTING_AMMO
-        self._mothership_fire_timer = self.MOTHERSHIP_VOLLEY_FRAMES
-        self._player.center = self._docking_player_center()
-        if self._mothership:
-            self._mothership.hide_phantom()
-
-    def _update_docked_mothership_support(self) -> None:
-        self._player.center = self._docking_player_center()
-        if self._mothership:
-            self._mothership.hide_phantom()
-
-        self._mothership_fire_timer -= 1
-        if self._mothership_fire_timer <= 0:
-            self._mothership_fire_timer = self.MOTHERSHIP_VOLLEY_FRAMES
-            self._mothership_destroy_nearest_enemy()
-
-        self._mothership_ammo = max(0.0, self._mothership_ammo - self.MOTHERSHIP_AMMO_DRAIN)
-        if not self._ammo_warning_triggered and self._mothership_ammo < self.WARNING_CELL_THRESHOLD:
-            self._ammo_warning_triggered = True
-            if self._warning_banner:
-                self._warning_banner.activate()
-
-        if self._mothership_ammo <= 0:
-            self._dock_sub_phase = "eject_player"
-            self._dock_undock_timer = self._dock_undock_player_frames
-            self._dock_undock_phase = "player"
-            self._dock_eject_position = pygame.Vector2(self._player.center)
-            self._docked = False
-            if self._mothership:
-                self._mothership.hide_phantom()
-
-    def _update_docking_eject(self) -> None:
-        if self._dock_undock_phase == "player":
-            elapsed = self._dock_undock_player_frames - self._dock_undock_timer + 1
-            progress = min(1.0, elapsed / self._dock_undock_player_frames)
-            eased = 1 - (1 - progress) * (1 - progress)
-            target_y = min(get_screen_height() - 90, self._dock_eject_position.y + 140)
-            current_y = self._dock_eject_position.y + (target_y - self._dock_eject_position.y) * eased
-            self._player.center = (round(self._dock_eject_position.x), round(current_y))
-            self._dock_undock_timer = max(0, self._dock_undock_timer - 1)
-            if self._dock_undock_timer > 0:
-                return
-
-            self._dock_undock_phase = "mothership"
-            self._dock_undock_timer = self.DOCK_UNDOCK_FRAMES
-            if self._mothership:
-                self._mothership.activate_flyaway()
-            return
-
-        if self._dock_undock_phase == "mothership":
-            self._dock_undock_timer = max(0, self._dock_undock_timer - 1)
-            return
-
-        self._dock_undock_phase = "player"
-        self._dock_undock_timer = self._dock_undock_player_frames
-        self._dock_eject_position = pygame.Vector2(self._player.center)
+    def _update_homecoming_stage(self) -> None:
+        """Back-compat wrapper around the homecoming-base stage."""
+        if self._stage_instance is not None and self._stage.id == "homecoming_base":
+            self._stage_instance.update()
 
     def _docking_player_center(self) -> tuple[int, int]:
         if not self._mothership:
             return self._player.center
         return self._mothership.get_docking_position()
-
-    def _update_homecoming_stage(self) -> None:
-        if self._base_sub_phase == "combat":
-            self._update_homecoming_combat()
-        elif self._base_sub_phase == "depart":
-            self._depart_timer = max(0, self._depart_timer - 1)
-
-    def _update_homecoming_combat(self) -> None:
-        if pygame.K_b in self._keys_down:
-            self._hold_b_frames = min(self.HOME_HOLD_FRAMES, self._hold_b_frames + 1)
-        else:
-            self._hold_b_frames = max(0, self._hold_b_frames - 3)
-
-        if self._hold_b_frames >= self.HOME_HOLD_FRAMES:
-            self._pending_base_sub_phase = "base"
-            self._fade_phase = "out"
-            self._fade_alpha = 0
 
     def _enter_homecoming_base(self) -> None:
         self._base_sub_phase = "base"
@@ -1055,236 +709,50 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         if self._base_talent_console:
             self._base_talent_console._active_module = "supply"
 
-    def _update_escape_timer(self) -> None:
-        if self._boss is not None or self._escape_timer <= 0:
-            return
-        self._escape_timer -= 1
-        if self._escape_timer <= 0:
-            self._stage_progress = 1
-
     # -- Entity setup and update ---------------------------------------
+    #
+    # The bodies live in :mod:`airwar.scenes.tutorial.entities`. The
+    # methods below are thin back-compat wrappers so the rest of the
+    # scene (and existing tests) can keep calling them by name.
 
     def _spawn_training_targets(self) -> None:
-        sw = get_screen_width()
-        y = max(230, int(get_screen_height() * 0.30))
-        for index, x_ratio in enumerate((0.28, 0.50, 0.72)):
-            rect = pygame.Rect(0, 0, self.ENEMY_SIZE, self.ENEMY_SIZE)
-            rect.center = (int(sw * x_ratio), y + (index % 2) * 56)
-            self._enemies.append(
-                TutorialEnemy(
-                    rect=rect,
-                    health=34,
-                    max_health=34,
-                    speed=0.25,
-                    score_value=75,
-                    kind="target",
-                    phase=index * 1.7,
-                )
-            )
-            self._stage_spawned += 1
+        entities.spawn_training_targets(self)
 
     def _spawn_easy_enemy_wave(self, *, initial: bool) -> None:
-        spawn_slots = 3 if initial else 1
-        sw = get_screen_width()
-        for _ in range(spawn_slots):
-            if self._stage_spawned >= self._stage.objective_count:
-                return
-            lane = self._stage_spawned % 5
-            rect = pygame.Rect(0, 0, self.ENEMY_SIZE, self.ENEMY_SIZE)
-            rect.center = (
-                int(sw * (0.18 + lane * 0.16)),
-                220 + (lane % 2) * 62,
-            )
-            self._enemies.append(
-                TutorialEnemy(
-                    rect=rect,
-                    health=44,
-                    max_health=44,
-                    speed=0.65,
-                    score_value=110,
-                    kind="enemy",
-                    phase=self._stage_spawned * 1.2,
-                    fire_timer=40 + lane * 15,
-                )
-            )
-            self._stage_spawned += 1
+        entities.spawn_easy_enemy_wave(self, initial=initial)
 
     def _spawn_homecoming_enemy_wave(self) -> None:
-        sw = get_screen_width()
-        for index, lane in enumerate((0, 1, 3, 4)):
-            rect = pygame.Rect(0, 0, self.ENEMY_SIZE, self.ENEMY_SIZE)
-            rect.center = (
-                int(sw * (0.18 + lane * 0.16)),
-                214 + (index % 2) * 66,
-            )
-            self._enemies.append(
-                TutorialEnemy(
-                    rect=rect,
-                    health=44,
-                    max_health=44,
-                    speed=0.55,
-                    score_value=110,
-                    kind="enemy",
-                    phase=index * 1.2,
-                    fire_timer=45 + index * 18,
-                )
-            )
-        self._stage_spawned = len(self._enemies)
+        entities.spawn_homecoming_enemy_wave(self)
 
     def _spawn_boss(self) -> None:
-        sw = get_screen_width()
-        rect = pygame.Rect(0, 0, self.BOSS_W, self.BOSS_H)
-        rect.center = (sw // 2, 246)
-        self._boss = TutorialBoss(rect=rect, health=280, max_health=280)
+        entities.spawn_boss(self)
 
     def _mothership_destroy_nearest_enemy(self) -> None:
-        active_enemies = [enemy for enemy in self._enemies if enemy.active]
-        if not active_enemies:
-            return
-
-        if self._mothership:
-            origin = self._mothership.get_docking_position()
-        else:
-            origin = (get_screen_width() // 2, int(get_screen_height() * 0.32))
-
-        target = min(
-            active_enemies,
-            key=lambda enemy: (
-                (enemy.rect.centerx - origin[0]) * (enemy.rect.centerx - origin[0])
-                + (enemy.rect.centery - origin[1]) * (enemy.rect.centery - origin[1])
-            ),
-        )
-        target.health -= 50
-        if target.health <= 0:
-            target.active = False
-            self._score += target.score_value
-            self._kills += 1
-            self._tutorial_explosions.append(TutorialExplosion(target.rect.center))
+        entities.mothership_destroy_nearest_enemy(self)
 
     def _update_bullets(self) -> None:
-        sw = get_screen_width()
-        sh = get_screen_height()
-        bounds = pygame.Rect(-120, -120, sw + 240, sh + 240)
-        for bullet in self._bullets + self._enemy_bullets:
-            if not bullet.active:
-                continue
-            bullet.rect.x += int(bullet.velocity.x)
-            bullet.rect.y += int(bullet.velocity.y)
-            if not bounds.colliderect(bullet.rect):
-                bullet.active = False
+        entities.update_bullets(self)
 
     def _update_tutorial_effects(self) -> None:
-        for explosion in self._tutorial_explosions:
-            explosion.timer -= 1
-        self._tutorial_explosions[:] = [explosion for explosion in self._tutorial_explosions if explosion.timer > 0]
+        entities.update_tutorial_effects(self)
 
     def _update_enemies(self) -> None:
-        for enemy in self._enemies:
-            if not enemy.active:
-                continue
-            enemy.phase += 0.035
-            enemy.rect.x += int(math.sin(enemy.phase) * enemy.speed)
-            if enemy.kind == "enemy":
-                enemy.rect.y += int(math.sin(enemy.phase * 0.7) * 0.55)
-                enemy.fire_timer -= 1
-                if enemy.fire_timer <= 0:
-                    enemy.fire_timer = 92
-                    self._spawn_enemy_bullet(enemy.rect.center, damage=6)
+        entities.update_enemies(self)
 
     def _update_boss(self) -> None:
-        boss = self._boss
-        if boss is None or not boss.active:
-            return
-
-        boss.phase += 0.028
-        center_x = get_screen_width() // 2 + int(math.sin(boss.phase) * 170)
-        boss.rect.centerx = center_x
-        boss.enraged = boss.health <= boss.max_health * self.BOSS_ENRAGE_THRESHOLD
-        boss.fire_timer -= 1
-        fire_interval = 22 if boss.enraged else 62
-        if boss.fire_timer <= 0:
-            boss.fire_timer = fire_interval
-            spread = (-0.42, -0.20, 0.0, 0.20, 0.42) if boss.enraged else (-0.16, 0.16)
-            for offset in spread:
-                direction = pygame.Vector2(offset, 1).normalize()
-                self._enemy_bullets.append(
-                    TutorialBullet(
-                        rect=pygame.Rect(boss.rect.centerx - 6, boss.rect.bottom - 4, 12, 16),
-                        velocity=direction * (6.2 if boss.enraged else 4.4),
-                        owner="enemy",
-                        damage=9 if boss.enraged else 6,
-                        bullet_type="laser" if boss.enraged else "single",
-                    )
-                )
+        entities.update_boss(self)
 
     def _spawn_enemy_bullet(self, center: tuple[int, int], *, damage: int) -> None:
-        direction = pygame.Vector2(
-            self._player.centerx - center[0],
-            self._player.centery - center[1],
-        )
-        direction = pygame.Vector2(0, 1) if direction.length_squared() <= 1 else direction.normalize()
-        rect = pygame.Rect(0, 0, 10, 14)
-        rect.center = center
-        self._enemy_bullets.append(
-            TutorialBullet(
-                rect=rect,
-                velocity=direction * 4.2,
-                owner="enemy",
-                damage=damage,
-            )
-        )
+        entities.spawn_enemy_bullet(self, center, damage=damage)
 
     def _handle_collisions(self) -> None:
-        for bullet in self._bullets:
-            if not bullet.active:
-                continue
-            for enemy in self._enemies:
-                if not enemy.active or not bullet.rect.colliderect(enemy.rect):
-                    continue
-                bullet.active = False
-                enemy.health -= bullet.damage
-                if enemy.health <= 0:
-                    enemy.active = False
-                    self._score += enemy.score_value
-                    self._kills += 1
-                    self._stage_progress = min(self._stage.objective_count, self._stage_progress + 1)
-                break
-
-            boss = self._boss
-            if bullet.active and boss is not None and boss.active and bullet.rect.colliderect(boss.rect):
-                bullet.active = False
-                boss.health -= bullet.damage
-                if boss.health <= 0:
-                    boss.active = False
-                    self._score += 500
-                    self._kills += 1
-                    self._boss = None
-                    self._escape_timer = self.ESCAPE_FRAMES
-
-        vulnerable = self._stage.id in ("combat_basics", "boss_encounter")
-        if not vulnerable:
-            return
-
-        for bullet in self._enemy_bullets:
-            if not bullet.active or not bullet.rect.colliderect(self._player):
-                continue
-            bullet.active = False
-            self._damage_player(bullet.damage)
-
-        for enemy in self._enemies:
-            if enemy.active and enemy.rect.colliderect(self._player):
-                self._damage_player(8)
+        entities.handle_collisions(self)
 
     def _damage_player(self, damage: int) -> None:
-        if self._player_hit_cooldown > 0:
-            return
-        self._player_hit_cooldown = self.PLAYER_HIT_COOLDOWN
-        self._player_health = max(20, self._player_health - damage)
+        entities.damage_player(self, damage)
 
     def _cleanup_entities(self) -> None:
-        self._bullets[:] = [bullet for bullet in self._bullets if bullet.active]
-        self._enemy_bullets[:] = [bullet for bullet in self._enemy_bullets if bullet.active]
-        self._enemies[:] = [enemy for enemy in self._enemies if enemy.active]
+        entities.cleanup_entities(self)
 
     # -- Data for renderer -----------------------------------------------
 

@@ -378,13 +378,19 @@ class SceneDirector:
         self._submit_leaderboard_score(final_score)
         # Final achievement pass — must run before the death scene so
         # any per-run unlocks are evaluated against the final stats.
-        self._evaluate_achievements(game_scene)
+        newly_unlocked = self._evaluate_achievements(game_scene)
 
         death_scene = self._scene_manager.get_scene("death")
         if not death_scene:
             return False
 
-        death_scene.enter(score=final_score, kills=kills, boss_kills=boss_kills, username=self._current_user)
+        death_scene.enter(
+            score=final_score,
+            kills=kills,
+            boss_kills=boss_kills,
+            username=self._current_user,
+            newly_unlocked_achievements=newly_unlocked,
+        )
 
         self._run_scene_loop(death_scene)
 

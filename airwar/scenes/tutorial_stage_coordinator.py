@@ -8,17 +8,27 @@ The TutorialScene used to keep all stage logic inline in a single
 :meth:`handle_events`) but delegates per-frame stage progression
 to the coordinator.
 
-Why this split?
-    The seven tutorial stages (movement, aim, boost, combat, docking,
-    homecoming, boss) each have a small but non-trivial update
-    method. Keeping them all in the scene class made it hard to
-    review. The coordinator is a single file with a single dispatch
-    table (``_STAGE_HANDLERS``); new stages just add an entry.
+After the stage-class split (this file's latest revision), the
+coordinator no longer maintains a ``stage_id -> method_name`` table.
+It calls :meth:`BaseStage.tick` on the scene's current
+``_stage_instance``, which the scene builds via
+:func:`airwar.scenes.tutorial.stages.build_stage` on every stage
+load. The dispatch-id constants are still exported as
+documentation of which stage ids are recognised.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+
+from airwar.scenes.tutorial.stages import (
+    BOOST_STAGE_ID,
+    BOSS_STAGE_ID,
+    COMBAT_STAGE_ID,
+    HOMECOMING_STAGE_ID,
+    MOTHERSHIP_STAGE_ID,
+    MOVEMENT_STAGE_ID,
+)
 
 if TYPE_CHECKING:
     from .tutorial_scene import TutorialScene
@@ -28,27 +38,24 @@ class TutorialStageCoordinator:
     """Per-frame stage progression for :class:`TutorialScene`.
 
     Owns:
-        * ``stage_index`` and ``pending_stage_index``
+        * the per-frame stage dispatch (delegates to scene stage instance)
         * the fade in/out animation
         * stage-completion check + delay-then-advance
-        * per-stage dispatch table
 
     Reads from the scene every frame; writes back via the scene's
-    mutator methods (``_start_stage_transition``,
-    ``_load_stage``, ``_on_*_stage_completed``).
+    mutator methods (``_start_stage_transition``, ``_load_stage``).
     """
 
-    # Each stage id maps to a method on the scene that drives its
-    # per-frame logic. ``None`` means "no per-frame update needed".
-    _STAGE_HANDLERS: dict[str, str] = {
-        "movement": "_update_movement_stage",
-        "aim": "_update_aim_stage",
-        "boost": "_update_boost_stage",
-        "combat": "_update_combat_stage",
-        "mothership_docking": "_update_docking_stage",
-        "homecoming_base": "_update_homecoming_stage",
-        "boss": "_update_boss_stage",
-    }
+    # Recognised stage ids (kept here for documentation / introspection;
+    # the dispatch itself reads them off the active ``BaseStage``).
+    RECOGNISED_STAGE_IDS: tuple[str, ...] = (
+        MOVEMENT_STAGE_ID,
+        COMBAT_STAGE_ID,
+        BOOST_STAGE_ID,
+        MOTHERSHIP_STAGE_ID,
+        HOMECOMING_STAGE_ID,
+        BOSS_STAGE_ID,
+    )
 
     def __init__(self, scene: TutorialScene) -> None:
         self._scene = scene
@@ -56,17 +63,11 @@ class TutorialStageCoordinator:
     def update_stage(self) -> None:
         """Run the per-frame stage logic and check for completion."""
         scene = self._scene
-        if not scene._stage:
-            return
-        stage_id = scene._stage.id
-        # Stages that have no per-frame update (e.g. intro/movement)
-        # still get a completion check.
-        handler_name = self._STAGE_HANDLERS.get(stage_id)
-        if handler_name is not None and hasattr(scene, handler_name):
-            handler = getattr(scene, handler_name)
-            handler()
+        stage_instance = getattr(scene, "_stage_instance", None)
+        if stage_instance is not None:
+            stage_instance.tick()
         scene._check_stage_completion()
-        if scene._stage_completed and stage_id in (
+        if scene._stage_completed and scene._stage.id in (
             "mothership_docking",
             "homecoming_base",
         ):
