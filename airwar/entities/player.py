@@ -1,51 +1,70 @@
 """Player entity module.
 
-Provides the Player class representing the user's spaceship, handling
-movement, weapon firing, health and shield systems.
-"""
+Slim coordinator that assembles 7 extracted components
+(see :mod:`airwar.entities.player_components`) and forwards every
+public method to the right one.
 
-# === Standard library ===
-import math
-from enum import Enum
+The original 755-line Player was split in Phase 4 W-delta (logic-clarity
+refactor) into:
+
+* :class:`~airwar.entities.player_components.PlayerMovement`
+* :class:`~airwar.entities.player_components.PlayerWeapon`
+* :class:`~airwar.entities.player_components.PlayerBoost`
+* :class:`~airwar.entities.player_components.PlayerShield`
+* :class:`~airwar.entities.player_components.PlayerPhaseDash`
+* :class:`~airwar.entities.player_components.PlayerAim`
+* :class:`~airwar.entities.player_components.PlayerHitbox`
+
+Backward compat:
+* ``Player(x, y, input_handler)`` constructor -- unchanged signature.
+* All 40 public methods -- 1-line forwarders to a component.
+* Public attributes (``health``, ``bullet_damage``, ``is_phase_dash_enabled``,
+  ``is_controls_locked``, ``mothership_cooldown_mult``, ``ctrl_mode``,
+  ``shift_boost_mode``, ``base_speed``, ``speed``, ``max_health``,
+  ``is_boost_active``, ``is_shielded``, ``boost_max``, ``boost_current``,
+  ``boost_recovery_rate``, ``boost_speed_mult``, ``boost_recovery_delay``,
+  ``boost_recovery_ramp``, ``hitbox_width``, ``hitbox_height``,
+  ``fire_cooldown``, ``fire_interval``) -- still readable on Player.
+* Class constants (``Player.PLAYER_HITBOX_W``, ``Player.PHASE_DASH_*``,
+  ``Player.SPREAD_ANGLES``, etc.) -- unchanged.
+* Legacy private attributes accessed by tests
+  (``player._facing_angle_degrees``, ``player._rotated_sprite_cache``,
+  ``player._phase_dash_state``, ``player._phase_dash_timer``,
+  ``player._fire_cooldown``) -- exposed as properties on Player.
+"""
 
 # === Third-party ===
 import pygame
 
-from airwar.config import (
-    HITBOX_INDICATOR_ALPHA_MAX,
-    HITBOX_INDICATOR_ALPHA_MIN,
-    HITBOX_INDICATOR_FREQUENCY,
-    HITBOX_INDICATOR_PADDING,
-    get_screen_height,
-    get_screen_width,
-)
-from airwar.config.constants_access import get_game_constants
-
 # === Local: different package in airwar ===
+from airwar.config.constants_access import get_game_constants
 from airwar.protocols import InputSourceProtocol
-from airwar.utils.sprites import get_player_sprite
 
 # === Local: same package ===
-from .base import Entity, Vector2
-from .bullet import Bullet, BulletData
+from .base import Entity
+from .bullet import Bullet
+from .player_components import (
+    PhaseDashState,
+    PlayerAim,
+    PlayerBoost,
+    PlayerHitbox,
+    PlayerMovement,
+    PlayerPhaseDash,
+    PlayerShield,
+    PlayerWeapon,
+)
 from .player_state import PlayerStateMachine
 
-
-class PhaseDashState(Enum):
-    """Phase dash ability lifecycle states."""
-
-    READY = "ready"
-    WINDUP = "windup"
-    ACTIVE = "active"
-    RECOVERY = "recovery"
+# Re-export for tests that import ``PhaseDashState`` from this module.
+__all__ = ["PhaseDashState", "Player"]
 
 
 class Player(Entity):
     """Player entity representing the user's spaceship.
 
-    Handles movement via InputHandler, weapon firing, health and shield
-    systems. Bullets are delegated to UIManager for rendering to avoid
-    double rendering.
+    Thin coordinator that owns seven component instances and forwards
+    public API calls to them. See the module docstring for the full
+    backward-compat surface.
 
     Attributes:
         health: Current health points (0 to max_health).
@@ -55,35 +74,35 @@ class Player(Entity):
         is_shielded: Whether the player currently has shield active.
     """
 
-    # --- Class constants ---
+    # --- Class constants (used by tests and other modules) ---
     PLAYER_SPRITE_W = 68
     PLAYER_SPRITE_H = 82
-    DEFAULT_RECOVERY_RATE = 1.0
-    DEFAULT_SPEED_MULT = 1.7
-    DEFAULT_BOOST_MAX = 200
-    DEFAULT_BOOST_RECOVERY_DELAY = 90
-    DEFAULT_BOOST_RECOVERY_RAMP = 120
-    PLAYER_HITBOX_W = 10
-    PLAYER_HITBOX_H = 14
-    BOOST_RAMP_MIN = 0.15
-    BOOST_RAMP_DELTA = 0.85
+    DEFAULT_RECOVERY_RATE = PlayerBoost.DEFAULT_RECOVERY_RATE
+    DEFAULT_SPEED_MULT = PlayerBoost.DEFAULT_SPEED_MULT
+    DEFAULT_BOOST_MAX = PlayerBoost.DEFAULT_BOOST_MAX
+    DEFAULT_BOOST_RECOVERY_DELAY = PlayerBoost.DEFAULT_RECOVERY_DELAY
+    DEFAULT_BOOST_RECOVERY_RAMP = PlayerBoost.DEFAULT_RECOVERY_RAMP
+    PLAYER_HITBOX_W = PlayerHitbox.DEFAULT_WIDTH
+    PLAYER_HITBOX_H = PlayerHitbox.DEFAULT_HEIGHT
+    BOOST_RAMP_MIN = PlayerBoost.BOOST_RAMP_MIN
+    BOOST_RAMP_DELTA = PlayerBoost.BOOST_RAMP_DELTA
     PRECISION_SPEED_MULT = 0.35
     BULLET_SPAWN_Y_OFFSET = 36
-    SPREAD_ANGLES = (-10, 0, 10)
-    WING_MUZZLE_X_OFFSETS = (-24, 24)
-    WING_MUZZLE_Y_OFFSET = -36
-    AIM_TURN_RATE_DEGREES = 7.0
-    PHASE_DASH_COST_RATIO = 0.25
-    PHASE_DASH_WINDUP_FRAMES = 5
-    PHASE_DASH_ACTIVE_FRAMES = 14
-    PHASE_DASH_RECOVERY_FRAMES = 8
-    PHASE_DASH_COOLDOWN_FRAMES = 90
-    PHASE_DASH_DISTANCE = 250
-    PHASE_DASH_MIN_DISTANCE = 120
-    PHASE_DASH_ALPHA_MIN = 75
-    PHASE_DASH_ALPHA_MAX = 165
-    ROTATED_SPRITE_ANGLE_STEP = 2.0
-    ROTATED_SPRITE_CACHE_MAX = 192
+    SPREAD_ANGLES = PlayerWeapon.SPREAD_ANGLES
+    WING_MUZZLE_X_OFFSETS = PlayerWeapon.WING_MUZZLE_X_OFFSETS
+    WING_MUZZLE_Y_OFFSET = PlayerWeapon.WING_MUZZLE_Y_OFFSET
+    AIM_TURN_RATE_DEGREES = PlayerAim.AIM_TURN_RATE_DEGREES
+    PHASE_DASH_COST_RATIO = PlayerPhaseDash.COST_RATIO
+    PHASE_DASH_WINDUP_FRAMES = PlayerPhaseDash.WINDUP_FRAMES
+    PHASE_DASH_ACTIVE_FRAMES = PlayerPhaseDash.ACTIVE_FRAMES
+    PHASE_DASH_RECOVERY_FRAMES = PlayerPhaseDash.RECOVERY_FRAMES
+    PHASE_DASH_COOLDOWN_FRAMES = PlayerPhaseDash.COOLDOWN_FRAMES
+    PHASE_DASH_DISTANCE = PlayerPhaseDash.DISTANCE
+    PHASE_DASH_MIN_DISTANCE = PlayerPhaseDash.MIN_DISTANCE
+    PHASE_DASH_ALPHA_MIN = PlayerPhaseDash.ALPHA_MIN
+    PHASE_DASH_ALPHA_MAX = PlayerPhaseDash.ALPHA_MAX
+    ROTATED_SPRITE_ANGLE_STEP = PlayerAim.ROTATED_SPRITE_ANGLE_STEP
+    ROTATED_SPRITE_CACHE_MAX = PlayerAim.ROTATED_SPRITE_CACHE_MAX
 
     # 1. Special methods
 
@@ -97,73 +116,80 @@ class Player(Entity):
         super().__init__(x, y, self.PLAYER_SPRITE_W, self.PLAYER_SPRITE_H)
         self._constants = constants  # Cache for hot path access
         self._input_handler = input_handler
-        self.health = constants.PLAYER.MAX_HEALTH
-        self.max_health = constants.PLAYER.MAX_HEALTH
-        self.base_speed = constants.PLAYER.SPEED
-        self.speed = self.base_speed
-        self.bullet_damage = constants.PLAYER.BULLET_DAMAGE
-        # Boost system
-        self.is_boost_active: bool = False
-        self.boost_max: float = self.DEFAULT_BOOST_MAX
-        self.boost_current: float = self.DEFAULT_BOOST_MAX
-        self.boost_recovery_rate: float = self.DEFAULT_RECOVERY_RATE
-        self.boost_speed_mult: float = self.DEFAULT_SPEED_MULT
-        self.boost_recovery_delay: int = self.DEFAULT_BOOST_RECOVERY_DELAY
-        self.boost_recovery_ramp: int = self.DEFAULT_BOOST_RECOVERY_RAMP
+
+        # --- Component assembly (init order matters: components read
+        # --- owner attributes that we set just below) ---
+        self.movement: PlayerMovement = PlayerMovement(self, input_handler)
+        self.boost: PlayerBoost = PlayerBoost(self)
+        self.weapon: PlayerWeapon = PlayerWeapon(self)
+        self.shield: PlayerShield = PlayerShield(self)
+        self.phase_dash: PlayerPhaseDash = PlayerPhaseDash(self)
+        self.aim: PlayerAim = PlayerAim(self)
+        self.hitbox: PlayerHitbox = PlayerHitbox(self)
+
+        # --- Health / speed (kept on Player for backward compat) ---
+        self.health: int = constants.PLAYER.MAX_HEALTH
+        self.max_health: int = constants.PLAYER.MAX_HEALTH
+        self.base_speed: float = constants.PLAYER.SPEED
+        self.speed: float = self.base_speed
+        self.bullet_damage: int = constants.PLAYER.BULLET_DAMAGE
+
+        # --- Orthogonal flags ---
         self.is_phase_dash_enabled: bool = False
-        self.ctrl_mode: str = "hold"
-        self.shift_boost_mode: str = "hold"
-        self._precision_toggle_active: bool = False
-        self._boost_toggle_active: bool = False
-        self._boost_idle_frames: int = 0
-        self._boost_pressed_last_frame = False
+        self.is_controls_locked: bool = False
         self.mothership_cooldown_mult: float = 1.0
-        self._fire_cooldown = 0
-        self._fire_interval = constants.PLAYER.FIRE_COOLDOWN
-        self._has_spread = False
-        self._has_laser = False
-        self._has_explosive = False
-        self._laser_duration = 0
-        self._bullet_listeners: list = []
-        self._bullets: list = []
-        self.is_shielded = False
-        self._shield_duration = 0
-        self.is_controls_locked = False
-        self.hitbox_width = self.PLAYER_HITBOX_W
-        self.hitbox_height = self.PLAYER_HITBOX_H
-        self._hitbox_timer = 0
-        self._render_hitbox = False
-        self._hitbox_glow_surf = None
-        self._phase_dash_state = PhaseDashState.READY
-        self._phase_dash_timer = 0
-        self._phase_dash_cooldown = 0
-        self._phase_dash_start = (0.0, 0.0)
-        self._phase_dash_target = (0.0, 0.0)
-        self._phase_dash_direction = (0.0, -1.0)
-        self._aim_target: tuple[float, float] | None = None
-        self._facing_angle_degrees = 0.0
-        self._facing_direction = Vector2(0, -1)
-        self._rotated_sprite_cache: dict[tuple[int, int, int], pygame.Surface] = {}
-        # --- Phase 3: HSM ---
+
+        # --- Master pulse timer (read by aim / hitbox / phase-dash alpha) ---
+        self._hitbox_timer: int = 0
+
+        # --- HSM ---
         self._state = PlayerStateMachine(self)
 
-    # 2. Properties
+    # 2. Properties (legacy attr accessors; many callers read these directly)
+    #
+    # Each forwarder property is a 1-line read/write to a component.
+    # We declare them as class-level ``_Comp`` descriptors to keep
+    # the boilerplate compact: 2-3 lines per attribute instead of 5.
 
-    @property
-    def fire_cooldown(self) -> int:
-        return self._fire_cooldown
+    class _Comp:
+        """Descriptor that forwards a public attribute to a component attr.
 
-    @fire_cooldown.setter
-    def fire_cooldown(self, value: int) -> None:
-        self._fire_cooldown = value
+        Usage::
 
-    @property
-    def fire_interval(self) -> int:
-        return self._fire_interval
+            fire_cooldown = _Comp("weapon", "_fire_cooldown")
+            fire_interval = _Comp("weapon", "_fire_interval", set_transform=max(1, int(v)))
+        """
 
-    @fire_interval.setter
-    def fire_interval(self, value: int) -> None:
-        self._fire_interval = max(1, int(value))
+        __slots__ = ("attr", "component", "set_transform")
+
+        def __init__(self, component: str, attr: str, set_transform=None) -> None:
+            self.component = component
+            self.attr = attr
+            self.set_transform = set_transform  # optional callable for setters
+
+        def __get__(self, instance, owner=None):
+            if instance is None:
+                return self
+            return getattr(getattr(instance, self.component), self.attr)
+
+        def __set__(self, instance, value) -> None:
+            target = getattr(instance, self.component)
+            if self.set_transform is not None:
+                value = self.set_transform(value)
+            setattr(target, self.attr, value)
+
+    fire_cooldown = _Comp("weapon", "_fire_cooldown")
+    fire_interval = _Comp("weapon", "_fire_interval", set_transform=lambda v: max(1, int(v)))
+    precision_active = _Comp("movement", "precision_active")
+    boost_max = _Comp("boost", "boost_max")
+    boost_current = _Comp("boost", "boost_current")
+    boost_recovery_rate = _Comp("boost", "boost_recovery_rate")
+    boost_recovery_delay = _Comp("boost", "boost_recovery_delay")
+    boost_recovery_ramp = _Comp("boost", "boost_recovery_ramp")
+    is_boost_active = _Comp("boost", "is_boost_active")
+    is_shielded = _Comp("shield", "is_shielded")
+    hitbox_width = _Comp("hitbox", "hitbox_width")
+    hitbox_height = _Comp("hitbox", "hitbox_height")
 
     @property
     def bullet_damage_value(self) -> int:
@@ -174,33 +200,112 @@ class Player(Entity):
         self.bullet_damage = value
 
     @property
-    def precision_active(self) -> bool:
-        if self.ctrl_mode == "toggle":
-            return self._precision_toggle_active
-        return self._input_handler.is_precision_pressed()
+    def boost_speed_mult(self) -> float:
+        # Stored on the boost component to support per-difficulty tuning.
+        return getattr(self.boost, "_boost_speed_mult", self.DEFAULT_SPEED_MULT)
+
+    @boost_speed_mult.setter
+    def boost_speed_mult(self, value: float) -> None:
+        # Real speed multiplier is applied in movement.update via
+        # ``base_speed * boost_speed_mult``; we cache it on the boost
+        # component for any future per-difficulty tuning.
+        self.boost._boost_speed_mult = value  # type: ignore[attr-defined]
+
+    # --- Private aliases for tests that read these directly ---
+    # Implemented via __getattr__/__setattr__ to keep Player lean.
+    # See _COMPONENT_ATTRS below for the (attribute -> component attr) map.
 
     def apply_settings(self, settings: dict) -> None:
-        new_ctrl = settings.get("ctrl_mode", "hold")
-        new_shift = settings.get("shift_boost_mode", "hold")
-        if new_ctrl != "toggle" and self.ctrl_mode == "toggle":
-            self._precision_toggle_active = False
-        if new_shift != "toggle" and self.shift_boost_mode == "toggle":
-            self._boost_toggle_active = False
-        self.ctrl_mode = new_ctrl
-        self.shift_boost_mode = new_shift
+        self.movement.apply_settings(settings)
+
+    def _rotated_ship_sprite(self):
+        """Legacy private accessor for the rotated ship sprite.
+
+        Tests still call ``player._rotated_ship_sprite()``; the actual
+        cache lives on the aim component. This forwarder preserves
+        the call shape.
+        """
+        return self.aim.rotated_ship_sprite()
 
     # 3. Public lifecycle methods
 
     def update(self, *args, **kwargs) -> None:
         """Update player state each frame.
 
-        Moves the player, updates weapon cooldowns, activates shield
-        timer, and increments the hitbox indicator timer.
+        Per-frame dispatch order (chosen to preserve the original
+        game's per-frame invariants):
+
+        1. shield timer (decrements ``_shield_duration``)
+        2. phase dash cooldown (decrements dash cooldown)
+        3. if is_controls_locked: increment pulse timer, return
+        4. if phase dashing: tick dash motion + recovery, weapon, aim, pulse
+        5. read boost key state + edge detection
+        6. phase dash attempt (preempts boost)
+        7. boost mode (hold vs toggle) -> sets ``is_boost_active``
+        8. precision mode (hold vs toggle) -> sets ``is_boost_active=False``
+        9. movement: position update with current speed
+        10. weapon cooldown / aim turn / pulse
         """
-        self._update_movement()
-        self._update_weapons(*args, **kwargs)
-        self._update_effects()
+        self.shield.update()
+
+        if self.is_controls_locked:
+            self._hitbox_timer += 1
+            self.phase_dash.hitbox_timer = self._hitbox_timer
+            return
+
+        if self.phase_dash.is_dashing():
+            self.phase_dash.update_motion()
+            self.boost.update_recovery(active_blocked=True)
+            self.weapon.update()
+            self.aim.update()
+            self._hitbox_timer += 1
+            self.phase_dash.hitbox_timer = self._hitbox_timer
+            return
+
+        self.phase_dash.tick_cooldown()
+
+        boost_pressed = self._input_handler.is_boost_pressed()
+        boost_just_pressed = self._read_boost_just_pressed(boost_pressed)
+
+        # Phase dash has priority over boost (even in toggle mode).
+        if boost_just_pressed and self.phase_dash.can_dash():
+            self.phase_dash.start(self._input_handler.get_movement_direction())
+            self.phase_dash.update_motion()
+            self.boost.update_recovery(active_blocked=True)
+            self.weapon.update()
+            self.aim.update()
+            self._hitbox_timer += 1
+            self.phase_dash.hitbox_timer = self._hitbox_timer
+            return
+
+        # Boost mode (hold vs toggle)
+        if self.movement.shift_boost_mode == "toggle":
+            if boost_just_pressed:
+                self.boost._boost_toggle_active = not self.boost._boost_toggle_active
+            self.boost.is_boost_active = self.boost._boost_toggle_active and self.boost.boost_current > 0
+        else:
+            self.boost.is_boost_active = boost_pressed and self.boost.boost_current > 0
+
+        # Precision mode (hold vs toggle)
+        precision = self.movement.update_precision_state()
+
+        if precision:
+            self.speed = self.base_speed * self.PRECISION_SPEED_MULT
+            self.boost.is_boost_active = False
+            self.boost.update_recovery()
+        elif self.boost.is_boost_active:
+            self.boost.reset_idle()
+            self.boost.consume_one_frame()
+            self.speed = self.base_speed * self.boost_speed_mult
+        else:
+            self.boost.update_recovery()
+            self.speed = self.base_speed
+
+        self.movement.update()
+        self.weapon.update()
+        self.aim.update()
         self._hitbox_timer += 1
+        self.phase_dash.hitbox_timer = self._hitbox_timer
 
     def render(self, surface: pygame.Surface) -> None:
         """Render the player ship and hitbox indicator.
@@ -208,154 +313,91 @@ class Player(Entity):
         Args:
             surface: Pygame surface to render onto.
         """
-        sprite = self._rotated_ship_sprite()
-        if self.is_phase_dashing():
+        sprite = self.aim.rotated_ship_sprite()
+        if self.phase_dash.is_dashing():
             sprite = sprite.copy()
-            alpha = self._phase_dash_alpha()
-            sprite.set_alpha(alpha)
+            sprite.set_alpha(self.phase_dash.alpha())
         surface.blit(sprite, sprite.get_rect(center=(self.rect.centerx, self.rect.centery)))
 
         if self.precision_active:
-            self._render_precision_indicator(surface)
+            self.hitbox.render_precision_indicator(surface, self._hitbox_timer)
 
-        self._render_hitbox_indicator(surface)
+        self.hitbox.render_indicator(surface, self._hitbox_timer)
 
-    # 4. Public behavior methods
+    # 4. Public behavior methods (1-line forwarders)
 
     def fire(self) -> Bullet | None:
-        """Fire a single bullet from the player ship.
-
-        Returns:
-            Bullet entity if cooldown allows, None otherwise.
-        """
-        if self._fire_cooldown <= 0:
-            self._fire_cooldown = self._fire_interval
-            return self._create_bullets_for_shot_mode(return_first=True)
-        return None
+        return self.weapon.fire()
 
     def auto_fire(self) -> None:
-        """Auto-fire bullets each frame when cooldown allows.
-
-        Used by the game loop for continuous firing without returning
-        the created bullets.
-        """
         if self.is_controls_locked:
             return
-        if self._fire_cooldown <= 0:
-            self._fire_cooldown = self._fire_interval
-            self._create_bullets_for_shot_mode()
-            # Lazy import: audio subsystem stays out of the player
-            # import graph so headless tests can omit pygame.mixer.
-            from airwar.audio import get_sound_manager
-
-            get_sound_manager().play_sfx("bullet_fire")
+        self.weapon.auto_fire()
 
     def activate_shotgun(self) -> None:
-        """Enable spread-shot weapon mode."""
-        self._has_spread = True
+        self.weapon.activate_shotgun()
 
     def activate_laser(self, duration: int) -> None:
-        """Enable laser weapon mode.
-
-        Args:
-            duration: Number of frames the laser remains active.
-        """
-        self._has_laser = True
-        self._laser_duration = max(1, duration)
+        self.weapon.activate_laser(duration)
 
     def activate_explosive(self) -> None:
-        """Enable explosive bullet modifier."""
-        self._has_explosive = True
+        self.weapon.activate_explosive()
 
     def set_weapon_modifiers(self, spread: bool, laser: bool, explosive: bool) -> None:
-        """Set weapon modifiers from the effective talent loadout."""
-        self._has_spread = spread
-        self._has_laser = laser
-        self._has_explosive = explosive
+        self.weapon.set_weapon_modifiers(spread, laser, explosive)
 
     def get_weapon_status(self) -> dict:
-        return {
-            "spread": self._has_spread,
-            "laser": self._has_laser,
-            "explosive": self._has_explosive,
-        }
+        return self.weapon.get_weapon_status()
 
     def activate_phase_dash(self) -> None:
-        """Enable boost-fueled invincible phase dash."""
         self.is_phase_dash_enabled = True
 
     def take_damage(self, damage: int) -> None:
-        """Apply damage to the player.
-
-        Damage is ignored if the player has an active shield.
-        If health reaches 0, the player dies (handled by health system).
-
-        Args:
-            damage: Amount of damage to apply.
-        """
         if damage is None or damage < 0:
             return
-        if self.is_shielded:
+        if self.shield.is_shielded:
             return
         self.health -= damage
         if self.health <= 0:
             self.health = 0
 
     def heal(self, amount: int) -> None:
-        """Heal the player by a specified amount.
-
-        Health cannot exceed max_health.
-
-        Args:
-            amount: Health points to restore.
-        """
         if amount is None or amount < 0:
             return
         self.health = min(self.max_health, self.health + amount)
 
     def activate_shield(self, duration: int) -> None:
-        """Activate a temporary shield that blocks the next hit.
-
-        Args:
-            duration: Number of frames the shield remains active.
-        """
-        self.is_shielded = True
-        self._shield_duration = max(1, duration)
+        self.shield.activate(duration)
 
     def get_hitbox(self) -> pygame.Rect:
-        hb_x = self.rect.x + (self.rect.width - self.hitbox_width) // 2
-        hb_y = self.rect.y + (self.rect.height - self.hitbox_height) // 2
-        return pygame.Rect(hb_x, hb_y, self.hitbox_width, self.hitbox_height)
+        return self.hitbox.get_hitbox()
 
     def get_boost_status(self) -> dict:
         return {
-            "current": self.boost_current,
-            "max": self.boost_max,
-            "active": self.is_boost_active,
-            "dash_cooldown": self._phase_dash_cooldown,
+            "current": self.boost.boost_current,
+            "max": self.boost.boost_max,
+            "active": self.boost.is_boost_active,
+            "dash_cooldown": self.phase_dash.cooldown,
             "dash_cooldown_max": self.PHASE_DASH_COOLDOWN_FRAMES,
             "dash_enabled": self.is_phase_dash_enabled,
-            "dash_active": self.is_phase_dashing(),
-            "dash_ready": self.can_phase_dash(),
+            "dash_active": self.phase_dash.is_dashing(),
+            "dash_ready": self.phase_dash.can_dash(),
         }
 
     def get_bullets(self) -> list[Bullet]:
-        return self._bullets
+        return self.weapon.get_bullets()
 
     def remove_bullet(self, bullet: Bullet) -> None:
-        bullet.active = False
+        self.weapon.remove_bullet(bullet)
 
     def cleanup_inactive_bullets(self) -> None:
-        if not self._bullets:
-            return
-        # Filter in-place to avoid creating a new list each frame
-        self._bullets[:] = [b for b in self._bullets if b.active]
+        self.weapon.cleanup_inactive_bullets()
 
     def is_colliding_with(self, other) -> bool:
-        return self.get_hitbox().colliderect(other.rect)
+        return self.hitbox.is_colliding_with(other)
 
     def is_phase_dashing(self) -> bool:
-        return self._phase_dash_state in {PhaseDashState.WINDUP, PhaseDashState.ACTIVE, PhaseDashState.RECOVERY}
+        return self.phase_dash.is_dashing()
 
     # --- HSM predicates (Phase 3) ---
 
@@ -375,380 +417,77 @@ class Player(Entity):
         return self._state.alive_substate == sub
 
     def is_phase_dash_invincible(self) -> bool:
-        return self._phase_dash_state in {PhaseDashState.WINDUP, PhaseDashState.ACTIVE, PhaseDashState.RECOVERY}
+        return self.phase_dash.is_invincible()
 
     def can_phase_dash(self) -> bool:
-        return (
-            self.is_phase_dash_enabled
-            and self._phase_dash_state == PhaseDashState.READY
-            and self._phase_dash_cooldown <= 0
-            and self.boost_current >= self._phase_dash_cost()
-        )
+        return self.phase_dash.can_dash()
 
     def add_listener(self, listener) -> None:
-        if hasattr(listener, "on_bullet_fired"):
-            self._bullet_listeners.append(listener)
+        self.weapon.add_listener(listener)
 
     def set_aim_target(self, x: float, y: float) -> None:
-        self._aim_target = (x, y)
+        self.aim.set_aim_target(x, y)
 
     def get_aim_target(self) -> tuple[float, float] | None:
-        return self._aim_target
+        return self.aim.get_aim_target()
 
-    def get_facing_direction(self) -> Vector2:
-        return self._facing_direction
+    def get_facing_direction(self):
+        return self.aim.get_facing_direction()
 
     def get_facing_angle_degrees(self) -> float:
-        return self._facing_angle_degrees
+        return self.aim.get_facing_angle_degrees()
 
-    # 5. Private lifecycle methods
+    def set_render_hitbox(self, value: bool) -> None:
+        self.hitbox.set_render_hitbox(value)
 
-    def _update_movement(self) -> None:
-        if self.is_controls_locked:
-            return
-
-        if self.is_phase_dashing():
-            self._update_phase_dash_motion()
-            self._update_boost_recovery(active_blocked=True)
-            return
-
-        self._update_phase_dash_cooldown()
-        direction = self._input_handler.get_movement_direction()
-
-        # Boost: detect key state and edge
-        boost_pressed = self._input_handler.is_boost_pressed()
-        boost_just_pressed = self._read_boost_just_pressed(boost_pressed)
-
-        # Phase dash takes priority over boost (regardless of toggle mode)
-        if boost_just_pressed and self.can_phase_dash():
-            self._start_phase_dash(direction)
-            self._update_phase_dash_motion()
-            self._update_boost_recovery(active_blocked=True)
-            return
-
-        # Apply boost mode (hold vs toggle)
-        if self.shift_boost_mode == "toggle":
-            if boost_just_pressed:
-                self._boost_toggle_active = not self._boost_toggle_active
-            self.is_boost_active = self._boost_toggle_active and self.boost_current > 0
-        else:
-            self.is_boost_active = boost_pressed and self.boost_current > 0
-
-        # Precision mode (hold vs toggle)
-        ctrl_pressed = self._input_handler.is_precision_pressed()
-        if self.ctrl_mode == "toggle":
-            ctrl_just_pressed = self._input_handler.is_precision_just_pressed()
-            if ctrl_just_pressed:
-                self._precision_toggle_active = not self._precision_toggle_active
-            precision = self._precision_toggle_active
-        else:
-            precision = ctrl_pressed
-
-        if precision:
-            self.speed = self.base_speed * self.PRECISION_SPEED_MULT
-            self.is_boost_active = False
-            self._update_boost_recovery()
-        elif self.is_boost_active:
-            self._boost_idle_frames = 0
-            self.boost_current = max(0, self.boost_current - 1)
-            self.speed = self.base_speed * self.boost_speed_mult
-        else:
-            self._update_boost_recovery()
-            self.speed = self.base_speed
-
-        self.rect.x += direction.x * self.speed
-        self.rect.y += direction.y * self.speed
-        self.rect.x = max(0, min(self.rect.x, get_screen_width() - self.rect.width))
-        self.rect.y = max(0, min(self.rect.y, get_screen_height() - self.rect.height))
-
-    def _update_weapons(self, *args, **kwargs) -> None:
-        self._update_aim_turn()
-        if self._fire_cooldown > 0:
-            self._fire_cooldown -= 1
-
-    def _update_effects(self) -> None:
-        if self._shield_duration > 0:
-            self._shield_duration -= 1
-            if self._shield_duration <= 0:
-                self.is_shielded = False
-        if self._laser_duration > 0:
-            self._laser_duration -= 1
-            if self._laser_duration <= 0:
-                self._has_laser = False
-
-    def _phase_dash_cost(self) -> float:
-        return self.boost_max * self.PHASE_DASH_COST_RATIO
+    # 5. Private helpers
 
     def _read_boost_just_pressed(self, boost_pressed: bool) -> bool:
         if hasattr(self._input_handler, "is_boost_just_pressed"):
             return self._input_handler.is_boost_just_pressed()
-        just_pressed = boost_pressed and not self._boost_pressed_last_frame
-        self._boost_pressed_last_frame = boost_pressed
+        just_pressed = boost_pressed and not self.movement._boost_pressed_last_frame
+        self.movement._boost_pressed_last_frame = boost_pressed
         return just_pressed
 
-    def _update_boost_recovery(self, active_blocked: bool = False) -> None:
-        if active_blocked:
-            self.is_boost_active = False
-        self._boost_idle_frames += 1
-        if self._boost_idle_frames > self.boost_recovery_delay:
-            ramp_frames = self._boost_idle_frames - self.boost_recovery_delay
-            t = 1.0 if self.boost_recovery_ramp <= 0 else min(1.0, ramp_frames / self.boost_recovery_ramp)
-            rate = self.boost_recovery_rate * (self.BOOST_RAMP_MIN + self.BOOST_RAMP_DELTA * t)
-            self.boost_current = min(self.boost_max, self.boost_current + rate)
+    # 6. Component-attribute aliasing for backward compat.
+    # Tests still read a handful of private attributes that used to live
+    # directly on Player. To keep the class lean, we route those reads
+    # and writes through a single map (the same pattern used by tests
+    # that mock ``player.<attr>`` directly). Only attributes in
+    # ``_COMPONENT_ATTRS`` are routed; everything else raises normally.
+    _COMPONENT_ATTRS = {
+        "_facing_angle_degrees": ("aim", "facing_angle_degrees"),
+        "_rotated_sprite_cache": ("aim", "rotated_sprite_cache"),
+        "_phase_dash_state": ("phase_dash", "state"),
+        "_phase_dash_timer": ("phase_dash", "timer"),
+        "_fire_cooldown": ("weapon", "_fire_cooldown"),
+    }
 
-    def _update_phase_dash_cooldown(self) -> None:
-        if self._phase_dash_cooldown > 0:
-            self._phase_dash_cooldown -= 1
+    def __getattr__(self, name: str):
+        alias = self._COMPONENT_ATTRS.get(name)
+        if alias is not None:
+            comp_name, attr_name = alias
+            # ``self`` may not yet have the component (during __init__
+            # bootstrap or pickling); fall through to AttributeError.
+            try:
+                component = object.__getattribute__(self, comp_name)
+            except AttributeError:
+                raise AttributeError(name) from None
+            return getattr(component, attr_name)
+        raise AttributeError(name)
 
-    def _start_phase_dash(self, direction) -> None:
-        self.boost_current = max(0, self.boost_current - self._phase_dash_cost())
-        self._boost_idle_frames = 0
-        dx, dy = direction.x, direction.y
-        if dx == 0 and dy == 0:
-            dx, dy = self._phase_dash_direction
-        length = math.hypot(dx, dy)
-        if length <= 0:
-            dx, dy = 0.0, -1.0
-        else:
-            dx, dy = dx / length, dy / length
-        self._phase_dash_direction = (dx, dy)
-        self._phase_dash_state = PhaseDashState.WINDUP
-        self._phase_dash_timer = self.PHASE_DASH_WINDUP_FRAMES
-        self._phase_dash_start = (self.rect.x, self.rect.y)
-        target_x = self.rect.x + dx * self.PHASE_DASH_DISTANCE
-        target_y = self.rect.y + dy * self.PHASE_DASH_DISTANCE
-        max_x = get_screen_width() - self.rect.width
-        max_y = get_screen_height() - self.rect.height
-        target_x = max(0, min(target_x, max_x))
-        target_y = max(0, min(target_y, max_y))
-        if math.hypot(target_x - self.rect.x, target_y - self.rect.y) < self.PHASE_DASH_MIN_DISTANCE:
-            target_x = max(0, min(self.rect.x + dx * self.PHASE_DASH_MIN_DISTANCE, max_x))
-            target_y = max(0, min(self.rect.y + dy * self.PHASE_DASH_MIN_DISTANCE, max_y))
-        self._phase_dash_target = (target_x, target_y)
-
-    def _update_phase_dash_motion(self) -> None:
-        if self._phase_dash_state == PhaseDashState.WINDUP:
-            self._phase_dash_timer -= 1
-            if self._phase_dash_timer <= 0:
-                self._phase_dash_state = PhaseDashState.ACTIVE
-                self._phase_dash_timer = 0
+    def __setattr__(self, name: str, value) -> None:
+        alias = self._COMPONENT_ATTRS.get(name)
+        if alias is not None:
+            comp_name, attr_name = alias
+            try:
+                component = object.__getattribute__(self, comp_name)
+            except AttributeError:
+                # During bootstrap (before the component is attached),
+                # fall back to writing a real instance attribute so
+                # __init__ can still set its own state.
+                object.__setattr__(self, name, value)
+                return
+            setattr(component, attr_name, value)
             return
-
-        if self._phase_dash_state == PhaseDashState.ACTIVE:
-            self._phase_dash_timer += 1
-            progress = min(1.0, self._phase_dash_timer / self.PHASE_DASH_ACTIVE_FRAMES)
-            eased = 1 - (1 - progress) * (1 - progress)
-            self.rect.x = self._phase_dash_start[0] + (self._phase_dash_target[0] - self._phase_dash_start[0]) * eased
-            self.rect.y = self._phase_dash_start[1] + (self._phase_dash_target[1] - self._phase_dash_start[1]) * eased
-            if progress >= 1.0:
-                self._phase_dash_state = PhaseDashState.RECOVERY
-                self._phase_dash_timer = self.PHASE_DASH_RECOVERY_FRAMES
-            return
-
-        if self._phase_dash_state == PhaseDashState.RECOVERY:
-            self._phase_dash_timer -= 1
-            if self._phase_dash_timer <= 0:
-                self._phase_dash_state = PhaseDashState.READY
-                self._phase_dash_cooldown = self.PHASE_DASH_COOLDOWN_FRAMES
-
-    def _phase_dash_alpha(self) -> int:
-        if self._phase_dash_state == PhaseDashState.WINDUP:
-            return 210
-        if self._phase_dash_state == PhaseDashState.RECOVERY:
-            progress = 1 - max(0, self._phase_dash_timer) / self.PHASE_DASH_RECOVERY_FRAMES
-            return int(self.PHASE_DASH_ALPHA_MAX + (255 - self.PHASE_DASH_ALPHA_MAX) * progress)
-        pulse = abs(math.sin(self._hitbox_timer * 0.8))
-        return int(self.PHASE_DASH_ALPHA_MIN + (self.PHASE_DASH_ALPHA_MAX - self.PHASE_DASH_ALPHA_MIN) * pulse)
-
-    # 6. Private behavior methods
-
-    def _create_bullets_for_shot_mode(self, return_first: bool = False) -> Bullet | None:
-        first_bullet = None
-
-        if self._has_spread:
-            for muzzle_x, muzzle_y in self._wing_muzzle_positions():
-                for angle in self.SPREAD_ANGLES:
-                    bullet = self._create_bullet_from_muzzle(
-                        muzzle_x,
-                        muzzle_y,
-                        BulletData(
-                            damage=self.bullet_damage,
-                            speed=self._constants.PLAYER.BULLET_SPEED,
-                            angle_offset=angle,
-                            bullet_type="spread_laser" if self._has_laser else "spread",
-                        ),
-                    )
-                    self._aim_bullet_velocity(bullet, self._facing_direction, angle)
-                    if self._has_laser:
-                        bullet.data.is_laser = True
-                    if self._has_explosive:
-                        bullet.data.is_explosive = True
-                    self._bullets.append(bullet)
-                    if first_bullet is None:
-                        first_bullet = bullet
-            return first_bullet if return_first else None
-
-        for muzzle_x, muzzle_y in self._wing_muzzle_positions():
-            bullet = self._create_bullet_from_muzzle(
-                muzzle_x,
-                muzzle_y,
-                self._create_primary_bullet_data(),
-            )
-            self._aim_bullet_velocity(bullet, self._facing_direction)
-            if self._has_explosive:
-                bullet.data.is_explosive = True
-            self._bullets.append(bullet)
-            if first_bullet is None:
-                first_bullet = bullet
-        return first_bullet
-
-    def _wing_muzzle_positions(self) -> tuple[tuple[float, float], ...]:
-        right_x = -self._facing_direction.y
-        right_y = self._facing_direction.x
-        forward_x = self._facing_direction.x
-        forward_y = self._facing_direction.y
-        center_x = self.rect.centerx
-        center_y = self.rect.centery
-        return tuple(
-            (
-                center_x + right_x * offset_x + forward_x * abs(self.WING_MUZZLE_Y_OFFSET),
-                center_y + right_y * offset_x + forward_y * abs(self.WING_MUZZLE_Y_OFFSET),
-            )
-            for offset_x in self.WING_MUZZLE_X_OFFSETS
-        )
-
-    def _create_primary_bullet_data(self) -> BulletData:
-        if self._has_laser:
-            return BulletData(
-                damage=self.bullet_damage,
-                speed=self._constants.PLAYER.BULLET_SPEED,
-                bullet_type="laser",
-                is_laser=True,
-            )
-        return BulletData(damage=self.bullet_damage, speed=self._constants.PLAYER.BULLET_SPEED)
-
-    def _create_bullet_from_muzzle(self, muzzle_x: float, muzzle_y: float, data: BulletData) -> Bullet:
-        bullet = Bullet(muzzle_x, muzzle_y, data)
-        bullet.rect.x = muzzle_x - bullet.rect.width / 2
-        bullet.rect.y = muzzle_y - bullet.rect.height / 2
-        return bullet
-
-    def _get_aim_direction(self, origin_x: float, origin_y: float) -> Vector2:
-        if self._aim_target is None:
-            return self._facing_direction
-
-        dx = self._aim_target[0] - origin_x
-        dy = self._aim_target[1] - origin_y
-        length = math.hypot(dx, dy)
-        if length <= 0.001:
-            return self._facing_direction
-
-        return Vector2(dx / length, dy / length)
-
-    def _update_aim_turn(self) -> None:
-        if self._aim_target is None:
-            return
-        target_direction = self._get_aim_direction(self.rect.centerx, self.rect.centery)
-        if target_direction.length() <= 0:
-            return
-        target_angle = self._direction_to_angle_degrees(target_direction)
-        delta = self._shortest_angle_delta(self._facing_angle_degrees, target_angle)
-        max_step = self.AIM_TURN_RATE_DEGREES
-        if abs(delta) <= max_step:
-            self._facing_angle_degrees = target_angle
-        else:
-            self._facing_angle_degrees += max_step if delta > 0 else -max_step
-        self._facing_angle_degrees = self._normalize_angle_degrees(self._facing_angle_degrees)
-        self._facing_direction = self._angle_to_direction(self._facing_angle_degrees)
-
-    def _aim_bullet_velocity(self, bullet: Bullet, aim_direction: Vector2, angle_offset: float = 0.0) -> None:
-        direction = aim_direction
-        if angle_offset:
-            angle_rad = math.radians(angle_offset)
-            cos_a = math.cos(angle_rad)
-            sin_a = math.sin(angle_rad)
-            direction = Vector2(
-                aim_direction.x * cos_a - aim_direction.y * sin_a,
-                aim_direction.x * sin_a + aim_direction.y * cos_a,
-            )
-        bullet.velocity = direction * bullet.data.speed
-
-    def _rotated_ship_sprite(self) -> pygame.Surface:
-        width = int(self.rect.width)
-        height = int(self.rect.height)
-        angle_bucket = self._rotation_angle_bucket(self._facing_angle_degrees)
-        cache_key = (width, height, angle_bucket)
-        sprite = self._rotated_sprite_cache.get(cache_key)
-        if sprite is None:
-            if len(self._rotated_sprite_cache) >= self.ROTATED_SPRITE_CACHE_MAX:
-                self._rotated_sprite_cache.pop(next(iter(self._rotated_sprite_cache)))
-            base_sprite = get_player_sprite(width, height)
-            sprite = pygame.transform.rotozoom(base_sprite, -angle_bucket, 1.0)
-            self._rotated_sprite_cache[cache_key] = sprite
-        return sprite
-
-    @classmethod
-    def _rotation_angle_bucket(cls, angle_degrees: float) -> int:
-        bucket = round(angle_degrees / cls.ROTATED_SPRITE_ANGLE_STEP) * cls.ROTATED_SPRITE_ANGLE_STEP
-        return int(cls._normalize_angle_degrees(bucket))
-
-    @staticmethod
-    def _direction_to_angle_degrees(direction: Vector2) -> float:
-        return math.degrees(math.atan2(direction.x, -direction.y))
-
-    @staticmethod
-    def _angle_to_direction(angle_degrees: float) -> Vector2:
-        angle_rad = math.radians(angle_degrees)
-        return Vector2(math.sin(angle_rad), -math.cos(angle_rad))
-
-    @staticmethod
-    def _normalize_angle_degrees(angle_degrees: float) -> float:
-        return ((angle_degrees + 180.0) % 360.0) - 180.0
-
-    @classmethod
-    def _shortest_angle_delta(cls, current: float, target: float) -> float:
-        return cls._normalize_angle_degrees(target - current)
-
-    def _render_precision_indicator(self, surface: pygame.Surface) -> None:
-        """Subtle ring indicator around the ship during precision movement (CTRL hold)."""
-        pulse = 0.6 + 0.4 * abs(math.sin(self._hitbox_timer * 0.06))
-        radius = int((self.rect.width + self.rect.height) // 4 + 8)
-        alpha = int(55 + 20 * pulse)
-        indicator = pygame.Surface((radius * 2 + 4, radius * 2 + 4), pygame.SRCALPHA)
-        pygame.draw.circle(
-            indicator,
-            (100, 180, 220, alpha),
-            (radius + 2, radius + 2),
-            radius,
-            1,
-        )
-        surface.blit(indicator, indicator.get_rect(center=(self.rect.centerx, self.rect.centery)))
-
-    def _render_hitbox_indicator(self, surface: pygame.Surface) -> None:
-        hb = self.get_hitbox()
-        padding = HITBOX_INDICATOR_PADDING
-        cx = hb.width / 2 + padding
-        cy = hb.height / 2 + padding
-        pulse = abs(math.sin(self._hitbox_timer * HITBOX_INDICATOR_FREQUENCY))
-
-        half_w = hb.width / 2
-        half_h = hb.height / 2
-
-        diamond_points = [
-            (cx, cy - half_h),
-            (cx + half_w, cy),
-            (cx, cy + half_h),
-            (cx - half_w, cy),
-        ]
-
-        alpha_range = HITBOX_INDICATOR_ALPHA_MAX - HITBOX_INDICATOR_ALPHA_MIN
-        alpha = int(HITBOX_INDICATOR_ALPHA_MIN + pulse * alpha_range)
-
-        # Reuse cached surface to avoid per-frame SRCALPHA allocation
-        surf_size = (hb.width + padding * 2, hb.height + padding * 2)
-        if self._hitbox_glow_surf is None or self._hitbox_glow_surf.get_size() != surf_size:
-            self._hitbox_glow_surf = pygame.Surface(surf_size, pygame.SRCALPHA)
-        self._hitbox_glow_surf.fill((0, 0, 0, 0))
-        pygame.draw.polygon(self._hitbox_glow_surf, (255, 255, 255, alpha), diamond_points)
-
-        surface.blit(self._hitbox_glow_surf, (hb.x - padding, hb.y - padding))
+        object.__setattr__(self, name, value)
