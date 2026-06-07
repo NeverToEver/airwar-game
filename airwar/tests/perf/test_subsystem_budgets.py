@@ -21,7 +21,6 @@ import pytest
 from airwar.entities.base import BulletData, EnemyData, Rect
 from airwar.game.managers.collision_controller import CollisionController
 
-
 # Frame budget per subsystem (ms) — 3x current headless cost.
 # Tighten when you deliberately optimize; loosen only when the
 # budget is demonstrably unreachable on real hardware.
@@ -47,7 +46,7 @@ BUDGETS_MS = {
 
 class _FakeBullet:
     """Minimal Bullet stub for collision benchmarks (no pygame)."""
-    __slots__ = ("rect", "data", "active", "_hit_enemies")
+    __slots__ = ("_hit_enemies", "active", "data", "rect")
 
     def __init__(self, x: float, y: float, owner: str = "player", w: int = 8, h: int = 8) -> None:
         self.rect = Rect(int(x), int(y), w, h)
@@ -67,7 +66,7 @@ class _FakeBullet:
 
 class _FakeEnemy:
     """Minimal Enemy stub."""
-    __slots__ = ("rect", "_hitbox", "data", "health", "active")
+    __slots__ = ("_hitbox", "active", "data", "health", "rect")
 
     def __init__(self, x: float, y: float, w: int = 30, h: int = 30, health: int = 10) -> None:
         self.rect = Rect(int(x), int(y), w, h)
@@ -90,7 +89,7 @@ class _FakeEnemy:
 
 class _FakePlayer:
     """Minimal Player stub for collision benchmarks."""
-    __slots__ = ("rect", "_hitbox", "health", "bullets", "active_bullets")
+    __slots__ = ("_hitbox", "active_bullets", "bullets", "health", "rect")
 
     def __init__(self, x: float = 960, y: float = 540) -> None:
         self.rect = Rect(int(x), int(y), 40, 40)
@@ -111,8 +110,6 @@ class _FakePlayer:
 
 def _make_collision_scene(n_enemies: int, n_bullets: int, seed: int = 42):
     """Build a deterministic collision test scene."""
-    import random
-    rng = random.Random(seed)
     player = _FakePlayer(960, 540)
     enemies = [
         _FakeEnemy(
@@ -147,7 +144,7 @@ def _measure(func, warmup: int = 3, iters: int = 200) -> float:
 def test_collision_check_all_50_enemies_80_bullets():
     """Main collision path at mid-game load: player bullets vs enemies (Rust batch)."""
     cc = CollisionController()
-    player, enemies, bullets = _make_collision_scene(50, 80)
+    _player, enemies, bullets = _make_collision_scene(50, 80)
 
     observed = _measure(
         lambda: cc.check_player_bullets_vs_enemies(
@@ -185,6 +182,7 @@ def test_collision_player_vs_enemies_100():
 def test_bullet_pack_unpack_250():
     """The 250-bullet struct.pack_into loop in bullet_manager."""
     import struct
+
     from airwar.core_bindings import RUST_AVAILABLE
 
     if not RUST_AVAILABLE:
@@ -215,6 +213,7 @@ def test_bullet_pack_unpack_250():
 def test_background_render_budget():
     """Full parallax background with 210 stars + 15 dust."""
     import pygame
+
     from airwar.game.rendering.game_rendering_background import SpaceBackground
 
     pygame.init()
@@ -231,6 +230,7 @@ def test_background_render_budget():
 def test_discrete_battery_render_budget():
     """Discrete battery: vertical 30-seg + horizontal 30-seg per frame."""
     import pygame
+
     from airwar.ui.discrete_battery import DiscreteBatteryIndicator
 
     pygame.init()
@@ -255,6 +255,7 @@ def test_enemy_batch_movement_50_budget():
     to a fmt bug that mismatched the Rust `BASE_BUF_STRIDE=48`).
     """
     import pygame
+
     from airwar.game.managers.game_loop_manager import GameLoopManager
 
     class _StubSpawn:
@@ -312,8 +313,6 @@ def test_enemy_batch_movement_50_budget():
         def update(self, *args, **kwargs):
             pass
 
-    import random
-    rng = random.Random(42)
     glm = GameLoopManager.__new__(GameLoopManager)
     glm._spawn_controller = _StubSpawn()
     glm._game_controller = _StubGC()

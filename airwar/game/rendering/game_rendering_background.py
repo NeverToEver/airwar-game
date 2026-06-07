@@ -224,7 +224,6 @@ class StarLayer:
         core_blue_boost = self.CORE_BLUE_BOOST
         glow_alpha_divisor = self.GLOW_ALPHA_DIVISOR
         glow_alpha_cap = self.GLOW_ALPHA_CAP
-        glow_threshold = self.GLOW_BRIGHTNESS_THRESHOLD
 
         for x, y_pos, core_b, size, has_glow, _glow_alpha_unused in results:
             if has_glow:

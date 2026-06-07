@@ -22,14 +22,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-import pygame
+import pygame  # noqa: E402
 
-from airwar.entities.base import BulletData, EnemyData, Rect
-from airwar.game.managers.collision_controller import CollisionController
+from airwar.entities.base import BulletData, EnemyData, Rect  # noqa: E402
+from airwar.game.managers.collision_controller import CollisionController  # noqa: E402
 
 
 class _Bullet:
-    __slots__ = ("rect", "data", "active", "_hit_enemies")
+    __slots__ = ("_hit_enemies", "active", "data", "rect")
 
     def __init__(self, x, y, owner="player"):
         self.rect = Rect(int(x), int(y), 8, 8)
@@ -48,7 +48,7 @@ class _Bullet:
 
 
 class _Enemy:
-    __slots__ = ("rect", "_hitbox", "data", "health", "active")
+    __slots__ = ("_hitbox", "active", "data", "health", "rect")
 
     def __init__(self, x, y, health=10):
         self.rect = Rect(int(x), int(y), 30, 30)
@@ -70,7 +70,7 @@ class _Enemy:
 
 
 class _Player:
-    __slots__ = ("rect", "_hitbox", "health")
+    __slots__ = ("_hitbox", "health", "rect")
 
     def __init__(self, x=960, y=540):
         self.rect = Rect(x, y, 40, 40)
