@@ -152,20 +152,54 @@ class GameController:
     # 4. Public behavior methods
 
     def is_playing(self) -> bool:
+        """Return whether the player is currently in the active PLAYING state.
+
+        Returns:
+            bool: True if `state.gameplay_state` is PLAYING.
+        """
         return self.state.gameplay_state == GameplayState.PLAYING
 
     def is_game_over(self) -> bool:
+        """Return whether the death animation has finished and run is over.
+
+        Returns:
+            bool: True if `state.gameplay_state` is GAME_OVER.
+        """
         return self.state.gameplay_state == GameplayState.GAME_OVER
 
     def get_current_threshold(self, index: int) -> float:
+        """Return the score threshold for an arbitrary milestone index.
+
+        Args:
+            index: Milestone index to look up (0-based).
+
+        Returns:
+            float: Score value at which the requested milestone triggers.
+        """
         return self._get_threshold_for_index(index)
 
     def get_previous_threshold(self) -> float:
+        """Return the score threshold for the last completed milestone.
+
+        Returns:
+            float: Threshold score for `milestone_index - 1`, or 0.0 if
+            no milestone has been completed yet.
+        """
         if self.state.milestone_index > 0:
             return self._get_threshold_for_index(self.state.milestone_index - 1)
         return 0.0
 
     def get_next_progress(self) -> int:
+        """Return progress toward the next reward milestone as a percentage.
+
+        Computes the fraction of the way from the previous threshold to
+        the next threshold that the current score represents, clamped
+        to the [0, 100] integer range. Returns 0 if there is no upcoming
+        milestone.
+
+        Returns:
+            int: Progress percentage in the range [0, 100].
+        """
         previous = self.get_previous_threshold()
         next_threshold = self._get_threshold_for_index(self.state.milestone_index)
         if next_threshold == previous:
@@ -174,9 +208,20 @@ class GameController:
         return max(0, min(100, int(progress)))
 
     def get_next_threshold(self) -> float:
+        """Return the score threshold for the next reward milestone.
+
+        Returns:
+            float: Threshold score at which the next reward will fire.
+        """
         return self._get_threshold_for_index(self.state.milestone_index)
 
     def has_next_reward_milestone(self) -> bool:
+        """Return whether another reward milestone is still pending.
+
+        Returns:
+            bool: True if a higher threshold exists beyond the most
+            recent completed milestone.
+        """
         return self.get_next_threshold() > self.get_previous_threshold()
 
     def on_player_hit(self, damage: int, player) -> None:
@@ -237,6 +282,12 @@ class GameController:
         self._logger.info(f"Boss killed: score_gained={score_gained}, boss_kills={self.state.boss_kill_count}")
 
     def update_ripples(self) -> None:
+        """Advance the per-frame state of every active hit ripple effect.
+
+        Expands each ripple's radius, fades its alpha, increments the
+        pulse counter, and prunes any ripple whose alpha has reached
+        zero. Called once per frame from `update`.
+        """
         for ripple in self.state.ripple_effects:
             ripple["radius"] += GAME_CONSTANTS.ANIMATION.RIPPLE_EXPANSION_SPEED
             ripple["alpha"] -= RIPPLE_FADE_SPEED

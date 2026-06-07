@@ -50,6 +50,18 @@ class Bullet(Entity):
             self.velocity = Vector2(data.speed * math.sin(angle_rad), -data.speed * math.cos(angle_rad))
 
     def update(self, *args, **kwargs) -> None:
+        """Advance the bullet one frame: record trail, move, and cull offscreen.
+
+        For laser bullets, the current rect is appended to the trail
+        history (deque maxlen=8) before movement. Bullets flagged as
+        `held` (e.g. boss-aimed charged shots) are skipped entirely.
+        Bullets that leave the screen plus a small margin are marked
+        inactive so cleanup passes can drop them.
+
+        Args:
+            *args: Ignored (uniform signature with other entities).
+            **kwargs: Ignored (uniform signature with other entities).
+        """
         if getattr(self, "held", False):
             return
 
@@ -72,14 +84,48 @@ class Bullet(Entity):
         )
 
     def has_hit_enemy(self, enemy_id: int) -> bool:
+        """Return whether this bullet has already hit the given enemy.
+
+        Used by piercing logic to avoid double-counting damage on the
+        same enemy. Enemy identity is provided by the caller (typically
+        `id(enemy)`).
+
+        Args:
+            enemy_id: Stable enemy identifier (object id) to check.
+
+        Returns:
+            bool: True if the enemy is in this bullet's hit set.
+        """
         return enemy_id in self._hit_enemies
 
     def add_hit_enemy(self, enemy_id: int) -> None:
+        """Record that this bullet has hit the given enemy.
+
+        Called by the collision system when a piercing bullet deals
+        damage to an enemy; subsequent `has_hit_enemy` calls for the
+        same id will return True.
+
+        Args:
+            enemy_id: Stable enemy identifier to add to the hit set.
+        """
         self._hit_enemies.append(enemy_id)
 
     def render(self, surface: pygame.Surface) -> None:
+        """Blit the bullet's sprite at its current position.
+
+        A no-op if no sprite has been assigned (e.g. during headless
+        tests that build entities without loading assets).
+
+        Args:
+            surface: Target pygame surface to draw onto.
+        """
         if self._sprite:
             surface.blit(self._sprite, self.get_rect())
 
     def set_sprite(self, sprite: pygame.Surface) -> None:
+        """Assign the pre-rendered sprite used by `render`.
+
+        Args:
+            sprite: pygame.Surface to blit for this bullet.
+        """
         self._sprite = sprite

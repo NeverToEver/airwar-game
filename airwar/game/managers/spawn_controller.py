@@ -68,6 +68,12 @@ class SpawnController:
         self._difficulty_manager: DifficultyManager | None = None
 
     def set_bullet_spawner(self, spawner: IBulletSpawner) -> None:
+        """Inject the bullet spawner used by enemies and the boss.
+
+        Args:
+            spawner: Implementation of `IBulletSpawner` that owns the
+                live bullet list and creates new bullets on demand.
+        """
         self._bullet_spawner = spawner
         self.enemy_spawner.set_bullet_spawner(spawner)
 
@@ -81,9 +87,25 @@ class SpawnController:
         self.enemy_spawner.set_spread_enemy_cap(settings.get("spread_enemy_cap", 2))
 
     def set_difficulty_manager(self, manager: "DifficultyManager") -> None:
+        """Inject the difficulty manager that produces live spawn params.
+
+        Args:
+            manager: DifficultyManager instance consulted by
+                `get_current_params` for progressive scaling.
+        """
         self._difficulty_manager = manager
 
     def get_current_params(self) -> dict:
+        """Return the current spawn parameters used for enemy waves.
+
+        Delegates to the difficulty manager when available; otherwise
+        returns the static base enemy parameters from configuration.
+
+        Returns:
+            dict: Spawn parameters containing keys `speed`, `fire_rate`,
+            `aggression`, `spawn_rate`, `multiplier`, `boss_kills`, and
+            `complexity`.
+        """
         if self._difficulty_manager:
             return self._difficulty_manager.get_current_params()
 
@@ -98,10 +120,32 @@ class SpawnController:
         }
 
     def init_bullet_system(self) -> None:
+        """Create and install the default enemy bullet spawner.
+
+        Wires an `EnemyBulletSpawner` over `self.enemy_bullets` and
+        forwards it through `set_bullet_spawner` so enemies and boss
+        share a single bullet pool.
+        """
         bullet_spawner = EnemyBulletSpawner(self.enemy_bullets)
         self.set_bullet_spawner(bullet_spawner)
 
     def update(self, score: int, slow_factor: float, player_pos: tuple | None = None) -> bool:
+        """Advance spawn state by one frame.
+
+        Drives the enemy spawner (only when no boss is active) and
+        increments the boss spawn timer. Signals when a boss should be
+        spawned by the caller.
+
+        Args:
+            score: Current player score (currently unused; reserved for
+                score-based spawn gating).
+            slow_factor: World time-scale factor (e.g. 0.5 during slow).
+            player_pos: Optional (x, y) player position used by adaptive
+                spawn strategies.
+
+        Returns:
+            bool: True if a boss should be spawned this frame, else False.
+        """
         # Don't spawn new enemies when boss is active
         if self.boss is None:
             self.enemy_spawner.update(self.enemies, slow_factor, player_pos)
@@ -113,12 +157,37 @@ class SpawnController:
         return False
 
     def balance_for_player_dps(self, player_dps: float) -> None:
+        """Scale enemy health so kills take ~NORMAL_ENEMY_KILL_SECONDS.
+
+        Args:
+            player_dps: Player's effective damage per second. The enemy
+                health is raised to keep the average kill time near the
+                configured constant, but never below the base health.
+        """
         target_health = int(max(self._base_enemy_health, round(player_dps * self.NORMAL_ENEMY_KILL_SECONDS)))
         if target_health == self.enemy_spawner.health:
             return
         self.enemy_spawner.health = target_health
 
     def spawn_boss(self, boss_kill_count: int, bullet_damage: int, player_dps: float | None = None) -> Boss:
+        """Spawn the next boss with health, speed, and escape-time scaling.
+
+        Forces all currently active enemies to begin their exit
+        animation so the boss has a clear field, then constructs the
+        boss from `BossData` with stats derived from boss-kill count and
+        the player's DPS.
+
+        Args:
+            boss_kill_count: How many bosses the player has killed this run.
+            bullet_damage: Per-shot player bullet damage used for the
+                escape-time estimate when `player_dps` is not supplied.
+            player_dps: Optional player DPS used for the escape-time
+                estimate (preferred over `bullet_damage`).
+
+        Returns:
+            Boss: The newly spawned boss instance, also stored on
+            `self.boss`.
+        """
         # Force all existing enemies to exit when boss appears
         for enemy in self.enemies:
             if enemy.active and getattr(enemy, "_state", None) == EnemyState.ACTIVE:
@@ -166,15 +235,34 @@ class SpawnController:
         return round(kill_frames * self.ESCAPE_TIME_SAFETY_MULTIPLIER + Boss.ENRAGE_DURATION)
 
     def reset_boss_timer(self, penalty: bool = False) -> None:
+        """Reset the boss spawn timer, optionally applying escape penalty.
+
+        Args:
+            penalty: If True, lengthen `boss_spawn_interval` by the
+                configured escape penalty multiplier so the next boss
+                takes longer to appear after a boss escape.
+        """
         self.boss_spawn_timer = 0
         if penalty:
             self.boss_spawn_interval = int(self._base_boss_spawn_interval * self._escape_penalty_multiplier)
 
     def cleanup(self) -> None:
+        """Prune inactive enemies and clear the boss reference if needed.
+
+        Convenience entry point that delegates to `cleanup_enemies` and
+        the internal `_handle_boss_cleanup` helper. Safe to call once
+        per frame after enemy/boss updates complete.
+        """
         self.cleanup_enemies()
         self._handle_boss_cleanup()
 
     def cleanup_enemies(self) -> None:
+        """Remove inactive enemy entities from the active list.
+
+        Performs an O(n) scan with a fast-path early-out when every
+        enemy is still active, so the cleanup cost is negligible on
+        dense enemy frames.
+        """
         if not self.enemies:
             return
         if not any(not e.active for e in self.enemies):

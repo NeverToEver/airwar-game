@@ -176,9 +176,20 @@ class CollisionController:
 
     @property
     def events(self) -> list[CollisionEvent]:
+        """Return a copy of the collision events recorded during the last check.
+
+        Returns:
+            list[CollisionEvent]: Snapshot of recorded events (safe to iterate
+            without mutating the controller's internal list).
+        """
         return self._events.copy()
 
     def clear_events(self) -> None:
+        """Clear all recorded collision events.
+
+        Called by `check_all_collisions` at the start of each frame to
+        ensure events reflect only the current frame's collisions.
+        """
         self._events.clear()
 
     def set_explosion_callback(self, callback: Callable[[float, float, int], None]) -> None:
@@ -207,6 +218,31 @@ class CollisionController:
         on_lifesteal: Callable | None = None,
         on_clear_bullets: Callable | None = None,
     ) -> None:
+        """Run all collision checks for the current frame and dispatch callbacks.
+
+        Checks player bullets vs enemies/boss, enemy bullets vs player,
+        player vs enemies, and boss vs player. Records resulting
+        `CollisionEvent` entries in `self.events` and invokes the matching
+        optional callbacks.
+
+        Args:
+            player: Player entity whose bullets and hitbox participate.
+            enemies: Active enemy entities to test against.
+            boss: Active boss entity or None if not in boss phase.
+            enemy_bullets: Live enemy bullets to test against the player.
+            reward_system: RewardSystem providing `piercing_level`,
+                `calculate_damage_taken`, and `try_dodge` helpers.
+            explosive_level: Talent level for explosive bullet AoE.
+            piercing_level: Talent level for piercing bullets.
+            player_invincible: If True, skip player-side hit checks.
+            score_multiplier: Multiplier applied to enemy kill scores.
+            on_enemy_killed: Callback invoked with score gained per kill.
+            on_boss_killed: Callback invoked when boss dies.
+            on_boss_hit: Callback invoked when boss takes damage.
+            on_player_hit: Callback invoked with damage and player entity.
+            on_lifesteal: Optional lifesteal hook (player, score_gained).
+            on_clear_bullets: Optional hook to clear remaining enemy bullets.
+        """
         if player is None:
             return
         self._events.clear()
@@ -298,6 +334,22 @@ class CollisionController:
         explosive_level: int,
         piercing_level: int = 0,
     ) -> tuple[int, int]:
+        """Resolve collisions between player bullets and enemy entities.
+
+        Dispatches to Rust batch collision when available, otherwise falls
+        back to a Python spatial-hash scan. Applies damage, triggers AoE
+        explosions for explosive bullets, and respects piercing level.
+
+        Args:
+            player_bullets: Bullets fired by the player.
+            enemies: Active enemy entities to test against.
+            score_multiplier: Multiplier applied to kill scores.
+            explosive_level: Talent level for AoE explosions.
+            piercing_level: Talent level for bullet piercing.
+
+        Returns:
+            tuple[int, int]: (total_score_gained, enemies_killed_count).
+        """
         if self._uses_rust_batch_collision():
             return self._check_player_bullets_vs_enemies_rust(
                 player_bullets,
@@ -494,6 +546,20 @@ class CollisionController:
     def check_player_bullets_vs_boss(
         self, player_bullets: list["Bullet"], boss: "Boss", piercing_level: int
     ) -> tuple[int, bool]:
+        """Resolve collisions between player bullets and the active boss.
+
+        Applies bullet damage to the boss until a killing blow is dealt
+        (in which case remaining bullets are skipped to avoid hitting a
+        corpse). For non-piercing bullets, hit bullets are deactivated.
+
+        Args:
+            player_bullets: Bullets fired by the player.
+            boss: Active boss entity to test against.
+            piercing_level: Talent level for bullet piercing.
+
+        Returns:
+            tuple[int, bool]: (score_gained, boss_killed_flag).
+        """
         if not boss or not boss.active:
             return 0, False
 
@@ -530,6 +596,17 @@ class CollisionController:
     def check_player_vs_enemies(
         self, player_hitbox, enemies: list["Enemy"], try_dodge_func: Callable, on_player_hit_func: Callable
     ) -> bool:
+        """Test whether the player's hitbox collides with any active enemy.
+
+        Args:
+            player_hitbox: pygame.Rect-like hitbox for the player.
+            enemies: Active enemy entities to test against.
+            try_dodge_func: Callable returning True if the player dodged.
+            on_player_hit_func: Callable invoked with damage on collision.
+
+        Returns:
+            bool: True if a non-dodged enemy collision occurred.
+        """
         for enemy in enemies:
             if enemy.active and player_hitbox.colliderect(enemy.get_hitbox()) and not try_dodge_func():
                 on_player_hit_func(GAME_CONSTANTS.DAMAGE.ENEMY_COLLISION_DAMAGE)
@@ -540,6 +617,21 @@ class CollisionController:
     def check_enemy_bullets_vs_player(
         self, enemy_bullets: list["Bullet"], player, calculate_damage_func: Callable, on_player_hit_func: Callable
     ) -> bool:
+        """Test enemy bullets against the player and apply damage on hit.
+
+        Uses the Rust spatial hash when available; otherwise performs a
+        linear scan. Deactivates the first hit bullet so it cannot
+        damage the player again on the next frame.
+
+        Args:
+            enemy_bullets: Active enemy bullets to test.
+            player: Player entity whose hitbox participates.
+            calculate_damage_func: Callable converting raw damage to final.
+            on_player_hit_func: Callable invoked with final damage and player.
+
+        Returns:
+            bool: True if at least one bullet hit the player.
+        """
         player_hitbox = player.get_hitbox()
 
         if self._use_rust and enemy_bullets:
@@ -588,6 +680,20 @@ class CollisionController:
     def check_boss_vs_player(
         self, boss: "Boss", player, calculate_damage_func: Callable, on_player_hit_func: Callable
     ) -> bool:
+        """Test whether the boss body collides with the player.
+
+        Skips the check while the boss is in its entering animation to
+        avoid applying damage before it has settled into the playfield.
+
+        Args:
+            boss: Active boss entity to test against.
+            player: Player entity whose hitbox participates.
+            calculate_damage_func: Callable converting raw damage to final.
+            on_player_hit_func: Callable invoked with final damage and player.
+
+        Returns:
+            bool: True if the boss hitbox overlaps the player hitbox.
+        """
         if boss and boss.active and not boss.is_entering:
             player_hitbox = player.get_hitbox()
             if boss.get_hitbox().colliderect(player_hitbox):
