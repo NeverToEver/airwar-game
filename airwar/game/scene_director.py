@@ -1,18 +1,35 @@
-"""Scene orchestration -- manages scene transitions and lifecycle."""
+"""Scene orchestration -- manages scene transitions and lifecycle.
+
+Slim coordinator (Phase 4 W-β). All 40 logic methods are 1-line
+forwarders to one of three component classes held as private
+attributes:
+
+* :class:`SceneSwitcher` -- welcome/tutorial/game flow + per-scene main loop.
+* :class:`SceneStatePersistence` -- save / restore / clear game state.
+* :class:`SceneAchievementBridge` -- achievement registry, event-bus wiring, evaluation.
+
+The pause/menu action dispatch (``_handle_pause_toggle``,
+``_pause_action_result``, ``_dispatch_pause_result``,
+``_dispatch_pause_action``) and the user-settings loader
+(``_load_user_settings`` / ``_apply_settings_to_player``) stay in
+this module: they bridge between the switcher and the persistence
+layer and were not large enough to warrant a fourth component.
+
+Public API (3) is preserved: ``run``, ``stop``, ``current_user``.
+"""
 
 import logging
 
 import pygame
 
-from ..config import FPS, set_display_size
 from ..scenes import GameScene, SceneManager
-from ..scenes.scene import ExitConfirmAction, PauseAction
+from ..scenes.scene import PauseAction
 from ..utils.database import DatabaseError
-from .achievements import AchievementRegistry, build_default_registry
+from .achievements import AchievementRegistry
 from .mother_ship import GameSaveData, PersistenceManager
-from .mother_ship.event_bus import EVENT_DOCKING_COMPLETE
 from .mother_ship.interfaces import IEventBus
 from .scaled_viewport import ScaledViewport
+from .scene_director_components import SceneAchievementBridge, SceneStatePersistence, SceneSwitcher
 
 
 class SceneDirector:
@@ -47,20 +64,28 @@ class SceneDirector:
         # Reset to 0 in _run_welcome_flow on every welcome iteration
         # so a restart-from-menu starts fresh.
         self._mothership_dock_count: int = 0
-        self._update_viewport_from_window()
+
+        # Phase 4 components
+        self._switcher = SceneSwitcher(self, self._scene_manager, self._viewport)
+        self._persistence = SceneStatePersistence(self)
+        self._achievements = SceneAchievementBridge(self)
+
+        self._switcher.update_viewport_from_window()
 
     @property
     def current_user(self) -> str | None:
         return self._current_user
 
+    # -- Public API (3) ---------------------------------------------------------
+
     def run(self) -> None:
         self._running = True
         while self._running:
-            welcome_ok, save_data = self._run_welcome_flow()
+            welcome_ok, save_data = self._switcher.run_welcome_flow()
             if not welcome_ok:
                 break
             self._pending_save_data = save_data
-            result = self._run_game_flow()
+            result = self._switcher.run_game_flow()
             if result == "quit":
                 break
             if result in ("main_menu", "restart"):
@@ -70,154 +95,62 @@ class SceneDirector:
     def stop(self) -> None:
         self._running = False
 
-    def _run_scene_loop(self, scene, *, escape_handled: bool = False) -> str:
-        """Run the standard poll→update→render loop until scene exits or user quits.
-
-        Args:
-            scene: The scene instance to run.
-            escape_handled: If True, skip ESC key in event dispatch.
-
-        Returns:
-            "quit" if the user closed the window, "ended" if the scene exited normally.
-        """
-        while self._running and scene.is_running():
-            events = self._poll_events()
-            if not self._check_quit(events):
-                return "quit"
-            self._handle_resize_if_needed(events)
-            self._handle_scene_events(events, escape_handled)
-            scene.update()
-            self._render_scene(scene)
-            self._window.flip()
-            self._window.tick(FPS)
-        return "quit" if not self._running else "ended"
+    # -- Switcher forwarders ----------------------------------------------------
 
     def _run_welcome_flow(self) -> tuple:
-        """Single-page beginner interface: login + difficulty + controls in one screen."""
-        while self._running:
-            self._scene_manager.switch("welcome", viewport=self._viewport)
-            welcome = self._scene_manager.get_current_scene()
-
-            result = self._run_scene_loop(welcome)
-            if result == "quit":
-                return (False, None)
-
-            if hasattr(welcome, "should_quit") and welcome.should_quit():
-                return (False, None)
-            if hasattr(welcome, "should_open_tutorial") and welcome.should_open_tutorial():
-                result = self._run_tutorial_flow()
-                if result == "quit":
-                    return (False, None)
-                continue
-            if hasattr(welcome, "should_open_settings") and welcome.should_open_settings():
-                if not self._show_settings_menu():
-                    return (False, None)
-                continue
-            if welcome.is_ready():
-                self._current_user = welcome.get_username()
-                self._selected_difficulty = welcome.get_difficulty()
-                # Reset per-run achievement state so a restart-from-menu
-                # does not carry over the previous run's dock count or
-                # registry reference.
-                self._mothership_dock_count = 0
-                self._achievement_registry = None
-                self._load_user_settings()
-                self._create_achievement_registry()
-                save_data = self._check_and_get_saved_game(self._current_user)
-                return (True, save_data)
-            return (True, None)
-        return (False, None)
+        return self._switcher.run_welcome_flow()
 
     def _run_tutorial_flow(self) -> str:
-        tutorial = self._scene_manager.get_scene("tutorial")
-        if not tutorial:
-            return "main_menu"
-
-        self._scene_manager.switch("tutorial", viewport=self._viewport)
-        tutorial = self._scene_manager.get_current_scene()
-
-        result = self._run_scene_loop(tutorial)
-        return "quit" if result == "quit" else "main_menu"
+        return self._switcher.run_tutorial_flow()
 
     def _run_game_flow(self) -> str:
-        self._logger.info(f"Starting game flow: difficulty={self._selected_difficulty}, user={self._current_user}")
-        self._scene_manager.switch(
-            "game",
-            difficulty=self._selected_difficulty,
-            username=self._current_user or "Guest",
-            settings_ref=self._settings_ref,
-            viewport=self._viewport,
-        )
+        return self._switcher.run_game_flow()
 
-        current_scene = self._scene_manager.get_current_scene()
-        if self._pending_save_data and isinstance(current_scene, GameScene):
-            current_scene.restore_from_save(self._pending_save_data)
-            self._pending_save_data = None
-            self._logger.info("Game restored from pending save data")
+    def _run_scene_loop(self, scene, *, escape_handled: bool = False) -> str:
+        return self._switcher._run_scene_loop(scene, escape_handled=escape_handled)
 
-        while self._running:
-            escape_handled = False
-            current_scene = self._scene_manager.get_current_scene()
+    def _poll_events(self) -> list:
+        return self._switcher._poll_events()
 
-            events = self._poll_events()
-            if not self._check_quit(events):
-                if isinstance(current_scene, GameScene):
-                    self._save_game_on_quit(current_scene)
-                self._logger.info("Game flow ended: quit")
-                return "quit"
-            self._handle_resize_if_needed(events)
+    def _check_quit(self, events: list) -> bool:
+        return self._switcher._check_quit(events)
 
-            if isinstance(current_scene, GameScene):
-                result = self._handle_pause_toggle(events, current_scene)
-                dispatched = self._dispatch_pause_result(result, current_scene)
-                if dispatched:
-                    return dispatched
-                escape_handled = result == "resume"
+    def _handle_resize_if_needed(self, events: list) -> None:
+        self._switcher._handle_resize_if_needed(events)
 
-            self._handle_scene_events(events, escape_handled)
+    def _handle_scene_events(self, events: list, skip_escape: bool = False) -> None:
+        self._switcher._handle_scene_events(events, skip_escape)
 
-            # Check for pause requests triggered by mouse click
-            if isinstance(current_scene, GameScene) and not escape_handled:
-                if not current_scene.is_homecoming_locked() and current_scene.consume_pause_request():
-                    current_scene.pause()
-                    action = self._show_pause_menu(current_scene)
-                    result = self._dispatch_pause_action(action, current_scene, from_mouse=True)
-                    if result:
-                        return result
+    def _handle_resize(self, width: int, height: int) -> None:
+        self._switcher._handle_resize(width, height)
 
-            self._scene_manager.update()
-            self._render_current_scene()
-            self._window.flip()
-            self._window.tick(FPS)
+    def _update_viewport_from_window(self) -> None:
+        self._switcher.update_viewport_from_window()
 
-            if isinstance(current_scene, GameScene) and current_scene.is_game_over():
-                self._clear_saved_game()
-                result = self._handle_game_over(current_scene)
-                if result:
-                    return "main_menu"
-                else:
-                    return "quit"
+    def _map_mouse_event(self, event):
+        return self._switcher._map_mouse_event(event)
 
-        return "quit"
+    def _render_current_scene(self) -> None:
+        self._switcher._render_current_scene()
 
-    def _poll_events(self) -> list[pygame.event.Event]:
-        return [self._map_mouse_event(event) for event in pygame.event.get()]
+    def _render_scene(self, scene) -> None:
+        self._switcher._render_scene(scene)
 
-    def _check_quit(self, events: list[pygame.event.Event]) -> bool:
-        for event in events:
-            if event.type == pygame.QUIT:
-                self._running = False
-                return False
-        return True
+    def _show_settings_menu(self, game_scene=None) -> bool:
+        return self._switcher._show_settings_menu(game_scene=game_scene)
 
-    def _handle_resize_if_needed(self, events: list[pygame.event.Event]) -> None:
-        for event in events:
-            if event.type == pygame.VIDEORESIZE:
-                # With SCALED, SDL2 handles scaling — just update viewport
-                # for coordinate conversion; don't recreate the display surface.
-                self._handle_resize(event.w, event.h)
+    def _show_pause_menu(self, game_scene: GameScene) -> PauseAction:
+        return self._switcher._show_pause_menu(game_scene)
 
-    def _handle_pause_toggle(self, events: list[pygame.event.Event], game_scene: GameScene) -> str:
+    def _show_exit_confirm(self, saved: bool) -> str:
+        return self._switcher._show_exit_confirm(saved)
+
+    def _handle_game_over(self, game_scene: GameScene) -> bool:
+        return self._switcher._handle_game_over(game_scene)
+
+    # -- Pause dispatch (kept in main director) --------------------------------
+
+    def _handle_pause_toggle(self, events: list, game_scene: GameScene) -> str:
         if getattr(game_scene, "is_homecoming_locked", lambda: False)():
             return "none"
 
@@ -260,7 +193,7 @@ class SceneDirector:
             self._logger.info("Game flow ended%s: main_menu", source)
             return "main_menu"
         if result == "save_and_quit":
-            saved = self._save_and_quit(current_scene)
+            saved = self._persistence.save_and_quit(current_scene)
             self._logger.info("Game flow ended%s: save_and_quit", source)
             return self._show_exit_confirm(saved=saved)
         if result == "quit_without_saving":
@@ -282,6 +215,8 @@ class SceneDirector:
         source = " from pause" if from_mouse else ""
         return self._dispatch_pause_result(result, current_scene, source=source)
 
+    # -- User settings (kept in main director) ---------------------------------
+
     def _load_user_settings(self) -> None:
         if not self._current_user or self._current_user == "Guest" or not self._user_db:
             return
@@ -295,328 +230,45 @@ class SceneDirector:
     def _apply_settings_to_player(self, player) -> None:
         player.apply_settings(self._settings_ref)
 
-    def _show_settings_menu(self, game_scene=None) -> bool:
-        """Show settings menu. Returns False if QUIT was triggered."""
-        settings_scene = self._scene_manager.get_scene("settings")
-        if not settings_scene:
-            return True
-        settings_scene.enter(
-            db=self._user_db,
-            username=self._current_user,
-            settings_ref=self._settings_ref,
-        )
-        result = self._run_scene_loop(settings_scene)
-        settings_scene.exit()
-        if result == "quit":
-            return False
-        if game_scene and hasattr(game_scene, "player") and game_scene.player:
-            self._apply_settings_to_player(game_scene.player)
-        return True
-
-    def _show_pause_menu(self, game_scene: GameScene) -> PauseAction:
-        while True:
-            pause_scene = self._scene_manager.get_scene("pause")
-            if not pause_scene:
-                return PauseAction.QUIT
-            pause_scene.enter()
-
-            result = self._run_scene_loop(pause_scene)
-            if result == "quit":
-                return PauseAction.QUIT
-
-            result = pause_scene.get_result()
-            pause_scene.exit()
-
-            if result == "settings":
-                if not self._show_settings_menu(game_scene=game_scene):
-                    return PauseAction.QUIT
-                continue
-
-            return result if result else PauseAction.RESUME
-
-    def _show_exit_confirm(self, saved: bool) -> str:
-        """Show exit confirmation menu.
-
-        Displayed after the player chooses to save and quit or quit without saving.
-        Allows the player to return to main menu, start a new game, or exit.
-
-        Args:
-            saved: Whether the game progress has been saved.
-
-        Returns:
-            str: 'main_menu' returns to main menu, 'restart' starts a new game, 'quit' exits.
-        """
-        exit_scene = self._scene_manager.get_scene("exit_confirm")
-        if not exit_scene:
-            return "quit"
-
-        exit_scene.enter(saved=saved, difficulty=self._selected_difficulty)
-
-        loop_result = self._run_scene_loop(exit_scene)
-        if loop_result == "quit":
-            return "quit"
-
-        result = exit_scene.get_result()
-        exit_scene.exit()
-        if result == ExitConfirmAction.RETURN_TO_MENU:
-            if not saved:
-                self._clear_saved_game()
-            return "main_menu"
-        elif result == ExitConfirmAction.START_NEW_GAME:
-            self._clear_saved_game()
-            return "restart"
-        else:
-            if not saved:
-                self._clear_saved_game()
-            return "quit"
-
-    def _handle_game_over(self, game_scene: GameScene) -> bool:
-        final_score = game_scene.score
-        kills = game_scene.get_kill_count()
-        boss_kills = game_scene.get_boss_kill_count()
-        self._update_user_stats(final_score, kills)
-        self._submit_leaderboard_score(final_score)
-        # Final achievement pass — must run before the death scene so
-        # any per-run unlocks are evaluated against the final stats.
-        newly_unlocked = self._evaluate_achievements(game_scene)
-
-        death_scene = self._scene_manager.get_scene("death")
-        if not death_scene:
-            return False
-
-        death_scene.enter(
-            score=final_score,
-            kills=kills,
-            boss_kills=boss_kills,
-            username=self._current_user,
-            newly_unlocked_achievements=newly_unlocked,
-        )
-
-        self._run_scene_loop(death_scene)
-
-        result = death_scene.get_result()
-        death_scene.exit()
-        return result == "return_to_menu"
-
-    def _update_user_stats(self, score: int, kills: int) -> int | None:
-        if not self._current_user or not self._user_db:
-            return None
-        try:
-            user_data = self._user_db.get_user_data(self._current_user)
-            new_high = max(score, user_data.get("high_score", 0))
-            self._user_db.update_user_data(
-                self._current_user,
-                {
-                    "high_score": new_high,
-                    "total_kills": user_data.get("total_kills", 0) + kills,
-                    "games_played": user_data.get("games_played", 0) + 1,
-                },
-            )
-            return new_high
-        except DatabaseError:
-            self._logger.warning("Failed to update user stats", exc_info=True)
-            return None
-
-    def _submit_leaderboard_score(self, score: int) -> int:
-        """Record the final score on the local leaderboard.
-
-        Args:
-            score: Final score for the just-ended run.
-
-        Returns:
-            1-indexed rank if it made the top 10, otherwise ``0``. Returns
-            ``0`` when no user is logged in or no database is wired up.
-        """
-        if not self._user_db:
-            return 0
-        name = self._current_user if self._current_user else "Guest"
-        try:
-            return self._user_db.submit_score(name, score)
-        except DatabaseError:
-            self._logger.warning("Failed to submit leaderboard score", exc_info=True)
-            return 0
-
-    def _create_achievement_registry(self) -> None:
-        """Build the per-run :class:`AchievementRegistry` for the current user.
-
-        No-op for guest sessions and when no :class:`UserDB` is wired up.
-        On success, builds the default registry, hydrates prior unlocks
-        from the user record, and subscribes to the in-game event bus
-        (when accessible) so docking events can trigger a re-check.
-
-        Database errors are logged and swallowed; a missing registry
-        must never block gameplay.
-        """
-        if not self._current_user or self._current_user == "Guest":
-            return
-        if self._user_db is None:
-            return
-        try:
-            registry = build_default_registry(
-                user_db=self._user_db,
-                user_id=self._current_user,
-            )
-            restored = registry.load()
-            self._achievement_registry = registry
-            self._logger.info(
-                "AchievementRegistry ready for user=%s (restored=%d)",
-                self._current_user,
-                restored,
-            )
-        except DatabaseError:
-            self._logger.warning("Failed to load achievements", exc_info=True)
-            self._achievement_registry = None
-            return
-
-        # Subscribe to the in-game event bus if GameScene exposes one.
-        # If the bus is not yet accessible (scene not initialised), the
-        # dock counter still accumulates in this director and the final
-        # _evaluate_achievements call at game-over will see the bumped
-        # count.
-        bus = self._acquire_event_bus()
-        if bus is not None:
-            try:
-                bus.subscribe(EVENT_DOCKING_COMPLETE, self._on_mothership_docking_complete)
-            except (ValueError, RuntimeError) as exc:  # defensive: cap reached / bus closed
-                self._logger.warning("Failed to subscribe to EVENT_DOCKING_COMPLETE: %s", exc)
-
-    def _acquire_event_bus(self) -> IEventBus | None:
-        """Return the active scene's event bus, or ``None`` if unavailable.
-
-        Looks up the current scene from the scene manager and returns
-        its ``event_bus`` attribute when present. Returns ``None``
-        when the scene is not a :class:`GameScene` or the property
-        has not been wired yet.
-        """
-        try:
-            scene = self._scene_manager.get_current_scene()
-        except Exception:  # defensive
-            return None
-        return getattr(scene, "event_bus", None)
-
-    def _on_mothership_docking_complete(self, **_kwargs: object) -> None:
-        """Event-bus callback: bump the dock counter, then re-check.
-
-        Registered on :data:`EVENT_DOCKING_COMPLETE` so the
-        :class:`mothership_dock` achievement can be unlocked at
-        runtime. The counter increment is what makes the
-        achievement condition reachable in the first place; without
-        it, the per-frame :meth:`_evaluate_achievements` pass at
-        game-over would always see a zero count.
-        """
-        self._mothership_dock_count += 1
-        registry = self._achievement_registry
-        if registry is None:
-            return
-        try:
-            registry.check_all({"mothership_dock_count": self._mothership_dock_count})
-        except DatabaseError:
-            self._logger.warning("Docking event achievement check failed", exc_info=True)
-
-    def _evaluate_achievements(self, game_scene: GameScene) -> list[str]:
-        """Run the final achievement check at game over and persist.
-
-        Aggregates the run's score, kill counts, and per-run
-        mothership dock counter into a snapshot and passes it to
-        the registry. Failures from a missing registry or a
-        database error are logged and swallowed; the death-scene
-        flow must not depend on achievement persistence.
-
-        Returns:
-            The list of achievement IDs unlocked on this call.
-            Empty when no registry is wired up.
-        """
-        registry = self._achievement_registry
-        if registry is None:
-            return []
-        snapshot = {
-            "score": game_scene.score,
-            "kill_count": game_scene.get_kill_count(),
-            "boss_kill_count": game_scene.get_boss_kill_count(),
-            "mothership_dock_count": self._mothership_dock_count,
-        }
-        try:
-            newly = registry.check_all(snapshot)
-        except DatabaseError:
-            self._logger.warning("Failed to check achievements", exc_info=True)
-            return []
-        self._mothership_dock_count = 0
-        return [a.id for a in newly]
-
-    def _handle_scene_events(self, events: list[pygame.event.Event], skip_escape: bool = False) -> None:
-        for event in events:
-            if skip_escape and hasattr(event, "key") and event.key == pygame.K_ESCAPE:
-                continue
-            self._scene_manager.handle_events(event)
-
-    def _handle_resize(self, width: int, height: int) -> None:
-        set_display_size(width, height)
-        self._viewport.update(width, height)
-
-    def _update_viewport_from_window(self) -> None:
-        if not hasattr(self._window, "get_size"):
-            return
-        width, height = self._window.get_size()
-        self._handle_resize(width, height)
-
-    def _map_mouse_event(self, event: pygame.event.Event) -> pygame.event.Event:
-        if not hasattr(event, "pos"):
-            return event
-        attrs = getattr(event, "dict", {}).copy()
-        attrs["pos"] = self._viewport.screen_to_logical(*event.pos)
-        return pygame.event.Event(event.type, attrs)
-
-    def _render_current_scene(self) -> None:
-        self._viewport.logical_surface.fill((0, 0, 0))
-        self._scene_manager.render(self._viewport.logical_surface)
-        self._viewport.present(self._window.get_surface())
-
-    def _render_scene(self, scene) -> None:
-        self._viewport.logical_surface.fill((0, 0, 0))
-        scene.render(self._viewport.logical_surface)
-        self._viewport.present(self._window.get_surface())
+    # -- Persistence forwarders -------------------------------------------------
 
     def _check_and_get_saved_game(self, username: str) -> GameSaveData | None:
-        if not username:
-            return None
-        for persistence_manager in self._candidate_persistence_managers(username):
-            save_data = persistence_manager.load_game()
-            if save_data and save_data.username == username:
-                return save_data
-        return None
+        return self._persistence.check_and_get_saved_game(username)
 
     def _perform_save(self, game_scene: GameScene) -> bool:
-        if not game_scene:
-            return False
-        save_data = game_scene.create_save_data()
-        if not save_data:
-            return False
-        if not game_scene.is_mothership_docked():
-            save_data.is_in_mothership = False
-        persistence_manager = PersistenceManager(save_dir=self._save_dir, username=save_data.username)
-        return persistence_manager.save_game(save_data)
+        return self._persistence.perform_save(game_scene)
 
     def _save_game_on_quit(self, game_scene: GameScene) -> None:
-        if not self._perform_save(game_scene):
-            self._logger.warning("Failed to save game during quit")
+        self._persistence.save_game_on_quit(game_scene)
 
     def _clear_saved_game(self) -> None:
-        for persistence_manager in self._candidate_persistence_managers(self._current_user):
-            save_data = persistence_manager.load_game()
-            if save_data and save_data.username == self._current_user:
-                persistence_manager.delete_save()
+        self._persistence.clear_saved_game()
 
     def _candidate_persistence_managers(self, username: str) -> list[PersistenceManager]:
-        return [
-            PersistenceManager(save_dir=self._save_dir, username=username),
-            PersistenceManager(save_dir=self._save_dir),
-        ]
+        return self._persistence._candidate_persistence_managers(username)
 
     def _save_and_quit(self, game_scene: GameScene) -> bool:
-        saved = self._perform_save(game_scene)
-        if not saved:
-            self._logger.warning("Failed to save game before quitting")
-        return saved
+        return self._persistence.save_and_quit(game_scene)
 
     def _quit_without_saving(self) -> None:
-        self._clear_saved_game()
+        self._persistence.quit_without_saving()
+
+    # -- Achievement bridge forwarders ------------------------------------------
+
+    def _create_achievement_registry(self) -> None:
+        self._achievements.create_achievement_registry()
+
+    def _acquire_event_bus(self) -> IEventBus | None:
+        return self._achievements.acquire_event_bus()
+
+    def _on_mothership_docking_complete(self, **_kwargs: object) -> None:
+        self._achievements.on_mothership_docking_complete(**_kwargs)
+
+    def _evaluate_achievements(self, game_scene: GameScene) -> list[str]:
+        return self._achievements.evaluate_achievements(game_scene)
+
+    def _update_user_stats(self, score: int, kills: int) -> int | None:
+        return self._achievements.update_user_stats(score, kills)
+
+    def _submit_leaderboard_score(self, score: int) -> int:
+        return self._achievements.submit_leaderboard_score(score)
