@@ -29,9 +29,12 @@ from airwar.game.managers.collision_controller import CollisionController
 # Observed 2026-06-07 (headless, 1920x1080):
 #   collision_check_all_50_80:  0.181 ms
 #   collision_player_vs_enemies_100: 0.008 ms  (not a real hot path)
-#   background_render:           0.496 ms  (biggest single subsystem)
+#   background_render:           0.382 ms  (was 0.496 pre-starfield-rust)
 #   bullet_pack_unpack_250:      0.071 ms
-#   discrete_battery_render:     0.0007 ms (negligible)
+#   discrete_battery_render:     0.070 ms
+#   enemy_render_loop:           0.038 ms (50 sprite enemies)
+#   bullet_render_loop:          0.055 ms (200 enemy bullets)
+#   all_entities_blits:          0.151 ms (50 enemies + 200 bullets)
 BUDGETS_MS = {
     "collision_check_all_50_80": 1.0,
     "collision_player_vs_enemies_100": 0.05,
@@ -241,3 +244,13 @@ def test_discrete_battery_render_budget():
     budget = BUDGETS_MS["discrete_battery_render"]
     assert observed < budget, f"battery regression: {observed:.3f}ms > {budget}ms"
     print(f"\n  observed: {observed:.3f} ms/frame (budget {budget}ms)")
+
+
+# NOTE: 2026-06-07 — entity/bullet sprite blit "optimization" via
+# `pygame.Surface.blits()` with pre-built tuple list was tried and reverted.
+# The Python list-build cost (450 elements × ~0.4µs) exceeds the C blit
+# savings. Original explicit per-entity loop at 151µs is faster than the
+# batched path at 170µs for the 50-enemy + 200+200-bullet mid-game load.
+# A real win here would require moving the position list to a Rust
+# flat-array buffer (BulletArena / SpriteBlitArena style) and having Rust
+# build the blit tuples in C — too much complexity for the measured gain.
