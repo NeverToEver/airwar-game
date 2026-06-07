@@ -207,9 +207,12 @@ class TestGameState:
     def test_game_state_transitions_to_dying(self):
         from airwar.entities import Player
         from airwar.game.managers.game_controller import GameController, GameplayState
+        from airwar.game.systems.lock_manager import LockManager
         from airwar.input import PygameInputHandler
 
         gc = GameController("medium", "test")
+        # F02 D1: set_invincible now requires a LockManager
+        gc.set_lock_manager(LockManager(None))
         p = Player(400, 900, PygameInputHandler())
         gc.on_player_hit(p.health, p)
         assert gc.state.gameplay_state == GameplayState.DYING

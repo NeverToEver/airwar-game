@@ -172,7 +172,9 @@ class PlayerStateMachine:
 
     def mark_dying(self) -> None:
         if self._state == PlayerState.DEAD:
-            return
+            raise IllegalPlayerTransition(
+                "Cannot mark DYING after DEAD: state is already terminal"
+            )
         self._state = PlayerState.DYING
 
     def mark_dead(self) -> None:
@@ -237,10 +239,20 @@ class PlayerStateMachine:
 
     def enter_boost(self) -> None:
         # Boosting is only legal when not already in another locked state.
-        if self._alive_substate in (PlayerAliveState.DOCKED, PlayerAliveState.SHIELDED):
-            return
+        # F03 S6: silent returns removed; transition_substate raises on
+        # illegal moves. The legal-edge table is the single source of truth.
+        if self._alive_substate == PlayerAliveState.DOCKED:
+            raise IllegalPlayerTransition(
+                "Cannot enter BOOSTING from DOCKED: docked and boosting are mutually exclusive"
+            )
+        if self._alive_substate == PlayerAliveState.SHIELDED:
+            raise IllegalPlayerTransition(
+                "Cannot enter BOOSTING from SHIELDED: shield is incompatible with boost"
+            )
         if self._alive_substate == PlayerAliveState.DASHING:
-            return
+            raise IllegalPlayerTransition(
+                "Cannot enter BOOSTING from DASHING: dash preempts boost"
+            )
         self.transition_substate(PlayerAliveState.BOOSTING)
 
     def exit_boost(self) -> None:
@@ -248,9 +260,13 @@ class PlayerStateMachine:
             self.transition_substate(PlayerAliveState.NORMAL)
 
     def enter_dash(self) -> None:
-        # Dash preempts NORMAL only.
+        # F03 S7: silent return removed. Dash preempts NORMAL only;
+        # any other substate raises IllegalPlayerTransition.
         if self._alive_substate != PlayerAliveState.NORMAL:
-            return
+            raise IllegalPlayerTransition(
+                f"Cannot enter DASHING from {self._alive_substate.name}: "
+                f"dash only preempts NORMAL"
+            )
         self.transition_substate(PlayerAliveState.DASHING)
 
     def exit_dash(self) -> None:

@@ -2,6 +2,8 @@
 
 import logging
 
+import pytest
+
 from airwar.game.mother_ship.event_bus import EventBus
 
 
@@ -30,25 +32,33 @@ def test_subscribe_returns_true_under_cap():
     assert bus.subscriber_count("EVENT") == 1
 
 
-def test_subscribe_refuses_when_cap_reached(caplog):
+def test_subscribe_raises_when_cap_reached():
+    """F03 S4: subscribe() raises SubscriptionCapExceeded (was silent return False)."""
+    from airwar.game.mother_ship.event_bus import SubscriptionCapExceeded
+
     bus = EventBus()
     # Shrink the cap to keep the test fast and avoid allocating 1001 callbacks.
     bus.MAX_SUBSCRIBERS = 3
 
     callbacks = _make_callbacks(3)
-    with caplog.at_level(logging.WARNING, logger="airwar.game.mother_ship.event_bus"):
-        for cb in callbacks:
-            assert bus.subscribe("CROWDED", cb) is True
-        offending = _make_callbacks(1)[0]
-        assert bus.subscribe("CROWDED", offending) is False
+    for cb in callbacks:
+        assert bus.subscribe("CROWDED", cb) is True
+
+    offending = _make_callbacks(1)[0]
+    with pytest.raises(SubscriptionCapExceeded) as exc_info:
+        bus.subscribe("CROWDED", offending)
+    assert exc_info.value.event == "CROWDED"
+    assert exc_info.value.cap == 3
+    assert exc_info.value.existing == 3
 
     assert bus.subscriber_count("CROWDED") == 3
     assert offending not in bus._subscribers["CROWDED"]
-    assert any("Refusing subscription" in rec.message for rec in caplog.records)
-    assert any("CROWDED" in rec.message for rec in caplog.records)
 
 
-def test_refused_subscriber_does_not_receive_events(caplog):
+def test_refused_subscriber_does_not_receive_events():
+    """F03 S4: rejected subscribers are not added to the callback list."""
+    from airwar.game.mother_ship.event_bus import SubscriptionCapExceeded
+
     bus = EventBus()
     bus.MAX_SUBSCRIBERS = 1
 
@@ -61,9 +71,9 @@ def test_refused_subscriber_does_not_receive_events(caplog):
     def rejected(**_):
         rejected_calls.append(1)
 
-    with caplog.at_level(logging.WARNING, logger="airwar.game.mother_ship.event_bus"):
-        assert bus.subscribe("E", accepted) is True
-        assert bus.subscribe("E", rejected) is False
+    assert bus.subscribe("E", accepted) is True
+    with pytest.raises(SubscriptionCapExceeded):
+        bus.subscribe("E", rejected)
 
     bus.publish("E")
     assert accepted_calls == [1]
@@ -139,12 +149,16 @@ def test_unsubscribe_unknown_callback_is_noop():
 
 
 def test_unsubscribe_frees_capacity_for_resubscribe():
+    """F03 S4: after unsubscribe, the next subscribe is accepted (no longer raises)."""
+    from airwar.game.mother_ship.event_bus import SubscriptionCapExceeded
+
     bus = EventBus()
     bus.MAX_SUBSCRIBERS = 1
     first, second = _make_callbacks(2)
 
     assert bus.subscribe("EVENT", first) is True
-    assert bus.subscribe("EVENT", second) is False
+    with pytest.raises(SubscriptionCapExceeded):
+        bus.subscribe("EVENT", second)
 
     bus.unsubscribe("EVENT", first)
     # Slot is now free; second should be accepted on retry.

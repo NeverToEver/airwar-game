@@ -46,6 +46,7 @@ select = ["E", "W", "F", "B", "I", "SIM", "C4", "UP", "RUF", "PT", "PLC", "PLE",
 ignore = [
     "SIM102",
     "RUF001",   # fullwidth punctuation in Chinese strings — intentional
+    "RUF002",   # fullwidth punctuation in Chinese docstrings — intentional
     "RUF003",   # ambiguous Unicode in comments — intentional Chinese text
     "PLC0415",  # import not at top level — lazy loading pattern used throughout
     "PLW0603",  # global statement — intentional for lazy singletons

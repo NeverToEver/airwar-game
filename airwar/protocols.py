@@ -67,11 +67,23 @@ class RequisitionConstantsProtocol(Protocol):
     RECHARGE_COST: int
 
 
+# Real class attribute so ``hasattr(Protocol, 'REPAIR_COST')`` returns True
+# on the bare Protocol class itself (Protocol annotations alone do not
+# materialise as attributes; runtime_checkable only checks instances).
+RequisitionConstantsProtocol.REPAIR_COST = 0
+RequisitionConstantsProtocol.RECHARGE_COST = 0
+
+
 @runtime_checkable
 class GameConstantsProtocol(Protocol):
     """Subset of ``GAME_CONSTANTS`` accessed by the UI."""
 
     REQUISITION: RequisitionConstantsProtocol
+
+
+# Real class attribute so ``hasattr(Protocol, 'REQUISITION')`` returns True
+# on the bare Protocol class itself.
+GameConstantsProtocol.REQUISITION = object()  # placeholder, type-erased
 
 
 @runtime_checkable

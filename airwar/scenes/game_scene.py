@@ -5,7 +5,7 @@ import pygame
 from airwar.config import BOOST_CONFIG, DIFFICULTY_SETTINGS, get_screen_height, get_screen_width
 from airwar.config.design_tokens import get_design_tokens
 from airwar.entities import Player
-from airwar.game.constants import GAME_CONSTANTS, PlayerConstants, normalize_score
+from airwar.game.constants import GAME_CONSTANTS, PlayerConstants
 from airwar.game.give_up import GiveUpDetector
 from airwar.game.homecoming import HomecomingDetector, HomecomingSequence
 from airwar.game.managers import (
@@ -64,6 +64,25 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     Player, and MotherShip systems.
 
     Implements IGameScene for clean integration with GameIntegrator.
+
+    Update pipeline (F05 T1): see :data:`airwar.scenes.update_pipeline.PIPELINE_ORDER`.
+    The per-frame subsystem order is::
+
+        1.  reward_selector        (L1 input)
+        2.  aim_assist             (L1 input)
+        3.  homecoming             (L1+L2 homecoming)
+        4.  warning_banner         (L4 presentation)
+        5.  entrance_animation     (L4 short-circuit)
+        6.  dying_animation        (L4 short-circuit)
+        7.  pause_check            (L2 short-circuit)
+        8.  mothership_integrator  (L2/L3)
+        9.  give_up_detector       (L2 input)
+        10. core_logic             (L3 simulation: GameController + player + enemies + boss)
+        11. phase_dash_sync        (L2 invincibility)
+        12. collision              (L3 collision)
+        13. post_collision_cleanup (L3 cleanup before milestone)
+        14. milestone_check        (L3 milestones)
+        15. auto_save              (L5 persistence)
     """
 
     PAUSE_BUTTON_SIZE = PauseButtonComponent.PAUSE_BUTTON_SIZE
@@ -77,11 +96,11 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     AIM_ASSIST_DIRECTION_CONE_DOT = AimAssistSystem.AIM_ASSIST_DIRECTION_CONE_DOT
     AIM_INPUT_DELAY_BLEND = AimAssistSystem.AIM_INPUT_DELAY_BLEND
     AIM_INPUT_SNAP_DISTANCE = AimAssistSystem.AIM_INPUT_SNAP_DISTANCE
-    PERMANENT_INVINCIBILITY_FRAMES = 999999  # Sentinel: effectively infinite invincibility
-    DOCKING_INVINCIBILITY_FRAMES = 1200  # 20 seconds at 60fps
+    PERMANENT_INVINCIBILITY_FRAMES = GAME_CONSTANTS.PERSISTENCE.PERMANENT_INVINCIBILITY_FRAMES
+    DOCKING_INVINCIBILITY_FRAMES = GAME_CONSTANTS.PERSISTENCE.DOCKING_INVINCIBILITY_FRAMES
 
-    AUTO_SAVE_INTERVAL = 1800  # 30 seconds at 60fps
-    BULLET_CLEAR_DEDUP_FRAMES = 1  # Skip _clear_nearby_enemy_bullets if it ran this frame
+    AUTO_SAVE_INTERVAL = GAME_CONSTANTS.PERSISTENCE.AUTO_SAVE_INTERVAL
+    BULLET_CLEAR_DEDUP_FRAMES = GAME_CONSTANTS.PERSISTENCE.BULLET_CLEAR_DEDUP_FRAMES
 
     def __init__(self):
         Scene.__init__(self)
@@ -114,6 +133,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._give_up_detector = None
         self._give_up_ui = None
         self._homecoming_coordinator = None
+        self._homecoming_dispatcher = None  # F07 god-class split
         self._homecoming_detector = None
         self._homecoming_sequence = None
         self._homecoming_ui = None
@@ -129,7 +149,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._viewport = None
         self._phase_dash_invincibility_active = False
         self._survival_frames = 0
-        self._last_bullet_clear_frame = -(10**9)
+        self._last_bullet_clear_frame = GAME_CONSTANTS.GAMEPLAY.bullet_clear_dedup_initial_frame()
 
     def enter(self, **kwargs) -> None:
         """Initialize the game scene.
@@ -282,7 +302,10 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         sequence = HomecomingSequence(self._on_homecoming_complete)
         ui = HomecomingUI(screen_width, screen_height)
         console = BaseTalentConsole(screen_width, screen_height)
-        self._homecoming_coordinator = HomecomingCoordinator(detector, sequence, ui, console)
+        coordinator = HomecomingCoordinator(detector, sequence, ui, console)
+        # F07 god-class split: SceneHomecomingDispatcher owns the 8
+        # homecoming callback methods (was 80 lines in GameScene).
+        self._set_homecoming_coordinator(coordinator)
         self._homecoming_coordinator.set_save_fn(self._save_base_loadout)
         self._homecoming_detector = detector
         self._homecoming_sequence = sequence
@@ -543,7 +566,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
         When the mothership's ammo drops below the warning threshold during
         DOCKED state, activates the scrolling warning banner. The banner's
-        on_complete callback triggers the undocking sequence.
+        on_complete callback publishes ``EVENT_UNDOCK_REQUESTED`` to the
+        EventBus (F02 D5: single path).
         """
         if not self._mother_ship_integrator or not self._warning_banner:
             return
@@ -556,11 +580,24 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             return
 
         def trigger_undock():
-            self._mother_ship_integrator.request_undock()
+            # F02 D5: route through EventBus. The MothershipEventHub
+            # subscribes to EVENT_UNDOCK_REQUESTED.
+            from airwar.game.mother_ship.event_bus import (
+                EVENT_UNDOCK_REQUESTED,
+            )
+
+            bus = self.event_bus
+            assert bus is not None, (
+                "F02 D5: warning_banner.on_complete requires the EventBus "
+                "to be wired (publishes EVENT_UNDOCK_REQUESTED)."
+            )
+            bus.publish(EVENT_UNDOCK_REQUESTED)
 
         self._warning_banner.activate(on_complete=trigger_undock)
 
-    BULLET_CLEAR_RADIUS = 250  # Only clear enemy bullets within this radius on player hit
+    BULLET_CLEAR_RADIUS = (
+        GAME_CONSTANTS.PERSISTENCE.BULLET_CLEAR_RADIUS
+    )  # px; clear enemy bullets within this radius on player hit
 
     def _on_player_damaged(self, damage: int, player) -> None:
         """Handle player hit: apply damage, clear nearby enemy bullets, trigger invincibility."""
@@ -595,86 +632,74 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     def _on_give_up_complete(self) -> None:
         self.game_controller.on_player_hit(GAME_CONSTANTS.DAMAGE.INSTANT_KILL, self.player)
 
+    def _set_homecoming_coordinator(self, coordinator) -> None:
+        """Set the homecoming coordinator and (re)create the dispatcher.
+
+        F07 god-class split: every assignment of _homecoming_coordinator
+        must also create a matching SceneHomecomingDispatcher so the
+        8 callback methods continue to work.
+        """
+        from airwar.scenes.scene_homecoming_dispatcher import (
+            SceneHomecomingDispatcher,
+        )
+
+        # F07 F09: bypass our own __setattr__ hook (which would recurse
+        # back into this setter) by writing through the base class.
+        object.__setattr__(self, "_homecoming_coordinator", coordinator)
+        object.__setattr__(
+            self,
+            "_homecoming_dispatcher",
+            (
+                SceneHomecomingDispatcher(coordinator=coordinator, scene=self)
+                if coordinator is not None
+                else None
+            ),
+        )
+
+    def __setattr__(self, name: str, value: object) -> None:
+        """F07 F09: keep dispatcher in sync with direct coordinator writes.
+
+        Tests and older code paths assign ``scene._homecoming_coordinator = X``
+        directly. Route every such assignment through the setter so the
+        ``SceneHomecomingDispatcher`` is (re)created and the 8 callback
+        forwarders keep working.
+        """
+        if name == "_homecoming_coordinator":
+            self._set_homecoming_coordinator(value)
+            return
+        object.__setattr__(self, name, value)
+
     def _update_homecoming(self) -> None:
-        if self._homecoming_coordinator:
-            self._homecoming_coordinator.update(
-                self.game_controller,
-                self.player,
-                self._lock_manager,
-                self._bullet_manager,
-                self.spawn_controller,
-                self._game_loop_manager,
-                self.notification_manager,
-            )
+        """Backward-compat forwarder. F07 god-class split: real logic
+        in :class:`airwar.scenes.scene_homecoming_dispatcher.SceneHomecomingDispatcher`.
+        """
+        if self._homecoming_dispatcher is not None:
+            self._homecoming_dispatcher.update()
 
     def _on_homecoming_requested(self) -> None:
-        if self._homecoming_coordinator:
-            self._homecoming_coordinator.on_requested(
-                self.game_controller,
-                self.player,
-                self._lock_manager,
-                self._bullet_manager,
-                self.notification_manager,
-            )
+        if self._homecoming_dispatcher is not None:
+            self._homecoming_dispatcher.on_requested()
 
     def _on_homecoming_complete(self) -> None:
-        if self._homecoming_coordinator:
-            self._homecoming_coordinator.on_complete(
-                self.game_controller,
-                self.player,
-                self._lock_manager,
-                self.notification_manager,
-                self.reward_system,
-            )
-            self._homecoming_base_pending = self._homecoming_coordinator.is_base_pending()
-            self._talent_balance_manager = self._homecoming_coordinator.get_talent_balance_manager()
+        if self._homecoming_dispatcher is not None:
+            self._homecoming_dispatcher.on_complete()
 
     def _handle_base_console_click(self, pos: tuple[int, int]) -> bool:
-        if self._homecoming_coordinator:
-            return self._homecoming_coordinator.handle_console_click(
-                pos,
-                self.game_controller,
-                self.player,
-                self._lock_manager,
-                self.spawn_controller,
-                self._game_loop_manager,
-                self.notification_manager,
-                self.reward_system,
-            )
-        return False
+        if self._homecoming_dispatcher is None:
+            return False
+        return self._homecoming_dispatcher.handle_console_click(pos)
 
     def _leave_homecoming_base(self) -> None:
-        if self._homecoming_coordinator:
-            self._homecoming_coordinator.leave_base(
-                self.game_controller,
-                self.player,
-                self._lock_manager,
-                self.spawn_controller,
-                self._game_loop_manager,
-                self.notification_manager,
-            )
-            self._homecoming_base_pending = self._homecoming_coordinator.is_base_pending()
-            self._pause_requested = False
+        if self._homecoming_dispatcher is not None:
+            self._homecoming_dispatcher.leave_base()
 
     def _on_homecoming_orbital_strike(self) -> None:
-        if self._homecoming_coordinator:
-            self._homecoming_coordinator.on_orbital_strike(
-                self.spawn_controller,
-                self._game_loop_manager,
-                self.player,
-                self.notification_manager,
-            )
+        if self._homecoming_dispatcher is not None:
+            self._homecoming_dispatcher.on_orbital_strike()
 
     def _on_homecoming_departure_complete(self) -> None:
-        if self._homecoming_coordinator:
-            self._homecoming_coordinator.on_departure_complete(
-                self.game_controller,
-                self.player,
-                self._lock_manager,
-                self.spawn_controller,
-                self._game_loop_manager,
-                self.notification_manager,
-            )
+        if self._homecoming_dispatcher is not None:
+            self._homecoming_dispatcher.on_departure_complete()
             self._homecoming_base_pending = self._homecoming_coordinator.is_base_pending()
 
     def _save_base_loadout(self) -> bool:
@@ -703,22 +728,26 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._lock_manager.release(layer)
 
     def _is_homecoming_active(self) -> bool:
-        if self._homecoming_coordinator:
-            return self._homecoming_coordinator.is_active()
-        return bool(self._homecoming_sequence and self._homecoming_sequence.is_active())
+        # F02 D6: HomecomingCoordinator is the single source of truth.
+        # The legacy fallback to ``_homecoming_sequence`` has been
+        # removed; the coordinator is constructed with the sequence
+        # reference and wraps it.
+        if self._homecoming_coordinator is None:
+            return False
+        return self._homecoming_coordinator.is_active()
 
     def is_homecoming_active(self) -> bool:
         return self._is_homecoming_active()
 
     def is_homecoming_locked(self) -> bool:
-        if self._homecoming_coordinator:
-            return self._homecoming_coordinator.is_locked()
-        return self._is_homecoming_active() or self._homecoming_base_pending
+        if self._homecoming_coordinator is None:
+            return False
+        return self._homecoming_coordinator.is_locked()
 
     def is_homecoming_complete(self) -> bool:
-        if self._homecoming_coordinator:
-            return self._homecoming_coordinator.is_base_pending()
-        return bool(self._homecoming_base_pending)
+        if self._homecoming_coordinator is None:
+            return False
+        return self._homecoming_coordinator.is_base_pending()
 
     def render(self, surface: pygame.Surface) -> None:
         """Render the game scene.
@@ -781,7 +810,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             value: New score value.
         """
         if self.game_controller:
-            self.game_controller.state.score = normalize_score(value)
+            self.game_controller.set_score(value)
 
     @property
     def cycle_count(self) -> int:
@@ -800,7 +829,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             value: New cycle count value.
         """
         if self.game_controller:
-            self.game_controller.state.cycle_count = value
+            self.game_controller.set_cycle_count(value)
 
     def is_game_over(self) -> bool:
         """Check if the game is over.
@@ -876,7 +905,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             value: Game difficulty ('easy', 'medium', 'hard').
         """
         if self.game_controller:
-            self.game_controller.state.difficulty = value
+            self.game_controller.set_difficulty(value)
 
     def restore_from_save(self, save_data) -> None:
         """Restore game state from save data.
@@ -960,17 +989,24 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     def add_score(self, amount: int) -> None:
         """Add to score."""
         if self.game_controller:
-            self.game_controller.state.score = normalize_score(self.game_controller.state.score + amount)
+            self.game_controller.add_score(amount)
 
     def add_kill(self) -> None:
-        """Increment kill count."""
+        """Increment kill count.
+
+        F01 F5: routes through GameController.add_kill_count to keep
+        state mutation centralized.
+        """
         if self.game_controller:
-            self.game_controller.state.kill_count += 1
+            self.game_controller.add_kill_count()
 
     def add_boss_kill(self) -> None:
-        """Increment boss kill count."""
+        """Increment boss kill count.
+
+        F01 F6: routes through GameController.add_boss_kill_count.
+        """
         if self.game_controller:
-            self.game_controller.state.boss_kill_count += 1
+            self.game_controller.add_boss_kill_count()
 
     def show_notification(self, message: str) -> None:
         """Show a notification message."""
@@ -988,11 +1024,13 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         return self.spawn_controller.boss if self.spawn_controller else None
 
     def clear_boss(self) -> None:
-        """Clear the current boss."""
-        if self._boss_manager:
-            self._boss_manager.clear_boss()
-        elif self.spawn_controller:
-            self.spawn_controller.boss = None
+        """Clear the current boss.
+
+        F01 F7: routes through SpawnController.clear_boss() instead of
+        writing ``self.spawn_controller.boss = None`` directly.
+        """
+        if self.spawn_controller:
+            self.spawn_controller.clear_boss()
 
     def set_player_invincible(self, invincible: bool, timer: int, silent: bool = False) -> None:
         """Set player invincibility state.
@@ -1077,4 +1115,4 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     def clear_ripple_effects(self) -> None:
         """Clear all ripple effects."""
         if self.game_controller:
-            self.game_controller.state.ripple_effects.clear()
+            self.game_controller.clear_ripples()

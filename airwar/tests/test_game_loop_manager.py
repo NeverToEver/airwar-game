@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 from airwar.game.managers.game_controller import GameplayState
 from airwar.game.managers.game_loop_manager import GameLoopManager
-from airwar.game.systems.lock_manager import LockManager
+from airwar.game.systems.lock_manager import LockLayer, LockManager, LockRequest
 
 
 class _Player:
@@ -91,13 +91,29 @@ def _make_loop(boss, spawn=None):
         boss_killed_calls=boss_killed_calls,
     )
     collision = SimpleNamespace(set_explosion_callback=lambda callback: None)
-    return GameLoopManager(controller, renderer, spawn, reward, bullet, boss_manager, collision)
+    # F02 D3: GameLoopManager now requires a LockManager (single path).
+    # The LockManager's player wiring is set per-test (via set_player)
+    # because each test passes its own player instance.
+    lock_manager = LockManager(None)
+    return GameLoopManager(
+        controller,
+        renderer,
+        spawn,
+        reward,
+        bullet,
+        boss_manager,
+        collision,
+        lock_manager=lock_manager,
+    )
 
 
 def test_game_loop_locks_player_controls_during_boss_enrage_update_only() -> None:
     boss = _Boss()
     player = _Player()
     loop = _make_loop(boss)
+    # F02 D3: wire the player into the LockManager so the lock
+    # recompute can propagate ``is_controls_locked`` to the player.
+    loop._lock_manager.set_player(player)
 
     boss.lock_player = True
     loop.update_game(player)
@@ -115,13 +131,22 @@ def test_game_loop_locks_player_controls_during_boss_enrage_update_only() -> Non
 def test_game_loop_preserves_external_player_lock_after_boss_enrage_update() -> None:
     boss = _Boss()
     player = _Player()
-    player.is_controls_locked = True
     loop = _make_loop(boss)
+    # F02 D3: external lock is now expressed via the LockManager,
+    # not by writing player.is_controls_locked directly. A MOTHERSHIP
+    # lock (priority 80) outranks BOSS_ENRAGE (priority 60) and is
+    # the canonical way to express an "external" lock.
+    loop._lock_manager.set_player(player)
+    loop._lock_manager.acquire(
+        LockLayer.MOTHERSHIP,
+        LockRequest(lock_controls=True),
+    )
 
     boss.lock_player = True
     loop.update_game(player)
 
     assert player.locked_seen_during_update[-1] is True
+    # MOTHERSHIP lock survives the BOSS_ENRAGE release.
     assert player.is_controls_locked is True
 
 

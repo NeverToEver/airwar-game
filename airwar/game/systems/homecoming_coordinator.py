@@ -4,16 +4,36 @@ Extracted from GameScene to reduce god-class responsibilities.
 Handles detection, sequence, base console, talent management, departure.
 """
 
+from enum import Enum
+
 from airwar.config import get_screen_height, get_screen_width
 from airwar.game.constants import GAME_CONSTANTS, PlayerConstants
 from airwar.game.systems.lock_manager import LockLayer, LockRequest
 from airwar.game.systems.talent_balance_manager import TalentBalanceManager
 
 
+# F03 S8: explicit FailureMode enum replacing the legacy
+# ``_can_request -> bool`` contract. Callers that need a reason can
+# use ``_can_request_with_reason`` to receive one of these values.
+class FailureMode(Enum):
+    """Why a Homecoming request was rejected (or OK)."""
+
+    OK = "ok"
+    NO_CONTROLLER = "no_controller"
+    NO_PLAYER = "no_player"
+    NO_SEQUENCE = "no_sequence"
+    BASE_PENDING = "base_pending"
+    NOT_PLAYING = "not_playing"
+    PAUSED = "paused"
+    SEQUENCE_ACTIVE = "sequence_active"
+
+
 class HomecomingCoordinator:
     """Coordinates homecoming detection, base operations, and departure."""
 
-    PERMANENT_INVINCIBILITY_FRAMES = 999999  # Sentinel: effectively infinite invincibility
+    PERMANENT_INVINCIBILITY_FRAMES = (
+        GAME_CONSTANTS.PERSISTENCE.PERMANENT_INVINCIBILITY_FRAMES
+    )  # Sentinel: effectively infinite invincibility
 
     def __init__(
         self,
@@ -278,16 +298,36 @@ class HomecomingCoordinator:
 
     # --- Private helpers ---
 
-    def _can_request(self, game_controller, player):
-        if not game_controller or not player:
-            return False
-        if not self._sequence or self._base_pending:
-            return False
+    def _can_request(self, game_controller, player) -> bool:
+        """Backward-compatible bool wrapper around :meth:`_can_request_with_reason`.
+
+        Returns True if the homecoming request can be issued. For
+        diagnostics, prefer the reason-returning variant.
+        """
+        return self._can_request_with_reason(game_controller, player) == FailureMode.OK
+
+    def _can_request_with_reason(self, game_controller, player) -> FailureMode:
+        """F03 S8: Return :class:`FailureMode` describing why a request is
+        rejected (or ``FailureMode.OK`` when allowed).
+
+        Use this in preference to ``_can_request`` when a diagnostic
+        log or user-facing message is needed.
+        """
+        if not game_controller:
+            return FailureMode.NO_CONTROLLER
+        if not player:
+            return FailureMode.NO_PLAYER
+        if not self._sequence:
+            return FailureMode.NO_SEQUENCE
+        if self._base_pending:
+            return FailureMode.BASE_PENDING
         if not game_controller.is_playing():
-            return False
+            return FailureMode.NOT_PLAYING
         if game_controller.state.is_paused:
-            return False
-        return not (self._sequence and self._sequence.is_active())
+            return FailureMode.PAUSED
+        if self._sequence and self._sequence.is_active():
+            return FailureMode.SEQUENCE_ACTIVE
+        return FailureMode.OK
 
     def _ensure_talent_balance_manager(self, reward_system):
         if not reward_system:
@@ -368,9 +408,9 @@ class HomecomingCoordinator:
     def _start_return_entrance(self, game_controller, player, lock_manager):
         if not game_controller or not player:
             return
-        state = game_controller.state
-        state.is_entrance_playing = True
-        state.entrance_timer = 0
+        # F01 F9: route through the explicit API instead of writing
+        # ``state.is_entrance_playing = True`` directly.
+        game_controller.start_entrance_animation()
         if lock_manager:
             lock_manager.set_game_state(game_controller.state)
             if player:

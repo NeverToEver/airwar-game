@@ -25,6 +25,19 @@ from .game_controller import GameplayState
 logger = logging.getLogger(__name__)
 
 
+# F03 S1: explicit exception for bad Rust batch movement parameters.
+# Was previously swallowed with ``logger.warning + continue``; the
+# refactor raises so callers cannot accidentally accept silently
+# malformed data.
+class MovementParamError(ValueError):
+    """Raised when an enemy returns invalid Rust batch movement params.
+
+    F03 S1 + S2: replaces the legacy silent ``logger.warning + continue``
+    pattern. The data flow is: ``Enemy.get_rust_batch_params() -> tuple``
+    and any malformed result (wrong length, mismatched pair) is a bug.
+    """
+
+
 class GameLoopManager:
     """Game loop manager — orchestrates all per-frame update logic.
 
@@ -124,17 +137,22 @@ class GameLoopManager:
 
         self._game_renderer.update_death_animation()
         self._explosion_manager.update()
-        if self._lock_manager:
-            self._sync_boss_enrage_lock()
-            player.update()
-            player.auto_fire()
-        else:
-            restore_controls_locked = player.is_controls_locked
-            if self._should_lock_player_for_boss_enrage():
-                player.is_controls_locked = True
-            player.update()
-            player.auto_fire()
-            player.is_controls_locked = restore_controls_locked
+        # F02 D3: single-path — LockManager is always wired in production.
+        # The legacy backup/restore branch was reachable only in unit
+        # tests that constructed GameLoopManager without a lock_manager;
+        # those tests now also wire one (see test_game_loop_manager.py).
+        if self._lock_manager is None:
+            raise RuntimeError(
+                "GameLoopManager requires a LockManager. "
+                "Pass lock_manager=... in the constructor."
+            )
+        # BOSS_ENRAGE is a transient lock — applied only for the duration
+        # of player.update() and released immediately after, matching the
+        # legacy "lock only during update" contract.
+        self._sync_boss_enrage_lock()
+        player.update()
+        player.auto_fire()
+        self._lock_manager.release(LockLayer.BOSS_ENRAGE)
 
         self._bullet_manager.update_all()
         self._update_enemy_spawning(player)
@@ -212,6 +230,10 @@ class GameLoopManager:
         if not enemies:
             return
 
+        # F03 S1 + S2: raise MovementParamError instead of silently
+        # skipping bad params. The data flow is strictly typed
+        # (Enemy -> 12-base + 8-extra tuple) and any mismatch is a bug.
+
         # Batch Rust movement — only for enemies in 'active' state (not entering/exiting)
         if batch_update_movements_buf is not None:
             batch_indices = []
@@ -220,19 +242,24 @@ class GameLoopManager:
 
             for i, enemy in enumerate(enemies):
                 if enemy.is_ready_for_batch_movement():
-                    try:
-                        base, extra = enemy.get_rust_batch_params()
-                    except (ValueError, TypeError):
-                        logger.warning(
-                            "Skipping enemy with invalid Rust batch movement params: %r",
-                            enemy,
-                            exc_info=True,
-                        )
+                    base, extra = enemy.get_rust_batch_params()
+                    if base is None and extra is None:
+                        # Enemy not ready — that's fine, skip
                         continue
                     if base is not None and extra is not None:
                         # Pack base: (move_type:u8, pad, timer, active_x, active_y,
                         #   move_range_x, move_range_y, offset, amplitude, frequency,
                         #   speed, direction, zigzag_interval)
+                        if len(base) != 12:
+                            raise MovementParamError(
+                                f"Enemy {enemy!r} returned base tuple of length {len(base)}, "
+                                f"expected 12 (move_type + 11 fields)"
+                            )
+                        if len(extra) != 8:
+                            raise MovementParamError(
+                                f"Enemy {enemy!r} returned extra tuple of length {len(extra)}, "
+                                f"expected 8 (spiral_radius + 7 fields)"
+                            )
                         base_buf_parts.append(
                             struct.pack(
                                 self._MOVEMENT_BASE_FMT,
@@ -267,17 +294,13 @@ class GameLoopManager:
                             )
                         )
                         batch_indices.append(i)
-                    elif base is None and extra is None:
-                        # enemy not ready for batch — fine
-                        continue
                     else:
-                        logger.error(
-                            "get_rust_batch_params returned mismatched pair: base=%r extra=%r for %r",
-                            base,
-                            extra,
-                            enemy,
+                        # F03 S2: mismatched pair is a programming error.
+                        raise MovementParamError(
+                            f"get_rust_batch_params returned mismatched pair: "
+                            f"base={base!r} extra={extra!r} for {enemy!r}. "
+                            f"Both must be either None or valid tuples."
                         )
-                        continue
 
             if base_buf_parts:
                 base_buf = b"".join(base_buf_parts)
@@ -293,25 +316,25 @@ class GameLoopManager:
             batch_indices = []
             for i, enemy in enumerate(enemies):
                 if enemy.is_ready_for_batch_movement():
-                    try:
-                        base, extra = enemy.get_rust_batch_params()
-                    except (ValueError, TypeError):
+                    base, extra = enemy.get_rust_batch_params()
+                    if base is None and extra is None:
                         continue
                     if base is not None and extra is not None:
+                        if len(base) != 12:
+                            raise MovementParamError(
+                                f"Fallback path: enemy {enemy!r} base len {len(base)}"
+                            )
+                        if len(extra) != 8:
+                            raise MovementParamError(
+                                f"Fallback path: enemy {enemy!r} extra len {len(extra)}"
+                            )
                         base_list.append(base)
                         extra_list.append(extra)
                         batch_indices.append(i)
-                    elif base is None and extra is None:
-                        # enemy not ready for batch — fine
-                        continue
                     else:
-                        logger.error(
-                            "get_rust_batch_params returned mismatched pair: base=%r extra=%r for %r",
-                            base,
-                            extra,
-                            enemy,
+                        raise MovementParamError(
+                            f"Fallback path: mismatched pair for {enemy!r}"
                         )
-                        continue
             if base_list:
                 results = batch_update_movements(base_list, extra_list)
                 for j, (new_x, new_y, new_timer) in enumerate(results):

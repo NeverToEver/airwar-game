@@ -1,6 +1,7 @@
 """Tutorial subpackage.
 
-Houses the per-stage classes split out of :mod:`airwar.scenes.tutorial_scene`.
+Houses the per-stage classes split out of :mod:`airwar.scenes.tutorial_scene`
+plus the simulator/pool components added in Phase 4 Wave α.
 """
 
 from .stages import (
@@ -21,6 +22,11 @@ from .stages import (
     MovementStage,
     build_stage,
 )
+from .tutorial_boss_sim import TutorialBoss as TutorialBossSimulator
+from .tutorial_bullet_pool import TutorialBulletPool
+from .tutorial_enemy_sim import TutorialEnemySim as TutorialEnemySimulator
+from .tutorial_explosion_pool import TutorialExplosionPool
+from .tutorial_player_sim import TutorialPlayer
 
 __all__ = [
     "AIM_STAGE_ID",
@@ -38,5 +44,10 @@ __all__ = [
     "HomecomingBaseStage",
     "MothershipDockingStage",
     "MovementStage",
+    "TutorialBossSimulator",
+    "TutorialBulletPool",
+    "TutorialEnemySimulator",
+    "TutorialExplosionPool",
+    "TutorialPlayer",
     "build_stage",
 ]

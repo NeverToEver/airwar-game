@@ -90,38 +90,97 @@ class GameController:
         self._lock_manager = lock_manager
 
     def set_invincible(self, invincible: bool, timer: int = 0, silent: bool = False) -> None:
-        """Set player invincibility, routing through LockManager if available."""
+        """Set player invincibility via the centralized LockManager.
+
+        F02 D1: single-path routing. The LockManager is the single
+        source of truth for invincibility / lock state. Production
+        always wires the LockManager during scene setup; calling this
+        method without one is a programming error.
+        """
         from ..systems.lock_manager import LockLayer, LockRequest
 
-        if self._lock_manager:
-            if invincible:
-                self._lock_manager.acquire(
-                    LockLayer.MOTHERSHIP,
-                    LockRequest(invincible=True, is_silent_invincible=silent, invincibility_duration=timer),
-                )
-            else:
-                self._lock_manager.release(LockLayer.MOTHERSHIP)
+        assert self._lock_manager is not None, (
+            "GameController.set_invincible requires a LockManager. "
+            "Call set_lock_manager() during scene initialization."
+        )
+        if invincible:
+            self._lock_manager.acquire(
+                LockLayer.MOTHERSHIP,
+                LockRequest(invincible=True, is_silent_invincible=silent, invincibility_duration=timer),
+            )
         else:
-            self.state.is_player_invincible = invincible
-            self.state.invincibility_timer = timer
-            self.state.is_silent_invincible = silent
+            self._lock_manager.release(LockLayer.MOTHERSHIP)
 
     def set_paused(self, paused: bool) -> None:
-        """Set game paused state, routing through LockManager if available."""
+        """Set game paused state via the centralized LockManager.
+
+        F02 D2: single-path routing.
+        """
         from ..systems.lock_manager import LockLayer, LockRequest
 
-        if self._lock_manager:
-            if paused:
-                self._lock_manager.acquire(
-                    LockLayer.GAME_PAUSE,
-                    LockRequest(is_paused=True),
-                )
-            else:
-                self._lock_manager.release(LockLayer.GAME_PAUSE)
+        assert self._lock_manager is not None, (
+            "GameController.set_paused requires a LockManager. "
+            "Call set_lock_manager() during scene initialization."
+        )
+        if paused:
+            self._lock_manager.acquire(
+                LockLayer.GAME_PAUSE,
+                LockRequest(is_paused=True),
+            )
         else:
-            self.state.is_paused = paused
+            self._lock_manager.release(LockLayer.GAME_PAUSE)
 
     # 3. Public lifecycle methods
+
+    def set_score(self, value: int) -> None:
+        """F1: encapsulate direct state mutation of score.
+
+        Replaces scene-layer direct writes to ``state.score``.
+        """
+        from ..constants import normalize_score
+
+        self.state.score = normalize_score(value)
+
+    def set_cycle_count(self, value: int) -> None:
+        """F2: encapsulate direct state mutation of cycle_count."""
+        self.state.cycle_count = max(0, int(value))
+        self.state.milestone_index = self.state.cycle_count
+
+    def set_difficulty(self, difficulty: str) -> None:
+        """F3: encapsulate direct state mutation of difficulty and propagate."""
+        from airwar.config import VALID_DIFFICULTIES
+
+        if difficulty not in VALID_DIFFICULTIES:
+            raise ValueError(f"Invalid difficulty: {difficulty}")
+        self.state.difficulty = difficulty
+        self.state.score_multiplier = GAME_CONSTANTS.get_difficulty_multiplier(difficulty)
+
+    def add_score(self, amount: int) -> None:
+        """F4: encapsulate score accumulation from scene layer."""
+        from ..constants import normalize_score
+
+        self.state.score = normalize_score(self.state.score + amount)
+
+    def add_kill_count(self) -> None:
+        """F5: encapsulate kill_count++ from scene layer."""
+        self.state.kill_count += 1
+
+    def add_boss_kill_count(self) -> None:
+        """F6: encapsulate boss_kill_count++ from scene layer."""
+        self.state.boss_kill_count += 1
+
+    def clear_ripples(self) -> None:
+        """F8: encapsulate ripple_effects clearing from scene layer."""
+        self.state.ripple_effects.clear()
+
+    def start_entrance_animation(self) -> None:
+        """F9: encapsulate entrance animation restart from coordinator.
+
+        Used by HomecomingCoordinator to reset the entrance animation
+        when the player returns from the home base.
+        """
+        self.state.is_entrance_playing = True
+        self.state.entrance_timer = 0
 
     def update(self, player, has_regen: bool = False) -> None:
         """Update game controller state each frame.

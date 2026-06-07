@@ -23,6 +23,8 @@ os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
+import pytest
+
 from airwar.entities.player_state import (
     IllegalPlayerTransition,
     PlayerAliveState,
@@ -92,11 +94,16 @@ def test_dead_is_terminal() -> None:
     assert sm.state == PlayerState.DEAD
 
 
-def test_enter_boost_from_dash_is_noop() -> None:
-    """Boosting while dashing must not be allowed (mutually exclusive)."""
+def test_enter_boost_from_dash_raises() -> None:
+    """F03 S6: Boosting while dashing now raises (was silent no-op).
+
+    Dash preempts boost; callers must exit DASHING first.
+    """
     sm = _make_sm()
     sm.transition_substate(PlayerAliveState.DASHING)
-    sm.enter_boost()
+    with pytest.raises(IllegalPlayerTransition):
+        sm.enter_boost()
+    # State unchanged after the rejected attempt
     assert sm.alive_substate == PlayerAliveState.DASHING
     assert sm.is_boosting() is False
 

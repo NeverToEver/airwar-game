@@ -401,39 +401,16 @@ class Enemy(Entity):
         self._batch_result = result
 
     def get_rust_batch_params(self):
-        """Return (base_tuple, extra_tuple) for batch Rust movement, or (None, None)."""
-        if not hasattr(self, "_rust_move_type_code"):
-            return None, None
-        p = self._rust_params
-        timer = getattr(self, self._timer_attr, 0.0)
-        if self.move_type == "hover":
-            timer /= self.HOVER_TIMER_RUST_SCALE
-        c = get_game_constants()
-        base = (
-            self._rust_move_type_code,
-            timer,
-            self.active_position_x,
-            self.active_position_y,
-            float(c.ENEMY.MOVE_RANGE_X),
-            float(c.ENEMY.MOVE_RANGE_Y),
-            p["offset"],
-            p["amplitude"],
-            p["frequency"],
-            p["speed"],
-            p["direction"],
-            p["zigzag_interval"],
-        )
-        extra = (
-            p["spiral_radius"],
-            self.rect.x,
-            self.rect.y,
-            p["noise_scale_x"],
-            p["noise_scale_y"],
-            p["noise_amplitude_x"],
-            p["noise_amplitude_y"],
-            p["noise_seed"],
-        )
-        return base, extra
+        """Return (base_tuple, extra_tuple) for batch Rust movement, or (None, None).
+
+        F07 god-class split: the 173-line encoding logic is in
+        :mod:`airwar.entities.enemy.enemy_movement_batch`. This method
+        is a 1-line forwarder kept for backward compatibility with
+        GameLoopManager callers.
+        """
+        from .enemy_movement_batch import encode_rust_movement_params
+
+        return encode_rust_movement_params(self)
 
     # 5. Private lifecycle methods
 
@@ -441,7 +418,10 @@ class Enemy(Entity):
         init_method = self._movement_initializers().get(enemy_type, self._init_straight_movement)
         init_method()
         self._movement_strategy = get_movement_strategy(self.move_type)
-        self._configure_rust_movement()
+        # F07 god-class split: extracted to enemy_movement_batch.py
+        from .enemy_movement_batch import configure_rust_movement
+
+        configure_rust_movement(self)
 
     def _movement_initializers(self) -> dict[str, Callable[[], None]]:
         return {
@@ -515,61 +495,16 @@ class Enemy(Entity):
         self.agg_seed = random.randint(0, 9999)
 
     def _configure_rust_movement(self) -> None:
-        self._rust_move_type_code = MOVEMENT_TYPE_MAP.get(self.move_type, 0)
-        self._rust_params = {
-            "offset": getattr(self, "move_offset", 0.0),
-            "amplitude": getattr(self, "move_amplitude", self.DEFAULT_MOVE_AMPLITUDE),
-            "frequency": self._rust_frequency_param(),
-            "speed": self._rust_speed_param(),
-            "direction": getattr(self, "direction", 1.0),
-            "zigzag_interval": getattr(self, "zigzag_interval", self.DEFAULT_ZIGZAG_INTERVAL),
-            "spiral_radius": getattr(self, "spiral_radius", self.DEFAULT_SPIRAL_RADIUS),
-            "noise_scale_x": self._rust_noise_param("scale_x"),
-            "noise_scale_y": self._rust_noise_param("scale_y"),
-            "noise_amplitude_x": self._rust_noise_param("amplitude_x"),
-            "noise_amplitude_y": self._rust_noise_param("amplitude_y"),
-            "noise_seed": (
-                getattr(self, "agg_seed", 0) if self.move_type == "aggressive" else getattr(self, "noise_seed", 0)
-            ),
-        }
-        if self.move_type == "hover":
-            self._timer_attr = "hover_timer"
-        elif self.move_type in ("zigzag", "dive", "spiral", "noise", "aggressive"):
-            self._timer_attr = f"{self.move_type}_timer"
-        else:
-            self._timer_attr = "move_timer"
+        """Backward-compat shim: delegates to :func:`configure_rust_movement`.
 
-    def _rust_frequency_param(self) -> float:
-        if self.move_type == "spiral":
-            return getattr(self, "spiral_frequency", self.DEFAULT_MOVE_FREQUENCY)
-        return getattr(self, "move_frequency", self.DEFAULT_MOVE_FREQUENCY)
+        F07 god-class split: the actual logic lives in
+        :mod:`airwar.entities.enemy.enemy_movement_batch`. This method
+        is kept so existing callers (and tests) that call
+        ``_configure_rust_movement()`` directly still work.
+        """
+        from .enemy_movement_batch import configure_rust_movement
 
-    def _rust_speed_param(self) -> float:
-        if self.move_type == "zigzag":
-            return getattr(self, "zigzag_speed", self.DEFAULT_MOVE_SPEED)
-        if self.move_type == "noise":
-            return getattr(self, "noise_speed", self.DEFAULT_NOISE_SPEED)
-        if self.move_type == "aggressive":
-            return getattr(self, "agg_speed", self.DEFAULT_AGGRESSIVE_SPEED)
-        return getattr(self, "spiral_speed", self.DEFAULT_MOVE_SPEED)
-
-    def _rust_noise_param(self, name: str) -> float:
-        if self.move_type == "aggressive":
-            defaults = {
-                "scale_x": self.DEFAULT_NOISE_SCALE_X,
-                "scale_y": self.DEFAULT_NOISE_SCALE_Y,
-                "amplitude_x": self.DEFAULT_AGGRESSIVE_AMPLITUDE_X,
-                "amplitude_y": self.DEFAULT_AGGRESSIVE_AMPLITUDE_Y,
-            }
-            return getattr(self, f"agg_{name}", defaults[name])
-
-        defaults = {
-            "scale_x": self.DEFAULT_NOISE_SCALE_X,
-            "scale_y": self.DEFAULT_NOISE_SCALE_Y,
-            "amplitude_x": self.DEFAULT_NOISE_AMPLITUDE_X,
-            "amplitude_y": self.DEFAULT_NOISE_AMPLITUDE_Y,
-        }
-        return getattr(self, f"noise_{name}", defaults[name])
+        configure_rust_movement(self)
 
     # 6. Private behavior methods
 

@@ -7,6 +7,70 @@ from .interfaces import IEventBus
 
 logger = logging.getLogger(__name__)
 
+
+# ---------------------------------------------------------------------------
+# F03 S4: Exceptions
+# ---------------------------------------------------------------------------
+
+
+class EventBusError(Exception):
+    """Base class for EventBus errors."""
+
+
+class SubscriptionCapExceeded(EventBusError):
+    """Raised when a subscribe() call would push an event over MAX_SUBSCRIBERS.
+
+    F03 S4: replaces the legacy silent ``return False`` contract. Callers
+    MUST handle this (catch + unsubscribe the offender, or surface to UI).
+    """
+
+    def __init__(self, event: str, cap: int, existing: int) -> None:
+        super().__init__(
+            f"Subscription cap exceeded for event {event!r}: cap={cap}, existing={existing}. "
+            f"Caller must unsubscribe() before retrying."
+        )
+        self.event = event
+        self.cap = cap
+        self.existing = existing
+
+
+# ---------------------------------------------------------------------------
+# F07 E1: Central event registry
+# ---------------------------------------------------------------------------
+
+
+# Each entry: payload_schema (kwargs the publisher should pass) +
+#             subscribers_known (initial wiring metadata for diagnostics).
+# New events MUST be added here so the event bus surface is documented
+# in one place.
+EVENT_REGISTRY: dict[str, dict] = {
+    "EVENT_H_PRESSED": {"payload_schema": {"timestamp_ms": int}, "subscribers_known": []},
+    "EVENT_H_RELEASED": {"payload_schema": {}, "subscribers_known": []},
+    "EVENT_H_RELEASED_EARLY": {"payload_schema": {}, "subscribers_known": []},
+    "EVENT_PROGRESS_COMPLETE": {"payload_schema": {}, "subscribers_known": []},
+    "EVENT_DOCKING_ANIMATION_COMPLETE": {"payload_schema": {}, "subscribers_known": []},
+    "EVENT_UNDOCKING_ANIMATION_COMPLETE": {"payload_schema": {}, "subscribers_known": []},
+    "EVENT_STAY_EXPIRED": {"payload_schema": {}, "subscribers_known": []},
+    "EVENT_ENTERING_COMPLETE": {"payload_schema": {}, "subscribers_known": []},
+    "EVENT_UNDOCK_REQUESTED": {"payload_schema": {}, "subscribers_known": []},
+    "EVENT_EXIT_STARTED": {"payload_schema": {"timestamp_ms": int}, "subscribers_known": []},
+    "EVENT_EXIT_PROGRESS_UPDATE": {"payload_schema": {"progress": float}, "subscribers_known": []},
+    "EVENT_EXIT_CANCELLED": {"payload_schema": {}, "subscribers_known": []},
+    "EVENT_EXIT_COMPLETE": {"payload_schema": {}, "subscribers_known": []},
+    "EVENT_START_UNDOCKING_ANIMATION": {"payload_schema": {}, "subscribers_known": []},
+    "EVENT_START_ENTERING_ANIMATION": {"payload_schema": {}, "subscribers_known": []},
+    "EVENT_START_DOCKING_ANIMATION": {"payload_schema": {}, "subscribers_known": []},
+    "EVENT_STAY_STARTED": {"payload_schema": {}, "subscribers_known": []},
+    "EVENT_COOLDOWN_STARTED": {"payload_schema": {}, "subscribers_known": []},
+    "EVENT_GAME_RESUME": {"payload_schema": {}, "subscribers_known": []},
+    "EVENT_UNDOCK_CANCELLED": {"payload_schema": {}, "subscribers_known": []},
+    "EVENT_COOLDOWN_COMPLETE": {"payload_schema": {}, "subscribers_known": []},
+    "EVENT_SAVE_GAME_REQUEST": {"payload_schema": {}, "subscribers_known": []},
+    "EVENT_STATE_CHANGED": {"payload_schema": {"state": "MotherShipState"}, "subscribers_known": []},
+    "EVENT_DOCKING_COMPLETE": {"payload_schema": {}, "subscribers_known": []},
+}
+
+
 # Event type constants
 EVENT_STATE_CHANGED = "STATE_CHANGED"
 EVENT_H_PRESSED = "H_PRESSED"
@@ -85,7 +149,12 @@ class EventBus(IEventBus):
                 self.MAX_SUBSCRIBERS,
                 len(self._subscribers[event]),
             )
-            return False
+            # F03 S4: raise instead of returning False (silent refusal).
+            raise SubscriptionCapExceeded(
+                event=event,
+                cap=self.MAX_SUBSCRIBERS,
+                existing=len(self._subscribers[event]),
+            )
         self._subscribers[event].append(callback)
         self._failure_counts.pop(self._failure_key(event, callback), None)
         return True

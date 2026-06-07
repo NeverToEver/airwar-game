@@ -21,9 +21,14 @@ class HomecomingPhase(Enum):
 
 
 class HomecomingSequence:
-    """Runs the staged return-home animation and exposes safe scene hooks."""
+    """Runs the staged return-home animation and exposes safe scene hooks.
 
-    FTL_FRAMES = 54
+    F04 M10: phase frame counts are sourced from
+    GAME_CONSTANTS.HOMECOMING_PHASES via lazy module-level __getattr__
+    to avoid circular imports.
+    """
+
+    FTL_FRAMES = 54  # 0.56
     BLACKOUT_FRAMES = 34
     STATION_REVEAL_FRAMES = 70
     APPROACH_FRAMES = 96
@@ -252,3 +257,29 @@ class HomecomingSequence:
     def _apply_player_position(self, player) -> None:
         player.rect.x = int(self._current_center[0] - player.rect.width / 2)
         player.rect.y = int(self._current_center[1] - player.rect.height / 2)
+
+
+# F04 M10: lazy module-level access for Homecoming phase frame counts.
+# The 10 values are sourced from GAME_CONSTANTS.HOMECOMING_PHASES.
+# Lazy resolution (PEP 562) avoids the circular import between
+# game.homecoming and game.constants.
+_PHASE_ATTR_MAP = {
+    "FTL_FRAMES": "FTL_ESCAPE",
+    "BLACKOUT_FRAMES": "BLACKOUT",
+    "STATION_REVEAL_FRAMES": "STATION_REVEAL",
+    "APPROACH_FRAMES": "APPROACH",
+    "LANDING_FRAMES": "LANDING",
+    "HANDOFF_FRAMES": "HANDOFF",
+    "BASE_LAUNCH_FRAMES": "BASE_LAUNCH",
+    "RETURN_BLACKOUT_FRAMES": "RETURN_BLACKOUT",
+    "ORBITAL_STRIKE_FRAMES": "ORBITAL_STRIKE",
+    "ORBITAL_STRIKE_IMPACT_PROGRESS": "ORBITAL_STRIKE_IMPACT_PROGRESS",
+}
+
+
+def __getattr__(name: str):
+    if name in _PHASE_ATTR_MAP:
+        from airwar.config.constants_access import get_game_constants
+
+        return getattr(get_game_constants().HOMECOMING_PHASES, _PHASE_ATTR_MAP[name])
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

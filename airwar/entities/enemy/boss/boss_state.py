@@ -372,6 +372,22 @@ class BossStateMachine:
 
 
 # Re-export alias so test code can ``from .boss_state import BossStateMachine``.
+def __getattr__(name: str):
+    """F04 M9: lazy module-level access for 27 ENRAGE_* constants.
+
+    The constants are sourced from GAME_CONSTANTS.BOSS_ENRAGE so the
+    single source of truth is airwar.game.constants. We use lazy
+    resolution (PEP 562) so this module can be imported before
+    airwar.game.constants is fully resolved (avoids circular import
+    between entities and game packages).
+    """
+    if name.startswith("ENRAGE_") and name[7:].isupper():
+        from airwar.config.constants_access import get_game_constants
+
+        return getattr(get_game_constants().BOSS_ENRAGE, name[7:])
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
 __all__ = [
     "ENRAGE_ATTACK_INTERVAL",
     "ENRAGE_ATTACK_WINDUP",

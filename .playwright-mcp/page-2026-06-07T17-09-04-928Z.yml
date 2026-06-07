@@ -1,0 +1,347 @@
+- generic [ref=e2]:
+  - link "Spring SALE" [ref=e4] [cursor=pointer]:
+    - /url: /store
+    - img [ref=e5]
+    - generic [ref=e6]: Spring SALE
+    - img [ref=e7]
+  - generic: 
+  - main [ref=e8]:
+    - generic [ref=e9]:
+      - generic [ref=e10]:
+        - article [ref=e11]:
+          - generic [ref=e12]:
+            - link [ref=e13] [cursor=pointer]:
+              - /url: /
+              - generic [ref=e14]: 
+            - text: /
+            - link "Refactoring" [ref=e15] [cursor=pointer]:
+              - /url: /refactoring
+            - text: /
+            - link "Techniques" [ref=e16] [cursor=pointer]:
+              - /url: /refactoring/techniques
+            - text: /
+            - link "Moving Features between Objects" [ref=e17] [cursor=pointer]:
+              - /url: /refactoring/techniques/moving-features-between-objects
+          - heading "Extract Class" [level=1] [ref=e18]
+          - generic [ref=e19]:
+            - generic [ref=e20]:
+              - heading "Problem" [level=3] [ref=e21]
+              - paragraph [ref=e22]: When one class does the work of two, awkwardness results.
+            - generic [ref=e23]:
+              - heading "Solution" [level=3] [ref=e24]
+              - paragraph [ref=e25]: Instead, create a new class and place the fields and methods responsible for the relevant functionality in it.
+          - generic [ref=e27]:
+            - img "Extract Class - Before" [ref=e30]
+            - img "Extract Class - After" [ref=e33]
+          - heading "Why Refactor" [level=3] [ref=e34]
+          - paragraph [ref=e35]: Classes always start out clear and easy to understand. They do their job and mind their own business as it were, without butting into the work of other classes. But as the program expands, a method is added and then a field... and eventually, some classes are performing more responsibilities than ever envisioned.
+          - heading "Benefits" [level=3] [ref=e36]
+          - list [ref=e37]:
+            - listitem [ref=e38]:
+              - paragraph [ref=e39]:
+                - text: This refactoring method will help maintain adherence to the
+                - emphasis [ref=e40]: Single Responsibility Principle
+                - text: . The code of your classes will be more obvious and understandable.
+            - listitem [ref=e41]:
+              - paragraph [ref=e42]: Single-responsibility classes are more reliable and tolerant of changes. For example, say that you have a class responsible for ten different things. When you change this class to make it better for one thing, you risk breaking it for the nine others.
+          - heading "Drawbacks" [level=3] [ref=e43]
+          - list [ref=e44]:
+            - listitem [ref=e45]:
+              - text: If you “overdo it” with this refactoring technique, you will have to resort to
+              - link "Inline Class" [ref=e46] [cursor=pointer]:
+                - /url: /inline-class
+              - text: .
+          - heading "How to Refactor" [level=3] [ref=e47]
+          - paragraph [ref=e48]: Before starting, decide on how exactly you want to split up the responsibilities of the class.
+          - list [ref=e49]:
+            - listitem [ref=e50]:
+              - paragraph [ref=e51]: Create a new class to contain the relevant functionality.
+            - listitem [ref=e52]:
+              - paragraph [ref=e53]: Create a relationship between the old class and the new one. Optimally, this relationship is unidirectional; this allows reusing the second class without any issues. Nonetheless, if you think that a two-way relationship is necessary, this can always be set up.
+            - listitem [ref=e54]:
+              - paragraph [ref=e55]:
+                - text: Use
+                - link "Move Field" [ref=e56] [cursor=pointer]:
+                  - /url: /move-field
+                - text: and
+                - link "Move Method" [ref=e57] [cursor=pointer]:
+                  - /url: /move-method
+                - text: for each field and method that you have decided to move to the new class. For methods, start with private ones in order to reduce the risk of making a large number of errors. Try to relocate just a little bit at a time and test the results after each move, in order to avoid a pileup of error-fixing at the very end.
+              - paragraph [ref=e58]: After you’re done moving, take one more look at the resulting classes. An old class with changed responsibilities may be renamed for increased clarity. Check again to see whether you can get rid of two-way class relationships, if any are present.
+            - listitem [ref=e59]:
+              - paragraph [ref=e60]: Also give thought to accessibility to the new class from the outside. You can hide the class from the client entirely by making it private, managing it via the fields from the old class. Alternatively, you can make it a public one by allowing the client to change values directly. Your decision here depends on how safe it’s for the behavior of the old class when unexpected direct changes are made to the values in the new class.
+          - generic [ref=e61]:
+            - link "Your browser does not support HTML video." [ref=e63] [cursor=pointer]:
+              - /url: /refactoring/course
+              - generic [ref=e64]: Your browser does not support HTML video.
+            - generic [ref=e65]:
+              - heading "Tired of reading?" [level=3] [ref=e66]
+              - paragraph [ref=e67]: No wonder, it takes 7 hours to read all of the text we have here.
+              - paragraph [ref=e68]: Try our interactive course on refactoring. It offers a less tedious approach to learning new stuff.
+              - link "Let's see…" [ref=e69] [cursor=pointer]:
+                - /url: /refactoring/course
+                - generic [ref=e70]: 
+                - text: Let's see…
+        - navigation [ref=e71]:
+          - generic [ref=e72]:
+            - generic [ref=e73]:
+              - heading "Anti-refactoring" [level=3] [ref=e74]
+              - generic [ref=e76]:
+                - text: §
+                - link "Inline Class" [ref=e77] [cursor=pointer]:
+                  - /url: /inline-class
+            - generic [ref=e78]:
+              - heading "Similar refactorings" [level=3] [ref=e79]
+              - generic [ref=e81]:
+                - text: §
+                - link "Extract Subclass" [ref=e82] [cursor=pointer]:
+                  - /url: /extract-subclass
+              - generic [ref=e84]:
+                - text: §
+                - link "Replace Data Value with Object" [ref=e85] [cursor=pointer]:
+                  - /url: /replace-data-value-with-object
+            - generic [ref=e86]:
+              - heading "Eliminates smell" [level=3] [ref=e87]
+              - generic [ref=e89]:
+                - text: §
+                - link "Duplicate Code" [ref=e90] [cursor=pointer]:
+                  - /url: /smells/duplicate-code
+              - generic [ref=e92]:
+                - text: §
+                - link "Large Class" [ref=e93] [cursor=pointer]:
+                  - /url: /smells/large-class
+              - generic [ref=e95]:
+                - text: §
+                - link "Divergent Change" [ref=e96] [cursor=pointer]:
+                  - /url: /smells/divergent-change
+              - generic [ref=e98]:
+                - text: §
+                - link "Data Clumps" [ref=e99] [cursor=pointer]:
+                  - /url: /smells/data-clumps
+              - generic [ref=e101]:
+                - text: §
+                - link "Primitive Obsession" [ref=e102] [cursor=pointer]:
+                  - /url: /smells/primitive-obsession
+              - generic [ref=e104]:
+                - text: §
+                - link "Temporary Field" [ref=e105] [cursor=pointer]:
+                  - /url: /smells/temporary-field
+              - generic [ref=e107]:
+                - text: §
+                - link "Inappropriate Intimacy" [ref=e108] [cursor=pointer]:
+                  - /url: /smells/inappropriate-intimacy
+        - navigation [ref=e109]:
+          - generic [ref=e110]:
+            - heading "Read next" [level=4] [ref=e111]
+            - link "Inline Class " [ref=e112] [cursor=pointer]:
+              - /url: /inline-class
+              - text: Inline Class
+              - generic [ref=e113]: 
+          - generic [ref=e114]:
+            - heading "Return" [level=4] [ref=e115]
+            - link " Move Field" [ref=e116] [cursor=pointer]:
+              - /url: /move-field
+              - generic [ref=e117]: 
+              - text: Move Field
+      - complementary [ref=e118]:
+        - generic [ref=e120]:
+          - generic [ref=e121]:
+            - generic [ref=e122]: Sale!
+            - link [ref=e123] [cursor=pointer]:
+              - /url: /refactoring/course
+              - img [ref=e124]
+          - generic [ref=e125]:
+            - paragraph [ref=e126]: This refactoring is part of the much bigger Refactoring Course.
+            - link "Learn more…" [ref=e127] [cursor=pointer]:
+              - /url: /refactoring/course
+              - generic [ref=e128]: 
+              - text: Learn more…
+  - complementary [ref=e129]:
+    - text: 
+    - generic [ref=e131]:
+      - link "RefactoringGuru" [ref=e132] [cursor=pointer]:
+        - /url: /
+        - img "RefactoringGuru" [ref=e133]
+      - list [ref=e135]:
+        - listitem [ref=e136]:
+          - link "Premium Content" [ref=e137] [cursor=pointer]:
+            - /url: /store
+            - generic [ref=e138]: 
+            - text: Premium Content
+        - listitem [ref=e139]:
+          - link "Refactoring" [ref=e140] [cursor=pointer]:
+            - /url: /refactoring
+            - generic [ref=e141]: 
+            - text: Refactoring
+          - list [ref=e142]:
+            - listitem [ref=e143]:
+              - link "What is Refactoring" [ref=e144] [cursor=pointer]:
+                - /url: /refactoring/what-is-refactoring
+            - listitem [ref=e145]:
+              - link "Catalog" [ref=e146] [cursor=pointer]:
+                - /url: /refactoring/catalog
+            - listitem [ref=e147]:
+              - link "Code Smells" [ref=e148] [cursor=pointer]:
+                - /url: /refactoring/smells
+            - listitem [ref=e149]:
+              - link "Refactorings" [ref=e150] [cursor=pointer]:
+                - /url: /refactoring/techniques
+              - list [ref=e151]:
+                - listitem [ref=e152]:
+                  - link "Composing Methods" [ref=e153] [cursor=pointer]:
+                    - /url: /refactoring/techniques/composing-methods
+                - listitem [ref=e154]:
+                  - link "Moving Features between Objects" [ref=e155] [cursor=pointer]:
+                    - /url: /refactoring/techniques/moving-features-between-objects
+                  - list [ref=e156]:
+                    - listitem [ref=e157]:
+                      - link "Move Method" [ref=e158] [cursor=pointer]:
+                        - /url: /move-method
+                    - listitem [ref=e159]:
+                      - link "Move Field" [ref=e160] [cursor=pointer]:
+                        - /url: /move-field
+                    - listitem [ref=e161]:
+                      - link " Extract Class" [ref=e162] [cursor=pointer]:
+                        - /url: /extract-class
+                    - listitem [ref=e163]:
+                      - link "Inline Class" [ref=e164] [cursor=pointer]:
+                        - /url: /inline-class
+                    - listitem [ref=e165]:
+                      - link "Hide Delegate" [ref=e166] [cursor=pointer]:
+                        - /url: /hide-delegate
+                    - listitem [ref=e167]:
+                      - link "Remove Middle Man" [ref=e168] [cursor=pointer]:
+                        - /url: /remove-middle-man
+                    - listitem [ref=e169]:
+                      - link "Introduce Foreign Method" [ref=e170] [cursor=pointer]:
+                        - /url: /introduce-foreign-method
+                    - listitem [ref=e171]:
+                      - link "Introduce Local Extension" [ref=e172] [cursor=pointer]:
+                        - /url: /introduce-local-extension
+                - listitem [ref=e173]:
+                  - link "Organizing Data" [ref=e174] [cursor=pointer]:
+                    - /url: /refactoring/techniques/organizing-data
+                - listitem [ref=e175]:
+                  - link "Simplifying Conditional Expressions" [ref=e176] [cursor=pointer]:
+                    - /url: /refactoring/techniques/simplifying-conditional-expressions
+                - listitem [ref=e177]:
+                  - link "Simplifying Method Calls" [ref=e178] [cursor=pointer]:
+                    - /url: /refactoring/techniques/simplifying-method-calls
+                - listitem [ref=e179]:
+                  - link "Dealing with Generalization" [ref=e180] [cursor=pointer]:
+                    - /url: /refactoring/techniques/dealing-with-generalization
+        - listitem [ref=e181]:
+          - link "Design Patterns" [ref=e182] [cursor=pointer]:
+            - /url: /design-patterns
+            - generic [ref=e183]: 
+            - text: Design Patterns
+      - generic [ref=e184]:
+        - link "Sign in" [ref=e185] [cursor=pointer]:
+          - /url: https://refactoring.guru/login
+          - img [ref=e186]
+          - text: Sign in
+        - link "Contact us" [ref=e189] [cursor=pointer]:
+          - /url: https://feedback.refactoring.guru/
+          - generic [ref=e190]: 
+          - text: Contact us
+  - navigation [ref=e191]:
+    - generic [ref=e192]:
+      - link "Shop Now!" [ref=e194] [cursor=pointer]:
+        - /url: /store
+        - img [ref=e195]
+        - text: Shop Now!
+      - list [ref=e197]:
+        - listitem [ref=e198]:
+          - button "English" [ref=e199] [cursor=pointer]:
+            - generic [ref=e200]: 
+            - generic [ref=e201]: English
+        - listitem [ref=e202]:
+          - link "Contact us" [ref=e203] [cursor=pointer]:
+            - /url: https://feedback.refactoring.guru/?show_feedback_form_private=true
+            - generic [ref=e204]: 
+            - generic [ref=e205]: Contact us
+        - listitem [ref=e206]:
+          - link "Sign in" [ref=e207] [cursor=pointer]:
+            - /url: https://refactoring.guru/login
+            - img [ref=e209]
+            - generic [ref=e212]: Sign in
+        - listitem: 
+  - contentinfo [ref=e213]:
+    - generic [ref=e216]:
+      - list [ref=e218]:
+        - listitem [ref=e219]:
+          - link "Home" [ref=e220] [cursor=pointer]:
+            - /url: /
+        - listitem [ref=e221]:
+          - link "Refactoring" [ref=e222] [cursor=pointer]:
+            - /url: /refactoring
+        - listitem [ref=e223]:
+          - link "Design Patterns" [ref=e224] [cursor=pointer]:
+            - /url: /design-patterns
+        - listitem [ref=e225]:
+          - link "Premium Content" [ref=e226] [cursor=pointer]:
+            - /url: /store
+        - listitem [ref=e227]:
+          - link "Git Course" [ref=e228] [cursor=pointer]:
+            - /url: https://gitbybit.com/
+        - listitem [ref=e229]:
+          - link "Forum" [ref=e230] [cursor=pointer]:
+            - /url: https://refactoring.userecho.com/
+        - listitem [ref=e231]:
+          - link "Contact us" [ref=e232] [cursor=pointer]:
+            - /url: https://refactoring.userecho.com/
+      - list [ref=e234]:
+        - listitem [ref=e235]:
+          - link "" [ref=e236] [cursor=pointer]:
+            - /url: https://www.facebook.com/refactoring.guru
+            - generic [ref=e237]: 
+        - listitem [ref=e238]:
+          - link [ref=e239] [cursor=pointer]:
+            - /url: /sendy/form
+            - generic [ref=e240]: 
+        - listitem [ref=e241]:
+          - link "" [ref=e242] [cursor=pointer]:
+            - /url: https://github.com/RefactoringGuru
+            - generic [ref=e243]: 
+    - generic [ref=e246]:
+      - generic [ref=e247]:
+        - generic [ref=e248]:
+          - generic [ref=e249]: 
+          - text: 2014-2026
+          - link "Refactoring.Guru" [ref=e250] [cursor=pointer]:
+            - /url: /
+          - text: . All rights reserved.
+          - generic [ref=e251]: 
+          - text: Illustrations by
+          - link "Dmitry Zhart" [ref=e252] [cursor=pointer]:
+            - /url: http://zhart.us/
+        - list [ref=e254]:
+          - listitem [ref=e255]:
+            - link "Terms & Conditions" [ref=e256] [cursor=pointer]:
+              - /url: /terms
+          - listitem [ref=e257]:
+            - link "Privacy Policy" [ref=e258] [cursor=pointer]:
+              - /url: /privacy-policy
+          - listitem [ref=e259]:
+            - link "Content Usage Policy" [ref=e260] [cursor=pointer]:
+              - /url: /content-usage-policy
+          - listitem [ref=e261]:
+            - link "About us" [ref=e262] [cursor=pointer]:
+              - /url: /site-about
+      - generic [ref=e263]:
+        - generic [ref=e265]:
+          - text: "Ukrainian office:"
+          - text: FOP Olga Skobeleva
+          - img [ref=e267]
+          - text: Abolmasova 7
+          - text: Kyiv, Ukraine, 02002
+          - generic [ref=e269]: 
+          - text: "Email: support@refactoring.guru"
+        - generic [ref=e271]:
+          - text: "Spanish office:"
+          - text: Oleksandr Shvets
+          - img [ref=e273]
+          - text: Avda Pamplona 64
+          - text: Pamplona, Spain, 31009
+          - generic [ref=e275]: 
+          - text: "Email: support@refactoring.guru"

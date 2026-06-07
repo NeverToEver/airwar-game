@@ -1,0 +1,92 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - link [ref=e4] [cursor=pointer]:
+      - /url: https://martinfowler.com
+      - img [ref=e5]
+    - generic [ref=e7]:
+      - textbox [ref=e8]
+      - button "" [ref=e9] [cursor=pointer]
+    - link "" [ref=e11] [cursor=pointer]:
+      - /url: "#navmenu-bottom"
+    - navigation [ref=e12]:
+      - list [ref=e13]:
+        - listitem [ref=e14]:
+          - link "Refactoring" [ref=e15] [cursor=pointer]:
+            - /url: https://refactoring.com
+        - listitem [ref=e16]:
+          - link "Agile" [ref=e17] [cursor=pointer]:
+            - /url: /agile.html
+        - listitem [ref=e18]:
+          - link "Architecture" [ref=e19] [cursor=pointer]:
+            - /url: /architecture
+        - listitem [ref=e20]:
+          - link "About" [ref=e21] [cursor=pointer]:
+            - /url: /aboutMe.html
+        - listitem [ref=e22]:
+          - link "Thoughtworks" [ref=e23] [cursor=pointer]:
+            - /url: https://www.thoughtworks.com/engineering
+        - listitem [ref=e24]:
+          - link "" [ref=e25] [cursor=pointer]:
+            - /url: /feed.atom
+        - listitem [ref=e26]:
+          - link "" [ref=e27] [cursor=pointer]:
+            - /url: https://www.twitter.com/martinfowler
+        - listitem [ref=e28]:
+          - link "Mastodon stream" [ref=e29] [cursor=pointer]:
+            - /url: https://toot.thoughtworks.com/@mfowler
+            - img [ref=e30]
+        - listitem [ref=e32]:
+          - link "LinkedIn" [ref=e33] [cursor=pointer]:
+            - /url: https://www.linkedin.com/in/martin-fowler-com/
+            - img [ref=e34]
+        - listitem [ref=e36]:
+          - link "BlueSky" [ref=e37] [cursor=pointer]:
+            - /url: https://bsky.app/profile/martinfowler.com
+            - img [ref=e38]
+  - text:  ⨉
+  - main [ref=e40]:
+    - generic [ref=e41]:
+      - heading "Repository" [level=1] [ref=e42]
+      - paragraph [ref=e43]: Mediates between the domain and data mapping layers using a collection-like interface for accessing domain objects.
+      - paragraph [ref=e44]:
+        - img [ref=e45]
+      - paragraph [ref=e46]:
+        - text: A system with a complex domain model often benefits from a layer, such as the one provided by
+        - link "Data Mapper" [ref=e47] [cursor=pointer]:
+          - /url: dataMapper.html
+        - text: ", that isolates domain objects from details of the database access code. In such systems it can be worthwhile to build another layer of abstraction over the mapping layer where query construction code is concentrated. This becomes more important when there are a large number of domain classes or heavy querying. In these cases particularly, adding this layer helps minimize duplicate query logic."
+      - paragraph [ref=e48]: A Repository mediates between the domain and data mapping layers, acting like an in-memory domain object collection. Client objects construct query specifications declaratively and submit them to Repository for satisfaction. Objects can be added to and removed from the Repository, as they can from a simple collection of objects, and the mapping code encapsulated by the Repository will carry out the appropriate operations behind the scenes. Conceptually, a Repository encapsulates the set of objects persisted in a data store and the operations performed over them, providing a more object-oriented view of the persistence layer. Repository also supports the objective of achieving a clean separation and one-way dependency between the domain and data mapping layers.
+      - generic [ref=e49]:
+        - heading "Note" [level=2] [ref=e50]
+        - paragraph [ref=e51]:
+          - text: You can also find a good write-up of this pattern in
+          - link "Domain Driven Design" [ref=e52] [cursor=pointer]:
+            - /url: https://www.amazon.com/gp/product/0321125215/ref=as_li_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=0321125215&linkCode=as2&tag=martinfowlerc-20
+          - text: .
+      - paragraph [ref=e53]:
+        - text: for more details go to
+        - link "Chapter 13" [ref=e54] [cursor=pointer]:
+          - /url: https://learning.oreilly.com/library/view/patterns-of-enterprise/0321127420/ch13.html#ch13lev1sec3
+        - text: of the online ebook at oreilly.com
+    - generic [ref=e55]:
+      - generic [ref=e56]:
+        - paragraph [ref=e57]:
+          - link [ref=e58] [cursor=pointer]:
+            - /url: .
+            - img [ref=e59]
+        - paragraph [ref=e60]:
+          - text: This pattern is part of
+          - link "Patterns of Enterprise Application Architecture" [ref=e61] [cursor=pointer]:
+            - /url: .
+      - generic [ref=e62]: Edward Hieatt and Rob Mee
+      - paragraph [ref=e63]: 05 March 2003
+  - text:  ⨉
+  - contentinfo [ref=e64]:
+    - link [ref=e66] [cursor=pointer]:
+      - /url: https://www.thoughtworks.com/engineering
+      - img [ref=e67]
+    - generic [ref=e69] [cursor=pointer]: 
+    - paragraph [ref=e71]:
+      - text: © Martin Fowler |
+      - link "Disclosures" [ref=e72] [cursor=pointer]:
+        - /url: /aboutMe.html#disclosures

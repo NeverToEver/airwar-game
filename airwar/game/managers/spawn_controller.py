@@ -273,3 +273,15 @@ class SpawnController:
         if self.boss and not self.boss.active:
             self.reset_boss_timer(penalty=self.boss.is_escaped)
             self.boss = None
+
+    def clear_boss(self) -> None:
+        """F7: encapsulate direct ``self.boss = None`` writes from scene layer.
+
+        Returns:
+            bool: True if a boss was actually cleared; False if there was none.
+        """
+        if self.boss is None:
+            return False
+        self.boss = None
+        self.reset_boss_timer(penalty=False)
+        return True

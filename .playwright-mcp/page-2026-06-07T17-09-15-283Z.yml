@@ -1,0 +1,331 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - link "Spring SALE" [ref=e4] [cursor=pointer]:
+      - /url: /store
+      - img [ref=e5]
+      - generic [ref=e6]: Spring SALE
+      - img [ref=e7]
+    - generic: 
+    - main [ref=e8]:
+      - generic [ref=e9]:
+        - generic [ref=e10]:
+          - article [ref=e11]:
+            - generic [ref=e12]:
+              - link [ref=e13] [cursor=pointer]:
+                - /url: /
+                - generic [ref=e14]: 
+              - text: /
+              - link "Refactoring" [ref=e15] [cursor=pointer]:
+                - /url: /refactoring
+              - text: /
+              - link "Techniques" [ref=e16] [cursor=pointer]:
+                - /url: /refactoring/techniques
+              - text: /
+              - link "Dealing with Generalization" [ref=e17] [cursor=pointer]:
+                - /url: /refactoring/techniques/dealing-with-generalization
+            - heading "Extract Interface" [level=1] [ref=e18]
+            - generic [ref=e19]:
+              - generic [ref=e20]:
+                - heading "Problem" [level=3] [ref=e21]
+                - paragraph [ref=e22]: "Multiple clients are using the same part of a class interface. Another case: part of the interface in two classes is the same."
+              - generic [ref=e23]:
+                - heading "Solution" [level=3] [ref=e24]
+                - paragraph [ref=e25]: Move this identical portion to its own interface.
+            - generic [ref=e27]:
+              - img "Extract Interface - Before" [ref=e30]
+              - img "Extract Interface - After" [ref=e33]
+            - heading "Why Refactor" [level=3] [ref=e34]
+            - list [ref=e35]:
+              - listitem [ref=e36]:
+                - paragraph [ref=e37]:
+                  - text: Interfaces are very apropos when classes play special roles in different situations. Use
+                  - link "Extract Interface" [ref=e38] [cursor=pointer]:
+                    - /url: /extract-interface
+                  - text: to explicitly indicate which role.
+              - listitem [ref=e39]:
+                - paragraph [ref=e40]: Another convenient case arises when you need to describe the operations that a class performs on its server. If it’s planned to eventually allow use of servers of multiple types, all servers must implement the interface.
+            - heading "Good to Know" [level=3] [ref=e41]
+            - paragraph [ref=e42]:
+              - text: There’s a certain resemblance between
+              - link "Extract Superclass" [ref=e43] [cursor=pointer]:
+                - /url: /extract-superclass
+              - text: and
+              - link "Extract Interface" [ref=e44] [cursor=pointer]:
+                - /url: /extract-interface
+              - text: .
+            - paragraph [ref=e45]:
+              - text: Extracting an interface allows isolating only common interfaces, not common code. In other words, if classes contain
+              - link "Duplicate Code" [ref=e46] [cursor=pointer]:
+                - /url: /smells/duplicate-code
+              - text: ", extracting the interface won’t help you to deduplicate."
+            - paragraph [ref=e47]:
+              - text: All the same, this problem can be mitigated by applying
+              - link "Extract Class" [ref=e48] [cursor=pointer]:
+                - /url: /extract-class
+              - text: to move the behavior that contains the duplication to a separate component and delegating all the work to it. If the common behavior is large in size, you can always use
+              - link "Extract Superclass" [ref=e49] [cursor=pointer]:
+                - /url: /extract-superclass
+              - text: . This is even easier, of course, but remember that if you take this path you will get only one parent class.
+            - heading "How to Refactor" [level=3] [ref=e50]
+            - list [ref=e51]:
+              - listitem [ref=e52]:
+                - paragraph [ref=e53]: Create an empty interface.
+              - listitem [ref=e54]:
+                - paragraph [ref=e55]: Declare common operations in the interface.
+              - listitem [ref=e56]:
+                - paragraph [ref=e57]: Declare the necessary classes as implementing the interface.
+              - listitem [ref=e58]:
+                - paragraph [ref=e59]: Change type declarations in the client code to use the new interface.
+            - generic [ref=e60]:
+              - link "Your browser does not support HTML video." [ref=e62] [cursor=pointer]:
+                - /url: /refactoring/course
+                - generic [ref=e63]: Your browser does not support HTML video.
+              - generic [ref=e64]:
+                - heading "Tired of reading?" [level=3] [ref=e65]
+                - paragraph [ref=e66]: No wonder, it takes 7 hours to read all of the text we have here.
+                - paragraph [ref=e67]: Try our interactive course on refactoring. It offers a less tedious approach to learning new stuff.
+                - link "Let's see…" [ref=e68] [cursor=pointer]:
+                  - /url: /refactoring/course
+                  - generic [ref=e69]: 
+                  - text: Let's see…
+          - navigation [ref=e70]:
+            - generic [ref=e72]:
+              - heading "Similar refactorings" [level=3] [ref=e73]
+              - generic [ref=e75]:
+                - text: §
+                - link "Extract Superclass" [ref=e76] [cursor=pointer]:
+                  - /url: /extract-superclass
+          - navigation [ref=e77]:
+            - generic [ref=e78]:
+              - heading "Read next" [level=4] [ref=e79]
+              - link "Collapse Hierarchy " [ref=e80] [cursor=pointer]:
+                - /url: /collapse-hierarchy
+                - text: Collapse Hierarchy
+                - generic [ref=e81]: 
+            - generic [ref=e82]:
+              - heading "Return" [level=4] [ref=e83]
+              - link " Extract Superclass" [ref=e84] [cursor=pointer]:
+                - /url: /extract-superclass
+                - generic [ref=e85]: 
+                - text: Extract Superclass
+        - complementary [ref=e86]:
+          - generic [ref=e88]:
+            - generic [ref=e89]:
+              - generic [ref=e90]: Sale!
+              - link [ref=e91] [cursor=pointer]:
+                - /url: /refactoring/course
+                - img [ref=e92]
+            - generic [ref=e93]:
+              - paragraph [ref=e94]: This refactoring is part of the much bigger Refactoring Course.
+              - link "Learn more…" [ref=e95] [cursor=pointer]:
+                - /url: /refactoring/course
+                - generic [ref=e96]: 
+                - text: Learn more…
+    - complementary [ref=e97]:
+      - text: 
+      - generic [ref=e99]:
+        - link "RefactoringGuru" [ref=e100] [cursor=pointer]:
+          - /url: /
+          - img "RefactoringGuru" [ref=e101]
+        - list [ref=e103]:
+          - listitem [ref=e104]:
+            - link "Premium Content" [ref=e105] [cursor=pointer]:
+              - /url: /store
+              - generic [ref=e106]: 
+              - text: Premium Content
+          - listitem [ref=e107]:
+            - link "Refactoring" [ref=e108] [cursor=pointer]:
+              - /url: /refactoring
+              - generic [ref=e109]: 
+              - text: Refactoring
+            - list [ref=e110]:
+              - listitem [ref=e111]:
+                - link "What is Refactoring" [ref=e112] [cursor=pointer]:
+                  - /url: /refactoring/what-is-refactoring
+              - listitem [ref=e113]:
+                - link "Catalog" [ref=e114] [cursor=pointer]:
+                  - /url: /refactoring/catalog
+              - listitem [ref=e115]:
+                - link "Code Smells" [ref=e116] [cursor=pointer]:
+                  - /url: /refactoring/smells
+              - listitem [ref=e117]:
+                - link "Refactorings" [ref=e118] [cursor=pointer]:
+                  - /url: /refactoring/techniques
+                - list [ref=e119]:
+                  - listitem [ref=e120]:
+                    - link "Composing Methods" [ref=e121] [cursor=pointer]:
+                      - /url: /refactoring/techniques/composing-methods
+                  - listitem [ref=e122]:
+                    - link "Moving Features between Objects" [ref=e123] [cursor=pointer]:
+                      - /url: /refactoring/techniques/moving-features-between-objects
+                  - listitem [ref=e124]:
+                    - link "Organizing Data" [ref=e125] [cursor=pointer]:
+                      - /url: /refactoring/techniques/organizing-data
+                  - listitem [ref=e126]:
+                    - link "Simplifying Conditional Expressions" [ref=e127] [cursor=pointer]:
+                      - /url: /refactoring/techniques/simplifying-conditional-expressions
+                  - listitem [ref=e128]:
+                    - link "Simplifying Method Calls" [ref=e129] [cursor=pointer]:
+                      - /url: /refactoring/techniques/simplifying-method-calls
+                  - listitem [ref=e130]:
+                    - link "Dealing with Generalization" [ref=e131] [cursor=pointer]:
+                      - /url: /refactoring/techniques/dealing-with-generalization
+                    - list [ref=e132]:
+                      - listitem [ref=e133]:
+                        - link "Pull Up Field" [ref=e134] [cursor=pointer]:
+                          - /url: /pull-up-field
+                      - listitem [ref=e135]:
+                        - link "Pull Up Method" [ref=e136] [cursor=pointer]:
+                          - /url: /pull-up-method
+                      - listitem [ref=e137]:
+                        - link "Pull Up Constructor Body" [ref=e138] [cursor=pointer]:
+                          - /url: /pull-up-constructor-body
+                      - listitem [ref=e139]:
+                        - link "Push Down Method" [ref=e140] [cursor=pointer]:
+                          - /url: /push-down-method
+                      - listitem [ref=e141]:
+                        - link "Push Down Field" [ref=e142] [cursor=pointer]:
+                          - /url: /push-down-field
+                      - listitem [ref=e143]:
+                        - link "Extract Subclass" [ref=e144] [cursor=pointer]:
+                          - /url: /extract-subclass
+                      - listitem [ref=e145]:
+                        - link "Extract Superclass" [ref=e146] [cursor=pointer]:
+                          - /url: /extract-superclass
+                      - listitem [ref=e147]:
+                        - link " Extract Interface" [ref=e148] [cursor=pointer]:
+                          - /url: /extract-interface
+                      - listitem [ref=e149]:
+                        - link "Collapse Hierarchy" [ref=e150] [cursor=pointer]:
+                          - /url: /collapse-hierarchy
+                      - listitem [ref=e151]:
+                        - link "Form Template Method" [ref=e152] [cursor=pointer]:
+                          - /url: /form-template-method
+                      - listitem [ref=e153]:
+                        - link "Replace Inheritance with Delegation" [ref=e154] [cursor=pointer]:
+                          - /url: /replace-inheritance-with-delegation
+                      - listitem [ref=e155]:
+                        - link "Replace Delegation with Inheritance" [ref=e156] [cursor=pointer]:
+                          - /url: /replace-delegation-with-inheritance
+          - listitem [ref=e157]:
+            - link "Design Patterns" [ref=e158] [cursor=pointer]:
+              - /url: /design-patterns
+              - generic [ref=e159]: 
+              - text: Design Patterns
+        - generic [ref=e160]:
+          - link "Sign in" [ref=e161] [cursor=pointer]:
+            - /url: https://refactoring.guru/login
+            - img [ref=e162]
+            - text: Sign in
+          - link "Contact us" [ref=e165] [cursor=pointer]:
+            - /url: https://feedback.refactoring.guru/?lang=en
+            - generic [ref=e166]: 
+            - text: Contact us
+    - navigation [ref=e167]:
+      - generic [ref=e168]:
+        - link "Shop Now!" [ref=e170] [cursor=pointer]:
+          - /url: /store
+          - img [ref=e171]
+          - text: Shop Now!
+        - list [ref=e173]:
+          - listitem [ref=e174]:
+            - button "English" [ref=e175] [cursor=pointer]:
+              - generic [ref=e176]: 
+              - generic [ref=e177]: English
+          - listitem [ref=e178]:
+            - link "Contact us" [ref=e179] [cursor=pointer]:
+              - /url: https://feedback.refactoring.guru/?lang=en&show_feedback_form_private=true
+              - generic [ref=e180]: 
+              - generic [ref=e181]: Contact us
+          - listitem [ref=e182]:
+            - link "Sign in" [ref=e183] [cursor=pointer]:
+              - /url: https://refactoring.guru/login
+              - img [ref=e185]
+              - generic [ref=e188]: Sign in
+          - listitem: 
+    - contentinfo [ref=e189]:
+      - generic [ref=e192]:
+        - list [ref=e194]:
+          - listitem [ref=e195]:
+            - link "Home" [ref=e196] [cursor=pointer]:
+              - /url: /
+          - listitem [ref=e197]:
+            - link "Refactoring" [ref=e198] [cursor=pointer]:
+              - /url: /refactoring
+          - listitem [ref=e199]:
+            - link "Design Patterns" [ref=e200] [cursor=pointer]:
+              - /url: /design-patterns
+          - listitem [ref=e201]:
+            - link "Premium Content" [ref=e202] [cursor=pointer]:
+              - /url: /store
+          - listitem [ref=e203]:
+            - link "Git Course" [ref=e204] [cursor=pointer]:
+              - /url: https://gitbybit.com/
+          - listitem [ref=e205]:
+            - link "Forum" [ref=e206] [cursor=pointer]:
+              - /url: https://feedback.refactoring.guru/?lang=en
+          - listitem [ref=e207]:
+            - link "Contact us" [ref=e208] [cursor=pointer]:
+              - /url: https://feedback.refactoring.guru/?lang=en&show_feedback_form_private=true
+        - list [ref=e210]:
+          - listitem [ref=e211]:
+            - link "" [ref=e212] [cursor=pointer]:
+              - /url: https://www.facebook.com/refactoring.guru
+              - generic [ref=e213]: 
+          - listitem [ref=e214]:
+            - link [ref=e215] [cursor=pointer]:
+              - /url: /sendy/form
+              - generic [ref=e216]: 
+          - listitem [ref=e217]:
+            - link "" [ref=e218] [cursor=pointer]:
+              - /url: https://github.com/RefactoringGuru
+              - generic [ref=e219]: 
+      - generic [ref=e222]:
+        - generic [ref=e223]:
+          - generic [ref=e224]:
+            - generic [ref=e225]: 
+            - text: 2014-2026
+            - link "Refactoring.Guru" [ref=e226] [cursor=pointer]:
+              - /url: /
+            - text: . All rights reserved.
+            - generic [ref=e227]: 
+            - text: Illustrations by
+            - link "Dmitry Zhart" [ref=e228] [cursor=pointer]:
+              - /url: http://zhart.us/
+          - list [ref=e230]:
+            - listitem [ref=e231]:
+              - link "Terms & Conditions" [ref=e232] [cursor=pointer]:
+                - /url: /terms
+            - listitem [ref=e233]:
+              - link "Privacy Policy" [ref=e234] [cursor=pointer]:
+                - /url: /privacy-policy
+            - listitem [ref=e235]:
+              - link "Content Usage Policy" [ref=e236] [cursor=pointer]:
+                - /url: /content-usage-policy
+            - listitem [ref=e237]:
+              - link "About us" [ref=e238] [cursor=pointer]:
+                - /url: /site-about
+        - generic [ref=e239]:
+          - generic [ref=e241]:
+            - text: "Ukrainian office:"
+            - text: FOP Olga Skobeleva
+            - img [ref=e243]
+            - text: Abolmasova 7
+            - text: Kyiv, Ukraine, 02002
+            - generic [ref=e245]: 
+            - text: "Email: support@refactoring.guru"
+          - generic [ref=e247]:
+            - text: "Spanish office:"
+            - text: Oleksandr Shvets
+            - img [ref=e249]
+            - text: Avda Pamplona 64
+            - text: Pamplona, Spain, 31009
+            - generic [ref=e251]: 
+            - text: "Email: support@refactoring.guru"
+  - tooltip "该网站的中文版现已发布。 切换到葡萄牙语 关闭" [ref=e252]:
+    - generic [ref=e255]:
+      - text: 该网站的中文版现已发布。
+      - link "切换到葡萄牙语" [ref=e256] [cursor=pointer]:
+        - /url: https://refactoringguru.cn/extract-interface
+      - link "关闭" [ref=e257] [cursor=pointer]:
+        - /url: "#"

@@ -186,6 +186,66 @@ class BossConstants:
 
 
 @dataclass(frozen=True)
+class EnrageConstants:
+    """F04 M9: Boss enrage tuning constants.
+
+    Previously scattered as module-level constants in
+    ``airwar.entities.enemy.boss.boss_state``. They are re-exported
+    there as backward-compat aliases so existing callers keep working.
+    """
+
+    TRIGGER_RATIO: float = 0.30
+    DURATION: int = 360
+    TRANSITION_DURATION: int = 54
+    SLOW_FACTOR: float = 0.24
+    BULLET_SPEED: float = 3.2
+    LASER_SPEED: float = 3.7
+    RELEASE_BULLET_SPEED: float = 1.55
+    RELEASE_LASER_SPEED: float = 1.35
+    ATTACK_INTERVAL: int = 42
+    ATTACK_WINDUP: int = 24
+    RELEASE_INTERVAL: int = 6
+    SNAPSHOT_LASER_COUNT: int = 4
+    SNAPSHOT_RING_COUNT: int = 8
+    PATH_RADIUS_SCALE: float = 1.50
+    SQUARE_PATH_RATIO: float = 0.48
+    TRAIL_LENGTH: int = 42
+    TRAIL_RENDER_MAX: int = 16
+    TRAIL_FINAL_SCALE: float = 3.0
+    TRAIL_SCALE: float = 0.5
+    TRAIL_BLUR_PASSES: int = 2
+    EXIT_BACK_OFFSET: int = 118
+    MUZZLE_FLASH_DURATION: int = 12
+    MUZZLE_FLASH_PULSES: int = 2
+    MUZZLE_FORWARD_SCALE: float = 0.58
+    MUZZLE_SIDE_SCALE: float = 0.34
+    RELEASE_HOLD_DURATION: int = 42
+    RETURN_DURATION: int = 48
+    CORE_COLOR: tuple = (126, 220, 255)
+    DANGER_COLOR: tuple = (230, 72, 68)
+    TRAIL_TINT: tuple = (96, 154, 220)
+
+
+@dataclass(frozen=True)
+class HomecomingPhaseConstants:
+    """F04 M10: Homecoming sequence phase frame counts.
+
+    Previously scattered as class-level constants on HomecomingSequence.
+    """
+
+    FTL_ESCAPE: int = 54
+    BLACKOUT: int = 34
+    STATION_REVEAL: int = 70
+    APPROACH: int = 96
+    LANDING: int = 72
+    HANDOFF: int = 64
+    BASE_LAUNCH: int = 76
+    RETURN_BLACKOUT: int = 34
+    ORBITAL_STRIKE: int = 86
+    ORBITAL_STRIKE_IMPACT_PROGRESS: float = 0.56
+
+
+@dataclass(frozen=True)
 class EnemyConstants:
     """Enemy-related constants.
 
@@ -226,6 +286,54 @@ class RequisitionConstants:
     MISSION_REWARD = 3
 
 
+# Sentinel value: a finite-but-very-large frame count to express
+# "effectively infinite" invincibility. Using a real upper bound keeps
+# counters from underflowing and lets timers tick without special-casing.
+PERMANENT_INVINCIBILITY_FRAMES: int = 999_999
+
+
+class PersistenceConstants:
+    """Persistence- and auto-save-related constants.
+
+    Centralizes frame counts that were previously scattered as
+    magic numbers in scene/coordinator modules (Phase 3 logic-clarity
+    refactor — F04 M1/M2/M3/M7).
+    """
+
+    PERMANENT_INVINCIBILITY_FRAMES: int = PERMANENT_INVINCIBILITY_FRAMES
+    DOCKING_INVINCIBILITY_FRAMES: int = 1200  # 20 seconds at 60 FPS
+    AUTO_SAVE_INTERVAL: int = 1800  # 30 seconds at 60 FPS
+    BULLET_CLEAR_DEDUP_FRAMES: int = 1
+    BULLET_CLEAR_RADIUS: int = 250
+
+
+class EventConstants:
+    """Event-bus-related constants.
+
+    Centralizes limits that were previously hardcoded in the event_bus
+    module (Phase 3 logic-clarity refactor — F04 M11).
+    """
+
+    MAX_SUBSCRIBERS: int = 1000
+    MAX_CALLBACK_FAILURES: int = 3
+
+
+class GameplayConstants:
+    """Per-frame gameplay constants previously inline in scenes/systems.
+
+    Phase 3 logic-clarity refactor — F04 M2/M3/M4/M5.
+    """
+
+    @staticmethod
+    def bullet_clear_dedup_initial_frame() -> int:
+        """Initial frame offset for the bullet-clear dedup sentinel.
+
+        Used as a far-past timestamp so the first real hit is never
+        suppressed by the dedup logic.
+        """
+        return -1_000_000_000
+
+
 @dataclass
 class GameConstants:
     """Aggregates all game constants with unified access.
@@ -256,9 +364,14 @@ class GameConstants:
     BALANCE: GameBalanceConstants = field(default_factory=GameBalanceConstants)
     TIMING: TimingConstants = field(default_factory=TimingConstants)
     BOSS: BossConstants = field(default_factory=BossConstants)
+    BOSS_ENRAGE: EnrageConstants = field(default_factory=EnrageConstants)
+    HOMECOMING_PHASES: HomecomingPhaseConstants = field(default_factory=HomecomingPhaseConstants)
     ENEMY: EnemyConstants = field(default_factory=EnemyConstants)
     REWARD: RewardConstants = field(default_factory=RewardConstants)
     REQUISITION: RequisitionConstants = field(default_factory=RequisitionConstants)
+    PERSISTENCE: PersistenceConstants = field(default_factory=PersistenceConstants)
+    EVENTS: EventConstants = field(default_factory=EventConstants)
+    GAMEPLAY: GameplayConstants = field(default_factory=GameplayConstants)
 
     def get_difficulty_multiplier(self, difficulty: str) -> float:
         """Returns the score multiplier for the given difficulty.

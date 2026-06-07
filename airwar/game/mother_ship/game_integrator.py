@@ -8,25 +8,14 @@ import pygame
 from airwar.config import get_screen_height, get_screen_width
 from airwar.entities.base import BulletData
 from airwar.entities.bullet import Bullet
+from airwar.game.constants import GAME_CONSTANTS
 
 from ..rendering.entity_renderer import EntityRenderer
 from ..systems.lock_manager import LockLayer, LockRequest
 from .event_bus import (
-    EVENT_COOLDOWN_STARTED,
     EVENT_DOCKING_ANIMATION_COMPLETE,
     EVENT_ENTERING_COMPLETE,
-    EVENT_EXIT_CANCELLED,
-    EVENT_EXIT_PROGRESS_UPDATE,
-    EVENT_EXIT_STARTED,
-    EVENT_GAME_RESUME,
-    EVENT_H_RELEASED_EARLY,
-    EVENT_SAVE_GAME_REQUEST,
-    EVENT_START_DOCKING_ANIMATION,
-    EVENT_START_ENTERING_ANIMATION,
-    EVENT_START_UNDOCKING_ANIMATION,
     EVENT_STATE_CHANGED,
-    EVENT_STAY_STARTED,
-    EVENT_UNDOCK_CANCELLED,
     EVENT_UNDOCK_REQUESTED,
     EVENT_UNDOCKING_ANIMATION_COMPLETE,
 )
@@ -86,7 +75,8 @@ class GameIntegrator:
     MOTHERSHIP_GATLING_BULLET_TYPE = "mothership_gatling"
     MOTHERSHIP_BULLET_DESPAWN_MARGIN = 80
     AMMO_CELL_COUNT = 10.0
-    DOCKING_INVINCIBILITY_FRAMES = 1200  # 20 seconds at 60fps
+    # F04 M2: link to GAME_CONSTANTS (was bare 1200)
+    DOCKING_INVINCIBILITY_FRAMES = GAME_CONSTANTS.PERSISTENCE.DOCKING_INVINCIBILITY_FRAMES
 
     BAR_TYPE_HOLD = "hold"
     BAR_TYPE_COOLDOWN = "cooldown"
@@ -149,20 +139,15 @@ class GameIntegrator:
         self._register_handlers()
 
     def _register_handlers(self) -> None:
-        self._event_bus.subscribe(EVENT_STATE_CHANGED, self._on_state_changed)
-        self._event_bus.subscribe(EVENT_SAVE_GAME_REQUEST, self._on_save_game_request)
-        self._event_bus.subscribe(EVENT_GAME_RESUME, self._on_game_resume)
-        self._event_bus.subscribe(EVENT_START_ENTERING_ANIMATION, self._on_start_entering_animation)
-        self._event_bus.subscribe(EVENT_START_DOCKING_ANIMATION, self._on_start_docking_animation)
-        self._event_bus.subscribe(EVENT_UNDOCK_CANCELLED, self._on_undock_cancelled)
-        self._event_bus.subscribe(EVENT_START_UNDOCKING_ANIMATION, self._on_start_undocking_animation)
-        self._event_bus.subscribe(EVENT_COOLDOWN_STARTED, self._on_cooldown_started)
-        self._event_bus.subscribe(EVENT_STAY_STARTED, self._on_stay_started)
-        self._event_bus.subscribe(EVENT_UNDOCK_REQUESTED, self._on_undock_requested)
-        self._event_bus.subscribe(EVENT_H_RELEASED_EARLY, self._on_h_released_early)
-        self._event_bus.subscribe(EVENT_EXIT_STARTED, self._on_exit_started)
-        self._event_bus.subscribe(EVENT_EXIT_PROGRESS_UPDATE, self._on_exit_progress_update)
-        self._event_bus.subscribe(EVENT_EXIT_CANCELLED, self._on_exit_cancelled)
+        """F07 god-class split: delegate to MothershipEventHub.
+
+        The 14+ inline subscribe() calls were extracted to
+        ``airwar.game.mother_ship.event_hub``. This method is now a
+        1-line forwarder for backward compatibility.
+        """
+        from .event_hub import MothershipEventHub
+
+        MothershipEventHub(self).register_all()
 
     def _update_mothership_input(self) -> None:
         # Mothership movement is only allowed while docked
@@ -474,12 +459,16 @@ class GameIntegrator:
                     invincible=True,
                     lock_controls=True,
                     is_silent_invincible=True,
-                    invincibility_duration=999999,  # Permanent until explicitly released on undock
+                    invincibility_duration=GAME_CONSTANTS.PERSISTENCE.PERMANENT_INVINCIBILITY_FRAMES,
                 ),
             )
         elif self._game_scene:
             if hasattr(self._game_scene, "set_player_invincible"):
-                self._game_scene.set_player_invincible(True, 1200, silent=True)
+                self._game_scene.set_player_invincible(
+                    True,
+                    GAME_CONSTANTS.PERSISTENCE.DOCKING_INVINCIBILITY_FRAMES,
+                    silent=True,
+                )
             if getattr(self._game_scene, "player", None):
                 self._game_scene.player.is_controls_locked = True
 

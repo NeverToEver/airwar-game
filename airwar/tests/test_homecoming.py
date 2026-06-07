@@ -363,12 +363,25 @@ def test_game_scene_homecoming_request_sets_safe_interface_state() -> None:
 
 
 def test_game_scene_homecoming_complete_keeps_scene_locked() -> None:
+    from airwar.game.systems.homecoming_coordinator import HomecomingCoordinator
+
     scene = GameScene()
     scene.player = _make_player()
     scene.game_controller = GameController("medium", "pilot")
+    scene.game_controller.set_lock_manager(scene._lock_manager)
+    scene._lock_manager.set_game_state(scene.game_controller.state)
+    scene._lock_manager.set_player(scene.player)
     scene.reward_system = scene.game_controller.reward_system
-    scene._homecoming_base_pending = True
     scene.game_controller.state.is_paused = True
+    # F07 F09: assigning the coordinator via __setattr__ auto-creates
+    # the dispatcher; mark the base as pending so is_homecoming_locked() True.
+    scene._homecoming_coordinator = HomecomingCoordinator(
+        detector=HomecomingDetector(lambda: None),
+        sequence=HomecomingSequence(lambda: None),
+        ui=HomecomingUI(800, 600),
+        base_talent_console=None,
+    )
+    scene._homecoming_coordinator._base_pending = True
 
     scene.resume()
 

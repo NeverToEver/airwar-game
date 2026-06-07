@@ -1,4 +1,23 @@
-"""Playable tutorial scene -- controlled lessons for the core game mechanics."""
+"""Playable tutorial scene -- controlled lessons for the core game mechanics.
+
+Phase 4 Wave α: god-class split. The scene keeps lifecycle
+(``enter``/``exit``/``update``/``render``/``handle_events``), the
+stage machine, the input/player helpers, and 1-line forwarders
+into five simulator/pool components living under
+:mod:`airwar.scenes.tutorial`:
+
+* :class:`~airwar.scenes.tutorial.TutorialPlayer` -- simulated player
+* :class:`~airwar.scenes.tutorial.TutorialBossSimulator` -- simulated boss
+* :class:`~airwar.scenes.tutorial.TutorialBulletPool` -- bullet pool
+* :class:`~airwar.scenes.tutorial.TutorialExplosionPool` -- explosion pool
+* :class:`~airwar.scenes.tutorial.TutorialEnemySimulator` -- enemy sim
+
+The four entity dataclasses (``TutorialEnemy``, ``TutorialBullet``,
+``TutorialBoss``, ``TutorialExplosion``) stay defined here because
+the collision code in :mod:`airwar.scenes.tutorial.entities` and
+the tests import them by name from
+:mod:`airwar.scenes.tutorial_scene`.
+"""
 
 from __future__ import annotations
 
@@ -10,8 +29,6 @@ from airwar.config import TUTORIAL_STAGES, TutorialStage, get_screen_height, get
 from airwar.config.design_tokens import SceneColors, get_design_tokens
 from airwar.game.mother_ship import MotherShip
 from airwar.game.rendering import GameRenderer
-from airwar.game.systems.reward_system import RewardSystem
-from airwar.game.systems.talent_balance_manager import TalentBalanceManager
 from airwar.ui.aim_crosshair import AimCrosshair
 from airwar.ui.ammo_magazine import AmmoMagazine
 from airwar.ui.base_talent_console import BaseTalentConsole, BaseTalentConsoleAction
@@ -22,7 +39,16 @@ from airwar.utils.fonts import get_cjk_font
 from airwar.utils.mouse_interaction import MouseInteractiveMixin
 
 from .scene import Scene
-from .tutorial import aim_assist, base_console, entities
+from .tutorial import (
+    TutorialBossSimulator,
+    TutorialBulletPool,
+    TutorialEnemySimulator,
+    TutorialExplosionPool,
+    TutorialPlayer,
+    aim_assist,
+    base_console,
+    entities,
+)
 from .tutorial.models import TutorialBaseGameController, TutorialBasePlayerStatus
 from .tutorial.stages import BaseStage, build_stage
 from .tutorial_scene_renderer import TutorialSceneRenderer
@@ -119,7 +145,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
     BOSS_ENRAGE_THRESHOLD = 0.30
     WARNING_CELL_THRESHOLD = AmmoMagazine.WARNING_CELL_THRESHOLD
 
-    def __init__(self):
+    def __init__(self) -> None:
         Scene.__init__(self)
         MouseInteractiveMixin.__init__(self)
         self._tokens = get_design_tokens()
@@ -137,8 +163,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         self._ammo_magazine: AmmoMagazine | None = None
         self._warning_banner: WarningBanner | None = None
         self._base_talent_console: BaseTalentConsole | None = None
-        self._talent_balance_manager: TalentBalanceManager | None = None
-        self._base_reward_system: RewardSystem | None = None
+        self._base_reward_system = None
         self._base_player_status: TutorialBasePlayerStatus | None = None
         self._base_game_controller: TutorialBaseGameController | None = None
         self._viewport = None
@@ -146,6 +171,16 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         # Active per-stage logic instance. Rebuilt by ``_load_stage``;
         # ``None`` until ``enter()`` runs.
         self._stage_instance: BaseStage | None = None
+        # Phase-4 simulator/pool components (Wave α split). Built
+        # once at construction; the scene keeps 1-line forwarders
+        # so existing test methods (``_update_player``,
+        # ``_update_bullets``, ``_update_boss``, ...) keep working.
+        self._player_sim = TutorialPlayer(self)
+        self._boss_sim = TutorialBossSimulator(self)
+        self._bullet_pool = TutorialBulletPool(self)
+        self._explosion_pool = TutorialExplosionPool(self)
+        self._enemy_sim = TutorialEnemySimulator(self)
+        self._talent_balance_manager = None
         self.running = False
         self.skipped = False
 
@@ -182,19 +217,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         self._aim_input_initialized = False
         self._aim_assist_release_timer = 0
         self._set_raw_aim_position(self._get_logical_mouse_pos())
-        self._player = pygame.Rect(
-            get_screen_width() // 2 - self.PLAYER_W // 2,
-            get_screen_height() - 126,
-            self.PLAYER_W,
-            self.PLAYER_H,
-        )
-        self._player_health = 100
-        self._player_max_health = 100
-        self._player_energy = self.ENERGY_MAX
-        self._player_hit_cooldown = 0
-        self._dash_frames = 0
-        self._dash_velocity = pygame.Vector2(0, 0)
-        self._fire_timer = 0
+        self._player_sim.initialise()
 
         self._bullets: list[TutorialBullet] = []
         self._enemy_bullets: list[TutorialBullet] = []
@@ -371,13 +394,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
             self._mothership.hide_phantom()
             self._mothership.deactivate_flyaway()
 
-        sw = get_screen_width()
-        sh = get_screen_height()
-        self._player.center = (sw // 2, sh - 112)
-        self._player_health = self._player_max_health
-        self._player_energy = self.ENERGY_MAX
-        self._dash_frames = 0
-        self._dash_velocity.update(0, 0)
+        self._player_sim.reset_to_spawn()
 
         setup = self._stage.spawn_setup
         if setup == "movement_targets":
@@ -389,6 +406,8 @@ class TutorialScene(Scene, MouseInteractiveMixin):
 
         if self._stage.id == "mothership_docking":
             self._spawn_training_targets()
+            sw = get_screen_width()
+            sh = get_screen_height()
             if self._mothership:
                 self._mothership.show()
                 self._mothership.show_phantom()
@@ -617,52 +636,10 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         return aim_assist.distance_sq_to_target(target, raw_x, raw_y)
 
     def _update_player(self) -> None:
-        if self._dash_frames > 0:
-            self._player.x += int(self._dash_velocity.x)
-            self._player.y += int(self._dash_velocity.y)
-            self._dash_frames -= 1
-        else:
-            direction = self._movement_direction()
-            speed = self.PLAYER_SPEED
-            if self._boost_held() and self._player_energy > 0:
-                speed *= self.BOOST_MULT
-                self._player_energy = max(0, self._player_energy - self.ENERGY_DRAIN)
-            else:
-                self._player_energy = min(self.ENERGY_MAX, self._player_energy + self.ENERGY_RECOVER)
-            self._player.x += int(direction.x * speed)
-            self._player.y += int(direction.y * speed)
-
-        sw = get_screen_width()
-        sh = get_screen_height()
-        self._player.clamp_ip(pygame.Rect(0, 128, sw, sh - 128))
-        self._update_player_fire()
+        self._player_sim.update()
 
     def _update_player_fire(self) -> None:
-        self._fire_timer -= 1
-        if self._fire_timer > 0:
-            return
-        self._fire_timer = self.FIRE_INTERVAL
-
-        aim_direction = pygame.Vector2(
-            self._aim_pos[0] - self._player.centerx,
-            self._aim_pos[1] - self._player.centery,
-        )
-        aim_direction = pygame.Vector2(0, -1) if aim_direction.length_squared() <= 1 else aim_direction.normalize()
-        right = pygame.Vector2(-aim_direction.y, aim_direction.x)
-        forward = aim_direction
-
-        for offset_x in self.WING_MUZZLE_X_OFFSETS:
-            muzzle = pygame.Vector2(self._player.center) + right * offset_x + forward * abs(self.WING_MUZZLE_Y_OFFSET)
-            bullet_rect = pygame.Rect(0, 0, 10, 18)
-            bullet_rect.center = (round(muzzle.x), round(muzzle.y))
-            self._bullets.append(
-                TutorialBullet(
-                    rect=bullet_rect,
-                    velocity=aim_direction * 13.0,
-                    owner="player",
-                    damage=self.PLAYER_BULLET_DAMAGE,
-                )
-            )
+        self._player_sim.fire()
 
     # -- Stage logic ---------------------------------------------------
     #
@@ -711,39 +688,40 @@ class TutorialScene(Scene, MouseInteractiveMixin):
 
     # -- Entity setup and update ---------------------------------------
     #
-    # The bodies live in :mod:`airwar.scenes.tutorial.entities`. The
-    # methods below are thin back-compat wrappers so the rest of the
-    # scene (and existing tests) can keep calling them by name.
+    # The bodies live in :mod:`airwar.scenes.tutorial.entities` and
+    # the simulator/pool components. The methods below are thin
+    # back-compat wrappers so the rest of the scene (and existing
+    # tests) can keep calling them by name.
 
     def _spawn_training_targets(self) -> None:
-        entities.spawn_training_targets(self)
+        self._enemy_sim.spawn_training_targets()
 
     def _spawn_easy_enemy_wave(self, *, initial: bool) -> None:
-        entities.spawn_easy_enemy_wave(self, initial=initial)
+        self._enemy_sim.spawn_easy_enemy_wave(initial=initial)
 
     def _spawn_homecoming_enemy_wave(self) -> None:
-        entities.spawn_homecoming_enemy_wave(self)
+        self._enemy_sim.spawn_homecoming_enemy_wave()
 
     def _spawn_boss(self) -> None:
-        entities.spawn_boss(self)
+        self._boss_sim.spawn()
 
     def _mothership_destroy_nearest_enemy(self) -> None:
         entities.mothership_destroy_nearest_enemy(self)
 
     def _update_bullets(self) -> None:
-        entities.update_bullets(self)
+        self._bullet_pool.update()
 
     def _update_tutorial_effects(self) -> None:
-        entities.update_tutorial_effects(self)
+        self._explosion_pool.update()
 
     def _update_enemies(self) -> None:
-        entities.update_enemies(self)
+        self._enemy_sim.update()
 
     def _update_boss(self) -> None:
-        entities.update_boss(self)
+        self._boss_sim.update()
 
     def _spawn_enemy_bullet(self, center: tuple[int, int], *, damage: int) -> None:
-        entities.spawn_enemy_bullet(self, center, damage=damage)
+        self._bullet_pool.spawn_enemy_bullet(center, damage=damage)
 
     def _handle_collisions(self) -> None:
         entities.handle_collisions(self)
