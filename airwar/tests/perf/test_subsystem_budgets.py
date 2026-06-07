@@ -41,6 +41,7 @@ BUDGETS_MS = {
     "background_render": 2.0,
     "bullet_pack_unpack_250": 0.5,
     "discrete_battery_render": 0.5,
+    "enemy_batch_movement_50": 0.5,
 }
 
 
@@ -243,6 +244,91 @@ def test_discrete_battery_render_budget():
     observed = _measure(lambda: (v.render(surface, 50, 100), h.render(surface, 50, 100)))
     budget = BUDGETS_MS["discrete_battery_render"]
     assert observed < budget, f"battery regression: {observed:.3f}ms > {budget}ms"
+    print(f"\n  observed: {observed:.3f} ms/frame (budget {budget}ms)")
+
+
+def test_enemy_batch_movement_50_budget():
+    """Enemy batch movement: 50 enemies via Rust FFI binary buffer path.
+
+    Validates that the fixed `_MOVEMENT_BASE_FMT` actually exercises the
+    Rust `batch_update_movements_buf` path (was previously crashing due
+    to a fmt bug that mismatched the Rust `BASE_BUF_STRIDE=48`).
+    """
+    import pygame
+    from airwar.game.managers.game_loop_manager import GameLoopManager
+
+    class _StubSpawn:
+        enemies = []
+        boss = None
+        enemy_bullets = []
+
+    class _StubGC:
+        state = type("s", (), {"difficulty_level": 1})()
+
+    class _StubReward:
+        unlocked_buffs = []
+        slow_factor = 1.0
+        explosive_level = 0
+        piercing_level = 0
+
+        def apply_lifesteal(self, *args, **kwargs):
+            pass
+
+    class _FullEnemy:
+        def __init__(self, x, y):
+            self.rect = pygame.Rect(x, y, 30, 30)
+            self.active = True
+            self._state = 1
+            self._rust_move_type_code = 1
+            self.move_type = "sine"
+            self._timer_attr = "_timer"
+            self._timer = 0.0
+            self.active_position_x = x
+            self.active_position_y = y
+            self._rust_params = {
+                "offset": 0.0, "amplitude": 50.0, "frequency": 0.02,
+                "speed": 2.0, "direction": 0.0, "zigzag_interval": 60.0,
+                "spiral_radius": 0.0, "noise_scale_x": 0.1, "noise_scale_y": 0.1,
+                "noise_amplitude_x": 0.0, "noise_amplitude_y": 0.0, "noise_seed": 0,
+            }
+
+        def is_ready_for_batch_movement(self):
+            return True
+
+        def get_rust_batch_params(self):
+            p = self._rust_params
+            return (
+                (self._rust_move_type_code, self._timer, self.active_position_x, self.active_position_y,
+                 100.0, 50.0, p["offset"], p["amplitude"], p["frequency"],
+                 p["speed"], p["direction"], p["zigzag_interval"]),
+                (p["spiral_radius"], self.rect.x, self.rect.y,
+                 p["noise_scale_x"], p["noise_scale_y"],
+                 p["noise_amplitude_x"], p["noise_amplitude_y"], p["noise_seed"]),
+            )
+
+        def apply_batch_movement_result(self, result):
+            self.rect.x, self.rect.y, self._timer = result
+
+        def update(self, *args, **kwargs):
+            pass
+
+    import random
+    rng = random.Random(42)
+    glm = GameLoopManager.__new__(GameLoopManager)
+    glm._spawn_controller = _StubSpawn()
+    glm._game_controller = _StubGC()
+    glm._reward_system = _StubReward()
+    glm._player = None
+    glm._spawn_controller.enemies = [
+        _FullEnemy(100 + i * 30, 100) for i in range(50)
+    ]
+
+    observed = _measure(glm._update_entities)
+    budget = BUDGETS_MS["enemy_batch_movement_50"]
+    assert observed < budget, f"enemy batch movement regression: {observed:.3f}ms > {budget}ms"
+    # Validate Rust path actually moved enemies
+    moved = glm._spawn_controller.enemies[0].rect.x != 100
+    assert moved, "enemy batch movement didn't actually move enemies (Rust path may not be exercised)"
     print(f"\n  observed: {observed:.3f} ms/frame (budget {budget}ms)")
 
 

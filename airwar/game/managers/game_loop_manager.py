@@ -194,9 +194,14 @@ class GameLoopManager:
         damage = float(getattr(player, "bullet_damage", PlayerConstants.BULLET_DAMAGE))
         return damage * bullets_per_shot / fire_interval * 60
 
-    # Binary buffer formats for movement FFI
-    # base: B(move_type) + xx(pad) + 11*f32 = 48 bytes
-    _MOVEMENT_BASE_FMT = "<Bxxxfff fffffff"
+    # Binary buffer formats for movement FFI.
+    # base: B(move_type) + 3*pad + 11*f32 = 48 bytes. Must match Rust
+    # `BASE_BUF_STRIDE = 48` in `airwar_core/src/movement.rs`. The
+    # previous fmt "<Bxxxfff fffffff" was 9 floats (44 bytes / 11
+    # fields) and crashed the FFI because
+    # `Enemy.get_rust_batch_params` returns a 12-element base tuple.
+    # Fixed 2026-06-07.
+    _MOVEMENT_BASE_FMT = "<Bxxx fffffffffff"
     _MOVEMENT_BASE_SIZE = struct.calcsize(_MOVEMENT_BASE_FMT)  # 48
     # extra: 7*f32 + i32 = 32 bytes
     _MOVEMENT_EXTRA_FMT = "<fffffffI"
