@@ -104,11 +104,7 @@ def spawn_enemy_bullet(scene, center: tuple[int, int], *, damage: int) -> None:
         scene._player.centerx - center[0],
         scene._player.centery - center[1],
     )
-    direction = (
-        pygame.Vector2(0, 1)
-        if direction.length_squared() <= 1
-        else direction.normalize()
-    )
+    direction = pygame.Vector2(0, 1) if direction.length_squared() <= 1 else direction.normalize()
     rect = pygame.Rect(0, 0, 10, 14)
     rect.center = center
     scene._enemy_bullets.append(
@@ -167,9 +163,7 @@ def update_tutorial_effects(scene) -> None:
     """Tick explosion timers and drop expired explosions."""
     for explosion in scene._tutorial_explosions:
         explosion.timer -= 1
-    scene._tutorial_explosions[:] = [
-        explosion for explosion in scene._tutorial_explosions if explosion.timer > 0
-    ]
+    scene._tutorial_explosions[:] = [explosion for explosion in scene._tutorial_explosions if explosion.timer > 0]
 
 
 def update_enemies(scene) -> None:
@@ -231,18 +225,11 @@ def handle_collisions(scene) -> None:
                 enemy.active = False
                 scene._score += enemy.score_value
                 scene._kills += 1
-                scene._stage_progress = min(
-                    scene._stage.objective_count, scene._stage_progress + 1
-                )
+                scene._stage_progress = min(scene._stage.objective_count, scene._stage_progress + 1)
             break
 
         boss = scene._boss
-        if (
-            bullet.active
-            and boss is not None
-            and boss.active
-            and bullet.rect.colliderect(boss.rect)
-        ):
+        if bullet.active and boss is not None and boss.active and bullet.rect.colliderect(boss.rect):
             bullet.active = False
             boss.health -= bullet.damage
             if boss.health <= 0:
@@ -278,13 +265,12 @@ def damage_player(scene, damage: int) -> None:
 def cleanup_entities(scene) -> None:
     """Drop inactive bullets/enemies from the active lists."""
     scene._bullets[:] = [bullet for bullet in scene._bullets if bullet.active]
-    scene._enemy_bullets[:] = [
-        bullet for bullet in scene._enemy_bullets if bullet.active
-    ]
+    scene._enemy_bullets[:] = [bullet for bullet in scene._enemy_bullets if bullet.active]
     scene._enemies[:] = [enemy for enemy in scene._enemies if enemy.active]
 
 
 # -- Internal helpers ------------------------------------------------
+
 
 def _make_enemy(
     *,

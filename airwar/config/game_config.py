@@ -116,4 +116,3 @@ def get_display_height() -> int:
 
 def set_display_size(width: int, height: int) -> None:
     GameConfig.get_instance().set_display_size(width, height)
-

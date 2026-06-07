@@ -181,9 +181,7 @@ class AchievementNotification:
         self._title_font = get_cjk_font(20)
         self._name_font = get_cjk_font(22)
         self._desc_font = get_cjk_font(16)
-        self._title_text = self._title_font.render(
-            t("achievement.unlocked.title"), True, SceneColors.ACCENT_BRIGHT
-        )
+        self._title_text = self._title_font.render(t("achievement.unlocked.title"), True, SceneColors.ACCENT_BRIGHT)
         self._fonts_built = True
 
     def _render_card(self, surface: pygame.Surface, card: _Card) -> None:
@@ -258,9 +256,7 @@ class AchievementNotification:
             pulse = 0.5 + 0.5 * math.sin(self._frame * 0.1)
             glow_alpha = int(40 * pulse)
             if glow_alpha > 4:
-                glow_surf = pygame.Surface(
-                    (_Card.CARD_WIDTH + 12, _Card.CARD_HEIGHT + 12), pygame.SRCALPHA
-                )
+                glow_surf = pygame.Surface((_Card.CARD_WIDTH + 12, _Card.CARD_HEIGHT + 12), pygame.SRCALPHA)
                 pygame.draw.rect(
                     glow_surf,
                     (*SceneColors.ACCENT_PRIMARY, glow_alpha),

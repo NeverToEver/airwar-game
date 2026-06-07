@@ -18,9 +18,7 @@ def update_aim_assist(scene) -> None:
     """One frame of aim assist: smooth, resolve target, write ``_aim_pos``."""
     update_smoothed_raw_aim_position(scene)
     target = resolve_aim_assist_target(scene)
-    scene._aim_pos = (
-        target.rect.center if target is not None else scene._smoothed_raw_aim_position
-    )
+    scene._aim_pos = target.rect.center if target is not None else scene._smoothed_raw_aim_position
 
 
 def update_smoothed_raw_aim_position(scene) -> None:
@@ -70,9 +68,7 @@ def resolve_aim_assist_target(scene):
         if scene._aim_assist_target in candidates:
             return scene._aim_assist_target
 
-    if scene._aim_assist_target in candidates and is_aim_assist_locked(
-        scene, scene._aim_assist_target, raw_x, raw_y
-    ):
+    if scene._aim_assist_target in candidates and is_aim_assist_locked(scene, scene._aim_assist_target, raw_x, raw_y):
         return scene._aim_assist_target
 
     for target in candidates:
@@ -117,11 +113,7 @@ def raw_aim_movement(scene) -> tuple[float, float]:
 
 def target_in_movement_direction(scene, candidates, movement):
     """Best target in the direction the mouse just moved (cone-gated)."""
-    origin = (
-        scene._aim_assist_target.rect.center
-        if scene._aim_assist_target in candidates
-        else scene._raw_aim_position
-    )
+    origin = scene._aim_assist_target.rect.center if scene._aim_assist_target in candidates else scene._raw_aim_position
     movement_len = math.hypot(movement[0], movement[1])
     if movement_len <= 0:
         return None

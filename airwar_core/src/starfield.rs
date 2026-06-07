@@ -96,19 +96,7 @@ mod tests {
     #[test]
     fn test_empty_input_returns_empty_output() {
         let sin = make_sin_table(1024);
-        let out = compute_starfield_positions(
-            vec![],
-            0.0,
-            1920.0,
-            1080.0,
-            0.0,
-            sin,
-            1024,
-            1023,
-            200,
-            8,
-            60,
-        );
+        let out = compute_starfield_positions(vec![], 0.0, 1920.0, 1080.0, 0.0, sin, 1024, 1023, 200, 8, 60);
         assert!(out.is_empty());
     }
 
@@ -136,7 +124,7 @@ mod tests {
         assert_eq!(size_int, 2);
         // brightness 0.8 * (0.5 + 0.5 * 0) * 255 = 102
         assert_eq!(core_b, 102);
-        assert!(!has_glow);  // 102 < 200
+        assert!(!has_glow); // 102 < 200
         assert_eq!(glow_alpha, 0);
     }
 

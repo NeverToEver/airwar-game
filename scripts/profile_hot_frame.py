@@ -87,6 +87,7 @@ class _Player:
 def build_scene(n_enemies=50, n_bullets=80, seed=42):
     """Build a deterministic mid-game test scene."""
     import random
+
     rng = random.Random(seed)
     player = _Player(960, 540)
     enemies = [
@@ -118,13 +119,9 @@ def single_frame(player, enemies, bullets, bg_surface):
 
     # Player bullets vs enemies (Rust batch path)
     cc = single_frame._cc
-    cc.check_player_bullets_vs_enemies(
-        bullets, enemies, score_multiplier=1.0, explosive_level=0, piercing_level=0
-    )
+    cc.check_player_bullets_vs_enemies(bullets, enemies, score_multiplier=1.0, explosive_level=0, piercing_level=0)
     # Player vs enemies linear scan
-    cc.check_player_vs_enemies(
-        player.get_hitbox(), enemies, lambda: False, lambda d: None
-    )
+    cc.check_player_vs_enemies(player.get_hitbox(), enemies, lambda: False, lambda d: None)
 
 
 def main():

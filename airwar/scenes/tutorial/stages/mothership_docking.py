@@ -60,10 +60,7 @@ class MothershipDockingStage(BaseStage):
         if mothership is None:
             return
         sw, sh = scene._get_screen_dimensions()
-        mothership_departing = (
-            scene._dock_sub_phase == "eject_player"
-            and scene._dock_undock_phase == "mothership"
-        )
+        mothership_departing = scene._dock_sub_phase == "eject_player" and scene._dock_undock_phase == "mothership"
         if not mothership_departing:
             mothership.show()
         mothership.set_player_input(0, 0)

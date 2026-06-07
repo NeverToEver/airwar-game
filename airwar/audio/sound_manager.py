@@ -329,9 +329,7 @@ def _synthesise_bgm_wav(track: str) -> io.BytesIO | None:
     t = np.arange(n_samples, dtype=np.float32) / _BGM_LOOP_SAMPLE_RATE
     # Layer the carrier with a soft sub-octave so the loop has a touch
     # of musicality rather than a flat tone.
-    wave_data = 0.6 * np.sin(2.0 * math.pi * frequency_hz * t) + 0.3 * np.sin(
-        2.0 * math.pi * frequency_hz * 0.5 * t
-    )
+    wave_data = 0.6 * np.sin(2.0 * math.pi * frequency_hz * t) + 0.3 * np.sin(2.0 * math.pi * frequency_hz * 0.5 * t)
     # 10 ms fade-in/out at the loop seam to avoid clicks.
     env_n = max(1, int(_BGM_LOOP_SAMPLE_RATE * 0.010))
     envelope = np.ones_like(wave_data)

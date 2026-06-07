@@ -177,9 +177,7 @@ class StarLayer:
                     "twinkle_offset": twinkle_offset,
                 }
             )
-            self._star_tuples.append(
-                (x, y, size, brightness, twinkle_speed, twinkle_offset)
-            )
+            self._star_tuples.append((x, y, size, brightness, twinkle_speed, twinkle_offset))
         # Decide whether to use the Rust fast path. Default ON when Rust is
         # available — the fallback is only used if Rust is missing.
         from airwar.core_bindings import RUST_AVAILABLE
