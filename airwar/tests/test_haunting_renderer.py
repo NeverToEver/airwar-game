@@ -15,7 +15,7 @@ def test_flashback_triggers_with_high_enemy_pressure() -> None:
     for _ in range(2000):
         renderer.update(enemy_pressure=10)
 
-    assert renderer._flashback_timer > 0 or renderer._flashback_cooldown > 0
+    assert renderer.flashback_timer > 0 or renderer.flashback_cooldown > 0
 
 
 def test_flashback_does_not_trigger_with_low_pressure() -> None:
@@ -25,12 +25,12 @@ def test_flashback_does_not_trigger_with_low_pressure() -> None:
         renderer.update(enemy_pressure=1)
 
     assert not renderer.is_active()
-    assert renderer._flashback_timer == 0
+    assert renderer.flashback_timer == 0
 
 
 def test_flashback_activates_and_deactivates() -> None:
     renderer = HauntingRenderer()
-    renderer._flashback_timer = HauntingRenderer.FLASHBACK_DURATION
+    renderer.start_flashback()
     renderer.update(enemy_pressure=5)
 
     assert renderer.is_active()
@@ -46,7 +46,7 @@ def test_flashback_activates_and_deactivates() -> None:
 def test_flashback_strength_instant_on_off() -> None:
     """Flashback hits full strength immediately and cuts to zero when expired."""
     renderer = HauntingRenderer()
-    renderer._flashback_timer = HauntingRenderer.FLASHBACK_DURATION
+    renderer.start_flashback()
     renderer.update(enemy_pressure=0)
     assert renderer.current_strength == 1.0
 
@@ -68,31 +68,31 @@ def test_flashback_inactive_by_default() -> None:
 
 def test_flashback_cooldown_prevents_immediate_retrigger() -> None:
     renderer = HauntingRenderer()
-    renderer._flashback_timer = HauntingRenderer.FLASHBACK_DURATION
+    renderer.start_flashback()
     renderer.update(enemy_pressure=5)
 
     for _ in range(HauntingRenderer.FLASHBACK_DURATION + 2):
         renderer.update(enemy_pressure=0)
 
     assert not renderer.is_active()
-    assert renderer._flashback_cooldown > 0
+    assert renderer.flashback_cooldown > 0
 
 
 def test_haunting_renderer_dispose_clears_state() -> None:
     renderer = HauntingRenderer()
-    renderer._flashback_timer = HauntingRenderer.FLASHBACK_DURATION
+    renderer.start_flashback()
     renderer.update(enemy_pressure=5)
     assert renderer.is_active()
 
     renderer.dispose()
 
-    assert renderer._static_filter is None
-    assert renderer._band_buf is None
+    assert renderer.static_filter is None
+    assert renderer.band_buffer is None
 
 
 def test_haunting_renderer_survives_render_after_dispose() -> None:
     renderer = HauntingRenderer()
-    renderer._flashback_timer = HauntingRenderer.FLASHBACK_DURATION
+    renderer.start_flashback()
     renderer.update(enemy_pressure=1)
     renderer.dispose()
 
@@ -106,24 +106,24 @@ def test_haunting_renderer_survives_render_after_dispose() -> None:
 
 def test_haunting_renderer_recreates_surfaces_after_dispose() -> None:
     renderer = HauntingRenderer()
-    renderer._flashback_timer = HauntingRenderer.FLASHBACK_DURATION
+    renderer.start_flashback()
     renderer.update(enemy_pressure=1)
     renderer.dispose()
-    assert renderer._static_filter is None
+    assert renderer.static_filter is None
 
-    renderer._flashback_timer = HauntingRenderer.FLASHBACK_DURATION
+    renderer.start_flashback()
     renderer.update(enemy_pressure=1)
     surface = pygame.Surface((640, 480), pygame.SRCALPHA)
     renderer.render_atmosphere_overlay(surface)
 
-    assert renderer._static_filter is not None
+    assert renderer.static_filter is not None
 
 
 def test_crt_glitch_effects_render_without_crash() -> None:
     """All CRT glitch passes should render without error during active flashback."""
     pygame.font.init()
     renderer = HauntingRenderer()
-    renderer._flashback_timer = HauntingRenderer.FLASHBACK_DURATION
+    renderer.start_flashback()
     renderer.update(enemy_pressure=4)
     surface = pygame.Surface((640, 480), pygame.SRCALPHA)
     player = Player(260, 360, MockInputHandler())
@@ -143,7 +143,7 @@ def test_crt_glitch_effects_render_without_crash() -> None:
 
 def test_crt_glitch_does_not_mutate_entities() -> None:
     renderer = HauntingRenderer()
-    renderer._flashback_timer = HauntingRenderer.FLASHBACK_DURATION
+    renderer.start_flashback()
     renderer.update(enemy_pressure=4)
     surface = pygame.Surface((640, 480), pygame.SRCALPHA)
     player = Player(260, 360, MockInputHandler())
@@ -168,22 +168,22 @@ def test_crt_glitch_does_not_mutate_entities() -> None:
 
 
 def test_static_filter_is_cached() -> None:
-    """_get_static_filter reuses the surface on same-size calls."""
+    """get_static_filter reuses the surface on same-size calls."""
     renderer = HauntingRenderer()
     w, h = 640, 480
 
-    sf1 = renderer._get_static_filter(w, h)
-    sf2 = renderer._get_static_filter(w, h)
+    sf1 = renderer.get_static_filter(w, h)
+    sf2 = renderer.get_static_filter(w, h)
 
     assert sf1 is sf2
 
 
 def test_noise_tex_is_cached() -> None:
-    """_get_noise_tex reuses the surface on same-size calls."""
+    """get_noise_tex reuses the surface on same-size calls."""
     renderer = HauntingRenderer()
     w, h = 640, 480
 
-    nt1 = renderer._get_noise_tex(w, h)
-    nt2 = renderer._get_noise_tex(w, h)
+    nt1 = renderer.get_noise_tex(w, h)
+    nt2 = renderer.get_noise_tex(w, h)
 
     assert nt1 is nt2

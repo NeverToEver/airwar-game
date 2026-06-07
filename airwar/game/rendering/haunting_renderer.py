@@ -53,14 +53,38 @@ class HauntingRenderer:
     def current_strength(self) -> float:
         return self._strength
 
+    @property
+    def flashback_timer(self) -> int:
+        """Frames remaining in the active flashback effect (0 = idle)."""
+        return self._flashback_timer
+
+    @property
+    def flashback_cooldown(self) -> int:
+        """Frames remaining before another flashback can trigger (0 = ready)."""
+        return self._flashback_cooldown
+
     def is_active(self) -> bool:
         return self._strength > 0.025
+
+    def start_flashback(self) -> None:
+        """Force-trigger a flashback at full duration. Public hook for tests/cheats."""
+        self._flashback_timer = self.FLASHBACK_DURATION
 
     def dispose(self) -> None:
         self._static_filter = None
         self._flicker_overlay = None
         self._band_buf = None
         self._noise_tex = None
+
+    @property
+    def static_filter(self) -> pygame.Surface | None:
+        # Test-only accessor: returns the cached static filter surface (or None).
+        return self._static_filter
+
+    @property
+    def band_buffer(self) -> pygame.Surface | None:
+        # Test-only accessor: returns the cached band displacement buffer (or None).
+        return self._band_buf
 
     def update(self, enemy_pressure: int = 0, enabled: bool = True) -> None:
         if not enabled:
@@ -118,10 +142,10 @@ class HauntingRenderer:
             return
         width, height = surface.get_size()
 
-        sf = self._get_static_filter(width, height)
+        sf = self.get_static_filter(width, height)
         surface.blit(sf, (0, 0))
 
-        noise = self._get_noise_tex(width, height)
+        noise = self.get_noise_tex(width, height)
         ox = self._rng.randint(-3, 3)
         oy = self._rng.randint(-2, 2)
         surface.blit(noise, (ox, oy))
@@ -161,7 +185,7 @@ class HauntingRenderer:
         if self._rng.random() < self.TRIGGER_CHANCE_PER_PRESSURE * self._enemy_pressure:
             self._flashback_timer = self.FLASHBACK_DURATION
 
-    def _get_static_filter(self, width: int, height: int) -> pygame.Surface:
+    def get_static_filter(self, width: int, height: int) -> pygame.Surface:
         if self._static_filter is not None and self._static_filter.get_size() == (width, height):
             return self._static_filter
 
@@ -180,7 +204,7 @@ class HauntingRenderer:
         self._static_filter = sf
         return sf
 
-    def _get_noise_tex(self, width: int, height: int) -> pygame.Surface:
+    def get_noise_tex(self, width: int, height: int) -> pygame.Surface:
         if self._noise_tex is not None and self._noise_tex.get_size() == (width, height):
             return self._noise_tex
 

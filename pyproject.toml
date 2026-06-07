@@ -65,3 +65,12 @@ ignore_missing_imports = true
 "airwar/core_bindings.py" = ["F401"]
 "airwar/game/systems/difficulty_strategies.py" = ["B024"]
 "airwar/utils/sprites.py" = ["F401"]
+
+# -----------------------------------------------------------------------------
+# Mutation testing (mutmut 2.x)
+# -----------------------------------------------------------------------------
+[tool.mutmut]
+backup_dir = ".mutmut-cache"
+runner = "python -m pytest -x -q"
+tests_dir = "airwar/tests"
+paths_to_mutate = "airwar"

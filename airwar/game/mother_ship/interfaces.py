@@ -51,7 +51,12 @@ class IEventBus(ABC):
     """Interface for mothership event publish/subscribe."""
 
     @abstractmethod
-    def subscribe(self, event: str, callback: Callable) -> None:
+    def subscribe(self, event: str, callback: Callable) -> bool:
+        """Subscribe to ``event``.
+
+        Returns ``True`` on success, ``False`` if the per-event subscriber
+        cap has been reached.
+        """
         pass
 
     @abstractmethod

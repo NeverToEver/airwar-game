@@ -39,24 +39,69 @@ class EventBus(IEventBus):
 
     Decouples mothership components by providing typed event channels
     for docking progress, state changes, and save completion.
+
+    Per-event subscriber lists are bounded by ``MAX_SUBSCRIBERS`` to prevent
+    unbounded memory growth in long sessions. When the cap is reached, new
+    subscriptions are refused and a warning is logged; callers must invoke
+    ``unsubscribe()`` before resubscribing.
     """
+
+    # Per-event subscriber cap. Legitimate runtime wiring subscribes at most
+    # a handful of callbacks per channel (GameIntegrator alone uses ~14
+    # channels, with at most one callback each). 1000 leaves several orders of
+    # magnitude of headroom while still catching a runaway subscription leak
+    # in long sessions before it can grow the dict without bound.
+    MAX_SUBSCRIBERS: int = 1000
 
     def __init__(self):
         self._subscribers: dict[str, list[Callable]] = {}
         self._failure_counts: dict[tuple[str, int], int] = {}
         self._max_callback_failures: int | None = 3
 
-    def subscribe(self, event: str, callback: Callable) -> None:
+    def subscribe(self, event: str, callback: Callable) -> bool:
+        """Subscribe ``callback`` to ``event``.
+
+        Returns ``True`` on success, ``False`` if the per-event subscriber
+        cap has been reached (the subscription is NOT added in that case
+        and a warning is logged).
+        """
         if event not in self._subscribers:
             self._subscribers[event] = []
-        if callback not in self._subscribers[event]:
-            self._subscribers[event].append(callback)
+        if callback in self._subscribers[event]:
+            # Idempotent re-subscription: keep the existing slot, treat as
+            # success so callers do not need to special-case duplicates.
+            self._failure_counts.pop(self._failure_key(event, callback), None)
+            return True
+        if len(self._subscribers[event]) >= self.MAX_SUBSCRIBERS:
+            # Refuse rather than evict: evicting an arbitrary subscriber
+            # would silently drop a callback the original owner still
+            # relies on, and there is no fair-eviction policy that does
+            # not require cooperation from the subscriber. A loud refusal
+            # forces the offending caller to be fixed.
+            logger.warning(
+                "Refusing subscription to %r: per-event cap of %d reached "
+                "(existing subscribers: %d). Caller must unsubscribe before retrying.",
+                event,
+                self.MAX_SUBSCRIBERS,
+                len(self._subscribers[event]),
+            )
+            return False
+        self._subscribers[event].append(callback)
         self._failure_counts.pop(self._failure_key(event, callback), None)
+        return True
 
     def unsubscribe(self, event: str, callback: Callable) -> None:
         if event in self._subscribers:
             self._subscribers[event] = [cb for cb in self._subscribers[event] if cb != callback]
         self._failure_counts.pop(self._failure_key(event, callback), None)
+
+    def subscriber_count(self, event: str) -> int:
+        """Return the number of currently subscribed callbacks for ``event``.
+
+        Exposed primarily for diagnostics and tests; production code paths
+        iterate ``_subscribers`` directly.
+        """
+        return len(self._subscribers.get(event, ()))
 
     def publish(self, event: str, **kwargs) -> None:
         if event in self._subscribers:
