@@ -1,10 +1,41 @@
-"""Collision detection between entities using spatial hashing."""
+"""Collision detection between entities using spatial hashing.
+
+Phase 4 god-class split: this module is now a slim coordinator that owns
+one instance per collision strategy (see :mod:`airwar.game.managers.collisions`)
+and delegates the heavy lifting to them. The public API and all
+attributes are preserved verbatim — only the implementation is split.
+
+The 33-method god class was split into 4 strategy components per
+``docs/logic-clarity/08-deep-godclass-split-plan.md`` § 2.5:
+
+* :class:`~airwar.game.managers.collisions.BulletVsEntitiesStrategy`
+  -- player bullets vs enemies + boss.
+* :class:`~airwar.game.managers.collisions.EnemyBulletVsPlayerStrategy`
+  -- enemy bullets vs player.
+* :class:`~airwar.game.managers.collisions.BossVsPlayerStrategy`
+  -- boss body vs player body.
+* :class:`~airwar.game.managers.collisions.CollisionEventDispatcher`
+  -- ``CollisionEvent`` + per-frame player-hit handler factory.
+
+The Python spatial-hash helpers (``_add_to_grid``, ``_get_potential_collisions``,
+``_get_potential_explosion_targets``, ``_get_potential_boss_bullets``,
+``_get_entities_in_cells``) stay on the controller because both the
+strategies and the test suite need them.
+"""
+from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from ..constants import GAME_CONSTANTS
+from .collisions import (
+    BossVsPlayerStrategy,
+    BulletVsEntitiesStrategy,
+    CollisionEvent,
+    CollisionEventDispatcher,
+    EnemyBulletVsPlayerStrategy,
+)
 
 if TYPE_CHECKING:
     from airwar.entities.bullet import Bullet
@@ -26,17 +57,6 @@ class CollisionResult:
     score_gained: int = 0
     boss_damaged: bool = False
     boss_killed: bool = False
-
-
-@dataclass
-class CollisionEvent:
-    """Collision event dataclass — callback registration for collision handling."""
-
-    type: str
-    source: Any = None
-    target: Any = None
-    damage: int = 0
-    score: int = 0
 
 
 @dataclass(frozen=True)
@@ -81,6 +101,33 @@ class CollisionController:
         self._enemy_bullet_data: list[tuple] = []
         self._enemy_bullet_map: dict = {}
         self._player_entity_data: list[tuple] = []
+
+        # Phase 4 split: 4 strategy components, each owns one collision kind.
+        self._bullet_vs_entities = BulletVsEntitiesStrategy(
+            grid_cell_size=self._grid_cell_size,
+            bullet_data=self._bullet_data,
+            bullet_map=self._bullet_map,
+            enemy_data=self._enemy_data,
+            enemy_map=self._enemy_map,
+            get_potential_collisions=self._get_potential_collisions,
+            get_potential_explosion_targets=self._get_potential_explosion_targets,
+            get_potential_boss_bullets=self._get_potential_boss_bullets,
+            get_explosion_callback=lambda: self._explosion_callback,
+            uses_rust_batch_collision=self._uses_rust_batch_collision,
+            bullet_has_hit_enemy=self._bullet_has_hit_enemy,
+            record_bullet_enemy_hit=self._record_bullet_enemy_hit,
+            is_python_grid_populated=lambda: bool(self._grid_cells),
+        )
+        self._enemy_bullet_vs_player = EnemyBulletVsPlayerStrategy(
+            grid_cell_size=self._grid_cell_size,
+            enemy_bullet_data=self._enemy_bullet_data,
+            enemy_bullet_map=self._enemy_bullet_map,
+            player_entity_data=self._player_entity_data,
+            get_use_rust=lambda: bool(self._use_rust),
+        )
+        self._boss_vs_player = BossVsPlayerStrategy()
+
+    # ---- Spatial-hash helpers (shared with Python fallback in strategies) ----
 
     def _clear_grid(self) -> None:
         """Clear the spatial hash grid."""
@@ -127,15 +174,15 @@ class CollisionController:
         """Get entities that might collide with the given rect."""
         return self._get_entities_in_cells(self._grid_cells, rect)
 
-    def _get_potential_explosion_targets(self, x: float, y: float, radius: float, enemies: list["Enemy"]) -> list:
+    def _get_potential_explosion_targets(self, x: float, y: float, radius: float, enemies: list[Enemy]) -> list:
         if not self._enemy_grid_cells:
             return [enemy for enemy in enemies if enemy.active]
         rect = self._make_query_rect(x, y, radius)
         return self._get_entities_in_cells(self._enemy_grid_cells, rect)
 
     def _get_potential_boss_bullets(
-        self, player_bullets: list["Bullet"], boss_hitbox, active_count: int
-    ) -> list["Bullet"]:
+        self, player_bullets: list[Bullet], boss_hitbox, active_count: int
+    ) -> list[Bullet]:
         if active_count < 32:
             return [bullet for bullet in player_bullets if bullet.active]
 
@@ -174,6 +221,26 @@ class CollisionController:
             bottom=center_y + radius,
         )
 
+    # ---- Bullet-per-enemy hit helpers (shared with strategies) ----
+
+    def _get_enemy_collision_id(self, enemy: Enemy) -> int:
+        return id(enemy)
+
+    def _bullet_has_hit_enemy(self, bullet: Bullet, enemy: Enemy) -> bool:
+        enemy_id = self._get_enemy_collision_id(enemy)
+        has_hit_enemy = getattr(bullet, "has_hit_enemy", None)
+        return bool(has_hit_enemy and has_hit_enemy(enemy_id))
+
+    def _record_bullet_enemy_hit(self, bullet: Bullet, enemy: Enemy) -> None:
+        add_hit_enemy = getattr(bullet, "add_hit_enemy", None)
+        if add_hit_enemy:
+            add_hit_enemy(self._get_enemy_collision_id(enemy))
+
+    def _uses_rust_batch_collision(self) -> bool:
+        return bool(self._use_rust and batch_collide_bullets_vs_entities is not None)
+
+    # ---- Public API (Phase 4: 1-line forwarders to strategies) ----
+
     @property
     def events(self) -> list[CollisionEvent]:
         """Return a copy of the collision events recorded during the last check.
@@ -202,10 +269,10 @@ class CollisionController:
 
     def check_all_collisions(
         self,
-        player: "Player",
-        enemies: list["Enemy"],
-        boss: Optional["Boss"],
-        enemy_bullets: list["Bullet"],
+        player: Player,
+        enemies: list[Enemy],
+        boss: Boss | None,
+        enemy_bullets: list[Bullet],
         reward_system: Any,
         explosive_level: int = 0,
         piercing_level: int = 0,
@@ -214,7 +281,7 @@ class CollisionController:
         on_enemy_killed: Callable[[int], None] | None = None,
         on_boss_killed: Callable[[int], None] | None = None,
         on_boss_hit: Callable[[int], None] | None = None,
-        on_player_hit: Callable[[int, "Player"], None] | None = None,
+        on_player_hit: Callable[[int, Player], None] | None = None,
         on_lifesteal: Callable | None = None,
         on_clear_bullets: Callable | None = None,
     ) -> None:
@@ -246,7 +313,7 @@ class CollisionController:
         if player is None:
             return
         self._events.clear()
-        player_hit_handler = self._make_player_hit_handler(
+        player_hit_handler = CollisionEventDispatcher.make_player_hit_handler(
             player,
             on_player_hit,
             on_clear_bullets,
@@ -311,54 +378,15 @@ class CollisionController:
             ):
                 self._events.append(CollisionEvent(type="player_hit"))
 
-    def _make_player_hit_handler(
-        self,
-        player: "Player",
-        on_player_hit: Callable[[int, "Player"], None] | None = None,
-        on_clear_bullets: Callable | None = None,
-    ) -> Callable[[int, "Player"], None]:
-        def handle_player_hit(damage: int, target=None) -> None:
-            hit_target = target or player
-            if on_player_hit:
-                on_player_hit(damage, hit_target)
-            if on_clear_bullets:
-                on_clear_bullets()
-
-        return handle_player_hit
-
     def check_player_bullets_vs_enemies(
         self,
-        player_bullets: list["Bullet"],
-        enemies: list["Enemy"],
+        player_bullets: list[Bullet],
+        enemies: list[Enemy],
         score_multiplier: float,
         explosive_level: int,
         piercing_level: int = 0,
     ) -> tuple[int, int]:
-        """Resolve collisions between player bullets and enemy entities.
-
-        Dispatches to Rust batch collision when available, otherwise falls
-        back to a Python spatial-hash scan. Applies damage, triggers AoE
-        explosions for explosive bullets, and respects piercing level.
-
-        Args:
-            player_bullets: Bullets fired by the player.
-            enemies: Active enemy entities to test against.
-            score_multiplier: Multiplier applied to kill scores.
-            explosive_level: Talent level for AoE explosions.
-            piercing_level: Talent level for bullet piercing.
-
-        Returns:
-            tuple[int, int]: (total_score_gained, enemies_killed_count).
-        """
-        if self._uses_rust_batch_collision():
-            return self._check_player_bullets_vs_enemies_rust(
-                player_bullets,
-                enemies,
-                score_multiplier,
-                explosive_level,
-                piercing_level,
-            )
-        return self._check_player_bullets_vs_enemies_python(
+        return self._bullet_vs_entities.check_player_bullets_vs_enemies(
             player_bullets,
             enemies,
             score_multiplier,
@@ -366,235 +394,15 @@ class CollisionController:
             piercing_level,
         )
 
-    def _get_enemy_collision_id(self, enemy: "Enemy") -> int:
-        return id(enemy)
-
-    def _bullet_has_hit_enemy(self, bullet: "Bullet", enemy: "Enemy") -> bool:
-        enemy_id = self._get_enemy_collision_id(enemy)
-        has_hit_enemy = getattr(bullet, "has_hit_enemy", None)
-        return bool(has_hit_enemy and has_hit_enemy(enemy_id))
-
-    def _record_bullet_enemy_hit(self, bullet: "Bullet", enemy: "Enemy") -> None:
-        add_hit_enemy = getattr(bullet, "add_hit_enemy", None)
-        if add_hit_enemy:
-            add_hit_enemy(self._get_enemy_collision_id(enemy))
-
-    def _check_player_bullets_vs_enemies_rust(
-        self,
-        player_bullets: list["Bullet"],
-        enemies: list["Enemy"],
-        score_multiplier: float,
-        explosive_level: int,
-        piercing_level: int,
-    ) -> tuple[int, int]:
-        score_gained = 0
-        enemies_killed = 0
-
-        bullet_data, bullet_map = self._build_bullet_collision_data(player_bullets)
-        enemy_data, enemy_map = self._build_enemy_collision_data(enemies)
-        if not bullet_data or not enemy_data:
-            return score_gained, enemies_killed
-
-        hits = batch_collide_bullets_vs_entities(bullet_data, enemy_data, self._grid_cell_size)
-
-        for bid, eid in hits:
-            bullet = bullet_map.get(bid)
-            enemy = enemy_map.get(eid)
-            if bullet is None or enemy is None or not bullet.active or not enemy.active:
-                continue
-            if piercing_level > 0 and self._bullet_has_hit_enemy(bullet, enemy):
-                continue
-            killed, score = self._apply_player_bullet_hit(
-                bullet,
-                enemy,
-                enemies,
-                score_multiplier,
-                explosive_level,
-                piercing_level,
-            )
-            enemies_killed += killed
-            score_gained += score
-
-        return score_gained, enemies_killed
-
-    def _build_bullet_collision_data(self, player_bullets: list["Bullet"]) -> tuple[list[tuple], dict]:
-        bullet_data = self._bullet_data
-        bullet_map = self._bullet_map
-        bullet_data.clear()
-        bullet_map.clear()
-        for i, bullet in enumerate(player_bullets):
-            if bullet.active:
-                r = bullet.rect
-                bullet_data.append((i, float(r.left), float(r.top), float(r.width), float(r.height)))
-                bullet_map[i] = bullet
-        return bullet_data, bullet_map
-
-    def _build_enemy_collision_data(self, enemies: list["Enemy"]) -> tuple[list[tuple], dict]:
-        enemy_data = self._enemy_data
-        enemy_map = self._enemy_map
-        enemy_data.clear()
-        enemy_map.clear()
-        for i, enemy in enumerate(enemies):
-            if enemy.active:
-                eid = -i - 1
-                hb = enemy.get_hitbox()
-                enemy_data.append((eid, float(hb.left), float(hb.top), float(hb.width), float(hb.height)))
-                enemy_map[eid] = enemy
-        return enemy_data, enemy_map
-
-    def _check_player_bullets_vs_enemies_python(
-        self,
-        player_bullets: list["Bullet"],
-        enemies: list["Enemy"],
-        score_multiplier: float,
-        explosive_level: int,
-        piercing_level: int,
-    ) -> tuple[int, int]:
-        score_gained = 0
-        enemies_killed = 0
-
-        use_spatial_hash = bool(self._grid_cells)
-
-        for bullet in player_bullets:
-            if not bullet.active:
-                continue
-
-            bullet_rect = bullet.rect
-
-            if use_spatial_hash:
-                potential_enemies = self._get_potential_collisions(bullet_rect)
-            else:
-                potential_enemies = [e for e in enemies if e.active]
-
-            for enemy in potential_enemies:
-                if not enemy.active:
-                    continue
-
-                if bullet_rect.colliderect(enemy.get_hitbox()):
-                    if piercing_level > 0 and self._bullet_has_hit_enemy(bullet, enemy):
-                        continue
-                    killed, score = self._apply_player_bullet_hit(
-                        bullet,
-                        enemy,
-                        enemies,
-                        score_multiplier,
-                        explosive_level,
-                        piercing_level,
-                    )
-                    enemies_killed += killed
-                    score_gained += score
-                    break
-
-        return score_gained, enemies_killed
-
-    def _apply_player_bullet_hit(
-        self,
-        bullet: "Bullet",
-        enemy: "Enemy",
-        enemies: list["Enemy"],
-        score_multiplier: float,
-        explosive_level: int,
-        piercing_level: int,
-    ) -> tuple[int, int]:
-        enemy.take_damage(bullet.data.damage)
-        if bullet.data.owner == "player" and piercing_level > 0:
-            self._record_bullet_enemy_hit(bullet, enemy)
-
-        if explosive_level > 0:
-            self._handle_explosive_damage(bullet, enemies, explosive_level)
-
-        enemies_killed = 0
-        score_gained = 0
-        if not enemy.active:
-            enemies_killed = 1
-            score_gained = self._scaled_score(enemy.data.score, score_multiplier)
-
-        if bullet.data.owner == "player" and piercing_level <= 0:
-            bullet.active = False
-
-        return enemies_killed, score_gained
-
-    def _uses_rust_batch_collision(self) -> bool:
-        return bool(self._use_rust and batch_collide_bullets_vs_entities is not None)
-
-    @staticmethod
-    def _scaled_score(base_score: int, multiplier: float) -> int:
-        return round(base_score * multiplier)
-
-    def _handle_explosive_damage(self, bullet: "Bullet", enemies: list["Enemy"], explosive_level: int) -> None:
-        bullet_x = bullet.rect.centerx
-        bullet_y = bullet.rect.centery
-        explosion_radius_sq = (GAME_CONSTANTS.BALANCE.EXPLOSION_RADIUS * explosive_level) ** 2
-        explosion_radius = GAME_CONSTANTS.BALANCE.EXPLOSION_RADIUS * explosive_level
-
-        explosion_triggered = False
-
-        for enemy in self._get_potential_explosion_targets(bullet_x, bullet_y, explosion_radius, enemies):
-            if enemy.active:
-                dx = bullet_x - enemy.rect.centerx
-                dy = bullet_y - enemy.rect.centery
-                distance_sq = dx * dx + dy * dy
-
-                if distance_sq <= explosion_radius_sq:
-                    explosion_damage = GAME_CONSTANTS.DAMAGE.EXPLOSIVE_DAMAGE * explosive_level
-                    enemy.take_damage(explosion_damage)
-
-                    if not explosion_triggered and self._explosion_callback:
-                        self._explosion_callback(bullet_x, bullet_y, explosion_radius)
-                        explosion_triggered = True
-
     def check_player_bullets_vs_boss(
-        self, player_bullets: list["Bullet"], boss: "Boss", piercing_level: int
+        self, player_bullets: list[Bullet], boss: Boss, piercing_level: int
     ) -> tuple[int, bool]:
-        """Resolve collisions between player bullets and the active boss.
-
-        Applies bullet damage to the boss until a killing blow is dealt
-        (in which case remaining bullets are skipped to avoid hitting a
-        corpse). For non-piercing bullets, hit bullets are deactivated.
-
-        Args:
-            player_bullets: Bullets fired by the player.
-            boss: Active boss entity to test against.
-            piercing_level: Talent level for bullet piercing.
-
-        Returns:
-            tuple[int, bool]: (score_gained, boss_killed_flag).
-        """
-        if not boss or not boss.active:
-            return 0, False
-
-        score_gained = 0
-        boss_killed = False
-
-        boss_hitbox = boss.get_hitbox()
-        active_count = 0
-        found_hit = False
-        for bullet in player_bullets:
-            if not bullet.active:
-                continue
-            active_count += 1
-            if bullet.get_rect().colliderect(boss_hitbox):
-                found_hit = True
-                break
-            if active_count >= 32:
-                break
-        if active_count < 32 and not found_hit:
-            return 0, False
-
-        for bullet in self._get_potential_boss_bullets(player_bullets, boss_hitbox, active_count):
-            if bullet.active and bullet.get_rect().colliderect(boss_hitbox):
-                score_reward = boss.take_damage(bullet.data.damage)
-                if score_reward > 0:
-                    score_gained += score_reward
-                    boss_killed = True
-                    break  # Boss killed -- stop iterating, remaining bullets would hit a corpse
-                if piercing_level <= 0:
-                    bullet.active = False
-
-        return score_gained, boss_killed
+        return self._bullet_vs_entities.check_player_bullets_vs_boss(
+            player_bullets, boss, piercing_level
+        )
 
     def check_player_vs_enemies(
-        self, player_hitbox, enemies: list["Enemy"], try_dodge_func: Callable, on_player_hit_func: Callable
+        self, player_hitbox, enemies: list[Enemy], try_dodge_func: Callable, on_player_hit_func: Callable
     ) -> bool:
         """Test whether the player's hitbox collides with any active enemy.
 
@@ -615,90 +423,15 @@ class CollisionController:
         return False
 
     def check_enemy_bullets_vs_player(
-        self, enemy_bullets: list["Bullet"], player, calculate_damage_func: Callable, on_player_hit_func: Callable
+        self, enemy_bullets: list[Bullet], player, calculate_damage_func: Callable, on_player_hit_func: Callable
     ) -> bool:
-        """Test enemy bullets against the player and apply damage on hit.
-
-        Uses the Rust spatial hash when available; otherwise performs a
-        linear scan. Deactivates the first hit bullet so it cannot
-        damage the player again on the next frame.
-
-        Args:
-            enemy_bullets: Active enemy bullets to test.
-            player: Player entity whose hitbox participates.
-            calculate_damage_func: Callable converting raw damage to final.
-            on_player_hit_func: Callable invoked with final damage and player.
-
-        Returns:
-            bool: True if at least one bullet hit the player.
-        """
-        player_hitbox = player.get_hitbox()
-
-        if self._use_rust and enemy_bullets:
-            # Use Rust spatial hash: build bullet data + single player entity
-            eb_data = self._enemy_bullet_data
-            eb_map = self._enemy_bullet_map
-            eb_data.clear()
-            eb_map.clear()
-            for i, eb in enumerate(enemy_bullets):
-                if eb.active and not getattr(eb, "held", False):
-                    r = eb.rect
-                    eb_data.append((i, float(r.left), float(r.top), float(r.width), float(r.height)))
-                    eb_map[i] = eb
-
-            if eb_data:
-                self._player_entity_data.clear()
-                self._player_entity_data.append(
-                    (
-                        -1,
-                        float(player_hitbox.left),
-                        float(player_hitbox.top),
-                        float(player_hitbox.width),
-                        float(player_hitbox.height),
-                    )
-                )
-                hits = batch_collide_bullets_vs_entities(eb_data, self._player_entity_data, self._grid_cell_size)
-                if hits:
-                    bullet_id = hits[0][0]
-                    eb = eb_map[bullet_id]
-                    damage = calculate_damage_func(eb.data.damage)
-                    on_player_hit_func(damage, player)
-                    eb.active = False
-                    return True
-            return False
-
-        # Python fallback: linear scan
-        for eb in enemy_bullets:
-            if eb.active and not getattr(eb, "held", False) and eb.rect.colliderect(player_hitbox):
-                damage = calculate_damage_func(eb.data.damage)
-                on_player_hit_func(damage, player)
-                eb.active = False  # Deactivate bullet so it doesn't re-hit next frame
-                return True
-
-        return False
+        return self._enemy_bullet_vs_player.check_enemy_bullets_vs_player(
+            enemy_bullets, player, calculate_damage_func, on_player_hit_func
+        )
 
     def check_boss_vs_player(
-        self, boss: "Boss", player, calculate_damage_func: Callable, on_player_hit_func: Callable
+        self, boss: Boss, player, calculate_damage_func: Callable, on_player_hit_func: Callable
     ) -> bool:
-        """Test whether the boss body collides with the player.
-
-        Skips the check while the boss is in its entering animation to
-        avoid applying damage before it has settled into the playfield.
-
-        Args:
-            boss: Active boss entity to test against.
-            player: Player entity whose hitbox participates.
-            calculate_damage_func: Callable converting raw damage to final.
-            on_player_hit_func: Callable invoked with final damage and player.
-
-        Returns:
-            bool: True if the boss hitbox overlaps the player hitbox.
-        """
-        if boss and boss.active and not boss.is_entering:
-            player_hitbox = player.get_hitbox()
-            if boss.get_hitbox().colliderect(player_hitbox):
-                damage = calculate_damage_func(GAME_CONSTANTS.DAMAGE.BOSS_COLLISION_DAMAGE)
-                on_player_hit_func(damage, player)
-                return True
-
-        return False
+        return self._boss_vs_player.check_boss_vs_player(
+            boss, player, calculate_damage_func, on_player_hit_func
+        )

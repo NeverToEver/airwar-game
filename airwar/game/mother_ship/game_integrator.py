@@ -1,7 +1,14 @@
-"""Game integrator — bridges mothership state with game systems."""
+"""Game integrator — bridges mothership state with game systems.
+
+F08 god-class split: animation state machines live in
+``mothership_animations.py`` and gatling turret logic in
+``mothership_gatling.py``. This class keeps the state bridge, save/load,
+status data, ammo magazine, warning trigger, and the public API as
+1-line forwarders to the extracted components.
+"""
 
 import math
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING
 
 import pygame
 
@@ -13,13 +20,27 @@ from airwar.game.constants import GAME_CONSTANTS
 from ..rendering.entity_renderer import EntityRenderer
 from ..systems.lock_manager import LockLayer, LockRequest
 from .event_bus import (
-    EVENT_DOCKING_ANIMATION_COMPLETE,
-    EVENT_ENTERING_COMPLETE,
     EVENT_STATE_CHANGED,
     EVENT_UNDOCK_REQUESTED,
-    EVENT_UNDOCKING_ANIMATION_COMPLETE,
 )
 from .mother_ship_state import GameSaveData, MotherShipState
+from .mothership_animations import MothershipAnimations
+from .mothership_gatling import (
+    MOTHERSHIP_GATLING_BARREL_X_OFFSETS,
+    MOTHERSHIP_GATLING_BULLET_SPEED,
+    MOTHERSHIP_GATLING_BULLET_TYPE,
+    MOTHERSHIP_GATLING_DAMAGE,
+    MOTHERSHIP_GATLING_FIRE_RATE,
+    MOTHERSHIP_GATLING_MUZZLE_Y_OFFSET,
+    MOTHERSHIP_GATLING_OVERLAP_DEGREES,
+    MOTHERSHIP_GATLING_RIGHT_SWEEP_PERIOD,
+    MOTHERSHIP_GATLING_SWEEP_ARC_DEGREES,
+    MOTHERSHIP_GATLING_SWEEP_PERIOD,
+    MOTHERSHIP_GATLING_TOTAL_SWEEP_DEGREES,
+    MOTHERSHIP_GATLING_TURRETS,
+    GatlingTurretSpec,
+    MothershipGatling,
+)
 from .progress_bar_ui import ProgressBarUI
 
 if TYPE_CHECKING:
@@ -30,15 +51,11 @@ if TYPE_CHECKING:
     from .state_machine import MotherShipStateMachine
 
 
-class GatlingTurretSpec(NamedTuple):
-    """Specification for a mothership gatling turret."""
-
-    name: str
-    offset_x: float
-    angle_min: float
-    angle_max: float
-    period: int
-    phase_offset: int
+# ── F08 god-class split: re-export public gatling spec / constants ────────
+# External callers (including tests) reference these as
+# ``GameIntegrator.MOTHERSHIP_GATLING_*``. Re-exporting them here keeps
+# the public surface stable after the extraction.
+__all__ = ["GameIntegrator", "GatlingTurretSpec"]
 
 
 class GameIntegrator:
@@ -46,33 +63,37 @@ class GameIntegrator:
 
     Coordinates between game state and mothership docking flow,
     updating entity states and UI during the docking process.
+
+    F08 split:
+    - Animation state machines live in :class:`MothershipAnimations`.
+    - Gatling turret logic lives in :class:`MothershipGatling`.
+    This class keeps the orchestration, save/load, and the public API
+    (1-line forwarders for animation and gatling methods).
     """
 
+    # Bullet / explosion damage constants (unchanged)
     MOTHERSHIP_BULLET_DAMAGE = 250
     MOTHERSHIP_FIRE_RATE = 18  # ~3.3 shots/sec at 60fps — heavy missile cadence
     MOTHERSHIP_BULLET_SPEED = 10
     MOTHERSHIP_TARGET_COUNT = 5  # fire at up to 5 closest enemies per volley
     MOTHERSHIP_EXPLOSION_RADIUS = 80
     MOTHERSHIP_EXPLOSION_DAMAGE = 60
-    MOTHERSHIP_GATLING_DAMAGE = 24
-    MOTHERSHIP_GATLING_FIRE_RATE = 3
-    MOTHERSHIP_GATLING_BULLET_SPEED = 18
-    MOTHERSHIP_GATLING_TOTAL_SWEEP_DEGREES = 120
-    MOTHERSHIP_GATLING_SWEEP_ARC_DEGREES = 80
-    MOTHERSHIP_GATLING_OVERLAP_DEGREES = 40
-    MOTHERSHIP_GATLING_SWEEP_PERIOD = 96
-    MOTHERSHIP_GATLING_RIGHT_SWEEP_PERIOD = 108
-    MOTHERSHIP_GATLING_BARREL_X_OFFSETS = (-56, 56)
-    MOTHERSHIP_GATLING_TURRETS = (
-        GatlingTurretSpec(
-            "left", MOTHERSHIP_GATLING_BARREL_X_OFFSETS[0], -60.0, 20.0, MOTHERSHIP_GATLING_SWEEP_PERIOD, 0
-        ),
-        GatlingTurretSpec(
-            "right", MOTHERSHIP_GATLING_BARREL_X_OFFSETS[1], -20.0, 60.0, MOTHERSHIP_GATLING_RIGHT_SWEEP_PERIOD, 21
-        ),
-    )
-    MOTHERSHIP_GATLING_MUZZLE_Y_OFFSET = -64
-    MOTHERSHIP_GATLING_BULLET_TYPE = "mothership_gatling"
+
+    # Gatling constants re-exported from mothership_gatling so the
+    # ``integrator.MOTHERSHIP_GATLING_*`` test access pattern keeps working.
+    MOTHERSHIP_GATLING_DAMAGE = MOTHERSHIP_GATLING_DAMAGE
+    MOTHERSHIP_GATLING_FIRE_RATE = MOTHERSHIP_GATLING_FIRE_RATE
+    MOTHERSHIP_GATLING_BULLET_SPEED = MOTHERSHIP_GATLING_BULLET_SPEED
+    MOTHERSHIP_GATLING_TOTAL_SWEEP_DEGREES = MOTHERSHIP_GATLING_TOTAL_SWEEP_DEGREES
+    MOTHERSHIP_GATLING_SWEEP_ARC_DEGREES = MOTHERSHIP_GATLING_SWEEP_ARC_DEGREES
+    MOTHERSHIP_GATLING_OVERLAP_DEGREES = MOTHERSHIP_GATLING_OVERLAP_DEGREES
+    MOTHERSHIP_GATLING_SWEEP_PERIOD = MOTHERSHIP_GATLING_SWEEP_PERIOD
+    MOTHERSHIP_GATLING_RIGHT_SWEEP_PERIOD = MOTHERSHIP_GATLING_RIGHT_SWEEP_PERIOD
+    MOTHERSHIP_GATLING_BARREL_X_OFFSETS = MOTHERSHIP_GATLING_BARREL_X_OFFSETS
+    MOTHERSHIP_GATLING_TURRETS = MOTHERSHIP_GATLING_TURRETS
+    MOTHERSHIP_GATLING_MUZZLE_Y_OFFSET = MOTHERSHIP_GATLING_MUZZLE_Y_OFFSET
+    MOTHERSHIP_GATLING_BULLET_TYPE = MOTHERSHIP_GATLING_BULLET_TYPE
+
     MOTHERSHIP_BULLET_DESPAWN_MARGIN = 80
     AMMO_CELL_COUNT = 10.0
     # F04 M2: link to GAME_CONSTANTS (was bare 1200)
@@ -99,29 +120,22 @@ class GameIntegrator:
         self._progress_bar_ui = progress_bar_ui
         self._mother_ship = mother_ship
 
-        self._entering_animation_active = False
-        self._entering_animation_frame = 0
-        self._entering_duration = 75  # ~1.25s fly-in
-        self._entering_start_y: float = 0.0
-        self._entering_target_y: float = 0.0
-        self._entering_target_x: float = 0.0
+        # ── F08: extracted components (must come before attribute init) ──
+        # The animation / gatling properties below forward to these, so
+        # the components must exist before any property write happens.
+        self._animations = MothershipAnimations(self)
+        self._gatling = MothershipGatling(self)
 
-        self._docking_animation_active = False
-        self._docking_animation_start = None
-        self._docking_animation_target = None
-        self._docking_animation_duration = 90
-        self._docking_animation_frame = 0
-        self._docking_start_position = None
+        # Animation state aliases (forwarded via properties to _animations).
+        # These lines exist so legacy callers that read these attributes
+        # via ``self`` (rare — the integrator itself never sets them
+        # after init) keep a sane default.
+        self._entering_duration = self._animations.ENTERING_DURATION
+        self._docking_animation_duration = self._animations.DOCKING_DURATION
+        self._undocking_animation_duration = self._animations.UNDOCKING_EJECT_DURATION
+        self._undocking_eject_duration = self._animations.UNDOCKING_EJECT_DURATION
+        self._undocking_flyaway_duration = self._animations.UNDOCKING_FLYAWAY_DURATION
 
-        self._undocking_animation_active = False
-        self._undocking_animation_start = None
-        self._undocking_animation_target = None
-        self._undocking_animation_frame = 0
-        self._undocking_start_position = None
-        self._undocking_eject_target = None
-        self._undocking_phase = 1
-        self._undocking_eject_duration = 30
-        self._undocking_flyaway_duration = 90
         self._undocking_cooldown_multiplier = 1.0
 
         self._game_scene = None
@@ -130,9 +144,197 @@ class GameIntegrator:
         self._mothership_bullets: list[Bullet] = []
         self._entity_renderer = EntityRenderer()
         self._mothership_fire_timer = 0
-        self._mothership_gatling_timer = 0
-        self._mothership_gatling_sweep_frame = 0
         self._score_reduction_factor = 1.0 / 3.0
+
+    # ── F08: animation state forwarders (preserved attribute names) ───────
+    # These properties route reads/writes through ``self._animations`` so
+    # the legacy ``integrator._entering_animation_active`` (etc.) names
+    # keep working for tests and external callers.
+
+    @property
+    def _entering_animation_active(self) -> bool:
+        return self._animations._entering_animation_active
+
+    @_entering_animation_active.setter
+    def _entering_animation_active(self, value: bool) -> None:
+        self._animations._entering_animation_active = value
+
+    @property
+    def _entering_animation_frame(self) -> int:
+        return self._animations._entering_animation_frame
+
+    @_entering_animation_frame.setter
+    def _entering_animation_frame(self, value: int) -> None:
+        self._animations._entering_animation_frame = value
+
+    @property
+    def _entering_start_y(self) -> float:
+        return self._animations._entering_start_y
+
+    @_entering_start_y.setter
+    def _entering_start_y(self, value: float) -> None:
+        self._animations._entering_start_y = value
+
+    @property
+    def _entering_target_y(self) -> float:
+        return self._animations._entering_target_y
+
+    @_entering_target_y.setter
+    def _entering_target_y(self, value: float) -> None:
+        self._animations._entering_target_y = value
+
+    @property
+    def _entering_target_x(self) -> float:
+        return self._animations._entering_target_x
+
+    @_entering_target_x.setter
+    def _entering_target_x(self, value: float) -> None:
+        self._animations._entering_target_x = value
+
+    @property
+    def _docking_animation_active(self) -> bool:
+        return self._animations._docking_animation_active
+
+    @_docking_animation_active.setter
+    def _docking_animation_active(self, value: bool) -> None:
+        self._animations._docking_animation_active = value
+
+    @property
+    def _docking_animation_start(self):
+        return self._animations._docking_animation_start
+
+    @_docking_animation_start.setter
+    def _docking_animation_start(self, value) -> None:
+        self._animations._docking_animation_start = value
+
+    @property
+    def _docking_animation_target(self):
+        return self._animations._docking_animation_target
+
+    @_docking_animation_target.setter
+    def _docking_animation_target(self, value) -> None:
+        self._animations._docking_animation_target = value
+
+    @property
+    def _docking_animation_frame(self) -> int:
+        return self._animations._docking_animation_frame
+
+    @_docking_animation_frame.setter
+    def _docking_animation_frame(self, value: int) -> None:
+        self._animations._docking_animation_frame = value
+
+    @property
+    def _docking_start_position(self):
+        return self._animations._docking_start_position
+
+    @_docking_start_position.setter
+    def _docking_start_position(self, value) -> None:
+        self._animations._docking_start_position = value
+
+    @property
+    def _undocking_animation_active(self) -> bool:
+        return self._animations._undocking_animation_active
+
+    @_undocking_animation_active.setter
+    def _undocking_animation_active(self, value: bool) -> None:
+        self._animations._undocking_animation_active = value
+
+    @property
+    def _undocking_animation_start(self):
+        return self._animations._undocking_animation_start
+
+    @_undocking_animation_start.setter
+    def _undocking_animation_start(self, value) -> None:
+        self._animations._undocking_animation_start = value
+
+    @property
+    def _undocking_animation_target(self):
+        return self._animations._undocking_animation_target
+
+    @_undocking_animation_target.setter
+    def _undocking_animation_target(self, value) -> None:
+        self._animations._undocking_animation_target = value
+
+    @property
+    def _undocking_animation_frame(self) -> int:
+        return self._animations._undocking_animation_frame
+
+    @_undocking_animation_frame.setter
+    def _undocking_animation_frame(self, value: int) -> None:
+        self._animations._undocking_animation_frame = value
+
+    @property
+    def _undocking_start_position(self):
+        return self._animations._undocking_start_position
+
+    @_undocking_start_position.setter
+    def _undocking_start_position(self, value) -> None:
+        self._animations._undocking_start_position = value
+
+    @property
+    def _undocking_eject_target(self):
+        return self._animations._undocking_eject_target
+
+    @_undocking_eject_target.setter
+    def _undocking_eject_target(self, value) -> None:
+        self._animations._undocking_eject_target = value
+
+    @property
+    def _undocking_phase(self) -> int:
+        return self._animations._undocking_phase
+
+    @_undocking_phase.setter
+    def _undocking_phase(self, value: int) -> None:
+        self._animations._undocking_phase = value
+
+    # ── F08: gatling state forwarders ─────────────────────────────────────
+    @property
+    def _mothership_gatling_timer(self) -> int:
+        return self._gatling._mothership_gatling_timer
+
+    @_mothership_gatling_timer.setter
+    def _mothership_gatling_timer(self, value: int) -> None:
+        self._gatling._mothership_gatling_timer = value
+
+    @property
+    def _mothership_gatling_sweep_frame(self) -> int:
+        return self._gatling._mothership_gatling_sweep_frame
+
+    @_mothership_gatling_sweep_frame.setter
+    def _mothership_gatling_sweep_frame(self, value: int) -> None:
+        self._gatling._mothership_gatling_sweep_frame = value
+
+    # ── F08: animation / gatling method forwarders (1-liners) ─────────────
+    def _update_entering_animation(self) -> None:
+        self._animations.tick_entering()
+
+    def _update_docking_animation(self) -> None:
+        self._animations.tick_docking()
+
+    def _update_undocking_animation(self) -> None:
+        self._animations.tick_undocking()
+
+    def _update_mothership_gatling(self) -> None:
+        self._gatling.tick()
+
+    def _fire_gatling_sweep(self) -> None:
+        self._gatling._fire_gatling_sweep()
+
+    def _current_gatling_sweep_angle(self, turret: str | GatlingTurretSpec = "left") -> float:
+        return self._gatling._current_gatling_sweep_angle(turret)
+
+    def _get_gatling_turret(self, turret):
+        return MothershipGatling._get_gatling_turret(turret)
+
+    # ── Event handler that triggers the entering animation ────────────────
+    def _on_start_entering_animation(self, **kwargs) -> None:
+        self._animations.start_entering()
+
+    def _on_start_docking_animation(self, **kwargs) -> None:
+        self._animations.start_docking()
+
+    def _on_start_undocking_animation(self, **kwargs) -> None:
+        self._animations.start_undocking()
 
     def attach_game_scene(self, game_scene) -> None:
         self._game_scene = game_scene
@@ -245,53 +447,6 @@ class GameIntegrator:
                 bullet.velocity.x = vx
                 bullet.velocity.y = vy
                 self._mothership_bullets.append(bullet)
-
-    def _update_mothership_gatling(self) -> None:
-        self._mothership_gatling_sweep_frame += 1
-        self._mothership_gatling_timer += 1
-        if self._mothership_gatling_timer >= self.MOTHERSHIP_GATLING_FIRE_RATE:
-            self._mothership_gatling_timer = 0
-            self._fire_gatling_sweep()
-
-    def _fire_gatling_sweep(self) -> None:
-        if not self._game_scene or not self._get_mothership_targets():
-            return
-
-        mother_ship_pos = self._mother_ship.get_docking_position()
-        for turret in self.MOTHERSHIP_GATLING_TURRETS:
-            angle_rad = math.radians(self._current_gatling_sweep_angle(turret))
-            vx = math.sin(angle_rad) * self.MOTHERSHIP_GATLING_BULLET_SPEED
-            vy = -math.cos(angle_rad) * self.MOTHERSHIP_GATLING_BULLET_SPEED
-            bullet = Bullet(
-                mother_ship_pos[0] + turret.offset_x,
-                mother_ship_pos[1] + self.MOTHERSHIP_GATLING_MUZZLE_Y_OFFSET,
-                BulletData(
-                    damage=self.MOTHERSHIP_GATLING_DAMAGE,
-                    speed=self.MOTHERSHIP_GATLING_BULLET_SPEED,
-                    owner="mothership",
-                    bullet_type=self.MOTHERSHIP_GATLING_BULLET_TYPE,
-                ),
-            )
-            bullet.rect.width = 6
-            bullet.rect.height = 14
-            bullet.velocity.x = vx
-            bullet.velocity.y = vy
-            self._mothership_bullets.append(bullet)
-
-    def _current_gatling_sweep_angle(self, turret: str | GatlingTurretSpec = "left") -> float:
-        spec = self._get_gatling_turret(turret)
-        period = max(2, spec.period)
-        phase = ((self._mothership_gatling_sweep_frame + spec.phase_offset) % period) / period
-        sweep_t = phase * 2 if phase <= 0.5 else (1.0 - phase) * 2
-        return spec.angle_min + (spec.angle_max - spec.angle_min) * sweep_t
-
-    def _get_gatling_turret(self, turret: str | GatlingTurretSpec) -> GatlingTurretSpec:
-        if isinstance(turret, GatlingTurretSpec):
-            return turret
-        for spec in self.MOTHERSHIP_GATLING_TURRETS:
-            if spec.name == turret:
-                return spec
-        return self.MOTHERSHIP_GATLING_TURRETS[0]
 
     def _get_mothership_targets(self) -> list:
         if not self._game_scene:
@@ -559,174 +714,13 @@ class GameIntegrator:
         if self._game_scene:
             self._game_scene.set_paused(False)
 
-    def _on_start_entering_animation(self, **kwargs) -> None:
-        if not self._game_scene:
-            return
-
-        screen_width = get_screen_width()
-        screen_height = get_screen_height()
-        target_x = screen_width // 2
-        target_y = int(screen_height * 0.35)
-        start_y = screen_height + 200
-
-        self._entering_animation_active = True
-        self._entering_animation_frame = 0
-        self._entering_target_x = target_x
-        self._entering_target_y = target_y
-        self._entering_start_y = start_y
-
-        self._mother_ship.set_position(target_x, start_y)
-        self._mother_ship.show()
-
-    def _on_start_docking_animation(self, **kwargs) -> None:
-        if not self._game_scene:
-            return
-
-        self._docking_animation_active = True
-        self._docking_animation_frame = 0
-        self._docking_start_position = (
-            self._game_scene.player.rect.x,
-            self._game_scene.player.rect.y,
-        )
-        # Convert docking bay center to topleft for set_player_position_topleft
-        dock_center = self._mother_ship.get_docking_position()
-        pw = self._game_scene.player.rect.width
-        ph = self._game_scene.player.rect.height
-        self._docking_animation_target = (
-            dock_center[0] - pw // 2,
-            dock_center[1] - ph // 2,
-        )
-        self._player_control_disabled = True
-        self._activate_invincibility()
-
-    def _on_start_undocking_animation(self, **kwargs) -> None:
-        if not self._game_scene:
-            return
-
-        self._undocking_animation_active = True
-        self._undocking_animation_frame = 0
-        self._undocking_phase = 1
-        self._undocking_cooldown_multiplier = self._calculate_undocking_cooldown_multiplier()
-        self._progress_bar_ui.hide()
-
-        dock_pos = self._mother_ship.get_docking_position()
-        # Convert docking position (center) to topleft for player rect
-        pw = self._game_scene.player.rect.width
-        ph = self._game_scene.player.rect.height
-        start_x = dock_pos[0] - pw // 2
-        start_y = dock_pos[1] - ph // 2
-
-        self._undocking_start_position = (start_x, start_y)
-        # Eject target: backward and downward from the mothership
-        self._undocking_eject_target = (start_x, start_y + 140)
-
-        self._player_control_disabled = True
-
     def _on_undock_cancelled(self, **kwargs) -> None:
         pass
-
-    def _update_entering_animation(self) -> None:
-        self._entering_animation_frame += 1
-        progress = min(self._entering_animation_frame / self._entering_duration, 1.0)
-        eased = self._ease_out_cubic(progress)
-
-        current_y = self._entering_start_y + (self._entering_target_y - self._entering_start_y) * eased
-        self._mother_ship.set_position(int(self._entering_target_x), int(current_y))
-
-        # Fire missiles during fly-in for cover
-        self._update_mothership_firing()
-        self._update_mothership_bullets()
-
-        if progress >= 1.0:
-            self._entering_animation_active = False
-            self._event_bus.publish(EVENT_ENTERING_COMPLETE)
-
-    def _update_docking_animation(self) -> None:
-        if not self._game_scene or not self._docking_start_position:
-            self._docking_animation_active = False
-            return
-
-        self._docking_animation_frame += 1
-        progress = min(self._docking_animation_frame / self._docking_animation_duration, 1.0)
-
-        eased_progress = self._ease_in_out_cubic(progress)
-
-        start_x, start_y = self._docking_start_position
-        target_x, target_y = self._docking_animation_target
-
-        current_x = start_x + (target_x - start_x) * eased_progress
-        current_y = start_y + (target_y - start_y) * eased_progress
-
-        self._game_scene.set_player_position_topleft(current_x, current_y)
-
-        # Continue firing during docking animation for cover fire
-        self._update_mothership_firing()
-        self._update_mothership_bullets()
-
-        if progress >= 1.0:
-            self._docking_animation_active = False
-            self._docking_animation_frame = 0
-            self._player_control_disabled = False
-            self._event_bus.publish(EVENT_DOCKING_ANIMATION_COMPLETE)
-
-    def _update_undocking_animation(self) -> None:
-        if not self._game_scene or not self._undocking_start_position:
-            self._undocking_animation_active = False
-            return
-
-        self._undocking_animation_frame += 1
-
-        if self._undocking_phase == 1:
-            # Phase 1: eject player backward from docking bay
-            progress = min(self._undocking_animation_frame / self._undocking_eject_duration, 1.0)
-            eased = self._ease_out_quad(progress)
-
-            sx, sy = self._undocking_start_position
-            tx, ty = self._undocking_eject_target
-            cx = sx + (tx - sx) * eased
-            cy = sy + (ty - sy) * eased
-            self._game_scene.set_player_position_topleft(cx, cy)
-
-            if progress >= 1.0:
-                # Phase 1 complete — start mothership flyaway
-                self._undocking_animation_frame = 0
-                self._undocking_phase = 2
-                self._player_control_disabled = False
-                self._deactivate_invincibility()
-                self._mother_ship.activate_flyaway()
-
-        elif self._undocking_phase == 2:
-            # Phase 2: mothership flies away upward; player is free
-            # Keep updating mothership so flyaway motion continues
-            self._mother_ship.update()
-
-            if not self._mother_ship.is_visible():
-                # Mothership has flown off screen — animation complete
-                self._undocking_animation_active = False
-                self._undocking_animation_frame = 0
-                self._undocking_phase = 1
-                self._mother_ship.deactivate_flyaway()
-                self._apply_cooldown_multiplier_from_player()
-                self._event_bus.publish(EVENT_UNDOCKING_ANIMATION_COMPLETE)
-                self._clear_undocking_cooldown_modifier()
-
-    def _ease_in_out_cubic(self, t: float) -> float:
-        if t < 0.5:
-            return 4 * t * t * t
-        else:
-            return 1 - ((-2 * t + 2) ** 3) / 2
-
-    def _ease_out_quad(self, t: float) -> float:
-        return 1 - (1 - t) * (1 - t)
-
-    def _ease_out_cubic(self, t: float) -> float:
-        return 1 - (1 - t) ** 3
 
     def _clear_mothership_bullets(self) -> None:
         self._mothership_bullets.clear()
         self._mothership_fire_timer = 0
-        self._mothership_gatling_timer = 0
-        self._mothership_gatling_sweep_frame = 0
+        self._gatling.reset_timers()
 
     def _get_entity_score(self, entity, fallback: int) -> int:
         data = getattr(entity, "data", None)
