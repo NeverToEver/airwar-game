@@ -12,23 +12,56 @@ from dataclasses import dataclass
 
 import pygame
 
-from airwar.core_bindings import RUST_AVAILABLE, vec2_length, vec2_normalize
+from airwar.core_bindings import (
+    RUST_AVAILABLE,
+    vec2_add,
+    vec2_angle,
+    vec2_clamp_length,
+    vec2_distance,
+    vec2_dot,
+    vec2_from_angle,
+    vec2_length,
+    vec2_lerp,
+    vec2_normalize,
+    vec2_scale,
+    vec2_sub,
+)
 
 
 @dataclass
 class Vector2:
-    """2D vector with basic arithmetic operations."""
+    """2D vector with basic arithmetic operations.
+
+    Arithmetic operators use Rust bindings when available (single
+    FFI call per op, avoids creating a Python Vector2 just to add
+    two floats). All 11 vec2_* bindings are exercised by this class.
+    """
 
     x: float = 0
     y: float = 0
 
     def __add__(self, other: Vector2) -> Vector2:
+        if RUST_AVAILABLE:
+            nx, ny = vec2_add(self.x, self.y, other.x, other.y)
+            return Vector2(nx, ny)
         return Vector2(self.x + other.x, self.y + other.y)
 
     def __radd__(self, other: Vector2) -> Vector2:
+        # `sum([v1, v2])` starts with `0 + v1`; treat numeric 0 as identity.
+        if isinstance(other, (int, float)) and other == 0:
+            return Vector2(self.x, self.y)
         return self.__add__(other)
 
+    def __sub__(self, other: Vector2) -> Vector2:
+        if RUST_AVAILABLE:
+            nx, ny = vec2_sub(self.x, self.y, other.x, other.y)
+            return Vector2(nx, ny)
+        return Vector2(self.x - other.x, self.y - other.y)
+
     def __mul__(self, scalar: float) -> Vector2:
+        if RUST_AVAILABLE:
+            nx, ny = vec2_scale(self.x, self.y, float(scalar))
+            return Vector2(nx, ny)
         return Vector2(self.x * scalar, self.y * scalar)
 
     def __rmul__(self, scalar: float) -> Vector2:
@@ -50,6 +83,48 @@ class Vector2:
         if length > 0:
             return Vector2(self.x / length, self.y / length)
         return Vector2(0, 0)
+
+    def dot(self, other: Vector2) -> float:
+        if RUST_AVAILABLE:
+            return vec2_dot(self.x, self.y, other.x, other.y)
+        return self.x * other.x + self.y * other.y
+
+    def distance(self, other: Vector2) -> float:
+        if RUST_AVAILABLE:
+            return vec2_distance(self.x, self.y, other.x, other.y)
+        return math.hypot(self.x - other.x, self.y - other.y)
+
+    def angle(self) -> float:
+        """Angle in radians, 0 = +X axis, counter-clockwise."""
+        if RUST_AVAILABLE:
+            return vec2_angle(self.x, self.y)
+        return math.atan2(self.y, self.x)
+
+    @classmethod
+    def from_angle(cls, angle: float, magnitude: float = 1.0) -> Vector2:
+        if RUST_AVAILABLE:
+            nx, ny = vec2_from_angle(angle, magnitude)
+            return cls(nx, ny)
+        return cls(math.cos(angle) * magnitude, math.sin(angle) * magnitude)
+
+    def lerp(self, other: Vector2, t: float) -> Vector2:
+        if RUST_AVAILABLE:
+            nx, ny = vec2_lerp(self.x, self.y, other.x, other.y, float(t))
+            return Vector2(nx, ny)
+        return Vector2(
+            self.x + (other.x - self.x) * t,
+            self.y + (other.y - self.y) * t,
+        )
+
+    def clamp_length(self, max_length: float) -> Vector2:
+        if RUST_AVAILABLE:
+            nx, ny = vec2_clamp_length(self.x, self.y, float(max_length))
+            return Vector2(nx, ny)
+        length = self.length()
+        if length > max_length and length > 0:
+            scale = max_length / length
+            return Vector2(self.x * scale, self.y * scale)
+        return Vector2(self.x, self.y)
 
     def to_tuple(self) -> tuple[float, float]:
         return (self.x, self.y)
