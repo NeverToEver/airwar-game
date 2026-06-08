@@ -1,12 +1,21 @@
-"""Boss state HSM — top-level lifecycle and enrage sub-machine.
+"""Boss state HSM — top-level lifecycle + facade over the enrage sub-machine.
 
-Centralises the previously scattered ``_phase`` int + ``_is_enraged`` bool
-into a single state machine with explicit transition rules. The
-:class:`BossStateMachine` is owned by :class:`airwar.entities.enemy.Boss`
-and consulted on every frame; it is also the single source of truth for
-enrage-related public predicates (``is_enraged``, ``is_enrage_active``,
-``should_lock_player_movement``, ``enrage_slow_factor``,
-``enrage_visual_intensity``).
+Phase 5-β (see ADR 0005) splits the state machine into two layers:
+
+* :class:`BossState` and the 8 top-level states (defined here)
+* :class:`BossStateMachine` (defined here) — thin facade. Owns the
+  top-level :class:`BossState` enum, delegates enrage timer/location/
+  attack state and damage policy to :class:`EnrageSubMachine` in
+  :mod:`.boss_sub_state`.
+* :class:`EnrageSubMachine` (:mod:`.boss_sub_state`) — owns the 4
+  enrage timer counters, the 5 location anchors, the attack state, the
+  enrage flags, and the health-lock damage policy.
+
+The 5 health-lock setters (``_enraged`` / ``_enrage_health_lock_active``
+/ ``_enrage_health_lock_value`` / ``_enrage_attack_index`` /
+``_enrage_attack_timer``) are exposed on the facade as properties with
+setters so test code that does ``sm._enraged = True`` keeps working
+unchanged.
 
 Backward compatibility:
     The enrage tuning constants used to live as class attributes on
@@ -85,173 +94,148 @@ class BossState(Enum):
 
 
 # ---------------------------------------------------------------------------
-# State machine
+# State machine (facade over EnrageSubMachine)
 # ---------------------------------------------------------------------------
 
 
 class BossStateMachine:
     """Drives boss lifecycle transitions and exposes enrage predicates.
 
-    The machine owns every timer/flag previously held directly on the
-    ``Boss`` instance. Callers read state through the boolean helpers
-    (``is_enrage_active``, ``should_lock_player_movement``,
-    ``enrage_visual_intensity``) so the ``Boss`` class itself no longer
-    needs to know about the underlying counters.
+    After the Phase 5-β split, this class is a thin facade over
+    :class:`EnrageSubMachine`. The top-level :class:`BossState` enum
+    is owned here; the enrage timer/location/attack state lives in the
+    sub-machine. Public methods and properties delegate to the sub-machine
+    so callers and the 79+ boss tests keep working without changes.
+
+    The 5 private backward-compat setters (``_enraged``,
+    ``_enrage_health_lock_active``, ``_enrage_health_lock_value``,
+    ``_enrage_attack_index``, ``_enrage_attack_timer``) are exposed as
+    properties so test code that writes ``sm._enraged = True`` still
+    works. The setters cast to ``bool`` / ``int`` matching the original
+    Boss-level shim semantics (see ``airwar.entities.enemy.Boss``).
     """
 
     def __init__(self, boss: Boss) -> None:
         self._boss = boss
         self._state: BossState = BossState.ENTERING
-        # enrage sub-machine
-        self._enraged: bool = False
-        self._enrage_timer: int = 0
-        self._enrage_transition_timer: int = 0
-        self._enrage_release_hold_timer: int = 0
-        self._enrage_return_timer: int = 0
-        self._enrage_bullets_released: bool = False
-        self._enrage_health_lock_active: bool = False
-        self._enrage_health_lock_value: int = 0
-        self._enrage_snapshot_target: tuple[float, float] | None = None
-        self._enrage_transition_origin: tuple[float, float] | None = None
-        self._enrage_release_anchor: tuple[float, float] | None = None
-        self._enrage_return_origin: tuple[float, float] | None = None
-        self._enrage_return_target: tuple[float, float] | None = None
-        self._enrage_attack_timer: int = 0
-        self._enrage_attack_index: int = 0
+        # Lazy import: boss_sub_state imports constants from this module
+        # at top-level, so deferring the import here breaks the cycle
+        # while keeping the class body free of forward references.
+        from .boss_sub_state import EnrageSubMachine
+
+        self._sub = EnrageSubMachine(boss)
 
     # ------------------------------------------------------------------
-    # Public accessors
+    # Top-level state accessor
     # ------------------------------------------------------------------
 
     @property
     def state(self) -> BossState:
         return self._state
 
+    # ------------------------------------------------------------------
+    # Public accessors (delegate to sub-machine)
+    # ------------------------------------------------------------------
+
     @property
     def enraged(self) -> bool:
-        return self._enraged
+        return self._sub._enraged
 
     @property
     def enrage_timer(self) -> int:
-        return self._enrage_timer
+        return self._sub._enrage_timer
 
     @property
     def enrage_transition_timer(self) -> int:
-        return self._enrage_transition_timer
+        return self._sub._enrage_transition_timer
 
     @property
     def enrage_release_hold_timer(self) -> int:
-        return self._enrage_release_hold_timer
+        return self._sub._enrage_release_hold_timer
 
     @property
     def enrage_return_timer(self) -> int:
-        return self._enrage_return_timer
+        return self._sub._enrage_return_timer
 
     @property
     def enrage_snapshot_target(self) -> tuple[float, float] | None:
-        return self._enrage_snapshot_target
+        return self._sub._enrage_snapshot_target
 
     @property
     def enrage_transition_origin(self) -> tuple[float, float] | None:
-        return self._enrage_transition_origin
+        return self._sub._enrage_transition_origin
 
     @property
     def enrage_release_anchor(self) -> tuple[float, float] | None:
-        return self._enrage_release_anchor
+        return self._sub._enrage_release_anchor
 
     @property
     def enrage_return_origin(self) -> tuple[float, float] | None:
-        return self._enrage_return_origin
+        return self._sub._enrage_return_origin
 
     @property
     def enrage_return_target(self) -> tuple[float, float] | None:
-        return self._enrage_return_target
+        return self._sub._enrage_return_target
 
     @property
     def enrage_attack_timer(self) -> int:
-        return self._enrage_attack_timer
+        return self._sub._enrage_attack_timer
 
     @property
     def enrage_attack_index(self) -> int:
-        return self._enrage_attack_index
-
-    @property
-    def enrage_health_lock_active(self) -> bool:
-        return self._enrage_health_lock_active
-
-    @property
-    def enrage_health_lock_value(self) -> int:
-        return self._enrage_health_lock_value
-
-    @property
-    def enrage_bullets_released(self) -> bool:
-        return self._enrage_bullets_released
+        return self._sub._enrage_attack_index
 
     # ------------------------------------------------------------------
-    # Transition helpers
+    # Backward-compat private-attr shims
+    # (tests do ``sm._enraged = True`` / ``sm._enrage_health_lock_value = N``)
+    # ------------------------------------------------------------------
+
+    @property
+    def _enraged(self) -> bool:
+        return self._sub._enraged
+
+    @_enraged.setter
+    def _enraged(self, value: bool) -> None:
+        self._sub._enraged = bool(value)
+
+    @property
+    def _enrage_health_lock_active(self) -> bool:
+        return self._sub._enrage_health_lock_active
+
+    @_enrage_health_lock_active.setter
+    def _enrage_health_lock_active(self, value: bool) -> None:
+        self._sub._enrage_health_lock_active = bool(value)
+
+    @property
+    def _enrage_health_lock_value(self) -> int:
+        return self._sub._enrage_health_lock_value
+
+    @_enrage_health_lock_value.setter
+    def _enrage_health_lock_value(self, value: int) -> None:
+        self._sub._enrage_health_lock_value = int(value)
+
+    @property
+    def _enrage_attack_index(self) -> int:
+        return self._sub._enrage_attack_index
+
+    @_enrage_attack_index.setter
+    def _enrage_attack_index(self, value: int) -> None:
+        self._sub._enrage_attack_index = int(value)
+
+    @property
+    def _enrage_attack_timer(self) -> int:
+        return self._sub._enrage_attack_timer
+
+    @_enrage_attack_timer.setter
+    def _enrage_attack_timer(self, value: int) -> None:
+        self._sub._enrage_attack_timer = int(value)
+
+    # ------------------------------------------------------------------
+    # Top-level transitions (own the state enum)
     # ------------------------------------------------------------------
 
     def finish_entry(self) -> None:
         """Transition out of ENTERING once the boss reaches its target Y."""
-        self._state = BossState.ACTIVE
-
-    def trigger_enrage(self, snapshot_target: tuple[float, float]) -> None:
-        """Begin the enrage sub-machine (idempotent)."""
-        if self._enraged:
-            return
-        self._enraged = True
-        self._state = BossState.ENRAGE_TRANSITION
-        self._enrage_timer = ENRAGE_DURATION
-        self._enrage_bullets_released = False
-        self._enrage_health_lock_active = True
-        self._enrage_health_lock_value = int(self._boss.data.health * ENRAGE_TRIGGER_RATIO)
-        # Clamp current health at the lock value so the enrage sequence
-        # always starts from the same checkpoint.
-        if self._boss.health < self._enrage_health_lock_value:
-            self._boss.health = self._enrage_health_lock_value
-        self._enrage_snapshot_target = snapshot_target
-        self._enrage_transition_timer = ENRAGE_TRANSITION_DURATION
-        self._enrage_transition_origin = (self._boss.rect.centerx, self._boss.rect.centery)
-        self._enrage_release_hold_timer = 0
-        self._enrage_release_anchor = None
-        self._enrage_return_timer = 0
-        self._enrage_return_origin = None
-        self._enrage_return_target = None
-        self._enrage_attack_timer = ENRAGE_ATTACK_WINDUP
-        self._enrage_attack_index = 0
-
-    def finish_enrage_transition(self) -> None:
-        """Move from ENRAGE_TRANSITION to ENRAGE_ACTIVE."""
-        self._enrage_transition_timer = 0
-        self._enrage_transition_origin = None
-        self._state = BossState.ENRAGE_ACTIVE
-
-    def begin_enrage_release_hold(self, anchor: tuple[float, float]) -> None:
-        """Move from ENRAGE_ACTIVE to ENRAGE_RELEASE_HOLD."""
-        self._state = BossState.ENRAGE_RELEASE_HOLD
-        self._enrage_release_hold_timer = ENRAGE_RELEASE_HOLD_DURATION
-        self._enrage_release_anchor = anchor
-        self._enrage_bullets_released = True
-        self._enrage_health_lock_active = False
-        self._enrage_timer = 0
-
-    def begin_enrage_return(
-        self,
-        origin: tuple[float, float],
-        target: tuple[float, float],
-    ) -> None:
-        """Move from ENRAGE_RELEASE_HOLD to ENRAGE_RETURN."""
-        self._state = BossState.ENRAGE_RETURN
-        self._enrage_return_timer = ENRAGE_RETURN_DURATION
-        self._enrage_return_origin = origin
-        self._enrage_return_target = target
-        self._enrage_release_anchor = None
-
-    def finish_enrage_return(self) -> None:
-        """Return to ACTIVE after a successful enrage cycle."""
-        self._enrage_return_timer = 0
-        self._enrage_return_origin = None
-        self._enrage_return_target = None
         self._state = BossState.ACTIVE
 
     def mark_escaped(self) -> None:
@@ -262,87 +246,92 @@ class BossStateMachine:
         """Boss was killed (called from :meth:`Boss.take_damage`)."""
         self._state = BossState.DEAD
 
+    # ------------------------------------------------------------------
+    # Enrage transitions (delegate + sync top-level state)
+    # ------------------------------------------------------------------
+
+    def trigger_enrage(self, snapshot_target: tuple[float, float]) -> None:
+        """Begin the enrage sub-machine (idempotent)."""
+        self._sub.trigger_enrage(snapshot_target)
+        if self._sub._enraged:
+            self._state = BossState.ENRAGE_TRANSITION
+
+    def finish_enrage_transition(self) -> None:
+        """Move from ENRAGE_TRANSITION to ENRAGE_ACTIVE."""
+        self._sub.finish_enrage_transition()
+        self._state = BossState.ENRAGE_ACTIVE
+
+    def begin_enrage_release_hold(self, anchor: tuple[float, float]) -> None:
+        """Move from ENRAGE_ACTIVE to ENRAGE_RELEASE_HOLD."""
+        self._sub.begin_enrage_release_hold(anchor)
+        self._state = BossState.ENRAGE_RELEASE_HOLD
+
+    def begin_enrage_return(
+        self,
+        origin: tuple[float, float],
+        target: tuple[float, float],
+    ) -> None:
+        """Move from ENRAGE_RELEASE_HOLD to ENRAGE_RETURN."""
+        self._sub.begin_enrage_return(origin, target)
+        self._state = BossState.ENRAGE_RETURN
+
+    def finish_enrage_return(self) -> None:
+        """Return to ACTIVE after a successful enrage cycle."""
+        self._sub.finish_enrage_return()
+        self._state = BossState.ACTIVE
+
+    # ------------------------------------------------------------------
+    # Per-frame decrementers (delegate to sub-machine)
+    # ------------------------------------------------------------------
+
     def tick_enrage_attack_timer(self) -> None:
         """Decrement the enrage snapshot attack timer (clamped at 0)."""
-        if self._enrage_attack_timer > 0:
-            self._enrage_attack_timer -= 1
+        self._sub.tick_enrage_attack_timer()
 
     def reset_enrage_attack_timer(self) -> None:
-        self._enrage_attack_timer = ENRAGE_ATTACK_INTERVAL
-        self._enrage_attack_index += 1
-
-    # ------------------------------------------------------------------
-    # Per-frame decrementers (kept here so the Boss class doesn't poke
-    # at the state counters directly).
-    # ------------------------------------------------------------------
+        self._sub.reset_enrage_attack_timer()
 
     def tick_enrage_transition_timer(self) -> None:
-        if self._enrage_transition_timer > 0:
-            self._enrage_transition_timer -= 1
+        self._sub.tick_enrage_transition_timer()
 
     def tick_enrage_timer(self) -> None:
-        if self._enrage_timer > 0:
-            self._enrage_timer -= 1
+        self._sub.tick_enrage_timer()
 
     def tick_enrage_release_hold_timer(self) -> None:
-        if self._enrage_release_hold_timer > 0:
-            self._enrage_release_hold_timer -= 1
+        self._sub.tick_enrage_release_hold_timer()
 
     def tick_enrage_return_timer(self) -> None:
-        if self._enrage_return_timer > 0:
-            self._enrage_return_timer -= 1
+        self._sub.tick_enrage_return_timer()
 
     # ------------------------------------------------------------------
     # Predicates used by the rest of the codebase
     # ------------------------------------------------------------------
 
     def is_enrage_active(self) -> bool:
-        return self._enrage_timer > 0
+        return self._sub.is_enrage_active()
 
     def is_enrage_transitioning(self) -> bool:
-        return self._enrage_transition_timer > 0
+        return self._sub.is_enrage_transitioning()
 
     def is_enrage_release_holding(self) -> bool:
-        return self._enrage_release_hold_timer > 0
+        return self._sub.is_enrage_release_holding()
 
     def is_enrage_returning(self) -> bool:
-        return self._enrage_return_timer > 0
+        return self._sub.is_enrage_returning()
 
     def should_lock_player_movement(self) -> bool:
-        return self._enrage_timer > 0 and not self._enrage_bullets_released
+        return self._sub.should_lock_player_movement()
 
     def enrage_slow_factor(self) -> float:
-        return ENRAGE_SLOW_FACTOR if self._enrage_timer > 0 else 1.0
+        return self._sub.enrage_slow_factor()
 
     def enrage_progress(self) -> float:
         """0.0 at enrage start, 1.0 at enrage end."""
-        return max(0.0, min(1.0, 1.0 - self._enrage_timer / ENRAGE_DURATION))
+        return self._sub.enrage_progress()
 
     def enrage_visual_intensity(self) -> float:
         """Visual overlay intensity for the enrage sequence (0..~0.88)."""
-        if self._enrage_timer > 0:
-            progress = self.enrage_progress()
-            eased = progress * progress * (3 - 2 * progress)
-            transition_ramp = 1.0
-            if self._enrage_transition_timer > 0:
-                elapsed = ENRAGE_TRANSITION_DURATION - self._enrage_transition_timer
-                transition = max(
-                    0.0,
-                    min(1.0, elapsed / max(1, ENRAGE_TRANSITION_DURATION)),
-                )
-                transition_ramp = transition * transition * (3 - 2 * transition)
-            return max(
-                0.0,
-                min(0.88, (0.18 + 0.70 * eased) * transition_ramp),
-            )
-        if self._enrage_release_hold_timer > 0:
-            hold = self._enrage_release_hold_timer / max(1, ENRAGE_RELEASE_HOLD_DURATION)
-            return max(0.0, min(0.74, 0.52 + 0.22 * hold))
-        if self._enrage_return_timer > 0:
-            fade = self._enrage_return_timer / max(1, ENRAGE_RETURN_DURATION)
-            eased = fade * fade * (3 - 2 * fade)
-            return max(0.0, min(0.52, 0.52 * eased))
-        return 0.0
+        return self._sub.enrage_visual_intensity()
 
     # ------------------------------------------------------------------
     # Internal helpers (used by Boss.take_damage)
@@ -355,23 +344,14 @@ class BossStateMachine:
             (new_health, score_delta) — caller applies the new health and
             the score (positive on death, 0 otherwise).
         """
-        if damage is None or damage < 0:
-            return self._boss.health, 0
-        if not self._enraged and self._boss.max_health > 0:
-            projected = self._boss.health - damage
-            if projected <= self._enrage_health_lock_value:
-                self._boss.health = self._enrage_health_lock_value
-                return self._boss.health, 0
-        if self._enrage_health_lock_active:
-            self._boss.health = max(self._boss.health, self._enrage_health_lock_value)
-            return self._boss.health, 0
-        new_health = self._boss.health - damage
-        if new_health <= 0:
-            return 0, self._boss.data.score
-        return new_health, 0
+        return self._sub.compute_take_damage(damage)
 
 
+# ---------------------------------------------------------------------------
 # Re-export alias so test code can ``from .boss_state import BossStateMachine``.
+# ---------------------------------------------------------------------------
+
+
 def __getattr__(name: str):
     """F04 M9: lazy module-level access for 27 ENRAGE_* constants.
 

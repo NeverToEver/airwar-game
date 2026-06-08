@@ -14,6 +14,7 @@ The :class:`Boss` class itself lives in
 :mod:`airwar.entities.enemy.enemy` and holds one of each component above.
 """
 
+from .boss import Boss, BossData
 from .boss_attack import (
     AIM_BULLET_COUNT,
     AIM_DAMAGE_INCREMENT,
@@ -70,6 +71,7 @@ from .boss_state import (
     BossState,
     BossStateMachine,
 )
+from .boss_sub_state import EnrageSubMachine
 
 __all__ = [
     "AIM_BULLET_COUNT",
@@ -117,9 +119,12 @@ __all__ = [
     "MIN_Y",
     "SPREAD_DAMAGE_INCREMENT",
     "WAVE_BULLET_COUNT",
+    "Boss",
     "BossAttackPatterns",
+    "BossData",
     "BossMovement",
     "BossRenderer",
     "BossState",
     "BossStateMachine",
+    "EnrageSubMachine",
 ]
