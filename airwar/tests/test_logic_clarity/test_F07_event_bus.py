@@ -1,6 +1,9 @@
 """F07: 2 事件总线注册透明度（event bus transparency）。
 
-Maps: docs/logic-clarity/04-test-suite.md § F07.
+Maps: docs/logic-clarity/11-phase5b-handoff.md §6.2 § F07
+(plus docs/adr/0006-event-bus-registry.md for the E1/E2 event
+registry design). The previous docs/logic-clarity/04-test-suite.md
+was retired in the 2026-06-08 docs cleanup.
 """
 
 from __future__ import annotations

@@ -63,7 +63,8 @@ ignore_missing_imports = true
 # Pilot module for stricter type checking. The achievements module is
 # small, self-contained, and was authored with type annotations in mind —
 # making it a low-risk target for --strict before we consider widening
-# the policy. See docs/mypy_status.md for the rollout plan.
+# the policy. See CLAUDE.md (Ruff / Mypy Configuration) and
+# docs/logic-clarity/10-remaining-work.md §6 for the rollout plan.
 [[tool.mypy.overrides]]
 module = "airwar.game.achievements"
 strict = true

@@ -1,6 +1,9 @@
 """F02: 6 双路径代码（dual-path code）。
 
-Maps: docs/logic-clarity/04-test-suite.md § F02.
+Maps: docs/logic-clarity/11-phase5b-handoff.md §6.2 § F02.
+(The previous docs/logic-clarity/04-test-suite.md was retired in the
+2026-06-08 docs cleanup; the F02 dual-path contract is preserved
+in the new handoff doc.)
 
 Each test documents the post-refactor contract: code paths that
 previously had an `if self._lock_manager: ... else: ...` (or similar)

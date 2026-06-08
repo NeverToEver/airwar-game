@@ -1,6 +1,10 @@
 """F04: 11 魔法数字（magic numbers / hardcoded values）。
 
-Maps: docs/logic-clarity/04-test-suite.md § F04.
+Maps: docs/logic-clarity/11-phase5b-handoff.md §6.2 § F04.
+(The previous docs/logic-clarity/04-test-suite.md was retired in the
+2026-06-08 docs cleanup; the F04 magic-number contract is preserved
+in the new handoff doc, with BULLET_CLEAR_RADIUS and 6 homecoming
+phase frames confirmed as already-on-GAME_CONSTANTS.)
 
 These tests verify the post-refactor contract: all magic numbers
 should be moved to GAME_CONSTANTS or a similar central registry.

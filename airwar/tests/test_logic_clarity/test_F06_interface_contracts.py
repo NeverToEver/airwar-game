@@ -1,6 +1,11 @@
 """F06: 4 接口契约缺失（interface contract gaps）。
 
-Maps: docs/logic-clarity/04-test-suite.md § F06.
+Maps: docs/logic-clarity/11-phase5b-handoff.md §6.2 § F06.
+(The previous docs/logic-clarity/04-test-suite.md was retired in the
+2026-06-08 docs cleanup; the F06 interface-contract contract is
+preserved in the new handoff doc — I2 (property setter bypasses
+IGameScene API) flagged with docstring warning, I4 (SaveData Protocol)
+formalized as ``airwar/game/mother_ship/save_data_protocol.py``.)
 
 These tests verify that the protocol contracts exist with the right shape.
 """

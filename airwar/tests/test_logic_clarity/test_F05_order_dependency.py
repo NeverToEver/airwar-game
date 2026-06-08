@@ -1,6 +1,10 @@
 """F05: 7 顺序依赖（order dependencies）。
 
-Maps: docs/logic-clarity/04-test-suite.md § F05.
+Maps: docs/logic-clarity/11-phase5b-handoff.md §6.2 § F05.
+(The previous docs/logic-clarity/04-test-suite.md was retired in the
+2026-06-08 docs cleanup; the F05 order-dependency contract is
+preserved in the new handoff doc — T3-T7 verified in commit
+``7f95e33``.)
 
 These tests verify that ordered operations have explicit, documented
 pipelines rather than implicit positional dependencies.

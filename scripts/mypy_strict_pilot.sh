@@ -15,7 +15,9 @@
 #     pulls in the whole dependency graph. This script bypasses that by
 #     passing file paths explicitly.
 #
-# See docs/mypy_status.md for the rollout analysis and recommended path.
+# See docs/logic-clarity/10-remaining-work.md §6 for the rollout
+# analysis and recommended path (the previous docs/mypy_status.md was
+# retired in the 2026-06-08 docs cleanup).
 #
 # Usage:
 #   ./scripts/mypy_strict_pilot.sh          # check the curated list
@@ -32,7 +34,9 @@ cd "$(dirname "$0")/.."
 # achievements module was authored with type annotations in mind (and
 # was the pilot for the [[tool.mypy.overrides]] approach), and the
 # database module is a focused JSON-backed store with no pygame
-# surface. See docs/mypy_status.md for the rollout plan.
+# surface. See docs/logic-clarity/10-remaining-work.md §6 for the
+# rollout plan (the previous docs/mypy_status.md was retired in the
+# 2026-06-08 docs cleanup).
 DEFAULT_TARGETS=(
   "airwar/audio/sound_manager.py"
   "airwar/config/settings.py"

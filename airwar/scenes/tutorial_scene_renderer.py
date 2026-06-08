@@ -1,9 +1,11 @@
 """Thin orchestrator that dispatches tutorial rendering to 4 sub-renderers.
 
-Phase 4 Wave α split (see ``docs/logic-clarity/08-deep-godclass-split-plan.md``
-section 2.8). The real drawing work lives in :mod:`airwar.scenes.tutorial.renderers`;
-this module just keeps the public + private API of ``TutorialSceneRenderer``
-stable (1-line forwarders) so callers and tests are untouched.
+Phase 4 Wave α split (see ``docs/logic-clarity/11-phase5b-handoff.md``
+§7.1, the previous 08-deep-godclass-split-plan.md was retired in the
+2026-06-08 docs cleanup). The real drawing work lives in
+:mod:`airwar.scenes.tutorial.renderers`; this module just keeps the
+public + private API of ``TutorialSceneRenderer`` stable (1-line
+forwarders) so callers and tests are untouched.
 """
 
 from __future__ import annotations

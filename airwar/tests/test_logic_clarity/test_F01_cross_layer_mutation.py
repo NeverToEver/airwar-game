@@ -1,6 +1,9 @@
 """F01: 9 跨层直接突变（cross-layer state mutation）。
 
-Maps: docs/logic-clarity/04-test-suite.md § F01.
+Maps: docs/logic-clarity/11-phase5b-handoff.md §6.2 § F01.
+(The previous docs/logic-clarity/04-test-suite.md was retired in the
+2026-06-08 docs cleanup; the F01 / F05 / F06 cross-layer mutation
+contract is preserved in the new handoff doc.)
 
 These tests assert the **target** behavior after refactor (not the
 current bug). Tests that document an existing bug are written to

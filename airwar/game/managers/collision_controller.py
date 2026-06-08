@@ -6,7 +6,9 @@ and delegates the heavy lifting to them. The public API and all
 attributes are preserved verbatim — only the implementation is split.
 
 The 33-method god class was split into 4 strategy components per
-``docs/logic-clarity/08-deep-godclass-split-plan.md`` § 2.5:
+``docs/logic-clarity/11-phase5b-handoff.md`` §7.1 (the previous
+08-deep-godclass-split-plan.md was retired in the 2026-06-08 docs
+cleanup):
 
 * :class:`~airwar.game.managers.collisions.BulletVsEntitiesStrategy`
   -- player bullets vs enemies + boss.
