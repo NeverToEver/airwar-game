@@ -121,6 +121,15 @@ class HomecomingCoordinator:
         state; this property is preserved to avoid touching 5 test
         sites (see ``test_homecoming.py`` lines 384, 443, 496, 544,
         684).
+
+        47 模糊点 F.I2 (Phase 6 §6.2): this property setter is
+        **test-only**. Production code must use the public API
+        :meth:`is_base_pending` to read the state and the
+        :class:`HomecomingBaseState` lifecycle (``enter_base`` /
+        ``exit_base``) to mutate it. Direct ``coordinator._base_pending = ...``
+        writes from production code are prohibited because they
+        bypass the failure-mode gate (``_can_request_with_reason``)
+        and the lock-manager handshake.
         """
         return self._base_state.is_pending()
 
@@ -130,7 +139,18 @@ class HomecomingCoordinator:
 
     @property
     def _talent_balance_manager(self):
-        """Backward-compat shim: tests write ``coordinator._talent_balance_manager = ...``."""
+        """Backward-compat shim: tests write ``coordinator._talent_balance_manager = ...``.
+
+        47 模糊点 F.I2 (Phase 6 §6.2): this property setter is
+        **test-only**. Production code must use the public API
+        :meth:`get_talent_balance_manager` to read the manager. The
+        manager is created lazily by
+        :meth:`BaseTalentOrchestrator.ensure_talent_balance_manager`
+        during the homecoming on-complete callback; direct
+        ``coordinator._talent_balance_manager = ...`` writes from
+        production code are prohibited because they bypass the
+        reward-system dependency injection.
+        """
         return self._talent_orchestrator._talent_balance_manager
 
     @_talent_balance_manager.setter

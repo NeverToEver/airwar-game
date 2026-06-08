@@ -147,7 +147,14 @@ class DockedStayProgress:
 
 @dataclass
 class GameSaveData:
-    """Game save data dataclass — serializable game state for persistence."""
+    """Game save data dataclass — serializable game state for persistence.
+
+    47 模糊点 F.I4 (Phase 6 §6.2): this dataclass implements the
+    :class:`airwar.game.mother_ship.save_data_protocol.ISaveData`
+    structural Protocol. The Protocol is declared separately so test
+    doubles and alternative save formats can declare conformance
+    without inheriting from this dataclass.
+    """
 
     version: int = CURRENT_SAVE_VERSION
     score: int = 0

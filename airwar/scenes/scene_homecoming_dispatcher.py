@@ -10,6 +10,18 @@ Before: GameScene had 8 homecoming methods (80+ lines) that just
         forwarded to the coordinator.
 After:  SceneHomecomingDispatcher owns the dispatching logic;
         GameScene has 1-line forwarders for backward compatibility.
+
+47 模糊点 E.T3-T7 (Phase 6 §6.2): the four early-return paths in
+``on_requested`` / ``on_complete`` / ``on_orbital_strike`` /
+``on_departure_complete`` (and friends) all guard against a
+``None`` coordinator. When the coordinator is set, every callback
+proceeds normally and the protection lock is acquired through
+``coordinator._set_protection`` — no early-return short-circuits
+it. The ammo warning timing uses ``ammo_magazine.WARNING_CELL_THRESHOLD``
+as the single source of truth (consumed by the magazine UI and
+the tutorial renderer). On-requested step ordering matches the
+coordinator's contract: hide UI → clear bullets → set protection
+lock → start sequence.
 """
 
 from __future__ import annotations

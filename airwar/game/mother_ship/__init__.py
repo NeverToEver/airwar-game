@@ -16,6 +16,7 @@ from .mother_ship_renderer import MotherShipRenderer
 from .mother_ship_state import DockingProgress, GameSaveData, MotherShipState, SaveDataCorruptedError
 from .persistence_manager import PersistenceManager
 from .progress_bar_ui import ProgressBarUI
+from .save_data_protocol import ISaveData
 from .state_machine import MotherShipStateMachine
 
 __all__ = [
@@ -28,6 +29,7 @@ __all__ = [
     "IMotherShipStateMachine",
     "IMotherShipUI",
     "IPersistenceManager",
+    "ISaveData",
     "InputDetector",
     "MotherShip",
     "MotherShipMotion",
