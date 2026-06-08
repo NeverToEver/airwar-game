@@ -54,6 +54,10 @@ class SceneSwitcher:
                 if not self._show_settings_menu():
                     return (False, None)
                 continue
+            if hasattr(welcome, "should_open_benchmark") and welcome.should_open_benchmark():
+                if not self._show_benchmark_menu():
+                    return (False, None)
+                continue
             if welcome.is_ready():
                 self._director._current_user = welcome.get_username()
                 self._director._selected_difficulty = welcome.get_difficulty()
@@ -242,6 +246,22 @@ class SceneSwitcher:
         if game_scene and hasattr(game_scene, "player") and game_scene.player:
             self._director._apply_settings_to_player(game_scene.player)
         return True
+
+    def _show_benchmark_menu(self) -> bool:
+        """Show the benchmark scene; returns False if QUIT was triggered.
+
+        The benchmark scene runs the end-to-end test suite via its
+        own worker thread.  We just present the scene and let the
+        user interact with it; returning to welcome happens when
+        the scene sets ``running = False``.
+        """
+        benchmark_scene = self._scene_manager.get_scene("benchmark")
+        if not benchmark_scene:
+            return True
+        benchmark_scene.enter()
+        result = self._run_scene_loop(benchmark_scene)
+        benchmark_scene.exit()
+        return result != "quit"
 
     def _show_pause_menu(self, game_scene: GameScene) -> PauseAction:
         while True:

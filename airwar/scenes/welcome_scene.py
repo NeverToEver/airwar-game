@@ -41,6 +41,8 @@ def _request(scene, kind: str) -> None:
         scene.tutorial_requested = True
     elif kind == "settings":
         scene.settings_requested = True
+    elif kind == "benchmark":
+        scene.benchmark_requested = True
     elif kind == "quit":
         scene.want_to_quit = True
     scene.running = False
@@ -114,6 +116,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         self.want_to_quit = False
         self.tutorial_requested = False
         self.settings_requested = False
+        self.benchmark_requested = False
         self.show_guest_confirm = False
         self.guest_confirm_focus = "yes"  # 'yes' | 'no'
         self.show_delete_confirm = False
@@ -290,6 +293,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             "fullscreen": window.toggle_fullscreen,
             "tutorial": lambda: _request(scene, "tutorial"),
             "settings": lambda: _request(scene, "settings"),
+            "benchmark": lambda: _request(scene, "benchmark"),
             "quit": lambda: _request(scene, "quit"),
             "username_field": lp.focus_username_field,
             "username_dropdown": lp.toggle_user_dropdown,
@@ -566,6 +570,14 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             bool: True if the settings button was triggered.
         """
         return self.settings_requested
+
+    def should_open_benchmark(self) -> bool:
+        """Return whether the user requested the benchmark scene.
+
+        Returns:
+            bool: True if the benchmark button was triggered.
+        """
+        return self.benchmark_requested
 
     # -- Backward-compat private forwarders (called by tests) -----------
 

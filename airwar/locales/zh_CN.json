@@ -124,5 +124,13 @@
   "tutorial.boost_escape_label": "撤离窗口 {seconds}",
   "tutorial.core_overload": "核心过载",
   "tutorial.boss_armor": "首领装甲",
-  "tutorial.boss_armor_enrage": "首领装甲  激怒"
+  "tutorial.boss_armor_enrage": "首领装甲  激怒",
+  "welcome.benchmark_button": "进入自动化测试",
+  "benchmark.title": "自动化测试",
+  "benchmark.subtitle": "运行全流程场景 + 不变量 + 模糊测试",
+  "benchmark.enter_button": "进入自动化测试",
+  "benchmark.back": "返回",
+  "benchmark.running": "正在运行...",
+  "benchmark.info.line1": "运行约 30-60 秒,展示测试结果",
+  "benchmark.info.line2": "通过/失败的场景会在下方列出"
 }

@@ -124,5 +124,13 @@
   "tutorial.boost_escape_label": "Escape window {seconds}",
   "tutorial.core_overload": "Core Overload",
   "tutorial.boss_armor": "Boss Armor",
-  "tutorial.boss_armor_enrage": "Boss Armor  Enraged"
+  "tutorial.boss_armor_enrage": "Boss Armor  Enraged",
+  "welcome.benchmark_button": "Run Benchmark",
+  "benchmark.title": "Benchmark",
+  "benchmark.subtitle": "Run full scenario + invariant + fuzz suite",
+  "benchmark.enter_button": "Run Benchmark",
+  "benchmark.back": "Back",
+  "benchmark.running": "Running...",
+  "benchmark.info.line1": "Takes ~30-60s and shows test results",
+  "benchmark.info.line2": "Pass/fail scenarios are listed below"
 }

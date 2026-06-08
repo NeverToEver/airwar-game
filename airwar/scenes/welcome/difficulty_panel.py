@@ -112,6 +112,16 @@ class DifficultyPanel:
         )
         scene._login_panel._draw_ghost_button(surface, lb_rect, t("welcome.leaderboard_button"), "leaderboard")
 
+        # -- Benchmark button (compact, left of leaderboard) --
+        bm_btn_w = 140
+        bm_rect = pygame.Rect(
+            px + 20,
+            lb_rect.y,
+            bm_btn_w,
+            lb_rect.height,
+        )
+        scene._login_panel._draw_ghost_button(surface, bm_rect, t("welcome.benchmark_button"), "benchmark")
+
         controls = [
             (t("welcome.controls.move_key"), t("welcome.controls.move")),
             (t("welcome.controls.boost_key"), t("welcome.controls.boost")),

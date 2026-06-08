@@ -1,5 +1,6 @@
 """Game bootstrap -- window creation, scene registration, and main loop."""
 
+from ..benchmark import BenchmarkScene
 from ..config import SCREEN_HEIGHT, SCREEN_WIDTH
 from ..scenes import (
     DeathScene,
@@ -50,6 +51,7 @@ class Game:
         self._scene_manager.register("settings", SettingsScene())
         self._scene_manager.register("death", DeathScene())
         self._scene_manager.register("exit_confirm", ExitConfirmScene())
+        self._scene_manager.register("benchmark", BenchmarkScene())
 
     def run(self) -> None:
         try:
