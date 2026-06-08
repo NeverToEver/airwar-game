@@ -142,9 +142,7 @@ def test_illegal_transitions_raise(from_state, to_state):
         # State must be unchanged after the rejected attempt.
         assert sm.alive_substate == from_state
         return
-    raise AssertionError(
-        f"Expected IllegalPlayerTransition for {from_state.name} -> {to_state.name}"
-    )
+    raise AssertionError(f"Expected IllegalPlayerTransition for {from_state.name} -> {to_state.name}")
 
 
 # ---------------------------------------------------------------------------

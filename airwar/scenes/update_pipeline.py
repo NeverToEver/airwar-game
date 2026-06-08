@@ -47,6 +47,7 @@ Adding a new subsystem:
     3. Register the step in :meth:`UpdatePipeline.add_step`
     4. Add a test that asserts the step runs at the declared position
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable

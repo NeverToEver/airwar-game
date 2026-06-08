@@ -15,6 +15,7 @@ Backward compatibility:
   ``_mothership_gatling_sweep_frame`` attributes are exposed as property
   forwarders to this component so existing tests can read/write them.
 """
+
 from __future__ import annotations
 
 import math
@@ -50,9 +51,7 @@ MOTHERSHIP_GATLING_SWEEP_PERIOD = 96
 MOTHERSHIP_GATLING_RIGHT_SWEEP_PERIOD = 108
 MOTHERSHIP_GATLING_BARREL_X_OFFSETS = (-56, 56)
 MOTHERSHIP_GATLING_TURRETS = (
-    GatlingTurretSpec(
-        "left", MOTHERSHIP_GATLING_BARREL_X_OFFSETS[0], -60.0, 20.0, MOTHERSHIP_GATLING_SWEEP_PERIOD, 0
-    ),
+    GatlingTurretSpec("left", MOTHERSHIP_GATLING_BARREL_X_OFFSETS[0], -60.0, 20.0, MOTHERSHIP_GATLING_SWEEP_PERIOD, 0),
     GatlingTurretSpec(
         "right", MOTHERSHIP_GATLING_BARREL_X_OFFSETS[1], -20.0, 60.0, MOTHERSHIP_GATLING_RIGHT_SWEEP_PERIOD, 21
     ),

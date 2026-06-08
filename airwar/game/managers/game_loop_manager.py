@@ -142,10 +142,7 @@ class GameLoopManager:
         # tests that constructed GameLoopManager without a lock_manager;
         # those tests now also wire one (see test_game_loop_manager.py).
         if self._lock_manager is None:
-            raise RuntimeError(
-                "GameLoopManager requires a LockManager. "
-                "Pass lock_manager=... in the constructor."
-            )
+            raise RuntimeError("GameLoopManager requires a LockManager. Pass lock_manager=... in the constructor.")
         # BOSS_ENRAGE is a transient lock — applied only for the duration
         # of player.update() and released immediately after, matching the
         # legacy "lock only during update" contract.
@@ -321,20 +318,14 @@ class GameLoopManager:
                         continue
                     if base is not None and extra is not None:
                         if len(base) != 12:
-                            raise MovementParamError(
-                                f"Fallback path: enemy {enemy!r} base len {len(base)}"
-                            )
+                            raise MovementParamError(f"Fallback path: enemy {enemy!r} base len {len(base)}")
                         if len(extra) != 8:
-                            raise MovementParamError(
-                                f"Fallback path: enemy {enemy!r} extra len {len(extra)}"
-                            )
+                            raise MovementParamError(f"Fallback path: enemy {enemy!r} extra len {len(extra)}")
                         base_list.append(base)
                         extra_list.append(extra)
                         batch_indices.append(i)
                     else:
-                        raise MovementParamError(
-                            f"Fallback path: mismatched pair for {enemy!r}"
-                        )
+                        raise MovementParamError(f"Fallback path: mismatched pair for {enemy!r}")
             if base_list:
                 results = batch_update_movements(base_list, extra_list)
                 for j, (new_x, new_y, new_timer) in enumerate(results):

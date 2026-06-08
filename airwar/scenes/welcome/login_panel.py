@@ -126,9 +126,7 @@ class LoginPanel:
         scene = self._scene
 
         # Panel background
-        draw_chamfered_panel(
-            surface, px, py, PANEL_W, PANEL_H, SC.BG_PANEL_LIGHT, SC.BORDER_DIM, SC.GOLD_GLOW, CHAMFER
-        )
+        draw_chamfered_panel(surface, px, py, PANEL_W, PANEL_H, SC.BG_PANEL_LIGHT, SC.BORDER_DIM, SC.GOLD_GLOW, CHAMFER)
 
         # Section title
         title = scene.section_font.render(t("welcome.login_title"), True, SC.GOLD_PRIMARY)

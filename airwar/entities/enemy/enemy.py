@@ -843,5 +843,3 @@ class EliteEnemy(Enemy):
     ) -> None:
         self._shield_pulse += 0.08
         super().update(enemies, slow_factor, player_pos, *args, **kwargs)
-
-

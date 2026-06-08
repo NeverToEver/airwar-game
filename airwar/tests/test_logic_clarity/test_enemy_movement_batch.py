@@ -3,6 +3,7 @@
 Covers the 0% coverage of the enemy movement batch encoder
 extracted from Enemy class in Round 4 of Phase 3 refactor.
 """
+
 from __future__ import annotations
 
 import os
@@ -12,7 +13,6 @@ from types import SimpleNamespace
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-
 
 
 class TestEnemyMovementBatchEncoding:
@@ -147,8 +147,7 @@ class TestConfigureRustMovement:
             enemy = SimpleNamespace(move_type=move_type, move_timer=0.0)
             configure_rust_movement(enemy)
             assert enemy._rust_move_type_code == expected_code, (
-                f"For {move_type!r}, expected code {expected_code}, "
-                f"got {enemy._rust_move_type_code}"
+                f"For {move_type!r}, expected code {expected_code}, got {enemy._rust_move_type_code}"
             )
 
     def test_configure_sets_timer_attribute_for_hover(self):
@@ -184,7 +183,9 @@ class TestConfigureRustMovement:
         from airwar.entities.enemy.enemy_movement_batch import configure_rust_movement
 
         enemy = SimpleNamespace(
-            move_type="spiral", spiral_timer=0.0, spiral_frequency=0.05,
+            move_type="spiral",
+            spiral_timer=0.0,
+            spiral_frequency=0.05,
         )
         configure_rust_movement(enemy)
         first_code = enemy._rust_move_type_code
@@ -205,7 +206,14 @@ class TestMovementTypeMapCompleteness:
 
         assert len(MOVEMENT_TYPE_MAP) == 8
         expected_keys = {
-            "straight", "sine", "zigzag", "dive", "hover", "spiral", "noise", "aggressive",
+            "straight",
+            "sine",
+            "zigzag",
+            "dive",
+            "hover",
+            "spiral",
+            "noise",
+            "aggressive",
         }
         assert set(MOVEMENT_TYPE_MAP.keys()) == expected_keys
 

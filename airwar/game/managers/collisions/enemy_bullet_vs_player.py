@@ -8,6 +8,7 @@ The strategy is parameterised by a few parent-owned containers and
 ``get_use_rust`` predicate so the parent ``CollisionController`` retains
 single-source-of-truth for runtime configuration flags.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable

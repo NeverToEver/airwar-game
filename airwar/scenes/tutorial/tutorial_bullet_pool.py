@@ -51,11 +51,7 @@ class TutorialBulletPool:
             scene._player.centerx - center[0],
             scene._player.centery - center[1],
         )
-        direction = (
-            pygame.Vector2(0, 1)
-            if direction.length_squared() <= 1
-            else direction.normalize()
-        )
+        direction = pygame.Vector2(0, 1) if direction.length_squared() <= 1 else direction.normalize()
         rect = pygame.Rect(0, 0, 10, 14)
         rect.center = center
         scene._enemy_bullets.append(

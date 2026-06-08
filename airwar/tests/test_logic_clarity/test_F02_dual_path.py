@@ -6,6 +6,7 @@ Each test documents the post-refactor contract: code paths that
 previously had an `if self._lock_manager: ... else: ...` (or similar)
 should converge to a single, LockManager-routed path.
 """
+
 from __future__ import annotations
 
 import re
@@ -25,9 +26,7 @@ class TestF02SinglePathInGameController:
 
         source = inspect_getsource(GameController.set_invincible)
         # Must reference lock_manager (no else branch bypassing it)
-        assert "lock_manager" in source, (
-            "D1: GameController.set_invincible must route through LockManager"
-        )
+        assert "lock_manager" in source, "D1: GameController.set_invincible must route through LockManager"
         # The legacy direct-assign path should be removed
         assert "self.state.is_player_invincible = invincible" not in source, (
             "D1: legacy direct state assignment should be removed"
@@ -38,9 +37,7 @@ class TestF02SinglePathInGameController:
 
         source = inspect_getsource(GameController.set_paused)
         assert "lock_manager" in source
-        assert "self.state.is_paused = paused" not in source, (
-            "D2: legacy direct state assignment should be removed"
-        )
+        assert "self.state.is_paused = paused" not in source, "D2: legacy direct state assignment should be removed"
 
     def test_no_dual_path_in_controller(self):
         """Verify no `if self._lock_manager: ... else: ...` pattern."""
@@ -50,9 +47,7 @@ class TestF02SinglePathInGameController:
         # ending in `else:`. We want zero occurrences.
         pattern = r"if self\._lock_manager:.*?else:"
         matches = re.findall(pattern, text, re.DOTALL)
-        assert len(matches) == 0, (
-            f"D1+D2: found {len(matches)} dual-path blocks in game_controller.py"
-        )
+        assert len(matches) == 0, f"D1+D2: found {len(matches)} dual-path blocks in game_controller.py"
 
 
 class TestF02UpdateCoreSinglePath:
@@ -78,10 +73,9 @@ class TestF02SaveRestoreSingleEntranceReset:
         # The post-refactor contract: entrance reset is unconditional
         # and lives in a shared helper, not duplicated in both branches.
         # The current code has it in both branches; verify the helper exists.
-        assert (
-            "_reset_entrance_animation" in source
-            or "is_entrance_playing = False" in source
-        ), "D4: save_restore must reset entrance state"
+        assert "_reset_entrance_animation" in source or "is_entrance_playing = False" in source, (
+            "D4: save_restore must reset entrance state"
+        )
 
 
 class TestF02UndockRequestUnified:

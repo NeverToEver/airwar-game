@@ -4,6 +4,7 @@ After the Phase 3 logic-clarity refactor, all S5/S6/S7/S4 silent paths
 have been converted to explicit exceptions. These tests verify that the
 new contract holds.
 """
+
 from __future__ import annotations
 
 import os

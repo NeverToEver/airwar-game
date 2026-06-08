@@ -4,6 +4,7 @@ Maps: docs/logic-clarity/04-test-suite.md § F06.
 
 These tests verify that the protocol contracts exist with the right shape.
 """
+
 from __future__ import annotations
 
 import os

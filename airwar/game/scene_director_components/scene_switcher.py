@@ -82,8 +82,7 @@ class SceneSwitcher:
 
     def run_game_flow(self) -> str:
         self._logger.info(
-            f"Starting game flow: difficulty={self._director._selected_difficulty}, "
-            f"user={self._director._current_user}"
+            f"Starting game flow: difficulty={self._director._selected_difficulty}, user={self._director._current_user}"
         )
         self._scene_manager.switch(
             "game",

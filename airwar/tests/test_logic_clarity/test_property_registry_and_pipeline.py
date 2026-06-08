@@ -58,9 +58,7 @@ def test_every_event_constant_is_in_registry() -> None:
     event_constants = _collect_event_constants()
     assert event_constants, "No EVENT_* constants found — collector may be broken"
     for name in event_constants:
-        assert name in eb.EVENT_REGISTRY, (
-            f"{name} is defined on the event_bus module but missing from EVENT_REGISTRY"
-        )
+        assert name in eb.EVENT_REGISTRY, f"{name} is defined on the event_bus module but missing from EVENT_REGISTRY"
 
 
 # ---------------------------------------------------------------------------
@@ -73,9 +71,7 @@ def test_every_registry_entry_has_payload_schema_dict() -> None:
     for event_name, entry in eb.EVENT_REGISTRY.items():
         assert isinstance(entry, dict), f"{event_name}: entry is not a dict"
         assert "payload_schema" in entry, f"{event_name}: missing payload_schema"
-        assert isinstance(entry["payload_schema"], dict), (
-            f"{event_name}: payload_schema is not a dict"
-        )
+        assert isinstance(entry["payload_schema"], dict), f"{event_name}: payload_schema is not a dict"
 
 
 # ---------------------------------------------------------------------------
@@ -90,9 +86,7 @@ def test_every_registry_entry_has_subscribers_known_list() -> None:
         subs = entry["subscribers_known"]
         assert isinstance(subs, list), f"{event_name}: subscribers_known is not a list"
         for sub in subs:
-            assert isinstance(sub, str), (
-                f"{event_name}: subscriber entry {sub!r} is not a string"
-            )
+            assert isinstance(sub, str), f"{event_name}: subscriber entry {sub!r} is not a string"
 
 
 # ---------------------------------------------------------------------------
@@ -103,8 +97,7 @@ def test_every_registry_entry_has_subscribers_known_list() -> None:
 def test_pipeline_order_has_no_duplicates() -> None:
     """Each subsystem name must appear at most once in PIPELINE_ORDER."""
     assert len(PIPELINE_ORDER) == len(set(PIPELINE_ORDER)), (
-        f"Duplicate steps in PIPELINE_ORDER: "
-        f"{[s for s in PIPELINE_ORDER if PIPELINE_ORDER.count(s) > 1]}"
+        f"Duplicate steps in PIPELINE_ORDER: {[s for s in PIPELINE_ORDER if PIPELINE_ORDER.count(s) > 1]}"
     )
 
 
@@ -168,7 +161,7 @@ def test_short_circuit_halts_pipeline_at_step() -> None:
     halted_at: list[str] = []
     for name in PIPELINE_ORDER:
         if name in SHORT_CIRCUIT_STEPS:
-            pipeline.add_step(name, lambda n=name: (halted_at.append(n) or False))
+            pipeline.add_step(name, lambda n=name: halted_at.append(n) or False)
         else:
             pipeline.add_step(name, lambda: True)
 

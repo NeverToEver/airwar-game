@@ -22,6 +22,7 @@ The Python spatial-hash helpers (``_add_to_grid``, ``_get_potential_collisions``
 ``_get_entities_in_cells``) stay on the controller because both the
 strategies and the test suite need them.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -180,9 +181,7 @@ class CollisionController:
         rect = self._make_query_rect(x, y, radius)
         return self._get_entities_in_cells(self._enemy_grid_cells, rect)
 
-    def _get_potential_boss_bullets(
-        self, player_bullets: list[Bullet], boss_hitbox, active_count: int
-    ) -> list[Bullet]:
+    def _get_potential_boss_bullets(self, player_bullets: list[Bullet], boss_hitbox, active_count: int) -> list[Bullet]:
         if active_count < 32:
             return [bullet for bullet in player_bullets if bullet.active]
 
@@ -397,9 +396,7 @@ class CollisionController:
     def check_player_bullets_vs_boss(
         self, player_bullets: list[Bullet], boss: Boss, piercing_level: int
     ) -> tuple[int, bool]:
-        return self._bullet_vs_entities.check_player_bullets_vs_boss(
-            player_bullets, boss, piercing_level
-        )
+        return self._bullet_vs_entities.check_player_bullets_vs_boss(player_bullets, boss, piercing_level)
 
     def check_player_vs_enemies(
         self, player_hitbox, enemies: list[Enemy], try_dodge_func: Callable, on_player_hit_func: Callable
@@ -432,6 +429,4 @@ class CollisionController:
     def check_boss_vs_player(
         self, boss: Boss, player, calculate_damage_func: Callable, on_player_hit_func: Callable
     ) -> bool:
-        return self._boss_vs_player.check_boss_vs_player(
-            boss, player, calculate_damage_func, on_player_hit_func
-        )
+        return self._boss_vs_player.check_boss_vs_player(boss, player, calculate_damage_func, on_player_hit_func)

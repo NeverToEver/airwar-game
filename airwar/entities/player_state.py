@@ -172,9 +172,7 @@ class PlayerStateMachine:
 
     def mark_dying(self) -> None:
         if self._state == PlayerState.DEAD:
-            raise IllegalPlayerTransition(
-                "Cannot mark DYING after DEAD: state is already terminal"
-            )
+            raise IllegalPlayerTransition("Cannot mark DYING after DEAD: state is already terminal")
         self._state = PlayerState.DYING
 
     def mark_dead(self) -> None:
@@ -246,13 +244,9 @@ class PlayerStateMachine:
                 "Cannot enter BOOSTING from DOCKED: docked and boosting are mutually exclusive"
             )
         if self._alive_substate == PlayerAliveState.SHIELDED:
-            raise IllegalPlayerTransition(
-                "Cannot enter BOOSTING from SHIELDED: shield is incompatible with boost"
-            )
+            raise IllegalPlayerTransition("Cannot enter BOOSTING from SHIELDED: shield is incompatible with boost")
         if self._alive_substate == PlayerAliveState.DASHING:
-            raise IllegalPlayerTransition(
-                "Cannot enter BOOSTING from DASHING: dash preempts boost"
-            )
+            raise IllegalPlayerTransition("Cannot enter BOOSTING from DASHING: dash preempts boost")
         self.transition_substate(PlayerAliveState.BOOSTING)
 
     def exit_boost(self) -> None:
@@ -264,8 +258,7 @@ class PlayerStateMachine:
         # any other substate raises IllegalPlayerTransition.
         if self._alive_substate != PlayerAliveState.NORMAL:
             raise IllegalPlayerTransition(
-                f"Cannot enter DASHING from {self._alive_substate.name}: "
-                f"dash only preempts NORMAL"
+                f"Cannot enter DASHING from {self._alive_substate.name}: dash only preempts NORMAL"
             )
         self.transition_substate(PlayerAliveState.DASHING)
 

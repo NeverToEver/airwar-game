@@ -149,9 +149,7 @@ def test_escaping_state_only_via_mark_escaped(initial_state, health_value):
 
     # The only way to land in ESCAPING is via mark_escaped.
     if sm.state == BossState.ESCAPING:
-        raise AssertionError(
-            f"State became ESCAPING without mark_escaped; started at {initial_state.name}"
-        )
+        raise AssertionError(f"State became ESCAPING without mark_escaped; started at {initial_state.name}")
 
     # Now exercise mark_escaped directly — this is the documented path.
     sm._state = BossState.ACTIVE

@@ -225,9 +225,7 @@ class RewardCardRenderer:
         pygame.draw.rect(surface, colors["panel"], panel_rect, border_radius=15)
 
         border_surf = pygame.Surface((panel_width, panel_height), pygame.SRCALPHA)
-        pygame.draw.rect(
-            border_surf, (*colors["panel_border"], 120), border_surf.get_rect(), width=2, border_radius=15
-        )
+        pygame.draw.rect(border_surf, (*colors["panel_border"], 120), border_surf.get_rect(), width=2, border_radius=15)
         surface.blit(border_surf, panel_rect.topleft)
 
     def _draw_bottom_hint(self, surface: pygame.Surface) -> None:

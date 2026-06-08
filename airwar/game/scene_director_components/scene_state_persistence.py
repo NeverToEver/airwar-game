@@ -39,9 +39,7 @@ class SceneStatePersistence:
             return False
         if not game_scene.is_mothership_docked():
             save_data.is_in_mothership = False
-        persistence_manager = PersistenceManager(
-            save_dir=self._director._save_dir, username=save_data.username
-        )
+        persistence_manager = PersistenceManager(save_dir=self._director._save_dir, username=save_data.username)
         return persistence_manager.save_game(save_data)
 
     def save_game_on_quit(self, game_scene: GameScene) -> None:

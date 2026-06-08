@@ -5,6 +5,7 @@ Maps: docs/logic-clarity/04-test-suite.md § F05.
 These tests verify that ordered operations have explicit, documented
 pipelines rather than implicit positional dependencies.
 """
+
 from __future__ import annotations
 
 import os
@@ -65,9 +66,7 @@ class TestF05PostCollisionCleanupBeforeMilestone:
         if cleanup_pos < 0 or milestone_pos < 0:
             pytest.skip("Could not locate cleanup/milestone calls")
 
-        assert cleanup_pos < milestone_pos, (
-            "T2: cleanup() must be called before milestone check"
-        )
+        assert cleanup_pos < milestone_pos, "T2: cleanup() must be called before milestone check"
 
 
 class TestF05OnRequestedOrder:

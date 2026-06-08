@@ -13,6 +13,7 @@ Backward compatibility: GameIntegrator still has the
 ``_register_handlers()`` method (now a 1-line forwarder) so any
 external caller that calls it still works.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -65,13 +66,9 @@ class MothershipEventHub:
             event_const = getattr(eb, event_name, None)
             handler = getattr(self._integrator, handler_name, None)
             if event_const is None:
-                raise RuntimeError(
-                    f"MothershipEventHub: unknown event constant {event_name!r}"
-                )
+                raise RuntimeError(f"MothershipEventHub: unknown event constant {event_name!r}")
             if handler is None:
-                raise RuntimeError(
-                    f"MothershipEventHub: unknown handler {handler_name!r} on integrator"
-                )
+                raise RuntimeError(f"MothershipEventHub: unknown handler {handler_name!r} on integrator")
             bus.subscribe(event_const, handler)
 
     def subscription_count(self) -> int:

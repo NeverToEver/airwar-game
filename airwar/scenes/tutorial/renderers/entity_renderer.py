@@ -44,9 +44,7 @@ class EntityRenderer:
     def render_world(self, surface: pygame.Surface) -> None:
         """Render the world layer: bullets, enemies, boss, crosshair, player."""
         s = self._scene
-        render_hostiles = not (
-            s._stage.id == "mothership_docking" and s._dock_sub_phase == "eject_player"
-        )
+        render_hostiles = not (s._stage.id == "mothership_docking" and s._dock_sub_phase == "eject_player")
         if render_hostiles:
             self.render_bullets(surface)
             self.render_enemies(surface)

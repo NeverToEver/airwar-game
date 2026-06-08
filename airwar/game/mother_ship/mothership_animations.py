@@ -8,6 +8,7 @@ forwarders, and the private ``_*_animation_*`` attributes remain
 accessible via property forwarders so existing tests and call sites
 work without change.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -135,9 +136,7 @@ class MothershipAnimations:
         self._undocking_animation_active = True
         self._undocking_animation_frame = 0
         self._undocking_phase = 1
-        self._integrator._undocking_cooldown_multiplier = (
-            self._integrator._calculate_undocking_cooldown_multiplier()
-        )
+        self._integrator._undocking_cooldown_multiplier = self._integrator._calculate_undocking_cooldown_multiplier()
         self._integrator._progress_bar_ui.hide()
 
         dock_pos = self._integrator._mother_ship.get_docking_position()

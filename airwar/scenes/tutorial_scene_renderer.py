@@ -63,7 +63,9 @@ class TutorialSceneRenderer:
 
     # -- Background / world / stage-prop dispatch ------------------------
 
-    def _render_background(self, surface): self._background.render(surface)
+    def _render_background(self, surface):
+        self._background.render(surface)
+
     def _render_world(self, surface):
         s = self._scene
         self._render_stage_props(surface)
@@ -83,25 +85,46 @@ class TutorialSceneRenderer:
 
     # -- Entity layer ----------------------------------------------------
 
-    def _render_player(self, surface): self._entities.render_player(surface)
+    def _render_player(self, surface):
+        self._entities.render_player(surface)
 
     def _draw_entity_health_bar(self, surface, rect, ratio):
         self._entities._draw_entity_health_bar(surface, rect, ratio)
 
-    def _draw_boss_health(self, surface, boss): self._entities._draw_boss_health(surface, boss)
+    def _draw_boss_health(self, surface, boss):
+        self._entities._draw_boss_health(surface, boss)
 
     # -- UI panels (overlay / status / summary / cards / buttons) --------
 
-    def _render_stage_overlay(self, surface): self._ui.render_stage_overlay(surface)
-    def _render_status_bar(self, surface): self._ui.render_status_bar(surface)
-    def _render_health_battery(self, surface): self._ui.render_health_battery(surface)
-    def _render_summary(self, surface): self._ui.render_summary(surface)
-    def _render_stage_title_card(self, surface): self._ui.render_stage_title_card(surface)
-    def _render_skip_button(self, surface): self._ui.render_skip_button(surface)
-    def _render_base_talent_console(self, surface): self._ui.render_base_talent_console(surface)
-    def _render_homecoming_depart_transition(self, surface): self._ui.render_homecoming_depart_transition(surface)
-    def _render_escape_countdown(self, surface): self._ui.render_escape_countdown(surface)
-    def _render_boost_gate(self, surface): self._ui.render_boost_gate(surface)
+    def _render_stage_overlay(self, surface):
+        self._ui.render_stage_overlay(surface)
+
+    def _render_status_bar(self, surface):
+        self._ui.render_status_bar(surface)
+
+    def _render_health_battery(self, surface):
+        self._ui.render_health_battery(surface)
+
+    def _render_summary(self, surface):
+        self._ui.render_summary(surface)
+
+    def _render_stage_title_card(self, surface):
+        self._ui.render_stage_title_card(surface)
+
+    def _render_skip_button(self, surface):
+        self._ui.render_skip_button(surface)
+
+    def _render_base_talent_console(self, surface):
+        self._ui.render_base_talent_console(surface)
+
+    def _render_homecoming_depart_transition(self, surface):
+        self._ui.render_homecoming_depart_transition(surface)
+
+    def _render_escape_countdown(self, surface):
+        self._ui.render_escape_countdown(surface)
+
+    def _render_boost_gate(self, surface):
+        self._ui.render_boost_gate(surface)
 
     # -- Stage prop: mothership + ammo + warning -------------------------
 
@@ -110,14 +133,28 @@ class TutorialSceneRenderer:
 
     # -- Effects (explosions / fade / boss enrage) -----------------------
 
-    def _render_tutorial_explosions(self, surface): self._effects.render_tutorial_explosions(surface)
-    def _render_fade(self, surface): self._effects.render_fade(surface)
-    def _render_boss_enrage_aura(self, surface, boss): self._effects.render_boss_enrage_aura(surface, boss)
-    def _render_boss_enrage_warning(self, surface, boss): self._effects.render_boss_enrage_warning(surface, boss)
+    def _render_tutorial_explosions(self, surface):
+        self._effects.render_tutorial_explosions(surface)
+
+    def _render_fade(self, surface):
+        self._effects.render_fade(surface)
+
+    def _render_boss_enrage_aura(self, surface, boss):
+        self._effects.render_boss_enrage_aura(surface, boss)
+
+    def _render_boss_enrage_warning(self, surface, boss):
+        self._effects.render_boss_enrage_warning(surface, boss)
 
     # -- Internal helpers (kept for any external/test callers) ----------
 
-    def _draw_bar(self, surface, rect, ratio, fill_color): self._ui._draw_bar(surface, rect, ratio, fill_color)
-    def _current_stage_instructions(self): return self._ui._current_stage_instructions()
-    def _objective_counter_text(self): return self._ui._objective_counter_text()
-    def _stage_hold_ratio(self): return self._ui._stage_hold_ratio()
+    def _draw_bar(self, surface, rect, ratio, fill_color):
+        self._ui._draw_bar(surface, rect, ratio, fill_color)
+
+    def _current_stage_instructions(self):
+        return self._ui._current_stage_instructions()
+
+    def _objective_counter_text(self):
+        return self._ui._objective_counter_text()
+
+    def _stage_hold_ratio(self):
+        return self._ui._stage_hold_ratio()

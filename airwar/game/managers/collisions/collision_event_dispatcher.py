@@ -11,6 +11,7 @@ The dispatcher is intentionally lightweight — it does not own the
 so backward-compat callers (and tests that read ``controller.events``) keep
 working unchanged.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -63,6 +64,7 @@ class CollisionEventDispatcher:
         Returns:
             Callable[[int, Player], None]: handler that invokes both hooks.
         """
+
         def handle_player_hit(damage: int, target=None) -> None:
             hit_target = target or player
             if on_player_hit:

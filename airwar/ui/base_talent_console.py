@@ -144,12 +144,8 @@ class BaseTalentConsole:
             "font_small": self._font_small,
             "font_tiny": self._font_tiny,
         }
-        self._talent_switcher = TalentSwitcher(
-            self._button_rects, lambda: self._hovered_button, fonts
-        )
-        self._resupply_panel = ResupplyPanel(
-            self._button_rects, lambda: self._hovered_button, fonts
-        )
+        self._talent_switcher = TalentSwitcher(self._button_rects, lambda: self._hovered_button, fonts)
+        self._resupply_panel = ResupplyPanel(self._button_rects, lambda: self._hovered_button, fonts)
         self._mission_list = MissionList(lambda: self._missions, fonts)
 
     def get_missions(self) -> list[dict]:
@@ -269,12 +265,8 @@ class BaseTalentConsole:
         pygame.draw.ellipse(deck, (24, 30, 32, 255), pad_outer)
         pygame.draw.ellipse(deck, (92, 104, 104, 190), pad_outer, 3)
         pygame.draw.ellipse(deck, (12, 18, 21, 255), pad_inner)
-        pygame.draw.line(
-            deck, (118, 132, 132, 150), (pad_outer.left, pad_center_y), (pad_outer.right, pad_center_y), 2
-        )
-        pygame.draw.line(
-            deck, (118, 132, 132, 120), (center_x, pad_outer.top), (center_x, pad_outer.bottom), 2
-        )
+        pygame.draw.line(deck, (118, 132, 132, 150), (pad_outer.left, pad_center_y), (pad_outer.right, pad_center_y), 2)
+        pygame.draw.line(deck, (118, 132, 132, 120), (center_x, pad_outer.top), (center_x, pad_outer.bottom), 2)
 
         for offset in (-0.34, -0.2, 0.2, 0.34):
             start_x = int(center_x + sw * offset * 0.24)
@@ -301,9 +293,7 @@ class BaseTalentConsole:
         pulse = 0.5 + 0.5 * math.sin(self._frame * 0.06)
         for side in (-1, 1):
             rail_x = int(center_x + side * sw * 0.28)
-            pygame.draw.line(
-                deck, (70, 84, 88, 150), (rail_x, horizon_y + 18), (rail_x + side * int(sw * 0.17), sh), 3
-            )
+            pygame.draw.line(deck, (70, 84, 88, 150), (rail_x, horizon_y + 18), (rail_x + side * int(sw * 0.17), sh), 3)
             for index in range(7):
                 t = index / 6
                 x = int(rail_x + side * sw * 0.17 * t)

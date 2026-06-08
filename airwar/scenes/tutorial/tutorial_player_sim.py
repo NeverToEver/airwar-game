@@ -96,20 +96,12 @@ class TutorialPlayer:
             scene._aim_pos[0] - scene._player.centerx,
             scene._aim_pos[1] - scene._player.centery,
         )
-        aim_direction = (
-            pygame.Vector2(0, -1)
-            if aim_direction.length_squared() <= 1
-            else aim_direction.normalize()
-        )
+        aim_direction = pygame.Vector2(0, -1) if aim_direction.length_squared() <= 1 else aim_direction.normalize()
         right = pygame.Vector2(-aim_direction.y, aim_direction.x)
         forward = aim_direction
 
         for offset_x in scene.WING_MUZZLE_X_OFFSETS:
-            muzzle = (
-                pygame.Vector2(scene._player.center)
-                + right * offset_x
-                + forward * abs(scene.WING_MUZZLE_Y_OFFSET)
-            )
+            muzzle = pygame.Vector2(scene._player.center) + right * offset_x + forward * abs(scene.WING_MUZZLE_Y_OFFSET)
             bullet_rect = pygame.Rect(0, 0, 10, 18)
             bullet_rect.center = (round(muzzle.x), round(muzzle.y))
             scene._bullets.append(

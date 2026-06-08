@@ -2,6 +2,7 @@
 
 Maps: docs/logic-clarity/04-test-suite.md § F07.
 """
+
 from __future__ import annotations
 
 import os
@@ -47,7 +48,8 @@ class TestF07EventConstants:
 
         # All 24 defined
         assert all(
-            isinstance(v, str) for v in [
+            isinstance(v, str)
+            for v in [
                 EVENT_H_PRESSED,
                 EVENT_H_RELEASED,
                 EVENT_H_RELEASED_EARLY,
@@ -102,9 +104,7 @@ class TestF07SubscribeReturnValueHandling:
         from airwar.game.mother_ship.event_hub import HANDLER_BINDINGS
 
         # F07 E1: 14 events now bound via HANDLER_BINDINGS table.
-        assert len(HANDLER_BINDINGS) == 14, (
-            f"Expected 14 HANDLER_BINDINGS, got {len(HANDLER_BINDINGS)}"
-        )
+        assert len(HANDLER_BINDINGS) == 14, f"Expected 14 HANDLER_BINDINGS, got {len(HANDLER_BINDINGS)}"
 
     def test_event_hub_centralizes_subscriptions(self):
         """F07 E1 + god-class split: 14 subscriptions go through MothershipEventHub."""

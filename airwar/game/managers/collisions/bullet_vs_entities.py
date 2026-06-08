@@ -10,6 +10,7 @@ The strategy class is stateless from the caller's perspective — the parent
 explosion callback, grid cell size) via the constructor. Public entry
 points mirror the legacy ``CollisionController`` API so callers see no change.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable

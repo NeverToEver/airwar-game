@@ -11,6 +11,7 @@ Before: GameScene had 8 homecoming methods (80+ lines) that just
 After:  SceneHomecomingDispatcher owns the dispatching logic;
         GameScene has 1-line forwarders for backward compatibility.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING

@@ -8,6 +8,7 @@ or Rust path is involved. Kept as its own module to maintain symmetry
 with the bullet-based strategies and to make the responsibility
 boundaries clear in ``collision_controller.py``.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable

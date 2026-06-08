@@ -9,6 +9,7 @@ code is changed, they are expected to fail with a clear message.
 
 Each test docstring is the fuzzy-point ID from the discovery report.
 """
+
 from __future__ import annotations
 
 import inspect
@@ -42,9 +43,7 @@ class TestF01GameControllerExposesSetCycleCount:
     def test_game_controller_has_set_cycle_count_method(self):
         from airwar.game.managers.game_controller import GameController
 
-        assert hasattr(GameController, "set_cycle_count"), (
-            "F2: GameController should expose set_cycle_count()"
-        )
+        assert hasattr(GameController, "set_cycle_count"), "F2: GameController should expose set_cycle_count()"
 
 
 class TestF01GameControllerExposesSetDifficulty:
@@ -53,9 +52,7 @@ class TestF01GameControllerExposesSetDifficulty:
     def test_game_controller_has_set_difficulty_method(self):
         from airwar.game.managers.game_controller import GameController
 
-        assert hasattr(GameController, "set_difficulty"), (
-            "F3: GameController should expose set_difficulty()"
-        )
+        assert hasattr(GameController, "set_difficulty"), "F3: GameController should expose set_difficulty()"
 
 
 class TestF01GameControllerExposesAddScore:
@@ -117,9 +114,7 @@ class TestF01GameControllerClearRipples:
     def test_game_controller_has_clear_ripples_method(self):
         from airwar.game.managers.game_controller import GameController
 
-        assert hasattr(GameController, "clear_ripples"), (
-            "F8: GameController should expose clear_ripples()"
-        )
+        assert hasattr(GameController, "clear_ripples"), "F8: GameController should expose clear_ripples()"
 
 
 class TestF01HomecomingEntranceExplicitApi:

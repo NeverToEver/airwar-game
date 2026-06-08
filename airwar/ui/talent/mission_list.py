@@ -62,8 +62,7 @@ class MissionList:
             bar_rect = pygame.Rect(bar_x, mr.y + mr.h // 2 - 7, 168, 14)
             self._render_meter(surface, bar_rect, ratio, bar_color)
             prog_text = font_small.render(
-                f"{min(mission['progress'], mission['goal'])}/{mission['goal']}"
-                + (" ✓" if mission["done"] else ""),
+                f"{min(mission['progress'], mission['goal'])}/{mission['goal']}" + (" ✓" if mission["done"] else ""),
                 True,
                 (180, 210, 218) if not mission["done"] else (112, 206, 142),
             )

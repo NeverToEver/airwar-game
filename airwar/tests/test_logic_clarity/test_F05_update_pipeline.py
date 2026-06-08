@@ -2,6 +2,7 @@
 
 Verifies the explicit pipeline order + short-circuit semantics.
 """
+
 from __future__ import annotations
 
 import os
@@ -97,9 +98,7 @@ class TestF05PipelineExecution:
         pipeline.add_step("collision", lambda: call_order.append("collision"))
         pipeline.execute()
         assert call_order == ["aim_assist", "collision"]
-        assert pipeline.get_unwired_steps() == [
-            n for n in PIPELINE_ORDER if n not in {"aim_assist", "collision"}
-        ]
+        assert pipeline.get_unwired_steps() == [n for n in PIPELINE_ORDER if n not in {"aim_assist", "collision"}]
 
     def test_add_step_rejects_unknown_name(self):
         from airwar.scenes.update_pipeline import UpdatePipeline
@@ -156,7 +155,4 @@ class TestF05GameSceneWiring:
         # Allow a small number to be not-yet-wired (in-progress refactor).
         # After full refactor, missing should be [].
         if missing:
-            pytest.skip(
-                f"F05: GameScene not yet wired for steps: {missing}; "
-                f"refactor in progress"
-            )
+            pytest.skip(f"F05: GameScene not yet wired for steps: {missing}; refactor in progress")

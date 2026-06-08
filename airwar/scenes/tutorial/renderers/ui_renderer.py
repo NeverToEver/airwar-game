@@ -441,9 +441,7 @@ class UIRenderer:
         """Show the mothership sprite plus the docked-state ammo + warning UI."""
         s = self._scene
         if s._mothership:
-            mothership_departing = (
-                s._dock_sub_phase == "eject_player" and s._dock_undock_phase == "mothership"
-            )
+            mothership_departing = s._dock_sub_phase == "eject_player" and s._dock_undock_phase == "mothership"
             if not mothership_departing:
                 s._mothership.show()
             s._mothership.render(surface)

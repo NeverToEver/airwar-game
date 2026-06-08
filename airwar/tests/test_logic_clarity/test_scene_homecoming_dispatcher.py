@@ -3,6 +3,7 @@
 Covers the 0% coverage of the homecoming dispatcher that was
 extracted from GameScene in Round 4 of the Phase 3 refactor.
 """
+
 from __future__ import annotations
 
 import os
@@ -13,7 +14,6 @@ from unittest.mock import MagicMock
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-
 
 
 class TestSceneHomecomingDispatcherDispatch:
@@ -38,7 +38,13 @@ class TestSceneHomecomingDispatcherDispatch:
         dispatcher = SceneHomecomingDispatcher(coordinator=coordinator, scene=scene)
         dispatcher.update()
         coordinator.update.assert_called_once_with(
-            "gc", "p", "lm", "bm", "sc", "glm", "nm",
+            "gc",
+            "p",
+            "lm",
+            "bm",
+            "sc",
+            "glm",
+            "nm",
         )
 
     def test_dispatcher_dispatches_on_requested(self):
@@ -117,7 +123,12 @@ class TestSceneHomecomingDispatcherDispatch:
         dispatcher = SceneHomecomingDispatcher(coordinator=coordinator, scene=scene)
         dispatcher.on_departure_complete()
         coordinator.on_departure_complete.assert_called_once_with(
-            "gc", "p", "lm", "sc", "glm", "nm",
+            "gc",
+            "p",
+            "lm",
+            "sc",
+            "glm",
+            "nm",
         )
         assert scene._homecoming_base_pending is True
 
@@ -164,7 +175,14 @@ class TestSceneHomecomingDispatcherDispatch:
         result = dispatcher.handle_console_click((100, 200))
         assert result is True
         coordinator.handle_console_click.assert_called_once_with(
-            (100, 200), "gc", "p", "lm", "sc", "glm", "nm", "rs",
+            (100, 200),
+            "gc",
+            "p",
+            "lm",
+            "sc",
+            "glm",
+            "nm",
+            "rs",
         )
 
 

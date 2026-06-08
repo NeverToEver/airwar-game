@@ -14,6 +14,7 @@ The Enemy class keeps a 1-line forwarder so callers don't change::
     def get_rust_batch_params(self):
         return encode_rust_movement_params(self)
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -153,9 +154,7 @@ def _build_rust_params(enemy: Enemy) -> dict:
         "noise_amplitude_x": _rust_noise_param(enemy, "amplitude_x"),
         "noise_amplitude_y": _rust_noise_param(enemy, "amplitude_y"),
         "noise_seed": (
-            getattr(enemy, "agg_seed", 0)
-            if enemy.move_type == "aggressive"
-            else getattr(enemy, "noise_seed", 0)
+            getattr(enemy, "agg_seed", 0) if enemy.move_type == "aggressive" else getattr(enemy, "noise_seed", 0)
         ),
     }
 

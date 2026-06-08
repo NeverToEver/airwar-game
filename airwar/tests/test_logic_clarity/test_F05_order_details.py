@@ -7,6 +7,7 @@ F05 T5: on_requested 步骤顺序 hide → clear → protect → start。
 
 F05 T7: save_restore 顺序 difficulty → health → boost → buff → position。
 """
+
 from __future__ import annotations
 
 import os

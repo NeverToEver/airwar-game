@@ -100,8 +100,7 @@ class GameController:
         from ..systems.lock_manager import LockLayer, LockRequest
 
         assert self._lock_manager is not None, (
-            "GameController.set_invincible requires a LockManager. "
-            "Call set_lock_manager() during scene initialization."
+            "GameController.set_invincible requires a LockManager. Call set_lock_manager() during scene initialization."
         )
         if invincible:
             self._lock_manager.acquire(
@@ -119,8 +118,7 @@ class GameController:
         from ..systems.lock_manager import LockLayer, LockRequest
 
         assert self._lock_manager is not None, (
-            "GameController.set_paused requires a LockManager. "
-            "Call set_lock_manager() during scene initialization."
+            "GameController.set_paused requires a LockManager. Call set_lock_manager() during scene initialization."
         )
         if paused:
             self._lock_manager.acquire(

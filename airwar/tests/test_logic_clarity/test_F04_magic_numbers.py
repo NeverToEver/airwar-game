@@ -5,6 +5,7 @@ Maps: docs/logic-clarity/04-test-suite.md § F04.
 These tests verify the post-refactor contract: all magic numbers
 should be moved to GAME_CONSTANTS or a similar central registry.
 """
+
 from __future__ import annotations
 
 import os
@@ -37,9 +38,7 @@ class TestF04SentinelRemovedFromGameScene:
             line_no = text[: text.find(match)].count("\n") + 1
             line = text.splitlines()[line_no - 1]
             if not line.lstrip().startswith("#") and "999999" not in line.split("#")[-1]:
-                pytest.fail(
-                    f"M1: bare 999999 found in game_scene.py line {line_no}: {line.strip()}"
-                )
+                pytest.fail(f"M1: bare 999999 found in game_scene.py line {line_no}: {line.strip()}")
 
     def test_no_999999_in_homecoming_coordinator(self):
         path = REPO_ROOT / "airwar" / "game" / "systems" / "homecoming_coordinator.py"
@@ -49,9 +48,7 @@ class TestF04SentinelRemovedFromGameScene:
             line_no = text[: text.find(match)].count("\n") + 1
             line = text.splitlines()[line_no - 1]
             if not line.lstrip().startswith("#") and "999999" not in line.split("#")[-1]:
-                pytest.fail(
-                    f"M7: bare 999999 in homecoming_coordinator.py line {line_no}: {line.strip()}"
-                )
+                pytest.fail(f"M7: bare 999999 in homecoming_coordinator.py line {line_no}: {line.strip()}")
 
 
 class TestF04FrameConstantsInConfig:

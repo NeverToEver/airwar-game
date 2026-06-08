@@ -137,23 +137,40 @@ class RewardSelector(MouseSelectableMixin):
             renderer._draw_panel(surface)
 
         box_width = RewardLayout.calculate_option_box_width(
-            surface, self.options, self.use_themed_style,
-            renderer.option_font, renderer.hint_font,
-            self.buff_levels, self.unlocked_buffs,
+            surface,
+            self.options,
+            self.use_themed_style,
+            renderer.option_font,
+            renderer.hint_font,
+            self.buff_levels,
+            self.unlocked_buffs,
         )
         center_x, _panel_y, start_y = RewardLayout.option_section_anchor(
-            surface, self._animator.glow_offset,
+            surface,
+            self._animator.glow_offset,
         )
         self.clear_option_rects()
         effective_index = self.get_effective_selected_index(self.selected_index)
         for i, option in enumerate(self.options):
             if self.use_themed_style:
                 renderer._draw_themed_option_item(
-                    surface, option, i, center_x, start_y, i == effective_index, box_width,
+                    surface,
+                    option,
+                    i,
+                    center_x,
+                    start_y,
+                    i == effective_index,
+                    box_width,
                 )
             else:
                 renderer._draw_option_item(
-                    surface, option, i, center_x, start_y, i == effective_index, box_width,
+                    surface,
+                    option,
+                    i,
+                    center_x,
+                    start_y,
+                    i == effective_index,
+                    box_width,
                 )
         renderer._draw_bottom_hint(surface)
 

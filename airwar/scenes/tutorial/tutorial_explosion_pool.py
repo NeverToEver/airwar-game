@@ -47,9 +47,7 @@ class TutorialExplosionPool:
         scene = self._scene
         for explosion in scene._tutorial_explosions:
             explosion.timer -= 1
-        scene._tutorial_explosions[:] = [
-            explosion for explosion in scene._tutorial_explosions if explosion.timer > 0
-        ]
+        scene._tutorial_explosions[:] = [explosion for explosion in scene._tutorial_explosions if explosion.timer > 0]
 
     def spawn(self, center: tuple[int, int]) -> None:
         """Append a fresh explosion to ``scene._tutorial_explosions``."""
