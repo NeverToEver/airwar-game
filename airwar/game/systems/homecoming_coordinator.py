@@ -7,6 +7,14 @@ this module. The coordinator now owns only the sequence-lifecycle
 plumbing (on_requested, on_complete, on_orbital_strike,
 on_departure_complete, leave_base, the lock-manager wiring, and the
 failure-mode gate).
+
+47 模糊点 B.D6 (Phase 6 §6.2): legacy homecoming fallback removed in
+the Phase 5-γ split. Pre-split, this class carried the full state
+machine, talent manager, and resupply logic; the only remaining
+"legacy" surface is the ``_handle_action`` backward-compat forwarder
+on line 286 (preserved for 4 test sites in ``test_homecoming.py``)
+and the ``_base_pending`` / ``_talent_balance_manager`` property
+shims (lines 116-138). No double-path code remains.
 """
 
 from enum import Enum

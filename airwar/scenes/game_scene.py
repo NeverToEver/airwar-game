@@ -1,13 +1,16 @@
 """Main game scene - gameplay loop, entity coordination, and rendering.
 
-Phase42.2 god-class split: GameScene is now a thin coordinator.
-The53 IGameScene forwarders live on IGameSceneAdapter
+Phase 5-ε: GameScene is now a thin coordinator (≤450 lines).
+The 26 IGameScene forwarders live on IGameSceneAdapter
 (see game_scene_protocol_adapter.py). The heavy enter() subsystem
 construction lives on GameSceneFactory
-(see game_scene_factory.py). The scene keeps:
+(see game_scene_factory.py). The 15-step update body lives on
+GameSceneUpdater; the handle_events body lives on
+GameSceneEventDispatcher; the per-frame render lives on
+GameSceneRenderer. The scene keeps:
  - Lifecycle: enter, exit, handle_events, update, render
  - State queries: is_* predicates
- - IGameScene Protocol conformance (53 public methods)
+ - IGameScene Protocol conformance (26 forwarder methods)
  - Property accessors with setters
  - The __setattr__ hook that keeps the F07 dispatcher in sync
 """
@@ -75,8 +78,10 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     """Main game scene controller.
 
     GameScene delegates:
-     - The53 IGameScene forwarders to self._protocol (IGameSceneAdapter)
+     - The 26 IGameScene forwarders to self._protocol (IGameSceneAdapter)
      - The enter() construction to self._factory.build (GameSceneFactory)
+     - The 15-step update() body to self._updater (GameSceneUpdater)
+     - The handle_events() body to self._dispatcher (GameSceneEventDispatcher)
      - Per-frame rendering to self._scene_renderer (GameSceneRenderer)
 
     Update pipeline: see airwar.scenes.update_pipeline.PIPELINE_ORDER.
@@ -220,7 +225,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         ui = HomecomingUI(screen_width, screen_height)
         console = BaseTalentConsole(screen_width, screen_height)
         coordinator = HomecomingCoordinator(detector, sequence, ui, console)
-        # F07: SceneHomecomingDispatcher owns the8 callback methods.
+        # F07: SceneHomecomingDispatcher owns the 8 callback methods.
         self._set_homecoming_coordinator(coordinator)
         self._homecoming_coordinator.set_save_fn(self._save_base_loadout)
         self._homecoming_detector = detector
@@ -462,15 +467,6 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     def _sync_player_aim_target(self) -> None:
         if self.player:
             self.player.set_aim_target(*self._aim_assist.get_aim_position())
-
-    def _render_aim_crosshair(self, surface: pygame.Surface) -> None:
-        if not self.game_controller or not self.game_controller.is_playing():
-            return
-        if self.game_controller.state.is_paused:
-            return
-        if self.reward_selector and self.reward_selector.visible:
-            return
-        self._aim_crosshair.render(surface, self._aim_assist.get_aim_position())
 
     def _init_pause_button_layout(self) -> None:
         self._pause_button.init_layout(self.register_button)

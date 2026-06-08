@@ -166,31 +166,35 @@ def test_handle_console_click_returns_false_when_no_console() -> None:
     coordinator = SimpleNamespace(_resupply=SimpleNamespace())
     orch = BaseTalentOrchestrator(coordinator, base_talent_console=None)
     orch._talent_balance_manager = MagicMock()
-    result = orch.handle_console_click((0, 0), MagicMock(), MagicMock(), MagicMock(),
-                                        MagicMock(), MagicMock(), MagicMock(), MagicMock())
+    result = orch.handle_console_click(
+        (0, 0), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock()
+    )
     assert result is False
 
 
 def test_handle_console_click_returns_false_when_no_manager() -> None:
     orch = _make_orchestrator(has_manager=False)
-    result = orch.handle_console_click((0, 0), MagicMock(), MagicMock(), MagicMock(),
-                                        MagicMock(), MagicMock(), MagicMock(), MagicMock())
+    result = orch.handle_console_click(
+        (0, 0), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock()
+    )
     assert result is False
 
 
 def test_handle_console_click_returns_false_when_console_returns_none() -> None:
     orch = _make_orchestrator(has_manager=True)
     orch._base_talent_console.handle_mouse_click.return_value = None
-    result = orch.handle_console_click((0, 0), MagicMock(), MagicMock(), MagicMock(),
-                                        MagicMock(), MagicMock(), MagicMock(), MagicMock())
+    result = orch.handle_console_click(
+        (0, 0), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock()
+    )
     assert result is False
 
 
 def test_handle_console_click_routes_to_action() -> None:
     orch = _make_orchestrator(has_manager=True)
     orch._base_talent_console.handle_mouse_click.return_value = BaseTalentConsoleAction.continue_sortie()
-    result = orch.handle_console_click((0, 0), MagicMock(), MagicMock(), MagicMock(),
-                                        MagicMock(), MagicMock(), MagicMock(), MagicMock())
+    result = orch.handle_console_click(
+        (0, 0), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock()
+    )
     assert result is True
     orch._coordinator.leave_base.assert_called_once()
 
@@ -198,32 +202,36 @@ def test_handle_console_click_routes_to_action() -> None:
 def test_handle_action_continue_dispatches_to_leave_base() -> None:
     orch = _make_orchestrator(has_manager=False)
     action = BaseTalentConsoleAction.continue_sortie()
-    orch._handle_action(action, MagicMock(), MagicMock(), MagicMock(),
-                        MagicMock(), MagicMock(), MagicMock(), MagicMock())
+    orch._handle_action(
+        action, MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock()
+    )
     orch._coordinator.leave_base.assert_called_once()
 
 
 def test_handle_action_resupply_dispatches_to_resupply_service() -> None:
     orch = _make_orchestrator(has_manager=False)
     action = BaseTalentConsoleAction.resupply()
-    orch._handle_action(action, MagicMock(), MagicMock(), MagicMock(),
-                        MagicMock(), MagicMock(), MagicMock(), MagicMock())
+    orch._handle_action(
+        action, MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock()
+    )
     orch._coordinator._resupply.resupply_at_base.assert_called_once()
 
 
 def test_handle_action_repair_dispatches_to_resupply_service() -> None:
     orch = _make_orchestrator(has_manager=False)
     action = BaseTalentConsoleAction.repair()
-    orch._handle_action(action, MagicMock(), MagicMock(), MagicMock(),
-                        MagicMock(), MagicMock(), MagicMock(), MagicMock())
+    orch._handle_action(
+        action, MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock()
+    )
     orch._coordinator._resupply.repair_at_base.assert_called_once()
 
 
 def test_handle_action_recharge_dispatches_to_resupply_service() -> None:
     orch = _make_orchestrator(has_manager=False)
     action = BaseTalentConsoleAction.recharge()
-    orch._handle_action(action, MagicMock(), MagicMock(), MagicMock(),
-                        MagicMock(), MagicMock(), MagicMock(), MagicMock())
+    orch._handle_action(
+        action, MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock()
+    )
     orch._coordinator._resupply.recharge_at_base.assert_called_once()
 
 
@@ -231,8 +239,9 @@ def test_handle_action_select_module_no_op() -> None:
     orch = _make_orchestrator(has_manager=True)
     action = BaseTalentConsoleAction.select_module("mission")
     # No exception, no call to resupply or route apply — SELECT_MODULE is a no-op branch.
-    orch._handle_action(action, MagicMock(), MagicMock(), MagicMock(),
-                        MagicMock(), MagicMock(), MagicMock(), MagicMock())
+    orch._handle_action(
+        action, MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock()
+    )
     orch._coordinator._resupply.resupply_at_base.assert_not_called()
     orch._coordinator._resupply.repair_at_base.assert_not_called()
     orch._coordinator._resupply.recharge_at_base.assert_not_called()
@@ -245,8 +254,9 @@ def test_handle_action_select_route_with_no_next_option_no_op() -> None:
     orch = _make_orchestrator(has_manager=True)
     orch._talent_balance_manager.next_option.return_value = None
     action = BaseTalentConsoleAction.select_route("offense")
-    orch._handle_action(action, MagicMock(), MagicMock(), MagicMock(),
-                        MagicMock(), MagicMock(), MagicMock(), MagicMock())
+    orch._handle_action(
+        action, MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock()
+    )
     orch._talent_balance_manager.next_option.assert_called_once_with("offense")
 
 

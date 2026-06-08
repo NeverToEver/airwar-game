@@ -72,7 +72,7 @@ class GameSceneRenderer:
         scene._input_coordinator.render_give_up(surface)
         self._render_homecoming_progress(surface)
         self._render_warning_banner(surface)
-        scene._render_aim_crosshair(surface)
+        self._render_aim_crosshair(surface)
         self._render_haunting_corruption(surface)
         self._render_homecoming_sequence(surface)
         self._render_base_talent_console(surface)
@@ -129,6 +129,17 @@ class GameSceneRenderer:
         scene = self._scene
         if scene._warning_banner:
             scene._warning_banner.render(surface)
+
+    def _render_aim_crosshair(self, surface) -> None:
+        """Render the aim crosshair (moved from GameScene in Phase 5-ε)."""
+        scene = self._scene
+        if not scene.game_controller or not scene.game_controller.is_playing():
+            return
+        if scene.game_controller.state.is_paused:
+            return
+        if scene.reward_selector and scene.reward_selector.visible:
+            return
+        scene._aim_crosshair.render(surface, scene._aim_assist.get_aim_position())
 
     def _render_haunting_corruption(self, surface) -> None:
         scene = self._scene

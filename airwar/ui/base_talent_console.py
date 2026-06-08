@@ -358,9 +358,7 @@ class BaseTalentConsole:
         elif self._active_module == "mission":
             self._mission_list.render_mission_module(surface, inner)
         else:
-            self._hangar_panel.render_hangar_module(
-                surface, inner, status, requisition_points, self._frame
-            )
+            self._hangar_panel.render_hangar_module(surface, inner, status, requisition_points, self._frame)
 
     def _draw_summary(self, surface: pygame.Surface, x: int, y: int, width: int, reward_system) -> None:
         rect = pygame.Rect(x, y, width, 92)
