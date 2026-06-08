@@ -11,6 +11,8 @@ from .interfaces import (
     IPersistenceManager,
 )
 from .mother_ship import MotherShip
+from .mother_ship_motion import MotherShipMotion
+from .mother_ship_renderer import MotherShipRenderer
 from .mother_ship_state import DockingProgress, GameSaveData, MotherShipState, SaveDataCorruptedError
 from .persistence_manager import PersistenceManager
 from .progress_bar_ui import ProgressBarUI
@@ -28,6 +30,8 @@ __all__ = [
     "IPersistenceManager",
     "InputDetector",
     "MotherShip",
+    "MotherShipMotion",
+    "MotherShipRenderer",
     "MotherShipState",
     "MotherShipStateMachine",
     "PersistenceManager",
