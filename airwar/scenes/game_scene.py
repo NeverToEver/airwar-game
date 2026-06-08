@@ -29,7 +29,7 @@ from airwar.game.managers import (
     UIManager,
 )
 from airwar.game.managers.collision_controller import CollisionController
-from airwar.game.managers.game_controller import GameController, GameplayState
+from airwar.game.managers.game_controller import GameController
 from airwar.game.managers.spawn_controller import SpawnController
 from airwar.game.mother_ship import (
     EventBus,
@@ -66,6 +66,7 @@ from airwar.utils.sprites import prewarm_glow_caches, prewarm_ship_sprite_caches
 from .game_scene_factory import GameSceneFactory
 from .game_scene_protocol_adapter import IGameSceneAdapter
 from .game_scene_renderer import GameSceneRenderer
+from .game_scene_updater import GameSceneUpdater
 from .scene import Scene
 
 
@@ -145,9 +146,11 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._game_loop_manager: GameLoopManager = None
         self._scene_renderer: GameSceneRenderer = None
         self._viewport = None
-        self._phase_dash_invincibility_active = False
-        self._survival_frames = 0
-        self._last_bullet_clear_frame = GAME_CONSTANTS.GAMEPLAY.bullet_clear_dedup_initial_frame()
+        # Per-frame state migrated to GameSceneUpdater (Phase 5-ε):
+        # _phase_dash_invincibility_active / _survival_frames /
+        # _last_bullet_clear_frame / _auto_save_timer. Read via the
+        # @property shims below; write via the updater's reset_state().
+        self._updater = GameSceneUpdater(self)
 
     def enter(self, **kwargs) -> None:
         """Initialize the game scene via GameSceneFactory."""
@@ -158,7 +161,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self.clear_buttons()
         self._pause_button.clear_cache()
         self._lock_manager.clear()
-        self._phase_dash_invincibility_active = False
+        # _phase_dash_invincibility_active reset by self._updater.reset_state() below.
         if self._haunting_renderer:
             self._haunting_renderer.dispose()
         self._haunting_renderer = HauntingRenderer()
@@ -177,7 +180,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._aim_assist.set_raw_aim_position(self._get_logical_mouse_pos())
 
         self._factory.build(self, screen_width, screen_height, kwargs)
-        self._auto_save_timer = 0
+        self._updater.reset_state()
 
     def _setup_reward_selector(self) -> None:
         self.reward_selector.hide = lambda: setattr(self.reward_selector, "visible", False)
@@ -271,91 +274,29 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         return False
 
     def update(self, *args, **kwargs) -> None:
-        """Update order: see airwar.scenes.update_pipeline.PIPELINE_ORDER."""
-        self.reward_selector.update()
-        if self._homecoming_coordinator:
-            self._homecoming_coordinator.update_base(self.game_controller, self.notification_manager)
-        self._aim_assist.update(self.spawn_controller, self._get_logical_mouse_pos())
-        self._sync_player_aim_target()
-        self._aim_crosshair.update()
-        self._update_homecoming()
+        """Per-frame update.
 
-        if self.game_renderer and self.game_renderer.integrated_hud:
-            unlocked_buffs = getattr(self.reward_system, "unlocked_buffs", [])
-            self.game_renderer.integrated_hud.update_scroll(len(unlocked_buffs))
-            if self.player:
-                self.game_renderer.integrated_hud.update_health_tank(self.player.health, self.player.max_health)
-            self.game_renderer.integrated_hud.update()
+        Update order: delegates to :class:`GameSceneUpdater` which owns
+        the 15-step pipeline body (see
+        ``airwar.scenes.update_pipeline.PIPELINE_ORDER``):
 
-        if self._is_homecoming_active():
-            return
-
-        # Always update warning banner scroll animation
-        if self._warning_banner:
-            self._warning_banner.update()
-
-        if self._game_loop_manager.is_entrance_playing():
-            self._game_loop_manager.update_entrance(self.player)
-            if self._mother_ship_integrator:
-                self._mother_ship_integrator.update()
-            return
-
-        is_dying = self.game_controller.state.gameplay_state == GameplayState.DYING
-
-        if is_dying:
-            self._game_loop_manager.update_game(self.player)
-            return
-
-        if self.game_controller.state.is_paused or self.reward_selector.visible:
-            return
-
-        docked = False
-        if self._mother_ship_integrator:
-            self._mother_ship_integrator.update()
-            docked = self._mother_ship_integrator.is_docked()
-
-        self._update_mothership_ammo_warning()
-
-        self._input_coordinator.update_give_up()
-        self._game_loop_manager.update_game(self.player)
-
-        # During docked state, lock player at docking position
-        if docked:
-            dock_pos = self._mother_ship_integrator.get_docking_position()
-            self.player.rect.x = dock_pos[0] - self.player.rect.width // 2
-            self.player.rect.y = dock_pos[1] - self.player.rect.height // 2
-
-        self._sync_player_phase_dash_invincibility()
-
-        self._game_loop_manager.check_collisions(
-            self.player,
-            self.spawn_controller.enemy_bullets,
-            self._on_player_damaged,
-        )
-
-        # Post-collision cleanup
-        self.spawn_controller.cleanup()
-        self._bullet_manager.cleanup()
-        self.player.cleanup_inactive_bullets()
-
-        self._milestone_manager.check_and_trigger(self.player)
-
-        self._survival_frames += 1
-        self._update_haunting_effect()
-        self._auto_save_timer += 1
-        if self._auto_save_timer >= self.AUTO_SAVE_INTERVAL:
-            self._auto_save_timer = 0
-            self._try_auto_save()
-
-    def _update_haunting_effect(self) -> None:
-        if not self._haunting_renderer or not self.spawn_controller:
-            return
-        enemy_pressure = len(self.spawn_controller.enemies)
-        if self.spawn_controller.boss:
-            enemy_pressure += 3
-        if self.spawn_controller.enemy_bullets:
-            enemy_pressure += min(8, len(self.spawn_controller.enemy_bullets) // 6)
-        self._haunting_renderer.update(enemy_pressure)
+        1. reward_selector
+        2. aim_assist
+        3. homecoming
+        4. warning_banner
+        5. entrance_animation
+        6. dying_animation
+        7. pause_check
+        8. mothership_integrator
+        9. give_up_detector
+        10. core_logic
+        11. phase_dash_sync
+        12. collision
+        13. post_collision_cleanup
+        14. milestone_check
+        15. auto_save
+        """
+        self._updater.run()
 
     def _should_suppress_haunting(self) -> bool:
         """Suppress haunting visuals when player is inside or near mothership."""
@@ -402,38 +343,6 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             self.player,
         )
 
-    def _try_auto_save(self) -> None:
-        """Periodic auto-save while game is running normally."""
-        if not self._mother_ship_integrator:
-            return
-        if self._mother_ship_integrator.is_docked():
-            return
-        if not self.game_controller or not self.game_controller.is_playing():
-            return
-        save_data = self._mother_ship_integrator.create_save_data()
-        if save_data:
-            save_data.is_in_mothership = False
-            PersistenceManager(username=save_data.username).save_game(save_data)
-
-    def _sync_player_phase_dash_invincibility(self) -> None:
-        if not self.game_controller or not self.player:
-            return
-
-        self._sync_lock_manager_targets()
-        if self.player.is_phase_dash_invincible():
-            self._phase_dash_invincibility_active = True
-            self._lock_manager.acquire(
-                LockLayer.PHASE_DASH,
-                LockRequest(invincible=True, is_silent_invincible=True, invincibility_duration=2),
-            )
-            return
-
-        if not self._phase_dash_invincibility_active:
-            return
-
-        self._phase_dash_invincibility_active = False
-        self._lock_manager.release(LockLayer.PHASE_DASH)
-
     def _activate_invincibility(self) -> None:
         self._sync_lock_manager_targets()
         self._lock_manager.acquire(
@@ -450,59 +359,15 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._sync_lock_manager_targets()
         self._lock_manager.release(LockLayer.MOTHERSHIP)
 
-    def _update_mothership_ammo_warning(self) -> None:
-        """Check ammo level and activate warning banner when critically low."""
-        if not self._mother_ship_integrator or not self._warning_banner:
-            return
-
-        status = self._mother_ship_integrator.get_status_data()
-        if not status.get("ammo_warning", False):
-            return
-
-        if self._warning_banner.is_active:
-            return
-
-        def trigger_undock():
-            from airwar.game.mother_ship.event_bus import EVENT_UNDOCK_REQUESTED
-
-            bus = self.event_bus
-            assert bus is not None, (
-                "F02 D5: warning_banner.on_complete requires the EventBus "
-                "to be wired (publishes EVENT_UNDOCK_REQUESTED)."
-            )
-            bus.publish(EVENT_UNDOCK_REQUESTED)
-
-        self._warning_banner.activate(on_complete=trigger_undock)
-
-    BULLET_CLEAR_RADIUS = (
-        GAME_CONSTANTS.PERSISTENCE.BULLET_CLEAR_RADIUS
-    )  # px; clear enemy bullets within this radius on player hit
-
-    def _on_player_damaged(self, damage: int, player) -> None:
-        """Handle player hit: apply damage, clear nearby enemy bullets."""
-        self.game_controller.on_player_hit(damage, player)
-        self._clear_nearby_enemy_bullets(player)
-
-    def _clear_nearby_enemy_bullets(self, player) -> None:
-        """Clear enemy bullets within BULLET_CLEAR_RADIUS of the player after being hit."""
-        if not self.spawn_controller:
-            return
-        if self._survival_frames - self._last_bullet_clear_frame < self.BULLET_CLEAR_DEDUP_FRAMES:
-            return
-        self._last_bullet_clear_frame = self._survival_frames
-        px = player.rect.centerx
-        py = player.rect.centery
-        r2 = self.BULLET_CLEAR_RADIUS * self.BULLET_CLEAR_RADIUS
-        for bullet in self.spawn_controller.enemy_bullets:
-            if not bullet.active:
-                continue
-            dx = bullet.rect.centerx - px
-            dy = bullet.rect.centery - py
-            if dx * dx + dy * dy <= r2:
-                bullet.active = False
+    # ---- Phase 5-ε: 1-line forwarders to GameSceneUpdater ----
+    # These methods moved to GameSceneUpdater; the facade retains them
+    # as thin forwarders for back-compat with test sites and callback
+    # wiring (e.g. ``GiveUpDetector(scene._on_give_up_complete)``).
+    def _sync_player_phase_dash_invincibility(self) -> None:
+        self._updater._sync_player_phase_dash_invincibility()
 
     def _on_give_up_complete(self) -> None:
-        self.game_controller.on_player_hit(GAME_CONSTANTS.DAMAGE.INSTANT_KILL, self.player)
+        self._updater._on_give_up_complete()
 
     def _set_homecoming_coordinator(self, coordinator) -> None:
         """Set the homecoming coordinator and (re)create the dispatcher."""
@@ -670,6 +535,27 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             return
         if self.game_controller:
             self.game_controller.set_paused(False)
+
+    # ---- Phase 5-ε: state shims for migrated per-frame attrs ----
+    # Read-only views over the updater's state. The renderer reads
+    # ``scene._survival_frames`` (game_scene_renderer.py:164) and tests
+    # observe these for assertions; the updater remains the single
+    # source of truth.
+    @property
+    def _phase_dash_invincibility_active(self) -> bool:
+        return self._updater._phase_dash_invincibility_active
+
+    @property
+    def _survival_frames(self) -> int:
+        return self._updater._survival_frames
+
+    @property
+    def _last_bullet_clear_frame(self) -> int:
+        return self._updater._last_bullet_clear_frame
+
+    @property
+    def _auto_save_timer(self) -> int:
+        return self._updater._auto_save_timer
 
     @property
     def paused(self) -> bool:
