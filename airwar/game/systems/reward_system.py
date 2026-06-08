@@ -1,14 +1,21 @@
-"""Reward generation and application — buffs unlocked at score milestones."""
+"""Reward generation and application — buffs unlocked at score milestones.
+
+Phase 5-δ thin coordinator. The per-buff apply strategies are extracted
+to :mod:`airwar.game.systems.buff_apply_handlers` and the reward-pool
+metadata stays at module scope. Public attributes and methods are
+preserved so callers and the reward-system tests continue to work
+without change.
+"""
 
 import logging
 import random
-from collections.abc import Callable
 
 from airwar.config import DIFFICULTY_SETTINGS
 
 from ..buffs.base_buff import Buff
 from ..buffs.buff_registry import create_buff
 from ..constants import GAME_CONSTANTS
+from .buff_apply_handlers import BUFF_APPLY_HANDLERS, BuffApplyContext
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +72,8 @@ class RewardSystem:
 
     Manages buff levels, applies buff effects to the player, and generates
     reward options at score milestones. Tracks unlocked buffs and their
-    cumulative levels.
+    cumulative levels. Per-buff apply strategies live in
+    :mod:`airwar.game.systems.buff_apply_handlers`.
 
     Attributes:
         unlocked_buffs: List of buff names the player has acquired.
@@ -103,8 +111,6 @@ class RewardSystem:
         settings = DIFFICULTY_SETTINGS.get(difficulty, DIFFICULTY_SETTINGS["medium"])
         self._base_bullet_damage = settings.get("bullet_damage", 50)
         self._base_max_health = settings.get("max_health", 100)
-
-        self._buff_apply_handlers: dict[str, Callable] = self._init_buff_apply_handlers()
 
     def set_difficulty(self, difficulty: str) -> None:
         """Update base stats to reflect a changed difficulty level."""
@@ -221,76 +227,6 @@ class RewardSystem:
 
         return options
 
-    def _init_buff_apply_handlers(self) -> dict[str, Callable]:
-        return {
-            "Power Shot": self._apply_power_shot,
-            "Rapid Fire": self._apply_rapid_fire,
-            "Piercing": self._apply_piercing,
-            "Spread Shot": self._apply_spread_shot,
-            "Explosive": self._apply_explosive,
-            "Laser": self._apply_laser,
-            "Armor": self._apply_armor,
-            "Evasion": self._apply_evasion,
-            "Slow Field": self._apply_slow_field,
-            "Boost Recovery": self._apply_boost_recovery,
-            "Phase Dash": self._apply_phase_dash,
-            "Mothership Recall": self._apply_mothership_recall,
-            "Extra Life": self._apply_extra_life,
-        }
-
-    def _apply_power_shot(self, player) -> None:
-        level = self.buff_levels.get("Power Shot", 0)
-        buff = create_buff("Power Shot")
-        player.bullet_damage = buff.calculate_value(self._base_bullet_damage, level)
-
-    def _apply_rapid_fire(self, player) -> None:
-        level = self.buff_levels.get("Rapid Fire", 0)
-        buff = create_buff("Rapid Fire")
-        if hasattr(player, "fire_interval"):
-            player.fire_interval = buff.calculate_value(self._base_fire_cooldown, level)
-        else:
-            player.fire_cooldown = buff.calculate_value(self._base_fire_cooldown, level)
-
-    def _apply_piercing(self, player) -> None:
-        player.pierce_count = self.buff_levels.get("Piercing", 0)
-
-    def _apply_spread_shot(self, player) -> None:
-        if self.buff_levels.get("Spread Shot", 0) > 0:
-            player.activate_shotgun()
-
-    def _apply_explosive(self, player) -> None:
-        if self.buff_levels.get("Explosive", 0) > 0:
-            player.activate_explosive()
-
-    def _apply_laser(self, player) -> None:
-        if self.buff_levels.get("Laser", 0) > 0:
-            player.activate_laser(GAME_CONSTANTS.REWARD.LASER_DURATION)
-
-    def _apply_armor(self, player) -> None:
-        pass
-
-    def _apply_evasion(self, player) -> None:
-        pass
-
-    def _apply_slow_field(self, player) -> None:
-        self.slow_factor = 0.8
-
-    def _apply_boost_recovery(self, player) -> None:
-        level = self.buff_levels.get("Boost Recovery", 0)
-        player.boost_recovery_rate = self._base_boost_recovery_rate * (1.5**level)
-
-    def _apply_phase_dash(self, player) -> None:
-        buff = create_buff("Phase Dash")
-        buff.apply(player)
-
-    def _apply_mothership_recall(self, player) -> None:
-        level = self.buff_levels.get("Mothership Recall", 0)
-        player.mothership_cooldown_mult = 0.5**level
-
-    def _apply_extra_life(self, player) -> None:
-        player.max_health += self.EXTRA_LIFE_BONUS_HP
-        player.health = min(player.health + self.EXTRA_LIFE_HEAL, player.max_health)
-
     def capture_player_baselines(self, player) -> None:
         if not player:
             return
@@ -332,6 +268,17 @@ class RewardSystem:
         if talent_loadout is not None:
             self.talent_loadout = dict(talent_loadout)
 
+    def _build_apply_context(self) -> BuffApplyContext:
+        """Snapshot the apply state for the strategy functions."""
+        return BuffApplyContext(
+            buff_levels=self.buff_levels,
+            base_bullet_damage=self._base_bullet_damage,
+            base_fire_cooldown=self._base_fire_cooldown,
+            base_boost_recovery_rate=self._base_boost_recovery_rate,
+            active_buffs=self.active_buffs,
+            slow_factor=self.slow_factor,
+        )
+
     def reapply_all_effects(self, player) -> None:
         if not player:
             return
@@ -356,13 +303,17 @@ class RewardSystem:
             player.max_health = self._base_max_health + extra_life_level * self.EXTRA_LIFE_BONUS_HP
             player.health = min(player.health, player.max_health)
 
+        # Snapshot state for the per-buff strategies, then propagate any
+        # writes (e.g. Slow Field -> slow_factor) back onto self.
         self.slow_factor = 1.0
+        ctx = self._build_apply_context()
         for buff_name, level in self.buff_levels.items():
             if level <= 0 or buff_name == "Extra Life":
                 continue
-            handler = self._buff_apply_handlers.get(buff_name)
+            handler = BUFF_APPLY_HANDLERS.get(buff_name)
             if handler:
-                handler(player)
+                handler(ctx, player)
+        self.slow_factor = ctx.slow_factor
 
     def apply_reward(self, reward: dict, player) -> str:
         name = reward["name"]
@@ -443,4 +394,3 @@ class RewardSystem:
         self.slow_factor = 1.0
         self._base_bullet_damage = 50
         self._base_fire_cooldown = 8
-        self._buff_apply_handlers = self._init_buff_apply_handlers()
