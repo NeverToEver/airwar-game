@@ -1,15 +1,22 @@
-"""Homecoming coordinator — manages the homecoming sequence lifecycle.
+"""Homecoming coordinator — thin orchestrator over detector, sequence,
+and three base-station sub-components (state, talent, resupply).
 
-Extracted from GameScene to reduce god-class responsibilities.
-Handles detection, sequence, base console, talent management, departure.
+Phase 5-γ split: extracted ``HomecomingBaseState``,
+:class:`BaseTalentOrchestrator`, and :class:`BaseResupplyService` from
+this module. The coordinator now owns only the sequence-lifecycle
+plumbing (on_requested, on_complete, on_orbital_strike,
+on_departure_complete, leave_base, the lock-manager wiring, and the
+failure-mode gate).
 """
 
 from enum import Enum
 
 from airwar.config import get_screen_height, get_screen_width
 from airwar.game.constants import GAME_CONSTANTS, PlayerConstants
+from airwar.game.systems.base_resupply_service import BaseResupplyService
+from airwar.game.systems.base_talent_orchestrator import BaseTalentOrchestrator
+from airwar.game.systems.homecoming_base_state import HomecomingBaseState
 from airwar.game.systems.lock_manager import LockLayer, LockRequest
-from airwar.game.systems.talent_balance_manager import TalentBalanceManager
 
 
 # F03 S8: explicit FailureMode enum replacing the legacy
@@ -29,7 +36,21 @@ class FailureMode(Enum):
 
 
 class HomecomingCoordinator:
-    """Coordinates homecoming detection, base operations, and departure."""
+    """Coordinates homecoming detection, base operations, and departure.
+
+    After Phase 5-γ, this class is a thin facade over 5 sub-components:
+
+    - ``_detector`` / ``_sequence`` / ``_ui`` / ``_base_talent_console`` —
+      injected dependencies (sequence + UI are passed in; detector +
+      console are too).
+    - ``_base_state`` (:class:`HomecomingBaseState`) — owns the
+      ``_base_pending`` flag and the per-tick mission sync.
+    - ``_talent_orchestrator`` (:class:`BaseTalentOrchestrator`) —
+      owns the :class:`TalentBalanceManager` and the click → action
+      dispatch table.
+    - ``_resupply`` (:class:`BaseResupplyService`) — pure
+      transactional logic for repair / recharge / combined refill.
+    """
 
     PERMANENT_INVINCIBILITY_FRAMES = (
         GAME_CONSTANTS.PERSISTENCE.PERMANENT_INVINCIBILITY_FRAMES
@@ -46,8 +67,18 @@ class HomecomingCoordinator:
         self._sequence = sequence
         self._ui = ui
         self._base_talent_console = base_talent_console
-        self._talent_balance_manager = None
-        self._base_pending = False
+
+        # Phase 5-γ: extract the three base sub-components. Each takes
+        # ``self`` (the coordinator) for inversion-of-control — they
+        # can call back into coordinator-owned logic (e.g.
+        # ``leave_base`` from the orchestrator's CONTINUE branch, or
+        # ``_resupply`` from the orchestrator's RESUPPLY branch).
+        self._base_state = HomecomingBaseState()
+        self._talent_orchestrator = BaseTalentOrchestrator(self, base_talent_console)
+        self._resupply = BaseResupplyService(self)
+
+        # Persisted across all sub-components via ``set_save_fn``.
+        self._last_save_fn = None
 
     # --- Public queries ---
 
@@ -55,16 +86,16 @@ class HomecomingCoordinator:
         return bool(self._sequence and self._sequence.is_active())
 
     def is_locked(self) -> bool:
-        return self.is_active() or self._base_pending
+        return self.is_active() or self._base_state.is_pending()
 
     def is_base_pending(self) -> bool:
-        return self._base_pending
+        return self._base_state.is_pending()
 
     def get_base_talent_console(self):
         return self._base_talent_console
 
     def get_talent_balance_manager(self):
-        return self._talent_balance_manager
+        return self._talent_orchestrator.get_talent_balance_manager()
 
     def get_ui(self):
         return self._ui
@@ -79,6 +110,32 @@ class HomecomingCoordinator:
         if self._base_talent_console:
             return self._base_talent_console.get_missions()
         return []
+
+    # --- Property shims (Phase 5-γ backward compat) ---
+
+    @property
+    def _base_pending(self) -> bool:
+        """Backward-compat shim: tests write ``coordinator._base_pending = True``.
+
+        See :attr:`HomecomingBaseState.is_pending` for the real
+        state; this property is preserved to avoid touching 5 test
+        sites (see ``test_homecoming.py`` lines 384, 443, 496, 544,
+        684).
+        """
+        return self._base_state.is_pending()
+
+    @_base_pending.setter
+    def _base_pending(self, value: bool) -> None:
+        self._base_state.set_pending(bool(value))
+
+    @property
+    def _talent_balance_manager(self):
+        """Backward-compat shim: tests write ``coordinator._talent_balance_manager = ...``."""
+        return self._talent_orchestrator._talent_balance_manager
+
+    @_talent_balance_manager.setter
+    def _talent_balance_manager(self, value) -> None:
+        self._talent_orchestrator._talent_balance_manager = value
 
     # --- Update ---
 
@@ -113,29 +170,11 @@ class HomecomingCoordinator:
 
     def update_base(self, game_controller, notification_manager):
         """Update base console and claim completed mission rewards."""
-        if not self._base_pending or not self._base_talent_console:
-            return
-        self._base_talent_console.update()
-        for mission in self._base_talent_console.get_missions():
-            if mission["done"] and not mission["claimed"]:
-                game_controller.state.requisition_points += GAME_CONSTANTS.REQUISITION.MISSION_REWARD
-                mission["claimed"] = True
-                if notification_manager:
-                    reward = GAME_CONSTANTS.REQUISITION.MISSION_REWARD
-                    notification_manager.show(f"任务完成: {mission['name']} (+{reward}RP)")
+        return self._base_state.update_base(game_controller, self._base_talent_console, notification_manager)
 
     def sync_mission_progress(self, game_controller, survival_frames):
         """Keep mission progress in sync with actual game state."""
-        if not self._base_talent_console or not game_controller:
-            return
-        for mission in self._base_talent_console.get_missions():
-            if mission["target"] == "kills":
-                mission["progress"] = game_controller.state.kill_count
-            elif mission["target"] == "survival_time":
-                mission["progress"] = survival_frames // 60
-            elif mission["target"] == "boss_kills":
-                mission["progress"] = game_controller.state.boss_kill_count
-            mission["done"] = mission["progress"] >= mission["goal"]
+        return self._base_state.sync_mission_progress(game_controller, self._base_talent_console, survival_frames)
 
     # --- Callbacks ---
 
@@ -156,8 +195,8 @@ class HomecomingCoordinator:
             notification_manager.show("返航航线已锁定")
 
     def on_complete(self, game_controller, player, lock_manager, notification_manager, reward_system):
-        self._base_pending = True
-        self._ensure_talent_balance_manager(reward_system)
+        self._base_state.enter_base()
+        self._talent_orchestrator.ensure_talent_balance_manager(reward_system)
         self._set_protection(True, lock_manager, game_controller)
         if notification_manager:
             notification_manager.show("已进入基地整备")
@@ -170,7 +209,7 @@ class HomecomingCoordinator:
     def on_departure_complete(
         self, game_controller, player, lock_manager, spawn_controller, game_loop_manager, notification_manager
     ):
-        self._base_pending = False
+        self._base_state.exit_base()
         if self._sequence:
             self._sequence.reset()
         if self._detector:
@@ -182,62 +221,16 @@ class HomecomingCoordinator:
         if notification_manager:
             notification_manager.show("已返回战场")
 
-    # --- Base operations ---
+    # --- Base operations (forwarders) ---
 
     def repair_at_base(self, game_controller, player, notification_manager):
-        cost = GAME_CONSTANTS.REQUISITION.REPAIR_COST
-        if not player or not game_controller:
-            return
-        if game_controller.state.requisition_points < cost:
-            return
-        if player.health >= player.max_health:
-            return
-        game_controller.state.requisition_points -= cost
-        player.health = player.max_health
-        self._save_base_loadout()
-        if notification_manager:
-            notification_manager.show(f"机体维修完成 (-{cost}RP)")
+        return self._resupply.repair_at_base(game_controller, player, notification_manager)
 
     def recharge_at_base(self, game_controller, player, notification_manager):
-        cost = GAME_CONSTANTS.REQUISITION.RECHARGE_COST
-        if not player or not game_controller:
-            return
-        if game_controller.state.requisition_points < cost:
-            return
-        if player.boost_current >= player.boost_max:
-            return
-        game_controller.state.requisition_points -= cost
-        player.boost_current = player.boost_max
-        self._save_base_loadout()
-        if notification_manager:
-            notification_manager.show(f"加速燃料补给完成 (-{cost}RP)")
+        return self._resupply.recharge_at_base(game_controller, player, notification_manager)
 
     def resupply_at_base(self, game_controller, player, notification_manager):
-        if not player or not game_controller:
-            return
-        need_health = player.health < player.max_health
-        need_boost = hasattr(player, "boost_current") and player.boost_current < player.boost_max
-        if not need_health and not need_boost:
-            if notification_manager:
-                notification_manager.show("机体和燃料已全满，无需补给")
-            return
-        actual_cost = 0
-        if need_health:
-            actual_cost += GAME_CONSTANTS.REQUISITION.REPAIR_COST
-        if need_boost:
-            actual_cost += GAME_CONSTANTS.REQUISITION.RECHARGE_COST
-        if game_controller.state.requisition_points < actual_cost:
-            if notification_manager:
-                notification_manager.show(f"征用点数不足: 需要{actual_cost}RP")
-            return
-        game_controller.state.requisition_points -= actual_cost
-        if need_health:
-            player.health = player.max_health
-        if need_boost:
-            player.boost_current = player.boost_max
-        self._save_base_loadout()
-        if notification_manager:
-            notification_manager.show(f"基地全面补给完成 (-{actual_cost}RP)")
+        return self._resupply.resupply_at_base(game_controller, player, notification_manager)
 
     def handle_console_click(
         self,
@@ -250,13 +243,8 @@ class HomecomingCoordinator:
         notification_manager,
         reward_system,
     ):
-        if not self._base_talent_console or not self._talent_balance_manager:
-            return False
-        action = self._base_talent_console.handle_mouse_click(pos)
-        if action is None:
-            return False
-        self._handle_action(
-            action,
+        return self._talent_orchestrator.handle_console_click(
+            pos,
             game_controller,
             player,
             lock_manager,
@@ -265,13 +253,12 @@ class HomecomingCoordinator:
             notification_manager,
             reward_system,
         )
-        return True
 
     def leave_base(
         self, game_controller, player, lock_manager, spawn_controller, game_loop_manager, notification_manager
     ):
-        self._save_base_loadout()
-        self._base_pending = False
+        self._talent_orchestrator._invoke_save()
+        self._base_state.exit_base()
         if self._ui:
             self._ui.hide()
         self._set_protection(True, lock_manager, game_controller)
@@ -296,7 +283,47 @@ class HomecomingCoordinator:
         if notification_manager:
             notification_manager.show("基地弹射程序启动")
 
-    # --- Private helpers ---
+    def _handle_action(
+        self,
+        action,
+        game_controller,
+        player,
+        lock_manager,
+        spawn_controller,
+        game_loop_manager,
+        notification_manager,
+        reward_system,
+    ):
+        """Backward-compat forwarder (test-only).
+
+        Test code in ``test_homecoming.py`` calls
+        ``coordinator._handle_action(...)`` directly. After Phase 5-γ
+        the real dispatcher lives on
+        :attr:`_talent_orchestrator`.
+        """
+        return self._talent_orchestrator._handle_action(
+            action,
+            game_controller,
+            player,
+            lock_manager,
+            spawn_controller,
+            game_loop_manager,
+            notification_manager,
+            reward_system,
+        )
+
+    def set_save_fn(self, fn):
+        """Set the save function for base loadout persistence.
+
+        Forwards to :meth:`BaseTalentOrchestrator.set_save_fn` and
+        :meth:`BaseResupplyService.set_save_fn` so each sub-component
+        can persist independently.
+        """
+        self._last_save_fn = fn
+        self._talent_orchestrator.set_save_fn(fn)
+        self._resupply.set_save_fn(fn)
+
+    # --- Private helpers (stay on coordinator) ---
 
     def _can_request(self, game_controller, player) -> bool:
         """Backward-compatible bool wrapper around :meth:`_can_request_with_reason`.
@@ -319,7 +346,7 @@ class HomecomingCoordinator:
             return FailureMode.NO_PLAYER
         if not self._sequence:
             return FailureMode.NO_SEQUENCE
-        if self._base_pending:
+        if self._base_state.is_pending():
             return FailureMode.BASE_PENDING
         if not game_controller.is_playing():
             return FailureMode.NOT_PLAYING
@@ -328,63 +355,6 @@ class HomecomingCoordinator:
         if self._sequence and self._sequence.is_active():
             return FailureMode.SEQUENCE_ACTIVE
         return FailureMode.OK
-
-    def _ensure_talent_balance_manager(self, reward_system):
-        if not reward_system:
-            return
-        reward_system.ensure_earned_levels()
-        self._talent_balance_manager = TalentBalanceManager(
-            reward_system.get_earned_buff_levels(),
-            reward_system.talent_loadout,
-        )
-        self._apply_talent_loadout(reward_system, None, show_notification=False)
-
-    def _apply_talent_loadout(self, reward_system, player, show_notification=True, notification_manager=None):
-        if not self._talent_balance_manager or not reward_system:
-            return
-        reward_system.apply_effective_levels(
-            self._talent_balance_manager.effective_levels(),
-            locked_buffs=self._talent_balance_manager.locked_buffs(),
-            talent_loadout=self._talent_balance_manager._loadout,
-        )
-        if player:
-            reward_system.reapply_all_effects(player)
-        self._save_base_loadout()
-        if show_notification and notification_manager:
-            notification_manager.show("基地天赋配置已同步")
-
-    def _handle_action(
-        self,
-        action,
-        game_controller,
-        player,
-        lock_manager,
-        spawn_controller,
-        game_loop_manager,
-        notification_manager,
-        reward_system,
-    ):
-        from airwar.ui.base_talent_console import BaseTalentConsoleAction
-
-        if action.kind == BaseTalentConsoleAction.CONTINUE:
-            self.leave_base(
-                game_controller, player, lock_manager, spawn_controller, game_loop_manager, notification_manager
-            )
-            return
-        if action.kind == BaseTalentConsoleAction.RESUPPLY:
-            self.resupply_at_base(game_controller, player, notification_manager)
-            return
-        if action.kind == BaseTalentConsoleAction.REPAIR:
-            self.repair_at_base(game_controller, player, notification_manager)
-            return
-        if action.kind == BaseTalentConsoleAction.RECHARGE:
-            self.recharge_at_base(game_controller, player, notification_manager)
-            return
-        if action.kind == BaseTalentConsoleAction.SELECT_MODULE:
-            return
-        if action.kind == BaseTalentConsoleAction.SELECT_ROUTE and action.route:
-            if self._talent_balance_manager and self._talent_balance_manager.next_option(action.route) is not None:
-                self._apply_talent_loadout(reward_system, player, notification_manager=notification_manager)
 
     def _set_protection(self, locked, lock_manager, game_controller):
         if not lock_manager:
@@ -453,12 +423,3 @@ class HomecomingCoordinator:
             for bullet in player.get_bullets():
                 bullet.active = False
             player.cleanup_inactive_bullets()
-
-    def _save_base_loadout(self):
-        if not hasattr(self, "_last_save_fn") or not self._last_save_fn:
-            return False
-        return self._last_save_fn()
-
-    def set_save_fn(self, fn):
-        """Set the save function for base loadout persistence."""
-        self._last_save_fn = fn
