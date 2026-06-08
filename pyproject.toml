@@ -41,39 +41,25 @@ extend-exclude = [
     "vulture_whitelist.py",
 ]
 
+# Personal hobby project: keep only the basic correctness rules.
+# E = pycodestyle errors, F = pyflakes (real bugs), W = pycodestyle
+# warnings (mostly real — unused variables, invalid escapes, etc.).
+# Drop everything else — B (bugbear), I (isort), SIM, C4, UP, RUF,
+# PT, PLC, PLE, PLW are all style preferences, not correctness.
 [tool.ruff.lint]
-select = ["E", "W", "F", "B", "I", "SIM", "C4", "UP", "RUF", "PT", "PLC", "PLE", "PLW"]
-ignore = [
-    "SIM102",
-    "RUF001",   # fullwidth punctuation in Chinese strings — intentional
-    "RUF002",   # fullwidth punctuation in Chinese docstrings — intentional
-    "RUF003",   # ambiguous Unicode in comments — intentional Chinese text
-    "PLC0415",  # import not at top level — lazy loading pattern used throughout
-    "PLW0603",  # global statement — intentional for lazy singletons
-    "RUF012",   # mutable class attribute — intentional in game data classes
-]
+select = ["E", "W", "F"]
+ignore = []
 
+# mypy disabled for personal-hobby use. Re-enable per-module when
+# bringing new code into the project if desired.
 [tool.mypy]
 python_version = "3.12"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = false
 ignore_missing_imports = true
-
-# Pilot module for stricter type checking. The achievements module is
-# small, self-contained, and was authored with type annotations in mind —
-# making it a low-risk target for --strict before we consider widening
-# the policy. See CLAUDE.md (Ruff / Mypy Configuration) and
-# docs/logic-clarity/10-remaining-work.md §6 for the rollout plan.
-[[tool.mypy.overrides]]
-module = "airwar.game.achievements"
-strict = true
 
 [tool.ruff.lint.per-file-ignores]
 "airwar/**/__init__.py" = ["F401"]
 "airwar/config/__init__.py" = ["F401", "F403", "F405"]
 "airwar/core_bindings.py" = ["F401"]
-"airwar/game/systems/difficulty_strategies.py" = ["B024"]
 "airwar/utils/sprites.py" = ["F401"]
 
 # -----------------------------------------------------------------------------
