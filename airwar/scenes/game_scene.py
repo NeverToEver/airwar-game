@@ -66,6 +66,7 @@ from airwar.utils.sprites import prewarm_glow_caches, prewarm_ship_sprite_caches
 from .game_scene_factory import GameSceneFactory
 from .game_scene_protocol_adapter import IGameSceneAdapter
 from .game_scene_renderer import GameSceneRenderer
+from .game_scene_event_dispatcher import GameSceneEventDispatcher
 from .game_scene_updater import GameSceneUpdater
 from .scene import Scene
 
@@ -151,6 +152,9 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         # _last_bullet_clear_frame / _auto_save_timer. Read via the
         # @property shims below; write via the updater's reset_state().
         self._updater = GameSceneUpdater(self)
+        # Per-event dispatch body extracted to GameSceneEventDispatcher
+        # (Phase 5-ε). The dispatcher is stateless across frames.
+        self._dispatcher = GameSceneEventDispatcher(self)
 
     def enter(self, **kwargs) -> None:
         """Initialize the game scene via GameSceneFactory."""
@@ -232,25 +236,13 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             self._haunting_renderer = None
 
     def handle_events(self, event: pygame.event.Event) -> None:
-        """Process input events."""
-        self._input_coordinator.handle_events(event)
+        """Process input events.
 
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_l:
-            if self.game_renderer.integrated_hud:
-                self.game_renderer.integrated_hud.toggle()
-        elif event.type == pygame.MOUSEMOTION:
-            self._aim_assist.set_raw_aim_position(event.pos)
-            self._sync_player_aim_target()
-            if self._homecoming_base_pending and self._base_talent_console:
-                self._base_talent_console.handle_mouse_motion(event.pos)
-            self.handle_mouse_motion(event.pos)
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            self._aim_assist.set_raw_aim_position(event.pos)
-            self._sync_player_aim_target()
-            if event.button == 1 and self._homecoming_base_pending and self._handle_base_console_click(event.pos):
-                return
-            if event.button == 1 and self.handle_mouse_click(event.pos):
-                self._handle_button_click(self.get_hovered_button())
+        Delegates to :class:`GameSceneEventDispatcher` (Phase 5-ε). The
+        dispatcher is stateless; the scene owns the persistent state
+        (pause request, hover, button registry, etc.).
+        """
+        self._dispatcher.dispatch(event)
 
     def _handle_button_click(self, button_name: str) -> None:
         """Handle mouse button click events."""
