@@ -198,21 +198,27 @@ class DifficultyManagerProtocol(Protocol):
 
 
 # ---------------------------------------------------------------------------
-# F06 I1/I2: GameSceneProtocol — 30+ public methods + property setters
+# F06 I3 / Phase 5-α: GameSceneProtocol split into 8 focused sub-protocols
+#
+# The historical ``GameSceneProtocol`` mixed 8 unrelated concerns
+# (score / cycle / pause / buffs / difficulty / player access /
+# notifications / homecoming / lifecycle). Tests that only need one
+# domain were forced to mock the whole surface. Each sub-protocol is
+# now its own ``@runtime_checkable`` contract so a fake can implement
+# only what it uses. ``GameSceneProtocol`` itself is preserved as a
+# union of the 8 sub-protocols for callers/tests that want the full
+# GameScene contract.
+#
+# Zero behavioral change: the original protocol had no production
+# caller and was never imported by any test. The split is a pure
+# refactor of the contract definition.
 # ---------------------------------------------------------------------------
 
 
 @runtime_checkable
-class GameSceneProtocol(Protocol):
-    """Structural protocol for the public surface of GameScene.
+class IScoreProvider(Protocol):
+    """Score / kill-count surface of GameScene."""
 
-    F06 I1/I2: the 30+ public methods and 8+ property setters on
-    GameScene are listed here as a structural contract. Any test
-    that wants to assert ``scene`` behaves like a GameScene can
-    use ``isinstance(scene, GameSceneProtocol)``.
-    """
-
-    # --- Score / progression ---
     def set_score(self, value: int) -> None: ...
     def add_score(self, amount: int) -> None: ...
     def add_kill(self) -> None: ...
@@ -220,42 +226,74 @@ class GameSceneProtocol(Protocol):
     def get_kill_count(self) -> int: ...
     def get_boss_kill_count(self) -> int: ...
 
-    # --- Cycle / difficulty ---
+
+@runtime_checkable
+class ICycleProvider(Protocol):
+    """Cycle counter and save/load surface of GameScene."""
+
     def set_cycle_count(self, value: int) -> None: ...
     def restore_from_save(self, save_data) -> None: ...
     def create_save_data(self): ...
     def is_game_over(self) -> bool: ...
 
-    # --- Pause ---
+
+@runtime_checkable
+class IPauseProvider(Protocol):
+    """Pause / resume surface of GameScene."""
+
     def pause(self) -> None: ...
     def resume(self) -> None: ...
     def paused(self) -> bool: ...
     def consume_pause_request(self) -> bool: ...
 
-    # --- Buffs / unlocks ---
+
+@runtime_checkable
+class IBuffProvider(Protocol):
+    """Unlocked-buff surface of GameScene."""
+
     def unlocked_buffs(self) -> list: ...
 
-    # --- Difficulty ---
+
+@runtime_checkable
+class IDifficultyProvider(Protocol):
+    """Difficulty get/set surface of GameScene."""
+
     def set_difficulty(self, value: str) -> None: ...
     def difficulty(self) -> str: ...
 
-    # --- Player access ---
+
+@runtime_checkable
+class IPlayerAccessProvider(Protocol):
+    """Player / boss / enemy accessor surface of GameScene."""
+
     def player(self) -> object: ...
     def get_boss(self): ...
     def get_enemies(self) -> list: ...
     def clear_boss(self) -> None: ...
 
-    # --- Notifications ---
+
+@runtime_checkable
+class INotificationProvider(Protocol):
+    """Notification surface of GameScene."""
+
     def show_notification(self, message: str) -> None: ...
 
-    # --- Homecoming ---
+
+@runtime_checkable
+class IHomecomingProvider(Protocol):
+    """Homecoming / mothership query surface of GameScene."""
+
     def is_homecoming_active(self) -> bool: ...
     def is_homecoming_locked(self) -> bool: ...
     def is_homecoming_complete(self) -> bool: ...
     def event_bus(self) -> object: ...
     def is_mothership_docked(self) -> bool: ...
 
-    # --- Lifecycle ---
+
+@runtime_checkable
+class IGameLifecycleProvider(Protocol):
+    """Scene-lifecycle surface (update / render / events / enter / exit)."""
+
     def update(self, *args, **kwargs) -> None: ...
     def render(self, surface) -> None: ...
     def handle_events(self, event) -> None: ...
@@ -263,7 +301,35 @@ class GameSceneProtocol(Protocol):
     def exit(self) -> None: ...
 
 
-# Real class attribute so ``hasattr(GameSceneProtocol, 'score')`` returns True
+@runtime_checkable
+class GameSceneProtocol(
+    IScoreProvider,
+    ICycleProvider,
+    IPauseProvider,
+    IBuffProvider,
+    IDifficultyProvider,
+    IPlayerAccessProvider,
+    INotificationProvider,
+    IHomecomingProvider,
+    IGameLifecycleProvider,
+    Protocol,
+):
+    """Full structural protocol for the public surface of GameScene.
+
+    Composes 8 focused sub-protocols (``IScoreProvider``,
+    ``ICycleProvider``, ``IPauseProvider``, ``IBuffProvider``,
+    ``IDifficultyProvider``, ``IPlayerAccessProvider``,
+    ``INotificationProvider``, ``IHomecomingProvider``,
+    ``IGameLifecycleProvider``). Tests that only need one domain
+    should depend on the sub-protocol directly so the mock surface
+    stays narrow; depend on ``GameSceneProtocol`` only when the full
+    GameScene contract is required.
+    """
+
+
+# Real class attributes so ``hasattr(GameSceneProtocol, 'score')`` returns True.
+# Kept on the union so both forms (``getattr(GameSceneProtocol, 'score')`` and
+# isinstance checks via the sub-protocols) continue to work.
 GameSceneProtocol.score = 0
 GameSceneProtocol.cycle_count = 0
 GameSceneProtocol.difficulty = "medium"
