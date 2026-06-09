@@ -2,7 +2,7 @@
 
 import pygame
 
-from airwar.config.design_tokens import SceneColors, get_design_tokens
+from airwar.config.design_tokens import SceneColors, SceneLayout, get_design_tokens
 from airwar.i18n import t
 from airwar.ui.effects import EffectsRenderer
 from airwar.ui.menu_background import MenuBackground
@@ -165,7 +165,7 @@ class PauseScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
             )
 
         option_spacing = ResponsiveHelper.scale(self.base_option_spacing, scale)
-        start_y = height // 2 + ResponsiveHelper.scale(20, scale)
+        start_y = height // 2 + ResponsiveHelper.scale(SceneLayout.PAUSE_OPTIONS_OFFSET, scale)
 
         self.clear_option_rects()
         effective_index = self.get_effective_selected_index(self.selected_index)
@@ -198,14 +198,17 @@ class PauseScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
         hint_text = t("pause.hint.confirm") if blink else "               "
         hint_color = SceneColors.TEXT_DIM if self.use_themed_style else self.colors["hint"]
         hint = self.hint_font.render(hint_text, True, hint_color)
-        surface.blit(hint, hint.get_rect(center=(width // 2, height - ResponsiveHelper.scale(120, scale))))
+        hint_offset = ResponsiveHelper.scale(SceneLayout.PAUSE_HINT_OFFSET, scale)
+        surface.blit(hint, hint.get_rect(center=(width // 2, height - hint_offset)))
 
         controls_color = SceneColors.TEXT_DIM if self.use_themed_style else (60, 60, 100)
         controls = self.desc_font.render(t("pause.hint.navigate"), True, controls_color)
-        surface.blit(controls, controls.get_rect(center=(width // 2, height - ResponsiveHelper.scale(80, scale))))
+        controls_offset = ResponsiveHelper.scale(SceneLayout.PAUSE_CONTROLS_OFFSET, scale)
+        surface.blit(controls, controls.get_rect(center=(width // 2, height - controls_offset)))
 
         esc_hint = self.desc_font.render(t("pause.hint.esc"), True, controls_color)
-        surface.blit(esc_hint, esc_hint.get_rect(center=(width // 2, height - ResponsiveHelper.scale(50, scale))))
+        esc_offset = ResponsiveHelper.scale(SceneLayout.PAUSE_ESC_OFFSET, scale)
+        surface.blit(esc_hint, esc_hint.get_rect(center=(width // 2, height - esc_offset)))
 
     def get_result(self) -> PauseAction:
         return self.result

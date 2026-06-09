@@ -11,7 +11,7 @@ from typing import Any
 
 import pygame
 
-from airwar.config.design_tokens import SceneColors
+from airwar.config.design_tokens import Modals, SceneColors
 from airwar.i18n import t
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.ui.scene_rendering_utils import wrap_text
@@ -60,18 +60,18 @@ class WelcomeModals:
 
         # Dim overlay
         overlay = pygame.Surface((sw, sh), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 160))
+        overlay.fill((0, 0, 0, Modals.DIM_ALPHA))
         surface.blit(overlay, (0, 0))
 
         # Dialog box
-        dlg_w, dlg_h = 560, 300
+        dlg_w, dlg_h = Modals.GUEST_CONFIRM_W, Modals.GUEST_CONFIRM_H
         dlg_x = (sw - dlg_w) // 2
         dlg_y = (sh - dlg_h) // 2
         draw_chamfered_panel(surface, dlg_x, dlg_y, dlg_w, dlg_h, SC.BG_PANEL_LIGHT, SC.GOLD_PRIMARY, SC.GOLD_GLOW, 12)
 
         # Title
         title = scene.section_font.render(t("welcome.guest_confirm_title"), True, SC.GOLD_PRIMARY)
-        surface.blit(title, title.get_rect(center=(sw // 2, dlg_y + 50)))
+        surface.blit(title, title.get_rect(center=(sw // 2, dlg_y + Modals.TITLE_TOP_PAD)))
 
         self._render_dialog_lines(
             surface,
@@ -80,16 +80,16 @@ class WelcomeModals:
                 t("welcome.guest_confirm_line2"),
             ],
             sw // 2,
-            dlg_y + 112,
-            dlg_w - 80,
+            dlg_y + Modals.BODY_TOP_PAD,
+            dlg_w - Modals.BODY_INSET_X,
         )
 
         # Buttons
-        btn_w, btn_h = 190, 46
-        gap = 20
+        btn_w, btn_h = Modals.BUTTON_W, Modals.BUTTON_H
+        gap = Modals.BUTTON_GAP
         total_btn_w = btn_w * 2 + gap
         btn_start_x = sw // 2 - total_btn_w // 2
-        btn_y = dlg_y + dlg_h - 70
+        btn_y = dlg_y + dlg_h - Modals.BUTTON_BOTTOM_PAD
 
         # Confirm button (primary)
         confirm_rect = pygame.Rect(btn_start_x, btn_y, btn_w, btn_h)
@@ -122,18 +122,18 @@ class WelcomeModals:
 
         # Dim overlay
         overlay = pygame.Surface((sw, sh), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 160))
+        overlay.fill((0, 0, 0, Modals.DIM_ALPHA))
         surface.blit(overlay, (0, 0))
 
         # Dialog box
-        dlg_w, dlg_h = 620, 280
+        dlg_w, dlg_h = Modals.DELETE_CONFIRM_W, Modals.DELETE_CONFIRM_H
         dlg_x = (sw - dlg_w) // 2
         dlg_y = (sh - dlg_h) // 2
         draw_chamfered_panel(surface, dlg_x, dlg_y, dlg_w, dlg_h, SC.BG_PANEL_LIGHT, SC.GOLD_PRIMARY, SC.GOLD_GLOW, 12)
 
         # Title
         title = scene.section_font.render(t("welcome.delete_confirm_title"), True, SC.DANGER_RED)
-        surface.blit(title, title.get_rect(center=(sw // 2, dlg_y + 50)))
+        surface.blit(title, title.get_rect(center=(sw // 2, dlg_y + Modals.TITLE_TOP_PAD)))
 
         self._render_dialog_lines(
             surface,
@@ -143,15 +143,15 @@ class WelcomeModals:
             ],
             sw // 2,
             dlg_y + 104,
-            dlg_w - 80,
+            dlg_w - Modals.BODY_INSET_X,
         )
 
         # Buttons
-        btn_w, btn_h = 190, 46
-        gap = 20
+        btn_w, btn_h = Modals.BUTTON_W, Modals.BUTTON_H
+        gap = Modals.BUTTON_GAP
         total_btn_w = btn_w * 2 + gap
         btn_start_x = sw // 2 - total_btn_w // 2
-        btn_y = dlg_y + dlg_h - 70
+        btn_y = dlg_y + dlg_h - Modals.BUTTON_BOTTOM_PAD
 
         # Confirm button (danger — red)
         confirm_rect = pygame.Rect(btn_start_x, btn_y, btn_w, btn_h)

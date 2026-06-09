@@ -5,7 +5,7 @@ import math
 
 import pygame
 
-from airwar.config.design_tokens import SceneColors, get_design_tokens
+from airwar.config.design_tokens import SceneColors, SceneLayout, get_design_tokens
 from airwar.i18n import t
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.ui.menu_background import MenuBackground
@@ -314,7 +314,7 @@ class SettingsScene(Scene, MouseInteractiveMixin):
         btn_w = ResponsiveHelper.scale(self.BACK_BTN_W, scale)
         btn_h = ResponsiveHelper.scale(self.BACK_BTN_H, scale)
         btn_x = (sw - btn_w) // 2
-        btn_y = sh - 130
+        btn_y = sh - SceneLayout.BACK_BUTTON_BOTTOM_OFFSET
 
         is_focused = self._focus_index == 2
         self.register_button("back", pygame.Rect(btn_x, btn_y, btn_w, btn_h))
@@ -346,9 +346,9 @@ class SettingsScene(Scene, MouseInteractiveMixin):
         color = SC.TEXT_DIM if blink else SC.TEXT_PRIMARY
         hints = t("settings.hint")
         hint_surf = self.hint_font.render(hints, True, color)
-        surface.blit(hint_surf, hint_surf.get_rect(center=(sw // 2, sh - 50)))
+        surface.blit(hint_surf, hint_surf.get_rect(center=(sw // 2, sh - SceneLayout.BOTTOM_HINT_OFFSET)))
 
     def _render_message(self, surface: pygame.Surface, sw: int, sh: int) -> None:
         SC = SceneColors
         msg_surf = self.tip_font.render(self._message, True, SC.FOREST_GREEN)
-        surface.blit(msg_surf, msg_surf.get_rect(center=(sw // 2, 88)))
+        surface.blit(msg_surf, msg_surf.get_rect(center=(sw // 2, SceneLayout.MSG_Y)))

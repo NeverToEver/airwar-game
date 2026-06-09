@@ -4,7 +4,7 @@ import math
 
 import pygame
 
-from airwar.config.design_tokens import SceneColors, get_design_tokens
+from airwar.config.design_tokens import SceneColors, SceneLayout, get_design_tokens
 from airwar.i18n import t
 from airwar.ui.effects import EffectsRenderer
 from airwar.ui.menu_background import MenuBackground
@@ -174,14 +174,15 @@ class ExitConfirmScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
             )
 
         if self.saved:
+            indicator_dy = ResponsiveHelper.scale(SceneLayout.EXIT_INDICATOR_OFFSET, scale)
             if self.use_themed_style:
-                indicator_y = title_y + ResponsiveHelper.scale(50, scale)
+                indicator_y = title_y + indicator_dy
                 self._draw_themed_success_indicator(surface, center_x, indicator_y, scale)
             else:
-                self._draw_success_indicator(surface, center_x, title_y + ResponsiveHelper.scale(50, scale), scale)
+                self._draw_success_indicator(surface, center_x, title_y + indicator_dy, scale)
 
         option_spacing = ResponsiveHelper.scale(self.base_option_spacing, scale)
-        start_y = height // 2 + ResponsiveHelper.scale(30, scale)
+        start_y = height // 2 + ResponsiveHelper.scale(SceneLayout.EXIT_OPTIONS_OFFSET, scale)
 
         self.clear_option_rects()
         effective_index = self.get_effective_selected_index(self.selected_index)
@@ -214,14 +215,17 @@ class ExitConfirmScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
         hint_text = t("exit_confirm.hint.confirm") if blink else "               "
         hint_color = SceneColors.TEXT_DIM if self.use_themed_style else self.colors["hint"]
         hint = self.hint_font.render(hint_text, True, hint_color)
-        surface.blit(hint, hint.get_rect(center=(center_x, height - ResponsiveHelper.scale(120, scale))))
+        hint_offset = ResponsiveHelper.scale(SceneLayout.EXIT_HINT_OFFSET, scale)
+        surface.blit(hint, hint.get_rect(center=(center_x, height - hint_offset)))
 
         controls_color = SceneColors.TEXT_DIM if self.use_themed_style else (60, 60, 100)
         controls = self.desc_font.render(t("exit_confirm.hint.navigate"), True, controls_color)
-        surface.blit(controls, controls.get_rect(center=(center_x, height - ResponsiveHelper.scale(80, scale))))
+        controls_offset = ResponsiveHelper.scale(SceneLayout.EXIT_CONTROLS_OFFSET, scale)
+        surface.blit(controls, controls.get_rect(center=(center_x, height - controls_offset)))
 
         esc_hint = self.desc_font.render(t("exit_confirm.hint.esc"), True, controls_color)
-        surface.blit(esc_hint, esc_hint.get_rect(center=(center_x, height - ResponsiveHelper.scale(50, scale))))
+        esc_offset = ResponsiveHelper.scale(SceneLayout.EXIT_ESC_OFFSET, scale)
+        surface.blit(esc_hint, esc_hint.get_rect(center=(center_x, height - esc_offset)))
 
     def _draw_themed_success_indicator(
         self, surface: pygame.Surface, center_x: int, y: int, scale: float = 1.0

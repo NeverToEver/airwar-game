@@ -4,7 +4,7 @@ import math
 
 import pygame
 
-from airwar.config.design_tokens import SceneColors, get_design_tokens
+from airwar.config.design_tokens import SceneColors, SceneLayout, get_design_tokens
 from airwar.i18n import t
 from airwar.ui.achievement_notification import AchievementNotification
 from airwar.ui.effects import EffectsRenderer
@@ -175,21 +175,21 @@ class DeathScene(Scene, MouseSelectableMixin):
         )
 
         score_text = self.score_font.render(t("death.score_label", score=self.score), True, self.colors["score"])
-        score_y = height // 2 - ResponsiveHelper.scale(45, scale)
+        score_y = height // 2 - ResponsiveHelper.scale(SceneLayout.DEATH_SCORE_OFFSET, scale)
         surface.blit(score_text, score_text.get_rect(center=(width // 2, score_y)))
 
         kills_text = self.score_font.render(t("death.kills_label", kills=self.kills), True, self.colors["kills"])
-        kills_y = height // 2 + ResponsiveHelper.scale(5, scale)
+        kills_y = height // 2 + ResponsiveHelper.scale(SceneLayout.DEATH_KILLS_OFFSET, scale)
         surface.blit(kills_text, kills_text.get_rect(center=(width // 2, kills_y)))
 
         boss_text = self.desc_font.render(
             t("death.boss_kills_label", boss_kills=self.boss_kills), True, self.colors["hint"]
         )
-        boss_y = height // 2 + ResponsiveHelper.scale(40, scale)
+        boss_y = height // 2 + ResponsiveHelper.scale(SceneLayout.DEATH_BOSS_OFFSET, scale)
         surface.blit(boss_text, boss_text.get_rect(center=(width // 2, boss_y)))
 
         option_spacing = ResponsiveHelper.scale(self.base_option_spacing, scale)
-        start_y = height // 2 + ResponsiveHelper.scale(100, scale)
+        start_y = height // 2 + ResponsiveHelper.scale(SceneLayout.DEATH_OPTIONS_OFFSET, scale)
 
         self.clear_option_rects()
         effective_index = self.get_effective_selected_index(self.selected_index)
@@ -221,10 +221,12 @@ class DeathScene(Scene, MouseSelectableMixin):
         blink = (self.animation_time // blink_interval) % 2 == 0
         hint_text = t("pause.hint.confirm") if blink else "               "
         hint = self.hint_font.render(hint_text, True, self.colors["hint"])
-        surface.blit(hint, hint.get_rect(center=(width // 2, height - ResponsiveHelper.scale(100, scale))))
+        hint_offset = ResponsiveHelper.scale(SceneLayout.DEATH_BOTTOM_HINT_OFFSET, scale)
+        surface.blit(hint, hint.get_rect(center=(width // 2, height - hint_offset)))
 
         controls = self.desc_font.render(t("pause.hint.navigate"), True, SceneColors.DESC_TEXT)
-        surface.blit(controls, controls.get_rect(center=(width // 2, height - ResponsiveHelper.scale(70, scale))))
+        controls_offset = ResponsiveHelper.scale(SceneLayout.DEATH_BOTTOM_CONTROLS_OFFSET, scale)
+        surface.blit(controls, controls.get_rect(center=(width // 2, height - controls_offset)))
 
         notification = getattr(self, "_achievement_notification", None)
         if notification is not None:

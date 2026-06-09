@@ -17,7 +17,7 @@ import logging
 
 import pygame
 
-from airwar.config.design_tokens import SceneColors, get_design_tokens
+from airwar.config.design_tokens import SceneColors, SceneLayout, get_design_tokens
 from airwar.i18n import t
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.ui.menu_background import MenuBackground
@@ -488,13 +488,13 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         color = SC.TEXT_DIM if blink else SC.TEXT_PRIMARY
         hints = t("welcome.hint.guest_confirm") if self.show_guest_confirm else t("welcome.hint.default")
         hint_surf = self.hint_font.render(hints, True, color)
-        surface.blit(hint_surf, hint_surf.get_rect(center=(sw // 2, sh - 40)))
+        surface.blit(hint_surf, hint_surf.get_rect(center=(sw // 2, sh - SceneLayout.WELCOME_BOTTOM_HINT_OFFSET)))
 
     def _render_message(self, surface, sw, sh):
         SC = SceneColors
         color = SC.DANGER_RED if self._is_error else SC.FOREST_GREEN
         msg_surf = self.input_font.render(self.message, True, color)
-        surface.blit(msg_surf, msg_surf.get_rect(center=(sw // 2, sh - 75)))
+        surface.blit(msg_surf, msg_surf.get_rect(center=(sw // 2, sh - SceneLayout.WELCOME_BOTTOM_HINT_OFFSET_ALT)))
 
     def _render_fullscreen_button(self, surface, sw, sh):
         SC = SceneColors
@@ -503,7 +503,12 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         scale = ResponsiveHelper.get_scale_factor(sw, sh)
         btn_w = ResponsiveHelper.scale(160, scale)
         btn_h = ResponsiveHelper.scale(38, scale)
-        rect = pygame.Rect(sw - btn_w - 30, sh - btn_h - 30, btn_w, btn_h)
+        rect = pygame.Rect(
+            sw - btn_w - SceneLayout.FULLSCREEN_BTN_INSET,
+            sh - btn_h - SceneLayout.FULLSCREEN_BTN_INSET,
+            btn_w,
+            btn_h,
+        )
 
         self.register_button("fullscreen", rect)
         hover = self.is_button_hovered("fullscreen")
