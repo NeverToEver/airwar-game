@@ -365,4 +365,31 @@ mod tests {
 
         assert!(hits.is_empty());
     }
+
+    #[test]
+    fn test_spatial_hash_handles_negative_coordinates() {
+        // Regression: pos_to_key packs (x, y) as (i64::from(x) << 32) | (y & 0xFFFF_FFFF).
+        // For negative x, the sign extension can collide with positive y. This test
+        // verifies that entities in negative-cell space round-trip through insert/query
+        // without leaking into positive-cell queries (and vice versa). Important for
+        // enemies that fly off the top of the screen (negative Y in world space).
+        let mut grid = SpatialHashGrid::new(100);
+
+        // Entity straddles the origin — cell coords (-1, -1).
+        grid.insert(42, -50.0, -50.0, 10.0, 10.0);
+        // Far-away entity in a clearly positive cell.
+        grid.insert(99, 500.0, 500.0, 10.0, 10.0);
+
+        // Far query must NOT see the negative-cell entity.
+        let far = grid.get_potential_collisions(500.0, 500.0, 10.0, 10.0);
+        assert!(far.contains(&99));
+        assert!(
+            !far.contains(&42),
+            "negative-cell entity leaked into positive-cell query"
+        );
+
+        // Origin query must see the negative-cell entity.
+        let near = grid.get_potential_collisions(-50.0, -50.0, 10.0, 10.0);
+        assert!(near.contains(&42));
+    }
 }
