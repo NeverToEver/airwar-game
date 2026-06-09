@@ -19,6 +19,20 @@ class ScaledViewport:
         self._logical_surface = pygame.Surface((logical_w, logical_h), pygame.SRCALPHA)
 
     def update(self, display_w: int, display_h: int) -> None:
+        """Compute the transform that maps display-space mouse coords
+        into logical-space coords (the design-time 1920x1080 surface).
+
+        Aspect-preserving fit: the entire logical surface fits inside
+        the display with a black letterbox on the shorter axis. This
+        is the case when the user resizes a window larger than the
+        design resolution.
+
+        Note: callers that pass the actual window size AS the
+        ``logical_w``/``logical_h`` at construction time (e.g. ``Game``
+        using ``_get_adaptive_size``) will see a no-op transform
+        because ``display_w == logical_w`` and ``display_h ==
+        logical_h``. That's the intended path for adaptive windows.
+        """
         if display_w <= 0 or display_h <= 0:
             self._scale = 0.0
             self._offset = (0.0, 0.0)

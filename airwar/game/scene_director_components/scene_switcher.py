@@ -207,6 +207,17 @@ class SceneSwitcher:
 
     def _handle_resize(self, width: int, height: int) -> None:
         set_display_size(width, height)
+        # The viewport must keep its logical surface at the actual
+        # display size so the mouse-coordinate transform stays a no-op
+        # (see airwar/game/scaled_viewport.py for the full discussion
+        # and ``airwar/tests/test_viewport_mouse_coords.py`` for the
+        # regression coverage). Without this, the first resize would
+        # re-introduce the same coordinate bug the Game constructor
+        # already guards against.
+        self._viewport.logical_size = (width, height)
+        self._viewport._logical_surface = pygame.Surface(
+            (width, height), pygame.SRCALPHA,
+        )
         self._viewport.update(width, height)
 
     def update_viewport_from_window(self) -> None:

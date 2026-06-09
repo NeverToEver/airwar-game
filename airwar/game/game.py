@@ -36,8 +36,17 @@ class Game:
 
         set_locale("zh_CN")
         self._window = create_window(SCREEN_WIDTH, SCREEN_HEIGHT, "Air War - Sky Combat", resizable=True)
-        self._viewport = ScaledViewport(SCREEN_WIDTH, SCREEN_HEIGHT)
-        self._viewport.update(*self._window.get_size())
+        # Use the actual adaptive window size for the viewport's logical
+        # surface, not the design-time SCREEN_WIDTH/HEIGHT. With
+        # `_get_adaptive_size` the actual display surface is at the
+        # adaptive size (e.g. 1670x939 on a small laptop), so the
+        # render and mouse coordinates both live in that space. Passing
+        # the design size here would cause the viewport to apply a
+        # scale+offset transform to mouse events that does not match
+        # where the buttons are actually drawn.
+        actual_w, actual_h = self._window.get_size()
+        self._viewport = ScaledViewport(actual_w, actual_h)
+        self._viewport.update(actual_w, actual_h)
         self._scene_manager = SceneManager()
         self._db = UserDB()
         self._director = SceneDirector(self._window, self._scene_manager, self._db, self._viewport)
