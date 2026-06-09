@@ -54,6 +54,12 @@ jobs:
           python -m maturin build --release --manifest-path airwar_core/Cargo.toml --out "$RUNNER_TEMP/airwar-wheels"
           python -m pip install "$RUNNER_TEMP"/airwar-wheels/*.whl
 
+      - name: Run Rust unit tests
+        # Runs the inline #[cfg(test)] mod tests in every airwar_core/ module
+        # (vector2, collision, bullets, movement, sprites, particles, starfield).
+        # Reuses the cached build artifacts from the previous step.
+        run: cargo test --release --manifest-path airwar_core/Cargo.toml
+
       - name: Run Ruff (E/F/W only)
         # E = pycodestyle errors, F = pyflakes (undefined names,
         # unused imports), W = pycodestyle warnings. This is the
