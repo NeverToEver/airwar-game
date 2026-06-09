@@ -5,7 +5,7 @@ import math
 
 import pygame
 
-from airwar.config.design_tokens import SystemColors, get_design_tokens
+from airwar.config.design_tokens import SystemColors, SystemLayout, get_design_tokens
 from airwar.utils.fonts import get_cjk_font
 
 
@@ -33,6 +33,9 @@ class BoostGauge:
     TICK_DIVISOR = 30
     MAJOR_TICK_INNER = 9
     MINOR_TICK_INNER = 5
+    # Centre X for the arc hub: PANEL_PAD_X (left inset) + PANEL_W // 2.
+    # Kept as a class constant for cache-key stability; derived from
+    # SystemLayout.BOOST_GAUGE_LEFT_INSET when the panel position is recomputed.
     CENTER_X = 108
     PANEL_W = 200
     PANEL_H = 180
@@ -153,7 +156,7 @@ class BoostGauge:
             return
 
         cx = self.CENTER_X
-        cy = screen_h - 98
+        cy = screen_h - SystemLayout.BOOST_GAUGE_BOTTOM_PAD
         r = self.ARC_RADIUS
         ratio = boost_current / boost_max if boost_max > 0 else 0
         dash_cooling = bool(
@@ -222,7 +225,7 @@ class BoostGauge:
             layer = layer.convert_alpha()
 
         cx = self.CENTER_X - self.PANEL_PAD_X
-        cy = ph + self.PANEL_PAD_Y - 98
+        cy = ph + self.PANEL_PAD_Y - SystemLayout.BOOST_GAUGE_BOTTOM_PAD
         r = self.ARC_RADIUS
         ratio = boost_current / boost_max if boost_max > 0 else 0
         dash_cooling = bool(

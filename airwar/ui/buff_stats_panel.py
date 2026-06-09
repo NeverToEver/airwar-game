@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 import pygame
 
-from airwar.config.design_tokens import Colors, SystemColors, SystemUI, get_design_tokens
+from airwar.config.design_tokens import Colors, SystemColors, SystemLayout, SystemUI, get_design_tokens
 from airwar.protocols import BuffFactory
 from airwar.utils.fonts import get_cjk_font
 
@@ -275,11 +275,11 @@ class BuffStatsPanel:
 
             panel_width = self._calculate_panel_width(buff_entries, summary, screen_width)
             panel_height = self._calculate_panel_height(len(buff_entries))
-            panel_x = screen_width - panel_width - 15
+            panel_x = screen_width - panel_width - SystemLayout.PANEL_RIGHT_INSET
             panel_y = (screen_height - panel_height) // 2
 
-            if panel_y < 50:
-                panel_y = 50
+            if panel_y < SystemLayout.PANEL_MIN_Y:
+                panel_y = SystemLayout.PANEL_MIN_Y
 
             if use_themed_style:
                 self._render_themed_style(surface, buff_entries, summary, panel_width, panel_height, panel_x, panel_y)
@@ -317,7 +317,7 @@ class BuffStatsPanel:
                 self._summary_font.size(f"{key}:{value}")[0] + 12 for key, value in list(summary.items())[:4]
             )
             max_content = max(max_content, summary_width + 24)
-        max_width = max(170, screen_width - 140)
+        max_width = max(SystemLayout.PANEL_MIN_WIDTH, screen_width - SystemLayout.PANEL_MAX_INSET_TOTAL)
         return min(max(self._panel_width, max_content), max_width)
 
     def _render_header(self, surface: pygame.Surface) -> None:
@@ -505,8 +505,8 @@ class AttackModePanel:
         laser_on = reward_system.laser_level > 0 or "Laser" in reward_system.unlocked_buffs
         explosive_on = reward_system.explosive_level > 0
 
-        panel_x = 15
-        panel_y = 95
+        panel_x = SystemLayout.PANEL_LEFT_INSET
+        panel_y = SystemLayout.PANEL_TOP_INSET
         entries = [
             AttackModeEntry("散", "散射", spread_on, (255, 160, 30)),
             AttackModeEntry("光", "激光", laser_on, (255, 80, 180)),

@@ -4,7 +4,7 @@ import math
 
 import pygame
 
-from airwar.config.design_tokens import SceneColors, SystemColors, get_design_tokens
+from airwar.config.design_tokens import SceneColors, SystemColors, SystemLayout, get_design_tokens
 from airwar.utils.fonts import get_cjk_font
 
 from .chamfered_panel import draw_chamfered_panel
@@ -16,19 +16,18 @@ class GiveUpUI:
     Shows a progress bar that fills as the player holds the surrender key.
     """
 
-    def __init__(self, screen_width: int, screen_height: int):
+    def __init__(self, screen_width: int):
         self._visible = False
         self._progress = 0.0
         self._screen_width = screen_width
-        self._screen_height = screen_height
         self._animation_time = 0
         self._use_themed_style = True
 
         self._tokens = get_design_tokens()
         colors = self._tokens.colors
 
-        self._bar_width = 250
-        self._bar_height = 16
+        self._bar_width = SystemLayout.GIVE_UP_BAR_W
+        self._bar_height = SystemLayout.GIVE_UP_BAR_H
         self._corner_radius = 8
         self._border_width = 2
 
@@ -59,7 +58,7 @@ class GiveUpUI:
             return
 
         center_x = self._screen_width // 2
-        center_y = 60
+        center_y = SystemLayout.GIVE_UP_BAR_Y
 
         alpha = 150 + int(22 * math.sin(self._animation_time * 0.04))
 

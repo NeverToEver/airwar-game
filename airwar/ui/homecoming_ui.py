@@ -10,6 +10,7 @@ import math
 
 import pygame
 
+from airwar.config.design_tokens import SystemLayout
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.ui.homecoming import (
     PHASE_APPROACH,
@@ -54,13 +55,15 @@ class HomecomingUI:
     LAUNCH_CORRIDOR_RING_ALPHA_RATIO_RANGE = 0.18
 
     def __init__(self, screen_width: int, screen_height: int):
+        # screen_height is intentionally unused (kept for signature compatibility
+        # with existing tests / call sites that pass it). See STRUCTURE.md.
+        del screen_height
         self._screen_width = screen_width
-        self._screen_height = screen_height
         self._visible = False
         self._progress = 0.0
         self._animation_time = 0
-        self._bar_width = 310
-        self._bar_height = 14
+        self._bar_width = SystemLayout.HOMECOMING_BAR_W
+        self._bar_height = SystemLayout.HOMECOMING_BAR_H
         self._font = get_cjk_font(18)
         self._small_font = get_cjk_font(15)
 
@@ -86,15 +89,15 @@ class HomecomingUI:
             return
 
         center_x = self._screen_width // 2
-        center_y = 92
+        center_y = SystemLayout.HOMECOMING_BAR_Y
         bar_x = center_x - self._bar_width // 2
         bar_y = center_y - self._bar_height // 2
         pulse = 0.5 + 0.5 * math.sin(self._animation_time * 0.18)
 
         label = self._font.render("返航引擎预热", True, (220, 235, 255))
         hint = self._small_font.render("按住 B 启动基地返航", True, (142, 165, 190))
-        surface.blit(label, label.get_rect(center=(center_x, center_y - 31)))
-        surface.blit(hint, hint.get_rect(center=(center_x, center_y + 28)))
+        surface.blit(label, label.get_rect(center=(center_x, center_y - SystemLayout.HOMECOMING_LABEL_OFFSET)))
+        surface.blit(hint, hint.get_rect(center=(center_x, center_y + SystemLayout.HOMECOMING_HINT_OFFSET)))
 
         draw_chamfered_panel(
             surface,
@@ -108,11 +111,11 @@ class HomecomingUI:
             5,
         )
 
-        fill_width = int((self._bar_width - 4) * self._progress)
+        fill_width = int((self._bar_width - SystemLayout.HOMECOMING_BAR_INSET_X) * self._progress)
         if fill_width <= 0:
             return
 
-        fill = pygame.Surface((fill_width, self._bar_height - 4), pygame.SRCALPHA)
+        fill = pygame.Surface((fill_width, self._bar_height - SystemLayout.HOMECOMING_BAR_INSET_Y), pygame.SRCALPHA)
         color = (210, 236, 255, 195 + int(45 * pulse))
         pygame.draw.rect(fill, color, fill.get_rect(), border_radius=4)
         surface.blit(fill, (bar_x + 2, bar_y + 2))

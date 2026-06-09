@@ -4,7 +4,7 @@ from enum import Enum
 
 import pygame
 
-from airwar.config.design_tokens import SceneColors, SystemUI, get_design_tokens
+from airwar.config.design_tokens import GameOverLayout, SceneColors, SystemUI, get_design_tokens
 from airwar.utils.fonts import get_cjk_font
 
 from .chamfered_panel import draw_chamfered_panel
@@ -86,18 +86,18 @@ class GameOverScreen:
         return self._action or ScreenAction.QUIT
 
     def _init_buttons(self, screen_width: int, screen_height: int):
-        scale = screen_width / 800
+        scale = screen_width / GameOverLayout.BASE_REF_WIDTH
         button_font = get_cjk_font(int(self._tokens.typography.SMALL_SIZE * scale))
         button_width = max(
-            int(280 * scale),
+            int(GameOverLayout.BASE_BTN_LABEL_W * scale),
             button_font.size("返回主菜单")[0] + int(96 * scale),
             button_font.size("退出游戏")[0] + int(96 * scale),
         )
-        button_width = min(button_width, screen_width - int(120 * scale))
-        button_height = int(60 * scale)
+        button_width = min(button_width, screen_width - int(GameOverLayout.BUTTON_SIDE_MARGIN * scale))
+        button_height = int(GameOverLayout.BUTTON_BASE_H * scale)
         center_x = screen_width // 2
-        menu_button_y = int(480 * scale)
-        quit_button_y = int(560 * scale)
+        menu_button_y = int(GameOverLayout.MENU_BTN_Y * scale)
+        quit_button_y = int(GameOverLayout.QUIT_BTN_Y * scale)
 
         self._buttons = {
             "menu": pygame.Rect(center_x - button_width // 2, menu_button_y, button_width, button_height),
@@ -151,7 +151,7 @@ class GameOverScreen:
 
         tokens = self._tokens
 
-        scale = screen_width / 800
+        scale = screen_width / GameOverLayout.BASE_REF_WIDTH
         font_large = get_cjk_font(int(tokens.typography.HEADING_SIZE * scale))
         font_medium = get_cjk_font(int(tokens.typography.BODY_SIZE * scale))
         font_small = get_cjk_font(int(tokens.typography.CAPTION_SIZE * scale))
@@ -177,23 +177,25 @@ class GameOverScreen:
                 for offset_x in range(-blur, blur + 1, 2):
                     for offset_y in range(-blur, blur + 1, 2):
                         if offset_x * offset_x + offset_y * offset_y <= blur * blur:
-                            glow_center = (screen_width // 2 + offset_x, int(150 * scale) + offset_y)
+                            glow_center = (screen_width // 2 + offset_x, int(GameOverLayout.TITLE_Y * scale) + offset_y)
                             glow_rect = glow_surf.get_rect(center=glow_center)
                             surface.blit(glow_surf, glow_rect)
 
             title = font_large.render(title_text, True, SceneColors.DANGER_RED)
-            surface.blit(title, title.get_rect(center=(screen_width // 2, int(150 * scale))))
+            surface.blit(title, title.get_rect(center=(screen_width // 2, int(GameOverLayout.TITLE_Y * scale))))
 
             # Military style stats
             score_text = font_medium.render(f"分数: {score:,}", True, SceneColors.GOLD_PRIMARY)
-            surface.blit(score_text, score_text.get_rect(center=(screen_width // 2, int(280 * scale))))
+            score_y = int(GameOverLayout.SCORE_Y * scale)
+            surface.blit(score_text, score_text.get_rect(center=(screen_width // 2, score_y)))
 
             kills_text = font_medium.render(f"击杀: {kills}", True, SceneColors.TEXT_PRIMARY)
-            surface.blit(kills_text, kills_text.get_rect(center=(screen_width // 2, int(330 * scale))))
+            kills_y = int(GameOverLayout.KILLS_Y * scale)
+            surface.blit(kills_text, kills_text.get_rect(center=(screen_width // 2, kills_y)))
 
             if username and high_score is not None:
                 hs_text = font_small.render(f"最高分: {high_score}", True, SceneColors.FOREST_GREEN)
-                surface.blit(hs_text, hs_text.get_rect(center=(screen_width // 2, int(400 * scale))))
+                surface.blit(hs_text, hs_text.get_rect(center=(screen_width // 2, int(GameOverLayout.HS_Y * scale))))
 
             self._render_themed_button(surface, "menu", "返回主菜单", font_button, scale)
             self._render_themed_button(surface, "quit", "退出游戏", font_button, scale)
@@ -203,17 +205,19 @@ class GameOverScreen:
             surface.fill(colors.BACKGROUND_PRIMARY)
 
             title = font_large.render("游戏结束", True, colors.HEALTH_DANGER)
-            surface.blit(title, title.get_rect(center=(screen_width // 2, int(150 * scale))))
+            surface.blit(title, title.get_rect(center=(screen_width // 2, int(GameOverLayout.TITLE_Y * scale))))
 
             score_text = font_medium.render(f"分数: {score}", True, colors.TEXT_PRIMARY)
-            surface.blit(score_text, score_text.get_rect(center=(screen_width // 2, int(280 * scale))))
+            score_y = int(GameOverLayout.SCORE_Y * scale)
+            surface.blit(score_text, score_text.get_rect(center=(screen_width // 2, score_y)))
 
             kills_text = font_medium.render(f"击杀: {kills}", True, colors.PROGRESS_COLOR)
-            surface.blit(kills_text, kills_text.get_rect(center=(screen_width // 2, int(330 * scale))))
+            kills_y = int(GameOverLayout.KILLS_Y * scale)
+            surface.blit(kills_text, kills_text.get_rect(center=(screen_width // 2, kills_y)))
 
             if username and high_score is not None:
                 hs_text = font_small.render(f"最高分: {high_score}", True, colors.SUCCESS)
-                surface.blit(hs_text, hs_text.get_rect(center=(screen_width // 2, int(400 * scale))))
+                surface.blit(hs_text, hs_text.get_rect(center=(screen_width // 2, int(GameOverLayout.HS_Y * scale))))
 
             self._render_button(surface, "menu", "返回主菜单", font_button, scale)
             self._render_button(surface, "quit", "退出游戏", font_button, scale)
@@ -268,7 +272,8 @@ class GameOverScreen:
         pygame.draw.rect(border_surf, (*glow_color, 180), border_surf.get_rect(), width=2, border_radius=10)
         surface.blit(border_surf, scaled_rect.topleft)
 
-        text_surf = fit_text_to_width(font, text, text_color, scaled_rect.width - int(48 * scale))
+        text_pad = int(GameOverLayout.BUTTON_TEXT_PAD * scale)
+        text_surf = fit_text_to_width(font, text, text_color, scaled_rect.width - text_pad)
         text_rect = text_surf.get_rect(center=scaled_rect.center)
         surface.blit(text_surf, text_rect)
 
@@ -334,6 +339,7 @@ class GameOverScreen:
             8,
         )
 
-        text_surf = fit_text_to_width(font, text, text_color, scaled_rect.width - int(48 * scale))
+        text_pad = int(GameOverLayout.BUTTON_TEXT_PAD * scale)
+        text_surf = fit_text_to_width(font, text, text_color, scaled_rect.width - text_pad)
         text_rect = text_surf.get_rect(center=scaled_rect.center)
         surface.blit(text_surf, text_rect)
