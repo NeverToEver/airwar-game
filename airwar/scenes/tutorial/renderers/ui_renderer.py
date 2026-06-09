@@ -306,18 +306,18 @@ class UIRenderer:
         target_y = 106
 
         if elapsed < s.STAGE_CARD_SLIDE_FRAMES:
-            t = elapsed / max(1, s.STAGE_CARD_SLIDE_FRAMES)
-            eased = 1 - (1 - t) * (1 - t)
+            slide_t = elapsed / max(1, s.STAGE_CARD_SLIDE_FRAMES)
+            eased = 1 - (1 - slide_t) * (1 - slide_t)
             y = int(-card_h + eased * (target_y + card_h))
-            alpha = int(255 * t)
+            alpha = int(255 * slide_t)
         else:
             y = target_y
             alpha = 255
 
         fade_start = s.STAGE_CARD_SLIDE_FRAMES + s.STAGE_CARD_HOLD_FRAMES
         if elapsed > fade_start:
-            t = (elapsed - fade_start) / max(1, s.STAGE_CARD_FADE_FRAMES)
-            alpha = int(255 * max(0.0, 1.0 - t))
+            fade_t = (elapsed - fade_start) / max(1, s.STAGE_CARD_FADE_FRAMES)
+            alpha = int(255 * max(0.0, 1.0 - fade_t))
 
         x = (sw - card_w) // 2
         card = pygame.Surface((card_w, card_h), pygame.SRCALPHA)
