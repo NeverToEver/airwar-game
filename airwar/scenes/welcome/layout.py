@@ -7,9 +7,18 @@ re-exports these as class attributes so external callers can keep reading
 """
 
 # -- Top-level panel geometry -------------------------------------------------
+# PANEL_W / PANEL_H are the *natural* dimensions of the welcome panels
+# (used by tests, the login_panel layout dict, and as the upper bound for the
+# responsive ``panel_h`` returned by ``WelcomeScene._get_layout``).
 PANEL_W = 480
 PANEL_H = 600
 CHAMFER = 12
+
+# Minimum panel height required to render the full right-panel content
+# (title, tutorial, difficulty, benchmark/leaderboard row, AND the "Quick
+# Controls" reference list). Below this, the controls list is skipped to
+# keep the benchmark/leaderboard buttons on screen at small window sizes.
+MIN_PANEL_H_FOR_CONTROLS = 540
 
 # -- Login panel internals ----------------------------------------------------
 INPUT_W = 370

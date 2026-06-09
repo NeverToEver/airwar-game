@@ -21,6 +21,7 @@ from .layout import (
     CHAMFER,
     DIFF_GAP,
     DIFF_OPTION_H,
+    MIN_PANEL_H_FOR_CONTROLS,
     PANEL_H,
     PANEL_W,
 )
@@ -60,13 +61,26 @@ class DifficultyPanel:
 
     # -- Rendering ------------------------------------------------------
 
-    def render(self, surface: pygame.Surface, px: int, py: int) -> None:
-        """Render the right panel at the given top-left pixel coordinates."""
+    def render(self, surface: pygame.Surface, px: int, py: int, panel_h: int | None = None) -> None:
+        """Render the right panel at the given top-left pixel coordinates.
+
+        ``panel_h`` overrides :data:`PANEL_H` for the panel background
+        and gates the "Quick Controls" reference list: when the panel
+        is too short to fit the controls list (see
+        :data:`MIN_PANEL_H_FOR_CONTROLS`), the list is skipped so the
+        benchmark/leaderboard buttons remain on screen at small window
+        sizes. Internal element positions still use the natural
+        :data:`PANEL_H` for stability — only the panel chrome adapts.
+        """
         SC = SceneColors
         scene = self._scene
+        actual_h = panel_h if panel_h is not None else PANEL_H
 
         # Panel background
-        draw_chamfered_panel(surface, px, py, PANEL_W, PANEL_H, SC.BG_PANEL_LIGHT, SC.BORDER_DIM, SC.GOLD_GLOW, CHAMFER)
+        draw_chamfered_panel(
+            surface, px, py, PANEL_W, actual_h,
+            SC.BG_PANEL_LIGHT, SC.BORDER_DIM, SC.GOLD_GLOW, CHAMFER,
+        )
 
         # Section title
         title = scene.section_font.render(t("welcome.briefing_title"), True, SC.GOLD_PRIMARY)
@@ -86,16 +100,24 @@ class DifficultyPanel:
         surface.blit(diff_label, (px + 35, diff_title_y))
 
         diff_start_y = diff_title_y + 26
+        diff_n = len(scene.difficulty_options)
         for i, opt in enumerate(scene.difficulty_options):
             dy = diff_start_y + i * (DIFF_OPTION_H + DIFF_GAP)
             is_sel = i == scene.difficulty_index
-            self._draw_diff_option(surface, px + 20, dy, PANEL_W - 40, scene.difficulty_labels[opt], i, is_sel)
+            self._draw_diff_option(
+                surface, px + 20, dy, PANEL_W - 40, scene.difficulty_labels[opt], i, is_sel,
+            )
 
-        diff_end_y = diff_start_y + len(scene.difficulty_options) * DIFF_OPTION_H + (len(scene.difficulty_options) - 1) * DIFF_GAP
+        diff_end_y = diff_start_y + diff_n * DIFF_OPTION_H + (diff_n - 1) * DIFF_GAP
 
         # -- Benchmark + Leaderboard buttons (row between difficulty and controls) --
-        btn_row_y = diff_end_y + 14
+        # Natural position sits just below the difficulty options, but when
+        # the responsive panel is shorter than the natural content height,
+        # pin the buttons to the panel's bottom edge so they remain
+        # reachable even on very small windows.
         btn_row_h = 36
+        natural_btn_row_y = diff_end_y + 14
+        btn_row_y = min(natural_btn_row_y, actual_h - btn_row_h - 12)
         # Width 200 fits "进入自动化测试" (7 CJK chars at SMALL_SIZE).
         bm_btn_w = 200
         bm_rect = pygame.Rect(px + 20, btn_row_y, bm_btn_w, btn_row_h)
@@ -105,29 +127,32 @@ class DifficultyPanel:
         scene._login_panel._draw_ghost_button(surface, lb_rect, t("welcome.leaderboard_button"), "leaderboard")
 
         # -- Quick Controls reference --
-        tips_title_y = btn_row_y + btn_row_h + 18
-        tips_label = scene.hint_font.render(t("welcome.controls_label"), True, SC.TEXT_DIM)
-        surface.blit(tips_label, (px + 35, tips_title_y))
+        # Skip the controls list when the responsive panel_h is too short
+        # to fit it; the benchmark/leaderboard row above stays visible.
+        if actual_h >= MIN_PANEL_H_FOR_CONTROLS:
+            tips_title_y = btn_row_y + btn_row_h + 18
+            tips_label = scene.hint_font.render(t("welcome.controls_label"), True, SC.TEXT_DIM)
+            surface.blit(tips_label, (px + 35, tips_title_y))
 
-        controls = [
-            (t("welcome.controls.move_key"), t("welcome.controls.move")),
-            (t("welcome.controls.boost_key"), t("welcome.controls.boost")),
-            (t("welcome.controls.home_key"), t("welcome.controls.home")),
-            (t("welcome.controls.dock_key"), t("welcome.controls.dock")),
-            (t("welcome.controls.surrender_key"), t("welcome.controls.surrender")),
-            (t("welcome.controls.pause_key"), t("welcome.controls.pause")),
-            (t("welcome.controls.hud_key"), t("welcome.controls.hud")),
-        ]
-        tip_y = tips_title_y + 26
-        key_x = px + 35
-        desc_right = px + PANEL_W - 35
-        max_key_w = desc_right - key_x - 92
-        for key, desc in controls:
-            key_surf = fit_text_to_width(scene.tip_font, key, SC.ACCENT_PRIMARY, max_key_w)
-            desc_surf = scene.tip_font.render(desc, True, SC.TEXT_DIM)
-            surface.blit(key_surf, (key_x, tip_y))
-            surface.blit(desc_surf, (desc_right - desc_surf.get_width(), tip_y))
-            tip_y += 17
+            controls = [
+                (t("welcome.controls.move_key"), t("welcome.controls.move")),
+                (t("welcome.controls.boost_key"), t("welcome.controls.boost")),
+                (t("welcome.controls.home_key"), t("welcome.controls.home")),
+                (t("welcome.controls.dock_key"), t("welcome.controls.dock")),
+                (t("welcome.controls.surrender_key"), t("welcome.controls.surrender")),
+                (t("welcome.controls.pause_key"), t("welcome.controls.pause")),
+                (t("welcome.controls.hud_key"), t("welcome.controls.hud")),
+            ]
+            tip_y = tips_title_y + 26
+            key_x = px + 35
+            desc_right = px + PANEL_W - 35
+            max_key_w = desc_right - key_x - 92
+            for key, desc in controls:
+                key_surf = fit_text_to_width(scene.tip_font, key, SC.ACCENT_PRIMARY, max_key_w)
+                desc_surf = scene.tip_font.render(desc, True, SC.TEXT_DIM)
+                surface.blit(key_surf, (key_x, tip_y))
+                surface.blit(desc_surf, (desc_right - desc_surf.get_width(), tip_y))
+                tip_y += 17
 
     def _draw_diff_option(self, surface, x, y, w, label, index, selected):
         SC = SceneColors

@@ -393,10 +393,10 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         layout = self._get_layout(sw, sh)
 
         # Left panel: Login
-        self._login_panel.render(surface, layout["left_x"], layout["left_y"])
+        self._login_panel.render(surface, layout["left_x"], layout["left_y"], panel_h=layout["panel_h"])
 
         # Right panel: Difficulty + Quick Tips
-        self._difficulty_panel.render(surface, layout["right_x"], layout["right_y"])
+        self._difficulty_panel.render(surface, layout["right_x"], layout["right_y"], panel_h=layout["panel_h"])
 
         # Bottom hint
         self._render_bottom_hint(surface, sw, sh)
@@ -421,30 +421,45 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             self._modals.render_delete_confirm(surface)
 
     def _get_layout(self, sw: int, sh: int) -> dict:
-        total_w = self.PANEL_W * 2 + self.PANEL_GAP
+        """Compute panel positions and the responsive ``panel_h`` for the
+        current viewport.
+
+        The returned ``panel_h`` is the actual height both panels will
+        render at. At the design size (1920x1080) it equals
+        :data:`PANEL_H`; at smaller viewports it shrinks so both panels
+        stay within the screen bounds (so the benchmark/leaderboard
+        buttons remain reachable).
+        """
         title_clearance = 110
         bottom_clearance = 96
-        if sw >= total_w + 24:
-            start_x = (sw - total_w) // 2
-            panel_y = max(title_clearance, sh // 2 - self.PANEL_H // 2 - 20)
+        panel_gap = self.PANEL_GAP
+        stacked_gap = self.STACKED_PANEL_GAP
+
+        if sw >= self.PANEL_W * 2 + panel_gap + 24:
+            # Side-by-side: cap panel_h at available vertical space.
+            start_x = (sw - (self.PANEL_W * 2 + panel_gap)) // 2
+            available_h = max(0, sh - title_clearance - bottom_clearance)
+            panel_h = min(self.PANEL_H, available_h)
+            panel_y = max(title_clearance, (sh - panel_h) // 2 - 20)
             return {
                 "left_x": start_x,
                 "left_y": panel_y,
-                "right_x": start_x + self.PANEL_W + self.PANEL_GAP,
+                "right_x": start_x + self.PANEL_W + panel_gap,
                 "right_y": panel_y,
+                "panel_h": panel_h,
             }
 
-        total_h = self.PANEL_H * 2 + self.STACKED_PANEL_GAP
+        # Stacked: split available height between the two panels.
+        available_h = max(0, sh - 2 * title_clearance - bottom_clearance - stacked_gap)
+        panel_h = min(self.PANEL_H, available_h // 2)
         panel_x = max(20, (sw - self.PANEL_W) // 2)
-        panel_y = max(
-            title_clearance,
-            (sh - bottom_clearance - total_h + title_clearance) // 2,
-        )
+        panel_y = title_clearance
         return {
             "left_x": panel_x,
             "left_y": panel_y,
             "right_x": panel_x,
-            "right_y": panel_y + self.PANEL_H + self.STACKED_PANEL_GAP,
+            "right_y": panel_y + panel_h + stacked_gap,
+            "panel_h": panel_h,
         }
 
     def _render_title(self, surface):
