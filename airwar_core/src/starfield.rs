@@ -131,10 +131,14 @@ mod tests {
     #[test]
     fn test_scroll_offset_wraps() {
         let sin = make_sin_table(1024);
-        // y_frac=0.95 + scroll=0.10 -> 1.05 -> 0.05 (mod 1.0)
+        // Use exact-f32 inputs (powers of 2 in denominator) so the
+        // mod-1.0 + multiply + i32-truncate chain is exact.
+        // y_frac=0.5 + scroll=0.75 -> 1.25 -> 0.25 (mod 1.0) -> * 100 = 25.
+        // The previous 0.95+0.10 drifts to 0.04999998... mod 1, which
+        // truncates to 4 — not what the test wanted to assert.
         let out = compute_starfield_positions(
-            vec![(0.0, 0.95, 1.0, 1.0, 0.0, 0.0)],
-            0.10,
+            vec![(0.0, 0.5, 1.0, 1.0, 0.0, 0.0)],
+            0.75,
             100.0,
             100.0,
             0.0,
@@ -146,20 +150,20 @@ mod tests {
             60,
         );
         let (_, y, _, _, _, _) = out[0];
-        // 0.05 * 100 = 5
-        assert_eq!(y, 5);
+        assert_eq!(y, 25);
     }
 
     #[test]
     fn test_glow_above_threshold() {
         let sin = make_sin_table(1024);
-        // brightness=1.0, twinkle gives max sin=1 -> 0.5+0.5*1=1.0 -> b=255
-        // phase for sin=1: TAU/4 = PI/2
-        // phase = (time * 0 + offset) * (1024/TAU) = offset * 166.886
-        // For sin(idx/1024) = 1, idx=256 (TAU/4)
-        // 256 = offset * 166.886 -> offset = 1.534
+        // Use FRAC_PI_2 for twinkle_offset so that phase = (FRAC_PI_2) *
+        // (1024/TAU) = 256 exactly, sin_table[256] = sin(0.25 * TAU) =
+        // sin(pi/2) = 1.0 exactly, b = 1.0 * (0.5 + 0.5 * 1) * 255 = 255.
+        // The previous offset 1.534 used the wrong scale (comment said
+        // 166.886; actual 1024/TAU = 162.97) and produced idx=250, sin=0.99915,
+        // b=254.89 truncated to 254.
         let out = compute_starfield_positions(
-            vec![(0.0, 0.0, 2.0, 1.0, 0.0, 1.534)],
+            vec![(0.0, 0.0, 2.0, 1.0, 0.0, std::f32::consts::FRAC_PI_2)],
             0.0,
             100.0,
             100.0,
