@@ -119,14 +119,24 @@ class LoginPanel:
 
     # -- Rendering ------------------------------------------------------
 
-    def render(self, surface: pygame.Surface, px: int, py: int) -> None:
-        """Render the login panel at the given top-left pixel coordinates."""
+    def render(self, surface: pygame.Surface, px: int, py: int, panel_h: int | None = None) -> None:
+        """Render the login panel at the given top-left pixel coordinates.
+
+        ``panel_h`` overrides the natural :data:`PANEL_H` for the panel
+        background only; internal element positions continue to use the
+        constant for stability. Falls back to :data:`PANEL_H` when not
+        provided (e.g. by tests that render the panel in isolation).
+        """
         SC = SceneColors
         layout = self.get_login_layout(px, py)
         scene = self._scene
+        actual_h = panel_h if panel_h is not None else PANEL_H
 
         # Panel background
-        draw_chamfered_panel(surface, px, py, PANEL_W, PANEL_H, SC.BG_PANEL_LIGHT, SC.BORDER_DIM, SC.GOLD_GLOW, CHAMFER)
+        draw_chamfered_panel(
+            surface, px, py, PANEL_W, actual_h,
+            SC.BG_PANEL_LIGHT, SC.BORDER_DIM, SC.GOLD_GLOW, CHAMFER,
+        )
 
         # Section title
         title = scene.section_font.render(t("welcome.login_title"), True, SC.GOLD_PRIMARY)
@@ -418,14 +428,18 @@ class LoginPanel:
             scene.cycle_focus()
             scene.show_user_dropdown = False
         else:
+            # Defensive: synthetic KEYDOWN events (smoke tests, automation)
+            # may omit the `unicode` field, so use getattr() to fall back to
+            # an empty string instead of crashing on AttributeError.
+            unicode = getattr(event, "unicode", "") or ""
             # Filter control characters so Enter/Tab don't become input
-            if not event.unicode or event.unicode in ("\r", "\n", "\t", "\x08"):
+            if not unicode or unicode in ("\r", "\n", "\t", "\x08"):
                 return
             if scene.focus == "username" and len(scene.username) < 16:
-                scene.username += event.unicode
+                scene.username += unicode
                 scene.show_user_dropdown = bool(scene.known_usernames)
             elif scene.focus == "password" and len(scene.password) < 16:
-                scene.password += event.unicode
+                scene.password += unicode
 
     def focus_username_field(self) -> None:
         scene = self._scene
