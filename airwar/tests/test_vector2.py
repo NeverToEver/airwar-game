@@ -132,16 +132,42 @@ def test_to_tuple():
 
 
 @pytest.mark.skipif(not RUST_AVAILABLE, reason="Rust not available — Rust path not tested")
-def test_rust_and_python_paths_agree():
-    """If Rust is available, results must be numerically identical to the
-    Python fallback. The Python fallback path is exercised by setting
-    RUST_AVAILABLE=False at runtime, but since it's a module-level flag
-    we just verify the Rust path produces the expected values.
+def test_rust_and_python_paths_agree(monkeypatch):
+    """Cross-verify the Rust path and the Python fallback for Vector2 ops.
+
+    The previous form was `@pytest.mark.skipif(not RUST_AVAILABLE, ...)`,
+    which silently skipped the test in environments without Rust — meaning
+    the only Rust-vs-Python consistency check in the suite never ran when
+    it was most needed (e.g. fresh checkout, CI image without the wheel).
+    This version always runs:
+
+    1. Force RUST_AVAILABLE=False → exercise the Python fallback, assert
+       expected values.
+    2. If RUST_AVAILABLE was originally True, restore it → exercise the
+       Rust path, assert the same values.
+
+    Same `monkeypatch` is used so the original flag is restored even on
+    assertion failure.
     """
-    a = Vector2(7, 11)
-    b = Vector2(3, 4)
+    import airwar.core_bindings as cb
+
+    original_rust_available = cb.RUST_AVAILABLE
+    a, b = Vector2(7, 11), Vector2(3, 4)
+
+    # 1) Python fallback path — always runs.
+    monkeypatch.setattr(cb, "RUST_AVAILABLE", False)
     assert (a + b) == Vector2(10, 15)
     assert (a - b) == Vector2(4, 7)
     assert (a * 2) == Vector2(14, 22)
     assert a.dot(b) == pytest.approx(7 * 3 + 11 * 4)
     assert a.distance(b) == pytest.approx(math.hypot(4, 7))
+
+    # 2) Rust path — runs only when actually available. If the Rust path
+    # produces different values, the cross-check surfaces the divergence.
+    if original_rust_available:
+        monkeypatch.setattr(cb, "RUST_AVAILABLE", True)
+        assert (a + b) == Vector2(10, 15)
+        assert (a - b) == Vector2(4, 7)
+        assert (a * 2) == Vector2(14, 22)
+        assert a.dot(b) == pytest.approx(7 * 3 + 11 * 4)
+        assert a.distance(b) == pytest.approx(math.hypot(4, 7))

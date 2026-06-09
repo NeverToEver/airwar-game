@@ -8,7 +8,11 @@ def test_scaled_viewport_maps_letterboxed_screen_points_to_logical_space():
     viewport = ScaledViewport(1920, 1080)
     viewport.update(1000, 800)
 
-    assert viewport.screen_to_logical(500, 400) == (960.0, 540.0)
+    # f64 letterbox arithmetic: 500 / (1000/1920) — the roundtrip only
+    # equals 960.0 because both branches happen to round the same way
+    # in CPython. Use pytest.approx (matching the other assertions in
+    # this test) so the test doesn't silently break on a f64 quirk change.
+    assert viewport.screen_to_logical(500, 400) == pytest.approx((960.0, 540.0))
     assert viewport.screen_to_logical(0, 400) == pytest.approx((0.0, 540.0))
     assert viewport.screen_to_logical(1000, 400)[0] == pytest.approx(1920.0)
 

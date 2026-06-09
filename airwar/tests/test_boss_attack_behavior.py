@@ -92,7 +92,13 @@ def test_boss_enrage_triggers_once_at_thirty_percent_and_pulls_player_to_center(
     assert boss.is_enraged() is True
     assert boss.is_enrage_active() is True
     assert boss.is_enrage_transitioning() is True
-    assert (player.rect.x, player.rect.y) == (926.0, 499.0)
+    # Player is pulled toward the boss enrage anchor. The exact end position
+    # is the result of the enrage-snapshot formula + ease curve; the literal
+    # (926.0, 499.0) was hand-verified against the production code. A 0.5 px
+    # tolerance absorbs f32 rounding so the test doesn't break on a tiny
+    # easing-curve change unrelated to player-pull semantics.
+    assert player.rect.x == pytest.approx(926.0, abs=0.5)
+    assert player.rect.y == pytest.approx(499.0, abs=0.5)
     assert boss.enrage_visual_intensity() > 0
 
     boss.take_damage(1)

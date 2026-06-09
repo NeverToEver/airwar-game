@@ -90,7 +90,18 @@ class TestCalculateDamageTaken:
 
     def test_armor_rounds_down(self, rs):
         rs.unlocked_buffs.append("Armor")
-        assert rs.calculate_damage_taken(33) == int(33 * 0.85)
+        # 33 * 0.85 = 28.0499... in f64 → int truncates to 28.
+        # The previous form `== int(33 * 0.85)` was tautological (both
+        # sides used the same formula). Assert the concrete integer to
+        # make rounding behavior visible. If ARMOR_MULTIPLIER changes,
+        # see test_armor_multiplier_constant below — that will break loudly.
+        assert rs.calculate_damage_taken(33) == 28
+
+    def test_armor_multiplier_constant(self, rs):
+        # Regression guard: if ARMOR_MULTIPLIER changes, the rounding test
+        # above would silently break (different result). Pin the constant
+        # so any change forces a deliberate test update.
+        assert rs.ARMOR_MULTIPLIER == 0.85
 
 
 # --- try_dodge ---
