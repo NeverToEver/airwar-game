@@ -89,9 +89,13 @@ def test_game_runs_for_short_window_on_real_display() -> None:
             )
             events_posted += 1
             if frame % 30 == 0:
-                pygame.event.post(pygame.event.Event(pygame.KEYDOWN, {"key": pygame.K_d}))
+                pygame.event.post(pygame.event.Event(
+                    pygame.KEYDOWN, {"key": pygame.K_d, "mod": 0, "unicode": "", "scancode": 0}
+                ))
             if frame % 30 == 15:
-                pygame.event.post(pygame.event.Event(pygame.KEYUP, {"key": pygame.K_d}))
+                pygame.event.post(pygame.event.Event(
+                    pygame.KEYUP, {"key": pygame.K_d, "mod": 0, "unicode": "", "scancode": 0}
+                ))
             frame += 1
             time.sleep(0.016)  # ~60 FPS pacing
 
