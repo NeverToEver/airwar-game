@@ -73,6 +73,9 @@ class GameSceneRenderer:
         self._render_homecoming_progress(surface)
         self._render_warning_banner(surface)
         self._render_aim_crosshair(surface)
+        # Juice overlay — chromatic aberration when low HP, red flash on damage.
+        # Drawn above the world, below the homecoming/console/reward topmost layer.
+        self._render_damage_overlay(surface)
         self._render_haunting_corruption(surface)
         self._render_homecoming_sequence(surface)
         self._render_base_talent_console(surface)
@@ -140,6 +143,50 @@ class GameSceneRenderer:
         if scene.reward_selector and scene.reward_selector.visible:
             return
         scene._aim_crosshair.render(surface, scene._aim_assist.get_aim_position())
+
+    def _render_damage_overlay(self, surface) -> None:
+        """Juice overlay: low-HP chromatic aberration + damage flash.
+
+        Two stacked effects:
+        1. **Low-HP chromatic aberration** (sustained): when health < 50%, blit
+           the world surface three times with R/G/B channels offset by ±1px
+           using additive blend. Intensity ramps from 0 (at 50% HP) to 1
+           (at 0% HP).
+        2. **Damage flash** (transient): when ``state.damage_intensity > 0``,
+           fill a red-tinted fullscreen surface with alpha = damage_intensity.
+
+        Both are no-ops when the relevant state is 0 — see STRUCTURE.md §6.6
+        for the additive-state pattern.
+        """
+        import pygame  # local import keeps the module's import cost flat
+        scene = self._scene
+        state = scene.game_controller.state if scene.game_controller else None
+        if state is None or not scene.player:
+            return
+
+        # Effect 1: low-HP chromatic aberration. Only when health < 50%.
+        health_ratio = 1.0
+        max_hp = getattr(scene.player, "max_health", 1) or 1
+        health_ratio = max(0.0, min(1.0, scene.player.health / max_hp))
+        if health_ratio < 0.5:
+            # Map [0, 0.5] → [1, 0] — 0% HP = full aberration, 50% HP = none.
+            intensity = 1.0 - (health_ratio * 2.0)
+            offset_px = max(1, int(2 * intensity))  # 1px at 25% HP, 2px at 0%
+            w, h = surface.get_size()
+            aberration = pygame.Surface((w, h), pygame.SRCALPHA)
+            aberration.blit(surface, (offset_px, 0), special_flags=pygame.BLEND_RGBA_ADD)
+            aberration.blit(surface, (-offset_px, 0), special_flags=pygame.BLEND_RGBA_ADD)
+            aberration.blit(surface, (0, offset_px), special_flags=pygame.BLEND_RGBA_ADD)
+            aberration.blit(surface, (0, -offset_px), special_flags=pygame.BLEND_RGBA_ADD)
+            surface.blit(aberration, (0, 0))
+
+        # Effect 2: damage flash. Red vignette that fades over ~30 frames.
+        if state.damage_intensity > 0.05:
+            w, h = surface.get_size()
+            flash = pygame.Surface((w, h), pygame.SRCALPHA)
+            alpha = int(180 * state.damage_intensity)
+            flash.fill((220, 60, 50, alpha))
+            surface.blit(flash, (0, 0))
 
     def _render_haunting_corruption(self, surface) -> None:
         scene = self._scene

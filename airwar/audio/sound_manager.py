@@ -129,6 +129,14 @@ class SoundManager:
                 duration_ms=_DEFAULT_SFX_DURATION_MS,
                 sample_rate=_DEFAULT_SAMPLE_RATE,
             )
+        if name == "player_hit":
+            # Low, long beep on player damage — feedback for the hit-stop +
+            # damage_intensity flash. 110 Hz (A2) is harsh and noticeable.
+            return _generate_beep(
+                frequency_hz=110.0,
+                duration_ms=180,
+                sample_rate=_DEFAULT_SAMPLE_RATE,
+            )
         logger.debug("SFX %r has no implementation; ignoring", name)
         return None
 

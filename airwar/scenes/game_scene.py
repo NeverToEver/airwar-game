@@ -49,6 +49,7 @@ from airwar.game.rendering.boss_enrage_renderer import BossEnrageRenderer
 from airwar.game.rendering.game_renderer import GameRenderer
 from airwar.game.rendering.haunting_renderer import HauntingRenderer
 from airwar.game.rendering.hud_renderer import HUDRenderer
+from airwar.game.rendering.juice_renderer import JuiceController
 from airwar.game.systems.aim_assist_system import AimAssistSystem
 from airwar.game.systems.lock_manager import LockLayer, LockManager, LockRequest
 from airwar.game.systems.notification_manager import NotificationManager
@@ -114,6 +115,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._pause_button = PauseButtonComponent()
         self._aim_assist = AimAssistSystem()
         self._boss_enrage_renderer = BossEnrageRenderer()
+        self._juice_controller = JuiceController()
         self._haunting_renderer: HauntingRenderer | None = None
         self._save_restore_manager = SaveRestoreManager()
         self._lock_manager = LockManager(None)
@@ -215,7 +217,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
     def _init_give_up_system(self, screen_width: int, screen_height: int) -> None:
         self._give_up_detector = GiveUpDetector(self._on_give_up_complete)
-        self._give_up_ui = GiveUpUI(screen_width, screen_height)
+        self._give_up_ui = GiveUpUI(screen_width)
 
     def _init_homecoming_system(self, screen_width: int, screen_height: int) -> None:
         from airwar.game.systems.homecoming_coordinator import HomecomingCoordinator

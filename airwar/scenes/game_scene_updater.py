@@ -164,14 +164,19 @@ class GameSceneUpdater:
         return None
 
     def _step_pause_check(self) -> bool | None:
-        """Step 7: short-circuit when paused or reward selector visible (L309-310).
+        """Step 7: short-circuit when paused, reward selector visible, or hit-stop active (L309-310).
 
-        The original L309-310 checks ``is_paused OR reward_selector.visible``,
-        so the short-circuit covers both conditions under a single
-        ``pause_check`` step name.
+        The original L309-310 checks ``is_paused OR reward_selector.visible``.
+        Hit-stop piggybacks on the same short-circuit: when ``hit_stop_timer > 0``
+        the gameplay tick is skipped for ~4 frames (~67ms at 60fps), matching
+        the canonical "Smash Bros"-style hit-pause length.
         """
         scene = self._scene
         if scene.game_controller.state.is_paused or scene.reward_selector.visible:
+            return False
+        # Hit-stop: freeze gameplay ticks (but UI and render still run).
+        hit_stop = getattr(scene.game_controller.state, "hit_stop_timer", 0)
+        if hit_stop > 0:
             return False
         return None
 
@@ -237,11 +242,16 @@ class GameSceneUpdater:
         (per the plan), so it lives here in the trailing side-effects
         block alongside the auto-save timer bookkeeping. This matches
         the pre-extraction order: ``survival_frames`` → ``haunting`` →
-        ``auto_save_timer``.
+        ``auto_save_timer` → ``juice.update()``.
         """
         scene = self._scene
         self._survival_frames += 1
         self._update_haunting_effect()
+        # Juice controller decays trauma each frame, so its offset naturally
+        # returns to (0, 0) over ~13 frames.
+        juice = getattr(scene, "_juice_controller", None)
+        if juice is not None:
+            juice.update()
         self._auto_save_timer += 1
         if self._auto_save_timer >= scene.AUTO_SAVE_INTERVAL:
             self._auto_save_timer = 0
@@ -318,10 +328,20 @@ class GameSceneUpdater:
         scene._warning_banner.activate(on_complete=trigger_undock)
 
     def _on_player_damaged(self, damage: int, player) -> None:
-        """Handle player hit: apply damage, clear nearby enemy bullets."""
+        """Handle player hit: apply damage, clear nearby enemy bullets, trigger juice."""
         scene = self._scene
         scene.game_controller.on_player_hit(damage, player)
         self._clear_nearby_enemy_bullets(player)
+        # Juice: screen shake + 4-frame hit-stop. Both are no-ops for tests
+        # that mock the scene (no _juice_controller attribute) — see
+        # STRUCTURE.md §4.5 "the no-dead-state rule" for the parallel pattern.
+        juice = getattr(scene, "_juice_controller", None)
+        if juice is not None:
+            juice.add_trauma(0.4)
+        if hasattr(scene, "state") and scene.state is not None:
+            scene.state.hit_stop_timer = max(
+                getattr(scene.state, "hit_stop_timer", 0), 4
+            )
 
     def _clear_nearby_enemy_bullets(self, player) -> None:
         """Clear enemy bullets within BULLET_CLEAR_RADIUS of the player after being hit."""

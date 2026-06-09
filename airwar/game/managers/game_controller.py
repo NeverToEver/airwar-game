@@ -36,6 +36,13 @@ class GameState:
     invincibility_timer: int = 0
     is_silent_invincible: bool = False
     ripple_effects: list[dict] = field(default_factory=list)
+    # Juice-layer state (added 2026-06-09 — see STRUCTURE.md §6.6).
+    damage_intensity: float = 0.0
+    """0..1, set to 1.0 on player hit, decays at ~0.033/frame. Drives
+    chromatic aberration and damage flash overlays."""
+    hit_stop_timer: int = 0
+    """Frames remaining of hit-stop. Set to 4 on player hit; gameplay tick
+    is short-circuited while > 0 (~67ms at 60fps)."""
     notification: str | None = None
     notification_timer: int = 0
     requisition_points: int = 0
@@ -204,6 +211,10 @@ class GameController:
                 self.state.running = False
                 player.active = False
 
+        # Cache the player ref so _update_invincibility can mirror state
+        # to the entity (for alpha-blink rendering) without a controller→
+        # entity back-reference in the constructor — see player.sync_invincibility_blink.
+        self._player_ref = player
         self._update_invincibility()
 
     # 4. Public behavior methods
@@ -301,6 +312,21 @@ class GameController:
         center_y = player.rect.centery
         self.state.ripple_effects.append({"x": center_x, "y": center_y, "radius": 15, "alpha": 350, "pulse": 0})
 
+        # Juice: trigger damage intensity (drives chromatic aberration flash)
+        # and the 4-frame hit-stop (set to the current value to avoid clobbering
+        # a longer freeze from another hit). Play the player-hit SFX as well —
+        # this is the audio hook the rest of the juice layer piggybacks on.
+        self.state.damage_intensity = 1.0
+        if self.state.hit_stop_timer < 4:
+            self.state.hit_stop_timer = 4
+        # Audio is failure-tolerant: get_sound_manager() returns a no-op
+        # singleton when pygame.mixer.init() failed (headless CI / sandbox).
+        try:
+            from airwar.audio.sound_manager import get_sound_manager
+            get_sound_manager().play_sfx("player_hit")
+        except Exception:  # noqa: BLE001 — audio is best-effort
+            pass
+
         if player.health <= 0:
             self.state.gameplay_state = GameplayState.DYING
             self.state.death_timer = self.state.death_duration
@@ -390,6 +416,24 @@ class GameController:
             self.state.invincibility_timer -= 1
             if self.state.invincibility_timer <= 0:
                 self.set_invincible(False)
+
+        # Juice: decay damage_intensity and tick hit-stop. Both fields are
+        # additive state — see STRUCTURE.md §6.6.
+        if self.state.damage_intensity > 0.0:
+            self.state.damage_intensity = max(
+                0.0, self.state.damage_intensity - 0.033
+            )
+        if self.state.hit_stop_timer > 0:
+            self.state.hit_stop_timer -= 1
+
+        # Mirror invincibility state to the player for alpha-blink rendering.
+        # Cheap (two attribute writes); the blink is a pure render-time effect.
+        player = getattr(self, "_player_ref", None)
+        if player is not None and hasattr(player, "sync_invincibility_blink"):
+            player.sync_invincibility_blink(
+                self.state.is_player_invincible,
+                self.state.invincibility_timer,
+            )
 
     # 6. Private behavior methods
 

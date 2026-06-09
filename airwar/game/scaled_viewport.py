@@ -56,11 +56,17 @@ class ScaledViewport:
             max(0.0, min(y, float(self.logical_size[1]))),
         )
 
-    def present(self, display_surface: pygame.Surface) -> None:
+    def present(self, display_surface: pygame.Surface, offset: tuple[int, int] = (0, 0)) -> None:
         # The SCALED flag means SDL2's GPU renderer handles scaling.
         # The display surface is always at the logical resolution, so a
         # 1:1 blit is all that's needed; SDL2 scales to the actual window.
-        display_surface.blit(self._logical_surface, (0, 0))
+        # An optional ``offset`` shifts the logical surface for screen-shake
+        # effects (see JuiceController). At rest, offset is (0, 0) and we
+        # skip the conditional branch.
+        if offset == (0, 0):
+            display_surface.blit(self._logical_surface, (0, 0))
+        else:
+            display_surface.blit(self._logical_surface, offset)
 
     @property
     def logical_surface(self) -> pygame.Surface:

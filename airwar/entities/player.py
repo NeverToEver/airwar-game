@@ -142,6 +142,10 @@ class Player(Entity):
         # --- Master pulse timer (read by aim / hitbox / phase-dash alpha) ---
         self._hitbox_timer: int = 0
 
+        # --- Invincibility-blink state (mirrored from GameState by sync_invincibility_blink) ---
+        self._blink_active: bool = False
+        self._blink_timer: int = 0
+
         # --- HSM ---
         self._state = PlayerStateMachine(self)
 
@@ -314,9 +318,23 @@ class Player(Entity):
             surface: Pygame surface to render onto.
         """
         sprite = self.aim.rotated_ship_sprite()
+        # Juice: alpha-blink during post-hit invincibility. 6-frame on / 6-frame
+        # off pattern at 60fps = ~5Hz strobe, fast enough to read as "i-frames
+        # active" but slow enough to not look glitchy. Phase-dash still wins
+        # priority (overrides the strobe).
+        #
+        # ``self._blink_*`` fields are mirrored from GameState.is_player_invincible
+        # by ``sync_invincibility_blink`` (called once per frame from
+        # GameController.set_invincible / _update_invincibility). The player
+        # entity stays independent of the controller — see STRUCTURE.md §2.1
+        # "Layering rules" (entities never import game/).
         if self.phase_dash.is_dashing():
             sprite = sprite.copy()
             sprite.set_alpha(self.phase_dash.alpha())
+        elif self._blink_active and self._blink_timer > 0:
+            sprite = sprite.copy()
+            # 12-frame period: bright for first 6, dim for next 6.
+            sprite.set_alpha(120 if (self._blink_timer // 6) % 2 == 0 else 40)
         surface.blit(sprite, sprite.get_rect(center=(self.rect.centerx, self.rect.centery)))
 
         if self.precision_active:
@@ -328,6 +346,16 @@ class Player(Entity):
 
     def fire(self) -> Bullet | None:
         return self.weapon.fire()
+
+    def sync_invincibility_blink(self, active: bool, timer: int) -> None:
+        """Mirror GameState.is_player_invincible for the render-time alpha blink.
+
+        Called once per frame from :class:`GameController._update_invincibility`.
+        Keeping this on the entity side avoids a controller→entity back-reference
+        (see STRUCTURE.md §2.1 — entities never import from ``game/``).
+        """
+        self._blink_active = bool(active)
+        self._blink_timer = int(timer)
 
     def auto_fire(self) -> None:
         if self.is_controls_locked:
