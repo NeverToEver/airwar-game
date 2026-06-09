@@ -91,36 +91,23 @@ class DifficultyPanel:
             is_sel = i == scene.difficulty_index
             self._draw_diff_option(surface, px + 20, dy, PANEL_W - 40, scene.difficulty_labels[opt], i, is_sel)
 
-        # -- Quick Controls reference --
-        tips_title_y = (
-            diff_start_y
-            + len(scene.difficulty_options) * DIFF_OPTION_H
-            + (len(scene.difficulty_options) - 1) * DIFF_GAP
-            + 12
-        )
-        tips_label = scene.hint_font.render(t("welcome.controls_label"), True, SC.TEXT_DIM)
-        surface.blit(tips_label, (px + 35, tips_title_y))
+        diff_end_y = diff_start_y + len(scene.difficulty_options) * DIFF_OPTION_H + (len(scene.difficulty_options) - 1) * DIFF_GAP
 
-        # -- Leaderboard button (compact, near bottom) --
-        lb_btn_w = 120
-        lb_btn_h = 36
-        lb_rect = pygame.Rect(
-            px + PANEL_W - lb_btn_w - 20,
-            py + PANEL_H - lb_btn_h - 16,
-            lb_btn_w,
-            lb_btn_h,
-        )
+        # -- Benchmark + Leaderboard buttons (row between difficulty and controls) --
+        btn_row_y = diff_end_y + 14
+        btn_row_h = 36
+        # Width 200 fits "进入自动化测试" (7 CJK chars at SMALL_SIZE).
+        bm_btn_w = 200
+        bm_rect = pygame.Rect(px + 20, btn_row_y, bm_btn_w, btn_row_h)
+        scene._login_panel._draw_ghost_button(surface, bm_rect, t("welcome.benchmark_button"), "benchmark")
+        lb_btn_w = 110
+        lb_rect = pygame.Rect(px + PANEL_W - lb_btn_w - 20, btn_row_y, lb_btn_w, btn_row_h)
         scene._login_panel._draw_ghost_button(surface, lb_rect, t("welcome.leaderboard_button"), "leaderboard")
 
-        # -- Benchmark button (compact, left of leaderboard) --
-        bm_btn_w = 140
-        bm_rect = pygame.Rect(
-            px + 20,
-            lb_rect.y,
-            bm_btn_w,
-            lb_rect.height,
-        )
-        scene._login_panel._draw_ghost_button(surface, bm_rect, t("welcome.benchmark_button"), "benchmark")
+        # -- Quick Controls reference --
+        tips_title_y = btn_row_y + btn_row_h + 18
+        tips_label = scene.hint_font.render(t("welcome.controls_label"), True, SC.TEXT_DIM)
+        surface.blit(tips_label, (px + 35, tips_title_y))
 
         controls = [
             (t("welcome.controls.move_key"), t("welcome.controls.move")),

@@ -8,7 +8,7 @@ re-exports these as class attributes so external callers can keep reading
 
 # -- Top-level panel geometry -------------------------------------------------
 PANEL_W = 480
-PANEL_H = 500
+PANEL_H = 600
 CHAMFER = 12
 
 # -- Login panel internals ----------------------------------------------------
