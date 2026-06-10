@@ -70,3 +70,14 @@ backup_dir = ".mutmut-cache"
 runner = "python -m pytest -x -q"
 tests_dir = "airwar/tests"
 paths_to_mutate = "airwar"
+
+# -----------------------------------------------------------------------------
+# Coverage (pytest-cov)
+# -----------------------------------------------------------------------------
+[tool.coverage.run]
+source = ["airwar"]
+omit = ["airwar/tests/*", "tests/*", "airwar/_version.py"]
+
+[tool.coverage.report]
+fail_under = 40
+exclude_lines = ["pragma: no cover", "raise NotImplementedError", "if __name__ == .__main__.:"]
