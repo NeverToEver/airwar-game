@@ -2,6 +2,7 @@
 
 import math
 import random
+from collections import OrderedDict
 
 import pygame
 
@@ -16,10 +17,14 @@ from .explosion_particle import ExplosionParticle
 
 # Pre-rendered glow texture cache — avoids per-frame pygame.draw.circle() loops
 # 限制缓存大小防止内存泄漏
+# Note: the LRU helpers below call ``.move_to_end`` and ``.popitem(last=...)``,
+# which are ``OrderedDict``-only APIs. Using a plain ``{}`` here is a silent
+# regression that only surfaces at runtime (the dummy SDL driver never
+# reaches the explosion render path during tests). See commit cfd0d5c.
 _MAX_CACHE_SIZE = 64
-_glow_texture_cache = {}
-_spark_core_cache = {}
-_flash_cache = {}
+_glow_texture_cache: "OrderedDict[tuple, pygame.Surface]" = OrderedDict()
+_spark_core_cache: "OrderedDict[int, pygame.Surface]" = OrderedDict()
+_flash_cache: "OrderedDict[int, pygame.Surface]" = OrderedDict()
 
 
 def _get_glow_texture(radius: int, base_color=(255, 120, 20), alpha_mult=0.15) -> pygame.Surface:
