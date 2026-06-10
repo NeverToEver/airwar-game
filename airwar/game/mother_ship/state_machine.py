@@ -3,7 +3,6 @@
 import pygame
 
 from .event_bus import (
-    EVENT_COOLDOWN_COMPLETE,
     EVENT_COOLDOWN_STARTED,
     EVENT_DOCKING_ANIMATION_COMPLETE,
     EVENT_ENTERING_COMPLETE,
@@ -14,7 +13,6 @@ from .event_bus import (
     EVENT_GAME_RESUME,
     EVENT_H_PRESSED,
     EVENT_H_RELEASED,
-    EVENT_H_RELEASED_EARLY,
     EVENT_PROGRESS_COMPLETE,
     EVENT_START_DOCKING_ANIMATION,
     EVENT_START_ENTERING_ANIMATION,
@@ -60,7 +58,6 @@ class MotherShipStateMachine(IMotherShipStateMachine):
     def _register_handlers(self) -> None:
         self._event_bus.subscribe(EVENT_H_PRESSED, self._on_h_pressed)
         self._event_bus.subscribe(EVENT_H_RELEASED, self._on_h_released)
-        self._event_bus.subscribe(EVENT_H_RELEASED_EARLY, self._on_h_released_early)
         self._event_bus.subscribe(EVENT_PROGRESS_COMPLETE, self._on_progress_complete)
         self._event_bus.subscribe(EVENT_DOCKING_ANIMATION_COMPLETE, self._on_docking_animation_complete)
         self._event_bus.subscribe(EVENT_UNDOCKING_ANIMATION_COMPLETE, self._on_undocking_animation_complete)
@@ -106,9 +103,6 @@ class MotherShipStateMachine(IMotherShipStateMachine):
             self._change_state(MotherShipState.IDLE)
             self._event_bus.publish(EVENT_STATE_CHANGED, state=self._current_state)
             self._event_bus.publish(EVENT_UNDOCK_CANCELLED)
-
-    def _on_h_released_early(self, **kwargs) -> None:
-        self._exit_in_progress = False
 
     def _on_progress_complete(self, **kwargs) -> None:
         if self._can_transition_to(MotherShipState.ENTERING):
@@ -180,7 +174,6 @@ class MotherShipStateMachine(IMotherShipStateMachine):
             if not self._cooldown.is_in_cooldown:
                 self._change_state(MotherShipState.IDLE)
                 self._event_bus.publish(EVENT_STATE_CHANGED, state=self._current_state)
-                self._event_bus.publish(EVENT_COOLDOWN_COMPLETE)
         elif self._current_state == MotherShipState.DOCKED:
             self._stay_progress.update_stay(current_time)
             if self._stay_progress.is_expired():

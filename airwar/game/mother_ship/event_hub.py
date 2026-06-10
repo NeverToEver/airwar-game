@@ -28,7 +28,6 @@ if TYPE_CHECKING:
 # diff (vs. 14+ inline ``bus.subscribe(EVENT_X, self._on_x)`` calls).
 HANDLER_BINDINGS: list[tuple[str, str]] = [
     ("EVENT_STATE_CHANGED", "_on_state_changed"),
-    ("EVENT_SAVE_GAME_REQUEST", "_on_save_game_request"),
     ("EVENT_GAME_RESUME", "_on_game_resume"),
     ("EVENT_START_ENTERING_ANIMATION", "_on_start_entering_animation"),
     ("EVENT_START_DOCKING_ANIMATION", "_on_start_docking_animation"),
@@ -37,7 +36,6 @@ HANDLER_BINDINGS: list[tuple[str, str]] = [
     ("EVENT_COOLDOWN_STARTED", "_on_cooldown_started"),
     ("EVENT_STAY_STARTED", "_on_stay_started"),
     ("EVENT_UNDOCK_REQUESTED", "_on_undock_requested"),
-    ("EVENT_H_RELEASED_EARLY", "_on_h_released_early"),
     ("EVENT_EXIT_STARTED", "_on_exit_started"),
     ("EVENT_EXIT_PROGRESS_UPDATE", "_on_exit_progress_update"),
     ("EVENT_EXIT_CANCELLED", "_on_exit_cancelled"),

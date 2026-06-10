@@ -46,7 +46,6 @@ class SubscriptionCapExceeded(EventBusError):
 EVENT_REGISTRY: dict[str, dict] = {
     "EVENT_H_PRESSED": {"payload_schema": {"timestamp_ms": int}, "subscribers_known": []},
     "EVENT_H_RELEASED": {"payload_schema": {}, "subscribers_known": []},
-    "EVENT_H_RELEASED_EARLY": {"payload_schema": {}, "subscribers_known": []},
     "EVENT_PROGRESS_COMPLETE": {"payload_schema": {}, "subscribers_known": []},
     "EVENT_DOCKING_ANIMATION_COMPLETE": {"payload_schema": {}, "subscribers_known": []},
     "EVENT_UNDOCKING_ANIMATION_COMPLETE": {"payload_schema": {}, "subscribers_known": []},
@@ -64,8 +63,6 @@ EVENT_REGISTRY: dict[str, dict] = {
     "EVENT_COOLDOWN_STARTED": {"payload_schema": {}, "subscribers_known": []},
     "EVENT_GAME_RESUME": {"payload_schema": {}, "subscribers_known": []},
     "EVENT_UNDOCK_CANCELLED": {"payload_schema": {}, "subscribers_known": []},
-    "EVENT_COOLDOWN_COMPLETE": {"payload_schema": {}, "subscribers_known": []},
-    "EVENT_SAVE_GAME_REQUEST": {"payload_schema": {}, "subscribers_known": []},
     "EVENT_STATE_CHANGED": {"payload_schema": {"state": "MotherShipState"}, "subscribers_known": []},
     "EVENT_DOCKING_COMPLETE": {"payload_schema": {}, "subscribers_known": []},
 }
@@ -75,7 +72,6 @@ EVENT_REGISTRY: dict[str, dict] = {
 EVENT_STATE_CHANGED = "STATE_CHANGED"
 EVENT_H_PRESSED = "H_PRESSED"
 EVENT_H_RELEASED = "H_RELEASED"
-EVENT_H_RELEASED_EARLY = "H_RELEASED_EARLY"
 EVENT_PROGRESS_COMPLETE = "PROGRESS_COMPLETE"
 EVENT_DOCKING_ANIMATION_COMPLETE = "DOCKING_ANIMATION_COMPLETE"
 EVENT_UNDOCKING_ANIMATION_COMPLETE = "UNDOCKING_ANIMATION_COMPLETE"
@@ -92,8 +88,6 @@ EVENT_STAY_STARTED = "STAY_STARTED"
 EVENT_COOLDOWN_STARTED = "COOLDOWN_STARTED"
 EVENT_GAME_RESUME = "GAME_RESUME"
 EVENT_UNDOCK_CANCELLED = "UNDOCK_CANCELLED"
-EVENT_COOLDOWN_COMPLETE = "COOLDOWN_COMPLETE"
-EVENT_SAVE_GAME_REQUEST = "SAVE_GAME_REQUEST"
 EVENT_EXIT_STARTED = "EXIT_STARTED"
 EVENT_DOCKING_COMPLETE = "DOCKING_COMPLETE"
 

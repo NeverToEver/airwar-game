@@ -636,9 +636,6 @@ class GameIntegrator:
     def _on_undock_requested(self, **kwargs) -> None:
         pass
 
-    def _on_h_released_early(self, **kwargs) -> None:
-        pass
-
     def _on_exit_started(self, timestamp=None, **kwargs) -> None:
         self._input_detector.start_exit_hold(timestamp)
         self._progress_bar_ui.show(self.BAR_TYPE_EXIT, getattr(self._input_detector, "_exit_required_duration", 2.0))
@@ -673,14 +670,6 @@ class GameIntegrator:
             stay_progress = self._state_machine.stay_progress.stay_progress
         remaining_ratio = max(0.0, min(1.0, 1.0 - stay_progress))
         return max(0.6, 1.0 - remaining_ratio * 0.4)
-
-    def _on_save_game_request(self, **kwargs) -> None:
-        if not self._game_scene:
-            return
-
-        save_data = self.create_save_data()
-        self._persistence_manager.save_game(save_data)
-        self._game_scene.set_paused(True)
 
     def create_save_data(self) -> "GameSaveData":
         if not self._game_scene:
