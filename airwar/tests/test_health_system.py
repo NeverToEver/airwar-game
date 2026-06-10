@@ -6,6 +6,9 @@ import pytest
 
 from airwar.game.systems.health_system import HealthSystem
 
+# Health regen timing + difficulty switching — pure logic, smoke subset.
+pytestmark = pytest.mark.smoke
+
 
 @pytest.fixture
 def player():

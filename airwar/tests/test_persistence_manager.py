@@ -1,7 +1,13 @@
 import json
 
+import pytest
+
 from airwar.game.mother_ship.mother_ship_state import GameSaveData
 from airwar.game.mother_ship.persistence_manager import PersistenceManager
+
+# Save/load round-trips + JSON corruption handling — uses tmp_path, no
+# network, no real disk. Smoke subset.
+pytestmark = pytest.mark.smoke
 
 
 def test_save_and_load_round_trip(tmp_path):

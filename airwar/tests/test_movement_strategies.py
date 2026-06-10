@@ -17,6 +17,10 @@ from airwar.entities.movement_strategies import (
     get_movement_strategy,
 )
 
+# 8 enemy movement patterns drive every wave — pure logic, smoke them so
+# any strategy regression trips the PR fast-path.
+pytestmark = pytest.mark.smoke
+
 # --- _smooth_noise ---
 
 

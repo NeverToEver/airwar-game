@@ -13,6 +13,9 @@ from airwar.i18n import (
     t,
 )
 
+# All i18n tests are pure-unit and fast — include in the smoke subset.
+pytestmark = pytest.mark.smoke
+
 
 @pytest.fixture
 def isolated_translator():

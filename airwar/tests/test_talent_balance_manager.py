@@ -1,4 +1,5 @@
 import pygame
+import pytest
 
 from airwar.entities.player import Player
 from airwar.game.mother_ship.mother_ship_state import GameSaveData
@@ -7,6 +8,10 @@ from airwar.game.systems.talent_balance_manager import TalentBalanceManager
 from airwar.input.input_handler import MockInputHandler
 from airwar.scenes.game_scene import GameScene
 from airwar.ui.base_talent_console import BaseTalentConsole, BaseTalentConsoleAction
+
+# Talent/loadout balances and the homecoming base console are pure logic
+# (no rendering pipeline dependency in the test body). Smoke subset.
+pytestmark = pytest.mark.smoke
 
 
 def _make_player() -> Player:

@@ -75,3 +75,34 @@ jobs:
           SDL_VIDEODRIVER: dummy
           SDL_AUDIODRIVER: dummy
         run: python -m pytest
+
+  smoke:
+    # PR fast-path: pure-Python smoke tests, no Rust build, no coverage.
+    # Target runtime: <30s. Catches HSM / lock-manager / collision /
+    # event-bus / i18n / movement / save-load regressions before the full
+    # suite has a chance to run. Independent of the `test` job so it can
+    # fan out in parallel and the PR review bot can see results quickly.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: []
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+
+      - name: Run smoke tests
+        env:
+          SDL_VIDEODRIVER: dummy
+          SDL_AUDIODRIVER: dummy
+        run: python -m pytest -m smoke -v --no-cov --override-ini="addopts="

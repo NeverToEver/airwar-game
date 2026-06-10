@@ -1,10 +1,15 @@
 import itertools
 from types import SimpleNamespace
 
+import pytest
+
 from airwar.game.constants import GAME_CONSTANTS
 from airwar.game.managers.game_controller import GameController
 from airwar.game.managers.milestone_manager import MilestoneManager
 from airwar.game.systems.lock_manager import LockManager
+
+# Milestone / reward trigger curve — pure logic on top of GameController.
+pytestmark = pytest.mark.smoke
 
 
 def _make_controller(difficulty: str = "medium") -> GameController:

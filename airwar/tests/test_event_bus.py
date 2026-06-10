@@ -6,6 +6,9 @@ import pytest
 
 from airwar.game.mother_ship.event_bus import EventBus
 
+# EventBus is the cross-system pub/sub backbone — fast pure-unit, smoke it.
+pytestmark = pytest.mark.smoke
+
 
 def _make_callbacks(n):
     """Build ``n`` distinct no-op callbacks (avoid lambda-binding quirks)."""

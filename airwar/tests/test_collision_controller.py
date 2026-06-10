@@ -1,9 +1,15 @@
 from dataclasses import dataclass
 
+import pytest
+
 import airwar.game.managers.collision_controller as collision_module
 from airwar.entities.base import BulletData, EnemyData, Rect
 from airwar.game.constants import GAME_CONSTANTS
 from airwar.game.managers.collision_controller import CollisionController
+
+# Collision detection is on the per-frame hot path; regressions here silently
+# break gameplay (bullets pass through enemies / boss ignores player). Smoke.
+pytestmark = pytest.mark.smoke
 
 
 @dataclass
