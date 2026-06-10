@@ -22,14 +22,11 @@ from airwar.entities.player_state import (
     PlayerState,
     PlayerStateMachine,
 )
-
-
-class _StubPlayer:
-    """Minimal duck-typed Player that satisfies PlayerStateMachine.__init__."""
+from airwar.tests.conftest import StubPlayerForStateMachine
 
 
 def _make_sm() -> PlayerStateMachine:
-    return PlayerStateMachine(_StubPlayer())
+    return PlayerStateMachine(StubPlayerForStateMachine())
 
 
 class TestF03IllegalPlayerTransitions:

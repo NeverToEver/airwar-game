@@ -138,3 +138,24 @@ def stub_enemy():
 def stub_bullet():
     """Lightweight Bullet stub for collision tests."""
     return StubBullet()
+
+
+class StubPlayerForStateMachine:
+    """Duck-type placeholder for ``PlayerStateMachine.__init__``.
+
+    Consolidated from 3 identical local ``_StubPlayer`` classes in
+    ``test_player_state_machine.py``,
+    ``test_logic_clarity/test_F03_silent_failure.py``, and
+    ``test_logic_clarity/test_property_player_hsm.py`` (P2-3 follow-up,
+    2026-06-10). The class body is intentionally empty: it asserts the
+    contract that ``PlayerStateMachine`` constructor does not touch
+    any attribute on the player it receives.
+    """
+
+    pass
+
+
+@pytest.fixture
+def stub_player_for_state_machine():
+    """Empty Player placeholder for PlayerStateMachine unit tests."""
+    return StubPlayerForStateMachine()

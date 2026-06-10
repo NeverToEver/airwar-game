@@ -34,18 +34,15 @@ from airwar.entities.player_state import (
     PlayerAliveState,
     PlayerStateMachine,
 )
+from airwar.tests.conftest import StubPlayerForStateMachine
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
 
-class _StubPlayer:
-    """Minimal duck-typed Player for PlayerStateMachine.__init__."""
-
-
 def _make_sm() -> PlayerStateMachine:
-    return PlayerStateMachine(_StubPlayer())
+    return PlayerStateMachine(StubPlayerForStateMachine())
 
 
 # Strategy: any sequence of substates (legal or illegal). Hypothesis will
