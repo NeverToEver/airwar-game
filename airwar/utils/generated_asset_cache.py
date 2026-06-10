@@ -31,7 +31,8 @@ def _load_surface(path: str) -> pygame.Surface | None:
         surface = pygame.image.load(path)
         try:
             return surface.convert_alpha()
-        except pygame.error:
+        except pygame.error as exc:
+            logger.warning("convert_alpha failed for %s: %s", path, exc)
             return surface
     except (OSError, pygame.error) as exc:
         logger.warning("Failed to load generated asset cache %s: %s", path, exc)

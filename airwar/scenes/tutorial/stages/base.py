@@ -32,9 +32,8 @@ class BaseStage(ABC):
     existing mutator methods.
     """
 
-    #: Dispatch id used by :class:`TutorialStageCoordinator`. Must match
-    #: the keys in the legacy ``_STAGE_HANDLERS`` table so existing
-    #: coordinator logic keeps working unchanged.
+    #: Dispatch id used by the stage registry. Must match the keys in
+    #: ``_STAGE_CLASS_BY_ID`` so the dispatch table keeps working.
     stage_id: str = ""
 
     def __init__(self, scene: TutorialScene) -> None:

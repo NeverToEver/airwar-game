@@ -646,7 +646,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
     #
     # The per-stage bodies live in :mod:`airwar.scenes.tutorial.stages`.
     # The methods below are thin back-compat wrappers so existing tests
-    # (and :class:`TutorialStageCoordinator`) can call them directly;
+    # can call them directly;
     # :meth:`_update_stage_logic` is the single dispatch site the
     # scene's per-frame update() flow uses.
 
