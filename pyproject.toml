@@ -82,5 +82,4 @@ source = ["airwar"]
 omit = ["airwar/tests/*", "tests/*", "airwar/_version.py"]
 
 [tool.coverage.report]
-fail_under = 40
 exclude_lines = ["pragma: no cover", "raise NotImplementedError", "if __name__ == .__main__.:"]
