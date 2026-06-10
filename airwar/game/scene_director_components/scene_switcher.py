@@ -13,7 +13,7 @@ import pygame
 
 from ...config import FPS, set_display_size
 from ...scenes import GameScene, SceneManager
-from ...scenes.scene import ExitConfirmAction, PauseAction
+from ...scenes.scene import ExitConfirmAction, PauseAction, Scene
 from ..scaled_viewport import ScaledViewport
 
 
@@ -179,7 +179,16 @@ class SceneSwitcher:
             if not self._check_quit(events):
                 return "quit"
             self._handle_resize_if_needed(events)
-            self._handle_scene_events(events, escape_handled)
+            # Dispatch events to the target scene directly. Sub-scene
+            # flows (settings, benchmark, pause, death, exit_confirm)
+            # do not call ``scene_manager.switch`` before ``enter()``,
+            # so ``SceneManager._current_scene`` is still the calling
+            # scene (typically ``welcome`` or ``game``) and a naive
+            # dispatch via ``scene_manager.handle_events`` would route
+            # the click to the wrong scene. Routing through
+            # ``target_scene`` here makes the dispatch explicit and
+            # immune to that mismatch.
+            self._handle_scene_events(events, skip_escape=escape_handled, target_scene=scene)
             scene.update()
             self._render_scene(scene)
             self._director._window.flip()
@@ -205,11 +214,43 @@ class SceneSwitcher:
                 # for coordinate conversion; don't recreate the display surface.
                 self._handle_resize(event.w, event.h)
 
-    def _handle_scene_events(self, events: list[pygame.event.Event], skip_escape: bool = False) -> None:
+    def _handle_scene_events(
+        self,
+        events: list[pygame.event.Event],
+        skip_escape: bool = False,
+        *,
+        target_scene: Scene | None = None,
+    ) -> None:
+        """Dispatch pygame events to the appropriate scene.
+
+        Args:
+            events: Pygame events to dispatch.
+            skip_escape: If True, swallow ``pygame.K_ESCAPE`` events.
+            target_scene: If provided, dispatch to this scene directly.
+                Used by ``_run_scene_loop`` for sub-scenes (settings,
+                benchmark, pause, death, exit_confirm) that do not call
+                ``scene_manager.switch`` before ``enter()`` and therefore
+                do not become ``SceneManager._current_scene``. If
+                ``None``, falls back to ``scene_manager.get_current_scene()``.
+        """
+        if target_scene is None:
+            # Fall back to the legacy path: dispatch via the
+            # scene_manager (which routes to ``get_current_scene()``).
+            # This preserves the existing test contract and is correct
+            # for the top-level ``welcome`` / ``game`` / ``tutorial``
+            # flows that DO call ``scene_manager.switch`` before
+            # ``_run_scene_loop``. The ``target_scene`` parameter is
+            # only needed for the sub-scene flows that skip
+            # ``scene_manager.switch``.
+            for event in events:
+                if skip_escape and hasattr(event, "key") and event.key == pygame.K_ESCAPE:
+                    continue
+                self._scene_manager.handle_events(event)
+            return
         for event in events:
             if skip_escape and hasattr(event, "key") and event.key == pygame.K_ESCAPE:
                 continue
-            self._scene_manager.handle_events(event)
+            target_scene.handle_events(event)
 
     def _map_mouse_event(self, event: pygame.event.Event) -> pygame.event.Event:
         if not hasattr(event, "pos"):
