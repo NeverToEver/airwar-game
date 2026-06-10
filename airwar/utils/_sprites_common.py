@@ -48,11 +48,13 @@ def prewarm_glow_caches(force: bool = False) -> None:
         return
 
     for width, height in [(8, 16), (6, 12), (10, 20), (4, 8)]:
-        key = (width, height, "player")
+        # Match draw_single_bullet scaling: ew = int(w*1.4), eh = int(h*1.3)
+        ew, eh = int(width * 1.4), int(height * 1.3)
+        key = (ew, eh, "player")
         if key not in _single_bullet_glow_cache:
-            data = create_single_bullet_glow(float(width), float(height))
-            surf_w = width + 16
-            surf_h = height + 12
+            data = create_single_bullet_glow(float(ew), float(eh))
+            surf_w = ew + 16
+            surf_h = eh + 12
             _single_bullet_glow_cache[key] = _bytes_to_surface(data, surf_w, surf_h)
 
     for width in [8, 10, 12, 14, 16]:

@@ -2,33 +2,70 @@
 
 from __future__ import annotations
 
+import logging
 import math
 import random
 
+_logger = logging.getLogger(__name__)
+
+_RUST_NAMES = (
+    "batch_collide_bullets_vs_entities",
+    "batch_hallucinated_enemy_centers",
+    "batch_render_particles",
+    "batch_update_bullets",
+    "batch_update_bullets_buf",
+    "batch_update_movements",
+    "batch_update_movements_buf",
+    "batch_update_particles",
+    "compute_starfield_positions",
+    "create_explosive_missile_glow",
+    "create_glow_circle",
+    "create_laser_bullet_glow",
+    "create_single_bullet_glow",
+    "create_spread_bullet_glow",
+    "find_nearest_target",
+    "find_target_in_direction",
+    "generate_explosion_particles",
+    "update_movement",
+    "vec2_add",
+    "vec2_angle",
+    "vec2_clamp_length",
+    "vec2_distance",
+    "vec2_dot",
+    "vec2_from_angle",
+    "vec2_length",
+    "vec2_lerp",
+    "vec2_normalize",
+    "vec2_scale",
+    "vec2_sub",
+)
+
 try:
+    import airwar_core
+
+    _missing = [n for n in _RUST_NAMES if not hasattr(airwar_core, n)]
+    if _missing:
+        _logger.error("airwar_core missing functions: %s; falling back to pure Python", _missing)
+        raise ImportError(f"airwar_core missing: {_missing}")
+
     from airwar_core import (
-        # Collision functions
         batch_collide_bullets_vs_entities,
         batch_hallucinated_enemy_centers,
         batch_render_particles,
-        # Bullet functions
         batch_update_bullets,
         batch_update_bullets_buf,
         batch_update_movements,
         batch_update_movements_buf,
-        # Particle functions
         batch_update_particles,
         compute_starfield_positions,
         create_explosive_missile_glow,
         create_glow_circle,
         create_laser_bullet_glow,
-        # Sprite functions
         create_single_bullet_glow,
         create_spread_bullet_glow,
         find_nearest_target,
         find_target_in_direction,
         generate_explosion_particles,
-        # Movement functions
         update_movement,
         vec2_add,
         vec2_angle,
@@ -36,7 +73,6 @@ try:
         vec2_distance,
         vec2_dot,
         vec2_from_angle,
-        # Vector2 functions
         vec2_length,
         vec2_lerp,
         vec2_normalize,
