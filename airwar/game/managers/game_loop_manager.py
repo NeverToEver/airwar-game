@@ -25,6 +25,77 @@ from .game_controller import GameplayState
 logger = logging.getLogger(__name__)
 
 
+class EntityBuffer:
+    """Pre-allocated scratch list reused across frames for entity updates.
+
+    P1-2 perf: the per-frame entity update path used to build a fresh
+    list each call (``active_enemies = []`` + ``append``) and discarded
+    it at frame end. On boss-death frames with 5-7 effects × 40+
+    enemies, this drives measurable allocation bandwidth (project scan
+    2026-06-10). ``EntityBuffer`` owns a pre-sized list that callers
+    ``reset()`` and refill; the list object is reused across frames so
+    steady-state allocation is zero.
+
+    The buffer is single-threaded (called from the main game loop) and
+    is intentionally not thread-safe. Capacity is the practical
+    maximum (enemies + boss + safety margin).
+    """
+
+    DEFAULT_CAPACITY: int = 64
+
+    def __init__(self, capacity: int = DEFAULT_CAPACITY) -> None:
+        self._buf: list = [None] * max(1, capacity)
+        self._size: int = 0
+        self._capacity: int = max(1, capacity)
+
+    def reset(self) -> None:
+        """Reset the buffer to empty (logical clear, no allocation)."""
+        # Replace contents with None rather than re-binding the slice
+        # to keep the underlying list object stable.
+        for i in range(self._size):
+            self._buf[i] = None
+        self._size = 0
+
+    def add(self, item) -> None:
+        """Append ``item`` to the buffer; grows once if at capacity."""
+        if self._size >= self._capacity:
+            # Grow once: doubles capacity. Rare in practice — the
+            # pre-allocated 64 covers enemies + boss in normal play.
+            self._buf.extend([None] * self._capacity)
+            self._capacity *= 2
+        self._buf[self._size] = item
+        self._size += 1
+
+    def __iter__(self):
+        # Iterate over the live slice only. Avoids yielding Nones and
+        # avoids the cost of ``list(buf)`` materialisation.
+        for i in range(self._size):
+            yield self._buf[i]
+
+    def __len__(self) -> int:
+        return self._size
+
+    def __bool__(self) -> bool:
+        return self._size > 0
+
+    def to_list(self) -> list:
+        """Return a fresh ``list`` snapshot of the live items.
+
+        Use this only when callers require a real list (e.g. slicing,
+        len-based indexing, passing to Rust FFI that expects a
+        sequence). The returned list is a *copy*; mutating it does
+        not affect the buffer.
+        """
+        return self._buf[: self._size]
+
+    def __getitem__(self, index: int):
+        if index < 0:
+            index += self._size
+        if not 0 <= index < self._size:
+            raise IndexError(index)
+        return self._buf[index]
+
+
 # F03 S1: explicit exception for bad Rust batch movement parameters.
 # Was previously swallowed with ``logger.warning + continue``; the
 # refactor raises so callers cannot accidentally accept silently
@@ -67,6 +138,12 @@ class GameLoopManager:
         self._boss_manager = boss_manager
         self._collision_controller = collision_controller
         self._lock_manager = lock_manager
+
+        # P1-2: pre-allocated scratch buffers for the entity-update
+        # hot path. ``_entity_buf`` is reused across frames to avoid
+        # per-frame list allocation; ``_batch_indices`` ditto.
+        self._entity_buf: EntityBuffer = EntityBuffer()
+        self._batch_indices: EntityBuffer = EntityBuffer()
 
         self._init_explosion_system()
 
@@ -231,11 +308,22 @@ class GameLoopManager:
         # skipping bad params. The data flow is strictly typed
         # (Enemy -> 12-base + 8-extra tuple) and any mismatch is a bug.
 
+        # P1-2: reuse pre-allocated buffers for batch indices so we
+        # don't allocate fresh lists every frame. ``_entity_buf`` and
+        # ``_batch_indices`` are reset, not re-bound, to keep the
+        # underlying list objects stable across calls.
+        # Lazy-init guards the ``__new__``-style test harness (some
+        # perf tests bypass ``__init__`` and call private methods).
+        batch_indices = getattr(self, "_batch_indices", None)
+        if batch_indices is None:
+            batch_indices = EntityBuffer()
+            self._batch_indices = batch_indices
+        batch_indices.reset()
+
         # Batch Rust movement — only for enemies in 'active' state (not entering/exiting)
         if batch_update_movements_buf is not None:
-            batch_indices = []
-            base_buf_parts = []
-            extra_buf_parts = []
+            base_buf_parts: list[bytes] = []
+            extra_buf_parts: list[bytes] = []
 
             for i, enemy in enumerate(enemies):
                 if enemy.is_ready_for_batch_movement():
@@ -290,7 +378,7 @@ class GameLoopManager:
                                 extra[7],
                             )
                         )
-                        batch_indices.append(i)
+                        batch_indices.add(i)
                     else:
                         # F03 S2: mismatched pair is a programming error.
                         raise MovementParamError(
@@ -310,7 +398,6 @@ class GameLoopManager:
             # Fallback: tuple-based batch movement
             base_list = []
             extra_list = []
-            batch_indices = []
             for i, enemy in enumerate(enemies):
                 if enemy.is_ready_for_batch_movement():
                     base, extra = enemy.get_rust_batch_params()
@@ -323,7 +410,7 @@ class GameLoopManager:
                             raise MovementParamError(f"Fallback path: enemy {enemy!r} extra len {len(extra)}")
                         base_list.append(base)
                         extra_list.append(extra)
-                        batch_indices.append(i)
+                        batch_indices.add(i)
                     else:
                         raise MovementParamError(f"Fallback path: mismatched pair for {enemy!r}")
             if base_list:
