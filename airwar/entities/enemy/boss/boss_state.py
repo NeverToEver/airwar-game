@@ -94,6 +94,97 @@ class BossState(Enum):
 
 
 # ---------------------------------------------------------------------------
+# Legal transition table (Nystrom-style finite state machine).
+#
+# Mirrors the Player HSM pattern (see ``player_state._ALIVE_TRANSITIONS``).
+# Each transfer method on :class:`BossStateMachine` consults this table at
+# entry; an absent edge raises :class:`IllegalBossTransition`.
+#
+# Design notes:
+# - ``DEAD`` is terminal: no outgoing edges.
+# - ``ESCAPING -> DEAD`` is legal (an escaping boss can still be killed
+#   by stray bullets before flying off-screen).
+# - ``ENRAGE_RETURN -> ACTIVE`` is the only loop: a successful enrage
+#   cycle returns the boss to ACTIVE.
+# - ``trigger_enrage`` is the enrage entry point and is reachable from
+#   ANY non-DEAD state (matches existing idempotent semantics and
+#   ``test_property_boss_hsm.test_enrage_unreachable_from_non_active_states``).
+# ---------------------------------------------------------------------------
+
+_BOSS_TRANSITIONS: dict[BossState, frozenset[BossState]] = {
+    BossState.ENTERING: frozenset(
+        {
+            BossState.ACTIVE,
+            BossState.DEAD,
+        }
+    ),
+    BossState.ACTIVE: frozenset(
+        {
+            BossState.ENRAGE_TRANSITION,
+            BossState.ESCAPING,
+            BossState.DEAD,
+        }
+    ),
+    BossState.ENRAGE_TRANSITION: frozenset(
+        {
+            BossState.ENRAGE_ACTIVE,
+            BossState.ESCAPING,
+            BossState.DEAD,
+        }
+    ),
+    BossState.ENRAGE_ACTIVE: frozenset(
+        {
+            BossState.ENRAGE_RELEASE_HOLD,
+            BossState.ESCAPING,
+            BossState.DEAD,
+        }
+    ),
+    BossState.ENRAGE_RELEASE_HOLD: frozenset(
+        {
+            BossState.ENRAGE_RETURN,
+            BossState.ESCAPING,
+            BossState.DEAD,
+        }
+    ),
+    BossState.ENRAGE_RETURN: frozenset(
+        {
+            BossState.ACTIVE,
+            BossState.ESCAPING,
+            BossState.DEAD,
+        }
+    ),
+    # ``trigger_enrage`` is legal from any non-DEAD state (idempotent
+    # re-trigger) so all non-DEAD states have an edge to ENRAGE_TRANSITION.
+    BossState.ESCAPING: frozenset(
+        {
+            BossState.ENRAGE_TRANSITION,
+            BossState.DEAD,
+        }
+    ),
+    BossState.DEAD: frozenset(),
+}
+
+
+# Wire the ENRAGE_TRANSITION edge for every non-DEAD state (idempotent
+# ``trigger_enrage`` matches the existing semantics).
+for _src in BossState:
+    if _src is BossState.DEAD:
+        continue
+    _existing = _BOSS_TRANSITIONS[_src]
+    _BOSS_TRANSITIONS[_src] = _existing | {BossState.ENRAGE_TRANSITION}
+
+
+class IllegalBossTransition(ValueError):
+    """Raised when a boss state transition is not in the legal-edge table.
+
+    Mirrors :class:`airwar.entities.player_state.IllegalPlayerTransition`.
+    Defensive guard rails: future refactors that bypass the documented
+    state diagram (e.g. jumping ACTIVE -> DEAD via an unvetted path) get
+    caught immediately instead of silently corrupting the enrage sequence.
+    """
+
+
+# ---------------------------------------------------------------------------
 # State machine (facade over EnrageSubMachine)
 # ---------------------------------------------------------------------------
 
@@ -234,16 +325,37 @@ class BossStateMachine:
     # Top-level transitions (own the state enum)
     # ------------------------------------------------------------------
 
+    def _check_transition(self, to_state: BossState) -> None:
+        """Raise :class:`IllegalBossTransition` if the edge is not legal.
+
+        Mirrors the legal-edge guard pattern from
+        :class:`airwar.entities.player_state.PlayerStateMachine`. The
+        self-loop case (``to_state == self._state``) is treated as a
+        legal idempotent no-op: callers like ``finish_entry`` and
+        ``mark_dead`` historically rely on the silent no-op to remain
+        safe to call repeatedly.
+        """
+        if to_state == self._state:
+            return
+        legal = _BOSS_TRANSITIONS.get(self._state, frozenset())
+        if to_state not in legal:
+            raise IllegalBossTransition(
+                f"Illegal boss state transition: {self._state.name} -> {to_state.name}"
+            )
+
     def finish_entry(self) -> None:
         """Transition out of ENTERING once the boss reaches its target Y."""
+        self._check_transition(BossState.ACTIVE)
         self._state = BossState.ACTIVE
 
     def mark_escaped(self) -> None:
         """Boss survived long enough; mark as escaped and inactive."""
+        self._check_transition(BossState.ESCAPING)
         self._state = BossState.ESCAPING
 
     def mark_dead(self) -> None:
         """Boss was killed (called from :meth:`Boss.take_damage`)."""
+        self._check_transition(BossState.DEAD)
         self._state = BossState.DEAD
 
     # ------------------------------------------------------------------
@@ -252,17 +364,20 @@ class BossStateMachine:
 
     def trigger_enrage(self, snapshot_target: tuple[float, float]) -> None:
         """Begin the enrage sub-machine (idempotent)."""
+        self._check_transition(BossState.ENRAGE_TRANSITION)
         self._sub.trigger_enrage(snapshot_target)
         if self._sub._enraged:
             self._state = BossState.ENRAGE_TRANSITION
 
     def finish_enrage_transition(self) -> None:
         """Move from ENRAGE_TRANSITION to ENRAGE_ACTIVE."""
+        self._check_transition(BossState.ENRAGE_ACTIVE)
         self._sub.finish_enrage_transition()
         self._state = BossState.ENRAGE_ACTIVE
 
     def begin_enrage_release_hold(self, anchor: tuple[float, float]) -> None:
         """Move from ENRAGE_ACTIVE to ENRAGE_RELEASE_HOLD."""
+        self._check_transition(BossState.ENRAGE_RELEASE_HOLD)
         self._sub.begin_enrage_release_hold(anchor)
         self._state = BossState.ENRAGE_RELEASE_HOLD
 
@@ -272,11 +387,13 @@ class BossStateMachine:
         target: tuple[float, float],
     ) -> None:
         """Move from ENRAGE_RELEASE_HOLD to ENRAGE_RETURN."""
+        self._check_transition(BossState.ENRAGE_RETURN)
         self._sub.begin_enrage_return(origin, target)
         self._state = BossState.ENRAGE_RETURN
 
     def finish_enrage_return(self) -> None:
         """Return to ACTIVE after a successful enrage cycle."""
+        self._check_transition(BossState.ACTIVE)
         self._sub.finish_enrage_return()
         self._state = BossState.ACTIVE
 
@@ -401,4 +518,5 @@ __all__ = [
     "ENRAGE_TRIGGER_RATIO",
     "BossState",
     "BossStateMachine",
+    "IllegalBossTransition",
 ]
