@@ -86,8 +86,8 @@ def test_trigger_enrage_idempotent(first_target, second_target):
 
 @given(st.sampled_from(list(BossState)))
 @settings(max_examples=20)
-def test_enrage_unreachable_from_non_active_states(initial_state):
-    """Calling trigger_enrage from a non-ACTIVE state must still set up
+def test_enrage_reachable_from_all_non_dead_states(initial_state):
+    """Calling trigger_enrage from any non-DEAD state must still set up
     the enrage sequence (production code does not gate on current state).
 
     The property under test is: regardless of where we start, the

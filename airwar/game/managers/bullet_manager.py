@@ -12,11 +12,10 @@ Design principles:
 P1-2 (perf): ``BulletPool`` pre-allocates ``POOL_CAPACITY`` ``Bullet`` slots
 backed by a ``deque`` free-list, so per-frame ``Bullet(...)`` construction
 allocations are eliminated once the pool is warm. ``acquire`` re-initialises
-an existing slot (no new allocation); ``release`` returns it. Pool capacity
-is sized to the practical upper bound given
-``Enemy.MAX_CONCURRENT_ENEMIES = 5`` plus a safety margin; pools that hit
-capacity fall back to direct construction so a saturated pool never blocks
-spawning.
+an existing slot (no new allocation); ``release`` returns it. ``POOL_CAPACITY``
+is empirically tuned (see constant at line ~55) and is a hard upper bound —
+pools that hit capacity fall back to direct construction so a saturated
+pool never blocks spawning.
 
 Usage:
     from airwar.game.managers import BulletManager
