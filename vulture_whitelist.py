@@ -8,7 +8,6 @@ airwar.config.tutorial.TUTORIAL_PAGES
 
 # core_bindings.py conditional imports (Rust fallback pattern)
 airwar.core_bindings.batch_hallucinated_enemy_centers
-airwar.core_bindings.compute_boss_attack
 airwar.core_bindings.vec2_add
 airwar.core_bindings.vec2_angle
 airwar.core_bindings.vec2_clamp_length

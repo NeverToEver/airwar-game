@@ -32,18 +32,6 @@ class TestF06CrossLayerProtocols:
         assert hasattr(InputSourceProtocol, "is_pause_pressed")
         assert hasattr(InputSourceProtocol, "is_boost_pressed")
 
-    def test_buff_factory_protocol_exists(self):
-        from airwar.protocols import BuffFactoryProtocol
-
-        assert hasattr(BuffFactoryProtocol, "__call__")  # noqa: B004
-
-    def test_game_constants_protocol_exists(self):
-        from airwar.protocols import GameConstantsProtocol, RequisitionConstantsProtocol
-
-        assert hasattr(GameConstantsProtocol, "REQUISITION")
-        assert hasattr(RequisitionConstantsProtocol, "REPAIR_COST")
-        assert hasattr(RequisitionConstantsProtocol, "RECHARGE_COST")
-
     def test_difficulty_manager_protocol_exists(self):
         from airwar.protocols import DifficultyManagerProtocol
 

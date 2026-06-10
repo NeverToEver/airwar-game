@@ -18,7 +18,6 @@ try:
         batch_update_movements_buf,
         # Particle functions
         batch_update_particles,
-        compute_boss_attack,
         compute_starfield_positions,
         create_explosive_missile_glow,
         create_glow_circle,
@@ -339,75 +338,6 @@ except (ImportError, OSError):
             extra_list.append(struct.unpack_from(extra_fmt, extra_buf, i * 32))
         return batch_update_movements(base_list, extra_list)
 
-    def compute_boss_attack(
-        pattern: int,
-        phase: int,
-        attack_dir: int,
-        center_x: float,
-        center_y: float,
-        rect_bottom: float,
-        rect_left: float,
-        rect_right: float,
-        rect_top: float,
-    ) -> list[tuple[float, float, float, float, float, int, int]]:
-        del center_y
-        base_angle, y_base = {
-            0: (-90.0, rect_bottom),
-            1: (180.0, (rect_top + rect_bottom) / 2.0),
-            2: (0.0, (rect_top + rect_bottom) / 2.0),
-        }.get(attack_dir, (90.0, rect_top))
-
-        if pattern == 0:
-            count = 5 + int(phase)
-            spread_angle = 45.0 if attack_dir in (1, 2) else 180.0
-            offset = 22.5 if attack_dir in (1, 2) else 0.0
-            speed = 5.0
-            damage = 12 + int(phase) * 2
-            return [
-                (
-                    center_x,
-                    y_base,
-                    math.cos(math.radians(base_angle + spread_angle * (i / max(1, count - 1)) - offset)) * speed,
-                    math.sin(math.radians(base_angle + spread_angle * (i / max(1, count - 1)) - offset)) * speed,
-                    speed,
-                    0,
-                    damage,
-                )
-                for i in range(count)
-            ]
-
-        source_x, source_y = {
-            0: (center_x, rect_bottom),
-            1: (rect_left, (rect_top + rect_bottom) / 2.0),
-            2: (rect_right, (rect_top + rect_bottom) / 2.0),
-        }.get(attack_dir, (center_x, rect_top))
-
-        if pattern == 1:
-            speed = 7.0
-            damage = 18 + int(phase) * 3
-            dx = -500.0 if attack_dir == 1 else 500.0 if attack_dir == 2 else 0.0
-            dy = 500.0 if attack_dir == 0 else -500.0 if attack_dir == 3 else 0.0
-            length = max(math.sqrt(dx * dx + dy * dy), 0.001)
-            return [
-                (source_x + offset, source_y, dx / length * speed, dy / length * speed, speed, 1, damage)
-                for offset in (-30.0, 0.0, 30.0)
-            ]
-
-        speed = 4.0
-        damage = 12
-        return [
-            (
-                source_x,
-                source_y,
-                math.cos(math.radians(base_angle + 22.5 * i)) * speed,
-                math.sin(math.radians(base_angle + 22.5 * i)) * speed,
-                speed,
-                2,
-                damage,
-            )
-            for i in range(8)
-        ]
-
     def batch_update_particles(
         particles: list[tuple[float, float, float, float, int, int, float]],
         dt: float,
@@ -710,7 +640,6 @@ __all__ = [
     "batch_update_movements",
     # Particle functions
     "batch_update_particles",
-    "compute_boss_attack",
     "compute_starfield_positions",
     "create_explosive_missile_glow",
     "create_glow_circle",

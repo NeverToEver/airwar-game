@@ -43,7 +43,6 @@ fn airwar_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(movement::update_movement, m)?)?;
     m.add_function(wrap_pyfunction!(movement::batch_update_movements, m)?)?;
     m.add_function(wrap_pyfunction!(movement::batch_update_movements_buf, m)?)?;
-    m.add_function(wrap_pyfunction!(movement::compute_boss_attack, m)?)?;
     m.add_function(wrap_pyfunction!(movement::batch_hallucinated_enemy_centers, m)?)?;
     m.add_function(wrap_pyfunction!(movement::find_nearest_target, m)?)?;
     m.add_function(wrap_pyfunction!(movement::find_target_in_direction, m)?)?;

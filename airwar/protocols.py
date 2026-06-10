@@ -48,42 +48,8 @@ class InputSourceProtocol(Protocol):
     def is_precision_just_pressed(self) -> bool: ...
 
 
-@runtime_checkable
-class BuffFactoryProtocol(Protocol):
-    """Single-method protocol — the UI only needs ``create_buff(name)``."""
-
-    def __call__(self, name: str) -> object: ...
-
-
-# Convenience callable alias for the common case.
+# Convenience callable alias for buff-creation.
 BuffFactory = Callable[[str], object]
-
-
-@runtime_checkable
-class RequisitionConstantsProtocol(Protocol):
-    """Subset of ``GAME_CONSTANTS.REQUISITION`` accessed by the UI."""
-
-    REPAIR_COST: int
-    RECHARGE_COST: int
-
-
-# Real class attribute so ``hasattr(Protocol, 'REPAIR_COST')`` returns True
-# on the bare Protocol class itself (Protocol annotations alone do not
-# materialise as attributes; runtime_checkable only checks instances).
-RequisitionConstantsProtocol.REPAIR_COST = 0
-RequisitionConstantsProtocol.RECHARGE_COST = 0
-
-
-@runtime_checkable
-class GameConstantsProtocol(Protocol):
-    """Subset of ``GAME_CONSTANTS`` accessed by the UI."""
-
-    REQUISITION: RequisitionConstantsProtocol
-
-
-# Real class attribute so ``hasattr(Protocol, 'REQUISITION')`` returns True
-# on the bare Protocol class itself.
-GameConstantsProtocol.REQUISITION = object()  # placeholder, type-erased
 
 
 @runtime_checkable
@@ -95,9 +61,6 @@ class DifficultyManagerProtocol(Protocol):
 
 __all__ = [
     "BuffFactory",
-    "BuffFactoryProtocol",
     "DifficultyManagerProtocol",
-    "GameConstantsProtocol",
     "InputSourceProtocol",
-    "RequisitionConstantsProtocol",
 ]
