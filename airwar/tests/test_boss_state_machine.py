@@ -353,3 +353,33 @@ def test_illegal_transition_enrage_active_to_active_skips_return() -> None:
     with pytest.raises(IllegalBossTransition):
         sm.finish_enrage_return()  # No-op; wrong source state
     assert sm.state == BossState.ENRAGE_ACTIVE
+
+
+# ---------------------------------------------------------------------------
+# Parametrised illegal-transition table test (mirrors Player HSM pattern).
+#
+# Every (from_state, to_state) pair NOT in ``_BOSS_TRANSITIONS`` must raise
+# ``IllegalBossTransition``. This catches regressions if someone adds an
+# edge to the table without updating the tests.
+# ---------------------------------------------------------------------------
+
+from airwar.entities.enemy.boss.boss_state import _BOSS_TRANSITIONS
+
+ALL_STATES = list(BossState)
+_ILLEGAL_PAIRS = [
+    (a, b)
+    for a in ALL_STATES
+    for b in ALL_STATES
+    if a != b and b not in _BOSS_TRANSITIONS.get(a, frozenset())
+]
+
+
+@pytest.mark.parametrize("from_s,to_s", _ILLEGAL_PAIRS, ids=lambda s: s.name)
+def test_illegal_boss_transition_table(from_s: BossState, to_s: BossState) -> None:
+    """Every edge not in _BOSS_TRANSITIONS must raise IllegalBossTransition."""
+    boss = _make_boss(health=1000)
+    sm = boss._state
+    sm._state = from_s  # bypass normal entry flow
+    with pytest.raises(IllegalBossTransition):
+        sm._check_transition(to_s)
+    assert sm.state == from_s, "State must not change on illegal transition"

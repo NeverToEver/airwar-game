@@ -28,6 +28,7 @@ class EntityRenderer:
     """Draw gameplay entities without coupling entity classes to sprite/UI modules."""
 
     TRAIL_CACHE_MAX_SIZE = 256
+    _WARNING_TEXT_CACHE: dict[tuple[str, tuple[int, int, int]], pygame.Surface] = {}
     ENTRY_FONT_SIZE = 36
     ESCAPE_FONT_SIZE = 28
 
@@ -50,6 +51,15 @@ class EntityRenderer:
         if cls._escape_font is None:
             cls._escape_font = get_cjk_font(cls.ESCAPE_FONT_SIZE)
         return cls._escape_font
+
+    @classmethod
+    def _get_cached_warning_text(cls, font: pygame.font.Font, text: str, color: tuple[int, int, int]) -> pygame.Surface:
+        key = (text, color)
+        surf = cls._WARNING_TEXT_CACHE.get(key)
+        if surf is None:
+            surf = font.render(text, True, color).convert_alpha()
+            cls._WARNING_TEXT_CACHE[key] = surf
+        return surf
 
     def render_enemy(self, surface: pygame.Surface, enemy: "Enemy") -> None:
         if getattr(enemy, "_sprite", None):
@@ -127,21 +137,21 @@ class EntityRenderer:
 
         if boss.is_entering:
             pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() * 0.002)
-            warning_surf = self._get_warning_font().render("! 警告 !", True, Colors.ACCENT_DANGER)
+            warning_surf = self._get_cached_warning_text(self._get_warning_font(), "! 警告 !", Colors.ACCENT_DANGER)
             warning_surf.set_alpha(int(150 + 35 * pulse))
             surface.blit(warning_surf, warning_surf.get_rect(center=(surface.get_width() // 2, 20)))
 
         if boss._enrage_timer > 0 and not self.player_docked:
             intensity = boss.enrage_visual_intensity()
             pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() * 0.0022)
-            warning_surf = self._get_escape_font().render("核心过载", True, (178, 226, 255))
+            warning_surf = self._get_cached_warning_text(self._get_escape_font(), "核心过载", (178, 226, 255))
             warning_surf.set_alpha(int((105 + 42 * pulse) * max(0.42, intensity)))
             surface.blit(warning_surf, warning_surf.get_rect(center=(surface.get_width() // 2, 86)))
             self._render_enrage_transition_charge(surface, boss, intensity)
 
         if boss._show_escape_warning and not boss.is_entering:
             pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() * 0.002)
-            warning_surf = self._get_escape_font().render("逃跑中...", True, (255, 200, 50))
+            warning_surf = self._get_cached_warning_text(self._get_escape_font(), "逃跑中...", (255, 200, 50))
             warning_surf.set_alpha(int(145 + 36 * pulse))
             surface.blit(warning_surf, warning_surf.get_rect(center=(surface.get_width() // 2, 50)))
 

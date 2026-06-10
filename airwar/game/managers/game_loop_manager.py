@@ -6,6 +6,7 @@ from collections.abc import Callable
 
 from airwar.config import get_screen_height, get_screen_width
 from airwar.core_bindings import batch_update_movements, batch_update_movements_buf
+from airwar.entities.enemy.boss.boss_state import ENRAGE_TRANSITION_DURATION
 
 from ..constants import PlayerConstants
 from ..explosion_animation import ExplosionManager
@@ -256,6 +257,7 @@ class GameLoopManager:
                 LockRequest(
                     lock_controls=True,
                     invincible=in_transition,
+                    invincibility_duration=ENRAGE_TRANSITION_DURATION if in_transition else 0,
                 ),
             )
         else:
