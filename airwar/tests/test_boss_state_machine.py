@@ -18,6 +18,8 @@ from __future__ import annotations
 import os
 import sys
 
+import pytest
+
 # Headless-friendly display setup
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
@@ -29,6 +31,7 @@ from airwar.entities import Boss, BossData
 from airwar.entities.enemy.boss import (
     ENRAGE_TRIGGER_RATIO,
     BossState,
+    IllegalBossTransition,
 )
 
 
@@ -91,6 +94,7 @@ def test_enrage_visual_intensity_is_bounded() -> None:
     # Simulate full enrage progression.
     sm._enrage_timer = 0
     sm._enrage_transition_timer = 0
+    sm.finish_enrage_transition()  # ENRAGE_TRANSITION -> ENRAGE_ACTIVE
     assert 0.0 <= sm.enrage_visual_intensity() <= 0.88
 
     # Release hold should produce a non-zero but bounded value.
@@ -151,3 +155,182 @@ def test_compute_take_damage_ignores_negative_or_none_damage() -> None:
     new_health, score = sm.compute_take_damage(damage=None)
     assert new_health == before
     assert score == 0
+
+
+# ---------------------------------------------------------------------------
+# Legal-edge table tests (P0-4 — mirror Player HSM pattern).
+#
+# Each transition method on ``BossStateMachine`` consults
+# ``_BOSS_TRANSITIONS`` and raises :class:`IllegalBossTransition` for
+# any move not in the legal-edge table. The happy-path tests below
+# walk one full forward path through the boss lifecycle; the illegal
+# tests probe edges the production code must never allow.
+# ---------------------------------------------------------------------------
+
+
+def test_happy_path_legal_transition_entering_to_active() -> None:
+    """ENTERING -> ACTIVE is the canonical entry-exit edge."""
+    boss = _make_boss(health=1000)
+    sm = boss._state
+    assert sm.state == BossState.ENTERING
+    sm.finish_entry()
+    assert sm.state == BossState.ACTIVE
+
+
+def test_happy_path_legal_transition_active_to_enrage_transition() -> None:
+    """ACTIVE -> ENRAGE_TRANSITION is the enrage entry point."""
+    boss = _make_boss(health=1000)
+    sm = boss._state
+    sm.finish_entry()
+    assert sm.state == BossState.ACTIVE
+    sm.trigger_enrage((600.0, 400.0))
+    assert sm.state == BossState.ENRAGE_TRANSITION
+
+
+def test_happy_path_legal_transition_enrage_transition_to_active_via_return() -> None:
+    """ENRAGE_TRANSITION -> ENRAGE_ACTIVE -> ... -> ENRAGE_RETURN -> ACTIVE."""
+    boss = _make_boss(health=1000)
+    sm = boss._state
+    sm.finish_entry()
+    sm.trigger_enrage((600.0, 400.0))
+    sm.finish_enrage_transition()
+    assert sm.state == BossState.ENRAGE_ACTIVE
+    sm.begin_enrage_release_hold((0.0, 0.0))
+    assert sm.state == BossState.ENRAGE_RELEASE_HOLD
+    sm.begin_enrage_return((10.0, 10.0), (20.0, 20.0))
+    assert sm.state == BossState.ENRAGE_RETURN
+    sm.finish_enrage_return()
+    assert sm.state == BossState.ACTIVE
+
+
+def test_happy_path_legal_transition_active_to_escaping() -> None:
+    """ACTIVE -> ESCAPING is reached only via mark_escaped()."""
+    boss = _make_boss(health=1000)
+    sm = boss._state
+    sm.finish_entry()
+    sm.mark_escaped()
+    assert sm.state == BossState.ESCAPING
+
+
+def test_happy_path_legal_transition_active_to_dead() -> None:
+    """ACTIVE -> DEAD is the kill edge (used by Boss.take_damage)."""
+    boss = _make_boss(health=1000)
+    sm = boss._state
+    sm.finish_entry()
+    sm.mark_dead()
+    assert sm.state == BossState.DEAD
+
+
+def test_happy_path_legal_transition_enrage_transition_to_enrage_active() -> None:
+    """ENRAGE_TRANSITION -> ENRAGE_ACTIVE is finish_enrage_transition()."""
+    boss = _make_boss(health=1000)
+    sm = boss._state
+    sm.finish_entry()
+    sm.trigger_enrage((600.0, 400.0))
+    sm.finish_enrage_transition()
+    assert sm.state == BossState.ENRAGE_ACTIVE
+
+
+def test_happy_path_legal_transition_enrage_active_to_release_hold() -> None:
+    """ENRAGE_ACTIVE -> ENRAGE_RELEASE_HOLD is begin_enrage_release_hold()."""
+    boss = _make_boss(health=1000)
+    sm = boss._state
+    sm.finish_entry()
+    sm.trigger_enrage((600.0, 400.0))
+    sm.finish_enrage_transition()
+    sm.begin_enrage_release_hold((0.0, 0.0))
+    assert sm.state == BossState.ENRAGE_RELEASE_HOLD
+
+
+def test_happy_path_legal_transition_enrage_release_hold_to_enrage_return() -> None:
+    """ENRAGE_RELEASE_HOLD -> ENRAGE_RETURN is begin_enrage_return()."""
+    boss = _make_boss(health=1000)
+    sm = boss._state
+    sm.finish_entry()
+    sm.trigger_enrage((600.0, 400.0))
+    sm.finish_enrage_transition()
+    sm.begin_enrage_release_hold((0.0, 0.0))
+    sm.begin_enrage_return((10.0, 10.0), (20.0, 20.0))
+    assert sm.state == BossState.ENRAGE_RETURN
+
+
+def test_illegal_transition_finish_entry_from_active_is_idempotent() -> None:
+    """finish_entry() on the target state (ACTIVE) is a no-op (idempotent).
+
+    Mirrors the Player HSM's pattern: a self-loop in the legal-edge
+    table is treated as a safe idempotent call. The transfer must
+    not raise and must not change the state.
+    """
+    boss = _make_boss(health=1000)
+    sm = boss._state
+    sm.finish_entry()  # ENTERING -> ACTIVE
+    assert sm.state == BossState.ACTIVE
+    # Second call is a self-loop: no-op, no raise.
+    sm.finish_entry()
+    assert sm.state == BossState.ACTIVE
+
+
+def test_illegal_transition_mark_escaped_from_entering_raises() -> None:
+    """mark_escaped() is not legal from ENTERING (must finish entry first)."""
+    boss = _make_boss(health=1000)
+    sm = boss._state
+    assert sm.state == BossState.ENTERING
+    with pytest.raises(IllegalBossTransition):
+        sm.mark_escaped()
+    # State must NOT have changed.
+    assert sm.state == BossState.ENTERING
+
+
+def test_illegal_transition_begin_enrage_release_hold_from_transition_raises() -> None:
+    """ENRAGE_TRANSITION -> ENRAGE_RELEASE_HOLD is not a legal edge.
+
+    Production code must call finish_enrage_transition() first to land
+    in ENRAGE_ACTIVE; skipping the transition state is a bug.
+    """
+    boss = _make_boss(health=1000)
+    sm = boss._state
+    sm.finish_entry()
+    sm.trigger_enrage((600.0, 400.0))  # -> ENRAGE_TRANSITION
+    assert sm.state == BossState.ENRAGE_TRANSITION
+    with pytest.raises(IllegalBossTransition):
+        sm.begin_enrage_release_hold((0.0, 0.0))
+    assert sm.state == BossState.ENRAGE_TRANSITION
+
+
+def test_illegal_transition_dead_state_is_terminal() -> None:
+    """DEAD is terminal: no transfer method may move the state onward."""
+    boss = _make_boss(health=1000)
+    sm = boss._state
+    sm.finish_entry()
+    sm.mark_dead()
+    assert sm.state == BossState.DEAD
+    # Every transfer method must reject the move.
+    with pytest.raises(IllegalBossTransition):
+        sm.finish_entry()
+    with pytest.raises(IllegalBossTransition):
+        sm.mark_escaped()
+    with pytest.raises(IllegalBossTransition):
+        sm.trigger_enrage((0.0, 0.0))
+    with pytest.raises(IllegalBossTransition):
+        sm.finish_enrage_transition()
+    with pytest.raises(IllegalBossTransition):
+        sm.begin_enrage_release_hold((0.0, 0.0))
+    with pytest.raises(IllegalBossTransition):
+        sm.begin_enrage_return((0.0, 0.0), (1.0, 1.0))
+    with pytest.raises(IllegalBossTransition):
+        sm.finish_enrage_return()
+    # State must still be DEAD after every rejected attempt.
+    assert sm.state == BossState.DEAD
+
+
+def test_illegal_transition_enrage_active_to_active_skips_return() -> None:
+    """ENRAGE_ACTIVE -> ACTIVE is not a legal edge (must go via RETURN)."""
+    boss = _make_boss(health=1000)
+    sm = boss._state
+    sm.finish_entry()
+    sm.trigger_enrage((600.0, 400.0))
+    sm.finish_enrage_transition()
+    assert sm.state == BossState.ENRAGE_ACTIVE
+    with pytest.raises(IllegalBossTransition):
+        sm.finish_enrage_return()  # No-op; wrong source state
+    assert sm.state == BossState.ENRAGE_ACTIVE

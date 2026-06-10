@@ -70,6 +70,7 @@ from .boss_state import (
     ENRAGE_TRIGGER_RATIO,
     BossState,
     BossStateMachine,
+    IllegalBossTransition,
 )
 from .boss_sub_state import EnrageSubMachine
 
@@ -127,4 +128,5 @@ __all__ = [
     "BossState",
     "BossStateMachine",
     "EnrageSubMachine",
+    "IllegalBossTransition",
 ]

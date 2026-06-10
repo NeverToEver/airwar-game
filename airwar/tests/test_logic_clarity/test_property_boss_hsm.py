@@ -139,13 +139,25 @@ def test_escaping_state_only_via_mark_escaped(initial_state, health_value):
     sm._state = initial_state
 
     # Walk every public transition method except mark_escaped itself.
-    sm.finish_entry()
-    sm.trigger_enrage((10.0, 10.0))
-    sm.finish_enrage_transition()
-    sm.begin_enrage_release_hold((20.0, 20.0))
-    sm.begin_enrage_return((30.0, 30.0), (40.0, 40.0))
-    sm.finish_enrage_return()
-    sm.mark_dead()
+    # Post-P0-4, transfer methods consult the legal-edge table and raise
+    # ``IllegalBossTransition`` on illegal moves. This test's intent is
+    # the ESCAPING invariant (not the legal-path), so we tolerate the
+    # guard exceptions and continue.
+    from airwar.entities.enemy.boss.boss_state import IllegalBossTransition
+
+    for action in (
+        lambda: sm.finish_entry(),
+        lambda: sm.trigger_enrage((10.0, 10.0)),
+        lambda: sm.finish_enrage_transition(),
+        lambda: sm.begin_enrage_release_hold((20.0, 20.0)),
+        lambda: sm.begin_enrage_return((30.0, 30.0), (40.0, 40.0)),
+        lambda: sm.finish_enrage_return(),
+        lambda: sm.mark_dead(),
+    ):
+        try:
+            action()
+        except IllegalBossTransition:
+            pass
 
     # The only way to land in ESCAPING is via mark_escaped.
     if sm.state == BossState.ESCAPING:
