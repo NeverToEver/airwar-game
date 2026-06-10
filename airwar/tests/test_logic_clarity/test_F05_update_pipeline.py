@@ -16,22 +16,25 @@ import pytest
 
 
 class TestF05PipelineOrder:
-    """T1: PIPELINE_ORDER 显式声明 15 个子系统顺序。"""
+    """T1: PIPELINE_ORDER 显式声明 16 个子系统顺序(15 游戏步骤 + 1 tick 层)。"""
 
     def test_pipeline_module_exists(self):
         from airwar.scenes.update_pipeline import PIPELINE_ORDER
 
         assert PIPELINE_ORDER is not None
         assert isinstance(PIPELINE_ORDER, list)
-        assert len(PIPELINE_ORDER) == 15
+        # 15 game-state steps + 1 tick layer (tick_hit_stop) added in Phase 7
+        # to fix the hit_stop deadlock (see _step_tick_hit_stop docstring).
+        assert len(PIPELINE_ORDER) == 16
 
-    def test_pipeline_order_starts_with_input_layer(self):
+    def test_pipeline_order_starts_with_tick_then_input_layer(self):
         from airwar.scenes.update_pipeline import PIPELINE_ORDER
 
-        # First 3 are input-layer subsystems
-        assert PIPELINE_ORDER[0] == "reward_selector"
-        assert PIPELINE_ORDER[1] == "aim_assist"
-        assert PIPELINE_ORDER[2] == "homecoming"
+        # First 4 are tick layer + input-layer subsystems
+        assert PIPELINE_ORDER[0] == "tick_hit_stop"
+        assert PIPELINE_ORDER[1] == "reward_selector"
+        assert PIPELINE_ORDER[2] == "aim_assist"
+        assert PIPELINE_ORDER[3] == "homecoming"
 
     def test_pipeline_order_ends_with_side_effects(self):
         from airwar.scenes.update_pipeline import PIPELINE_ORDER

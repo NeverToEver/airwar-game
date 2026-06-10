@@ -9,6 +9,8 @@ constant.
 Order semantics::
 
     PIPELINE_ORDER = [
+        # --- Tick layer (must run before any short-circuit) ---
+        "tick_hit_stop",            # 0.  每帧递减 hit_stop_timer (Phase 7 fix)
         # --- Input ---
         "reward_selector",          # 1.  奖励选择器（若可见则独占输入）
         "aim_assist",               # 2.  准星吸附
@@ -55,6 +57,9 @@ from collections.abc import Callable
 # Canonical subsystem order. Keys are stable names; values are human
 # descriptions used in diagnostics.
 PIPELINE_ORDER: list[str] = [
+    # Tick layer (must run BEFORE any short-circuit so per-frame timers
+    # like hit_stop always decrement; see _step_tick_hit_stop docstring)
+    "tick_hit_stop",
     # Input layer (L1 → L2)
     "reward_selector",
     "aim_assist",

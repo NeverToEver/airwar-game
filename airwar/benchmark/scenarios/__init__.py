@@ -133,4 +133,5 @@ from . import (  # noqa: E402, F401
     mothership as _mothership,
     boss as _boss,
     save_load as _save_load,
+    flow_test as _flow_test,
 )

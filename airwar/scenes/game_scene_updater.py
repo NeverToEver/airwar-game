@@ -73,6 +73,7 @@ class GameSceneUpdater:
 
     def _wire_steps(self) -> None:
         """Bind each PIPELINE_ORDER step to a private method on this updater."""
+        self._pipeline.add_step("tick_hit_stop", self._step_tick_hit_stop)
         self._pipeline.add_step("reward_selector", self._step_reward_selector)
         self._pipeline.add_step("aim_assist", self._step_aim_assist)
         self._pipeline.add_step("homecoming", self._step_homecoming)
@@ -90,6 +91,30 @@ class GameSceneUpdater:
         self._pipeline.add_step("auto_save", self._step_auto_save)
 
     # ---- Step implementations ----
+
+    def _step_tick_hit_stop(self) -> None:
+        """Step 0: decrement hit_stop_timer every frame.
+
+        Bug fix (Phase 7, 2026-06-10): ``hit_stop_timer`` is set to 4 by
+        ``GameController.on_player_hit`` (~67ms Smash-Bros-style hit
+        freeze) and previously only decremented in
+        ``GameController.update()`` -- which is called from
+        ``_step_core_logic``, AFTER ``_step_pause_check`` short-circuits
+        when ``hit_stop_timer > 0``. The result was a deadlock: a single
+        player hit would freeze the game forever (boss_spawn_timer
+        stuck, score frozen, no further enemy spawn). Moving the
+        decrement to the very first pipeline step ensures the timer
+        ticks down regardless of which subsequent step claims the frame.
+        """
+        state = getattr(self._scene, "game_controller", None)
+        if state is None:
+            return
+        state = getattr(state, "state", None)
+        if state is None:
+            return
+        timer = getattr(state, "hit_stop_timer", 0)
+        if timer > 0:
+            state.hit_stop_timer = timer - 1
 
     def _step_reward_selector(self) -> bool | None:
         """Step 1: update the reward selector UI.

@@ -333,8 +333,13 @@ def test_run_short_circuits_when_homecoming_active() -> None:
 
     updater.run()
 
-    # Should have run reward_selector + aim_assist + homecoming, then stopped.
-    assert updater._pipeline.last_executed == ["reward_selector", "aim_assist", "homecoming"]
+    # Should have run tick_hit_stop + reward_selector + aim_assist + homecoming, then stopped.
+    assert updater._pipeline.last_executed == [
+        "tick_hit_stop",
+        "reward_selector",
+        "aim_assist",
+        "homecoming",
+    ]
 
 
 def test_run_short_circuits_on_pause_check() -> None:
