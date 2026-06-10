@@ -1,10 +1,15 @@
 #!/bin/bash
 # =============================================================================
-# Air War - macOS Build Script
+# Air War - macOS Build (slim wrapper around AirWar.spec)
 # =============================================================================
 # Usage: bash build_macos.sh
 # Prerequisites: Xcode Command Line Tools, Rust (rustup), Python 3.11+
-# Output: dist/AirWar (standalone macOS executable)
+# Output: dist/AirWar/AirWar (standalone macOS executable)
+# Optional env:
+#   AIRWAR_KEEP_BUILD_VENV=1       preserve .venv-build after the run
+#   AIRWAR_OSX_BUNDLE_ID=...       bundle identifier (default: com.airwar.game)
+#   AIRWAR_CODESIGN_IDENTITY=...   run codesign --force --deep --sign=<id>
+#   AIRWAR_NOTARIZE=1              submit for notarization (xcrun altool)
 # =============================================================================
 set -e
 
@@ -13,6 +18,7 @@ cd "$SCRIPT_DIR"
 
 echo "=== Air War macOS Build ==="
 KEEP_BUILD_VENV="${AIRWAR_KEEP_BUILD_VENV:-0}"
+export AIRWAR_OSX_BUNDLE_ID="${AIRWAR_OSX_BUNDLE_ID:-com.airwar.game}"
 
 cleanup_build_venv() {
     if [ "$KEEP_BUILD_VENV" != "1" ]; then
@@ -22,60 +28,51 @@ cleanup_build_venv() {
 trap cleanup_build_venv EXIT
 
 PYTHON_BIN="${PYTHON:-python3}"
-PYTHON_VERSION="$("$PYTHON_BIN" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
 if ! "$PYTHON_BIN" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)'; then
-    echo "ERROR: Python >= 3.11 is required. Found $PYTHON_VERSION at $PYTHON_BIN."
+    echo "ERROR: Python >= 3.11 is required. Found at $PYTHON_BIN."
+    "$PYTHON_BIN" --version
     exit 1
 fi
-echo "Python: $PYTHON_VERSION"
+echo "Python: $("$PYTHON_BIN" --version)"
 
-# 1. Create isolated build environment
-echo "[1/4] Preparing build environment..."
+# 1. Isolated build venv with PyInstaller + maturin + project deps
 "$PYTHON_BIN" -m venv .venv-build
 . .venv-build/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements-dev.txt
 
-# 2. Build and install Rust extension into the build environment
-echo "[2/4] Building Rust extension..."
+# 2. Optional Rust extension (game falls back to pure Python if unavailable)
 if command -v cargo >/dev/null 2>&1; then
-    if python -m maturin develop --release --manifest-path airwar_core/Cargo.toml; then
-        echo "   Rust extension installed in .venv-build."
-    else
-        echo "   WARNING: Rust extension build failed."
-        echo "   Game will fall back to pure Python."
+    python -m maturin develop --release --manifest-path airwar_core/Cargo.toml \
+        || echo "WARNING: Rust build failed; using pure-Python fallback."
+else
+    echo "WARNING: cargo not found; using pure-Python fallback."
+fi
+
+# 3. Build standalone app bundle from AirWar.spec
+rm -rf build dist
+python -m PyInstaller AirWar.spec
+
+# 4. Optional code signing (mitigates Gatekeeper warnings)
+APP_BIN="dist/AirWar/AirWar"
+if [ -n "${AIRWAR_CODESIGN_IDENTITY:-}" ]; then
+    echo "Codesigning with identity: $AIRWAR_CODESIGN_IDENTITY"
+    codesign --force --deep --sign "$AIRWAR_CODESIGN_IDENTITY" "$APP_BIN"
+    if [ "${AIRWAR_NOTARIZE:-0}" = "1" ]; then
+        echo "Submitting for notarization..."
+        xcrun altool --notarize-app \
+            --primary-bundle-id "$AIRWAR_OSX_BUNDLE_ID" \
+            --file "$APP_BIN" --output-format xml
     fi
 else
-    echo "   WARNING: cargo not found."
-    echo "   Game will fall back to pure Python."
+    echo "Skipping codesign (set AIRWAR_CODESIGN_IDENTITY to enable)."
 fi
-
-# 3. Validate imports
-echo "[3/4] Validating Python environment..."
-python -c "import pygame, PIL, PyInstaller; from airwar.core_bindings import RUST_AVAILABLE; print('Rust acceleration:', RUST_AVAILABLE)"
-
-# 4. Build standalone app bundle
-echo "[4/4] Building macOS app bundle..."
-rm -rf build dist
-PYINSTALLER_ARGS=(
-    --name="AirWar" \
-    --hidden-import=pygame \
-    --hidden-import=PIL \
-    --hidden-import=PIL.Image \
-    --noconsole \
-    --onefile \
-    --osx-bundle-identifier=com.airwar.game
-)
-if python -c "from airwar.core_bindings import RUST_AVAILABLE; raise SystemExit(0 if RUST_AVAILABLE else 1)"; then
-    PYINSTALLER_ARGS+=(--collect-all airwar_core)
-fi
-python -m PyInstaller "${PYINSTALLER_ARGS[@]}" main.py
 
 echo ""
 echo "=== Build complete ==="
-echo "App: dist/AirWar"
-ls -lh dist/AirWar
+echo "App: $APP_BIN"
+ls -lh "$APP_BIN"
 echo ""
 echo "To create a DMG (optional):"
-echo "  mkdir -p dmg-root && cp dist/AirWar dmg-root/"
+echo "  mkdir -p dmg-root && cp $APP_BIN dmg-root/"
 echo "  hdiutil create -volname AirWar -srcfolder dmg-root -ov AirWar.dmg"

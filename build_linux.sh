@@ -1,9 +1,10 @@
 #!/bin/bash
 # =============================================================================
-# Air War - Linux Build Script
+# Air War - Linux Build (slim wrapper around AirWar.spec)
 # =============================================================================
 # Usage: bash build_linux.sh
-# Output: dist/AirWar (standalone executable, ~40MB)
+# Output: dist/AirWar/AirWar (standalone executable, ~40MB)
+# Env:    AIRWAR_KEEP_BUILD_VENV=1 to preserve .venv-build after the run
 # =============================================================================
 set -e
 
@@ -21,55 +22,32 @@ cleanup_build_venv() {
 trap cleanup_build_venv EXIT
 
 PYTHON_BIN="${PYTHON:-python3}"
-PYTHON_VERSION="$("$PYTHON_BIN" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
 if ! "$PYTHON_BIN" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)'; then
-    echo "ERROR: Python >= 3.11 is required. Found $PYTHON_VERSION at $PYTHON_BIN."
+    echo "ERROR: Python >= 3.11 is required. Found at $PYTHON_BIN."
+    "$PYTHON_BIN" --version
     exit 1
 fi
-echo "Python: $PYTHON_VERSION"
+echo "Python: $("$PYTHON_BIN" --version)"
 
-# 1. Create isolated build environment
-echo "[1/4] Preparing build environment..."
+# 1. Isolated build venv with PyInstaller + maturin + project deps
 "$PYTHON_BIN" -m venv .venv-build
 . .venv-build/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements-dev.txt
 
-# 2. Build and install Rust extension into the build environment
-echo "[2/4] Building Rust extension..."
+# 2. Optional Rust extension (game falls back to pure Python if unavailable)
 if command -v cargo >/dev/null 2>&1; then
-    if python -m maturin develop --release --manifest-path airwar_core/Cargo.toml; then
-        echo "   Rust extension installed in .venv-build."
-    else
-        echo "   WARNING: Rust extension build failed."
-        echo "   Game will fall back to pure Python (slower but functional)."
-    fi
+    python -m maturin develop --release --manifest-path airwar_core/Cargo.toml \
+        || echo "WARNING: Rust build failed; using pure-Python fallback."
 else
-    echo "   WARNING: cargo not found."
-    echo "   Game will fall back to pure Python (slower but functional)."
+    echo "WARNING: cargo not found; using pure-Python fallback."
 fi
 
-# 3. Validate imports
-echo "[3/4] Validating Python environment..."
-python -c "import pygame, PIL, PyInstaller; from airwar.core_bindings import RUST_AVAILABLE; print('Rust acceleration:', RUST_AVAILABLE)"
-
-# 4. Build standalone executable
-echo "[4/4] Building standalone executable..."
+# 3. Build standalone executable from AirWar.spec
 rm -rf build dist
-PYINSTALLER_ARGS=(
-    --name="AirWar" \
-    --hidden-import=pygame \
-    --hidden-import=PIL \
-    --hidden-import=PIL.Image \
-    --noconsole \
-    --onefile
-)
-if python -c "from airwar.core_bindings import RUST_AVAILABLE; raise SystemExit(0 if RUST_AVAILABLE else 1)"; then
-    PYINSTALLER_ARGS+=(--collect-all airwar_core)
-fi
-python -m PyInstaller "${PYINSTALLER_ARGS[@]}" main.py
+python -m PyInstaller AirWar.spec
 
 echo ""
 echo "=== Build complete ==="
-echo "Executable: dist/AirWar"
-ls -lh dist/AirWar
+echo "Executable: dist/AirWar/AirWar"
+ls -lh dist/AirWar/AirWar
