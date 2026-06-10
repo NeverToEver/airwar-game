@@ -14,6 +14,8 @@ import math
 import pygame
 
 from airwar.config import get_screen_width
+from airwar.scenes.tutorial.entities_core import TutorialBoss as _BossDataclass
+from airwar.scenes.tutorial.entities_core import TutorialBullet
 
 
 class TutorialBoss:
@@ -23,6 +25,11 @@ class TutorialBoss:
     horizontally, then drops down to 30% HP and starts firing
     a 5-bullet spread. When it dies, the scene sets ``scene._boss``
     back to ``None`` and arms ``scene._escape_timer``.
+
+    Both the boss dataclass and the bullet dataclass are imported from
+    the leaf :mod:`airwar.scenes.tutorial.entities_core` module (M-4)
+    so this file no longer needs method-level local imports to dodge
+    the ``tutorial_scene`` cycle.
     """
 
     def __init__(self, scene) -> None:
@@ -30,8 +37,6 @@ class TutorialBoss:
 
     def spawn(self) -> None:
         """Build the boss rect at the top of the screen."""
-        from airwar.scenes.tutorial_scene import TutorialBoss as _BossDataclass  # avoid cycle
-
         scene = self._scene
         rect = pygame.Rect(0, 0, scene.BOSS_W, scene.BOSS_H)
         rect.center = (get_screen_width() // 2, 246)
@@ -39,8 +44,6 @@ class TutorialBoss:
 
     def update(self) -> None:
         """Animate the boss (sway + enrage threshold) and fire its spread."""
-        from airwar.scenes.tutorial_scene import TutorialBullet  # avoid cycle
-
         scene = self._scene
         boss = scene._boss
         if boss is None or not boss.active:

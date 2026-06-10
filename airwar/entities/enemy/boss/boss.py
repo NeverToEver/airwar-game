@@ -345,56 +345,6 @@ class Boss(Entity):
         return self._state.enrage_visual_intensity()
 
     # ------------------------------------------------------------------
-    # Backward-compatible state-field shims
-    #
-    # Several tests (and a few non-test callers) used to read/write the
-    # enrage state flags directly on the Boss instance. After the
-    # Phase 1 split those flags live on :class:`BossStateMachine`; the
-    # shims below keep the legacy attribute access working until those
-    # callers are migrated.
-    # ------------------------------------------------------------------
-
-    @property
-    def _enraged(self) -> bool:
-        return self._state._enraged
-
-    @_enraged.setter
-    def _enraged(self, value: bool) -> None:
-        self._state._enraged = bool(value)
-
-    @property
-    def _enrage_health_lock_active(self) -> bool:
-        return self._state._enrage_health_lock_active
-
-    @_enrage_health_lock_active.setter
-    def _enrage_health_lock_active(self, value: bool) -> None:
-        self._state._enrage_health_lock_active = bool(value)
-
-    @property
-    def _enrage_health_lock_value(self) -> int:
-        return self._state._enrage_health_lock_value
-
-    @_enrage_health_lock_value.setter
-    def _enrage_health_lock_value(self, value: int) -> None:
-        self._state._enrage_health_lock_value = int(value)
-
-    @property
-    def _enrage_attack_index(self) -> int:
-        return self._state._enrage_attack_index
-
-    @_enrage_attack_index.setter
-    def _enrage_attack_index(self, value: int) -> None:
-        self._state._enrage_attack_index = int(value)
-
-    @property
-    def _enrage_attack_timer(self) -> int:
-        return self._state._enrage_attack_timer
-
-    @_enrage_attack_timer.setter
-    def _enrage_attack_timer(self, value: int) -> None:
-        self._state._enrage_attack_timer = int(value)
-
-    # ------------------------------------------------------------------
     # Renderer-bug-fix shims (Phase 5-β)
     #
     # ``airwar.game.rendering.entity_renderer`` reads three enrage

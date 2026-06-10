@@ -75,6 +75,8 @@ class TestF06PreconditionEnforcement:
 
         sm = PlayerStateMachine(_Stub())
         sm.transition_substate(PlayerAliveState.DOCKED)
-        # DASHING from DOCKED is illegal
+        # SHIELDED from DOCKED is illegal (must undock first). The pre-M-6
+        # `DASHING from DOCKED` test was removed when ``PlayerAliveState.DASHING``
+        # was retired — SHIELDED is the equivalent still-illegal edge.
         with pytest.raises(IllegalPlayerTransition):
-            sm.transition_substate(PlayerAliveState.DASHING)
+            sm.transition_substate(PlayerAliveState.SHIELDED)

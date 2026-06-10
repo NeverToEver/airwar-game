@@ -181,3 +181,40 @@ def test_homecoming_runs_combat_base_and_depart_phases() -> None:
     scene._check_stage_completion()
 
     assert scene._stage_completed is True
+
+
+def test_mothership_eject_completes_within_documented_frame_bound() -> None:
+    """Eject → stage completion must converge within the documented constant
+    budget (DOCK_UNDOCK_FRAMES + DOCK_ENTER_FRAMES). The deleted unreachable
+    `else` branch in `_update_eject` would have silently restarted the cycle
+    on a corrupted phase string, so this test pins the convergence property."""
+    scene = _make_scene()
+    scene._load_stage(3)
+    scene._fade_phase = ""
+
+    # Drive: hold H → enter → docked → exhaust ammo → eject
+    scene._keys_down.add(pygame.K_h)
+    for _ in range(scene.DOCK_HOLD_FRAMES):
+        scene._update_docking_stage()
+    for _ in range(scene.DOCK_ENTER_FRAMES):
+        scene._update_docking_stage()
+    scene._mothership_ammo = scene.MOTHERSHIP_AMMO_DRAIN
+    scene._update_docking_stage()
+    assert scene._dock_sub_phase == "eject_player"
+    assert scene._dock_undock_phase == "player"
+
+    # Bounded run from eject to stage completion.
+    bound = scene._dock_undock_player_frames + scene.DOCK_UNDOCK_FRAMES + 30
+    frames_used = 0
+    for _ in range(bound):
+        scene._update_docking_stage()
+        scene._check_stage_completion()
+        frames_used += 1
+        if scene._stage_completed:
+            break
+
+    assert scene._stage_completed is True
+    assert frames_used <= bound, f"eject did not converge within {bound} frames"
+    # The phase must end on "mothership" (the only way the completion predicate
+    # in `_check_stage_completion` can fire). It must never silently re-cycle.
+    assert scene._dock_undock_phase == "mothership"

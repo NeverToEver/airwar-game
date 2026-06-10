@@ -97,3 +97,39 @@ def get_cjk_font(size: int) -> pygame.font.Font:
     if path:
         return pygame.font.Font(path, size)
     return pygame.font.Font(None, size)
+
+
+# Locale prefixes that should use the CJK font. Anything else uses pygame's
+# built-in default (a Latin font that also handles most European scripts).
+_CJK_LOCALE_PREFIXES = ("zh", "ja", "ko")
+
+
+def is_cjk_locale(locale: str) -> bool:
+    """Return True if ``locale`` should be rendered with the CJK font.
+
+    A locale is "CJK" when its primary language tag starts with ``zh``,
+    ``ja``, or ``ko`` (e.g. ``zh_CN``, ``zh_TW``, ``ja_JP``, ``ko_KR``).
+    Locale strings are matched case-insensitively against the prefix.
+    """
+    if not locale:
+        return False
+    primary = locale.split("_", 1)[0].split("-", 1)[0].lower()
+    return primary in _CJK_LOCALE_PREFIXES
+
+
+@lru_cache(maxsize=64)
+def get_font_for_locale(locale: str, size: int) -> pygame.font.Font:
+    """Return a font appropriate for the active ``locale``.
+
+    - CJK locales (zh_*, ja_*, ko_*) get :func:`get_cjk_font`.
+    - Latin / other locales get pygame's default font (freesansbold),
+      which renders basic Latin / European scripts cleanly and is much
+      smaller than shipping a second font asset just for placeholders.
+
+    Cached on ``(locale, size)`` — the cache is intentionally small
+    because the call sites (login panel placeholder, scene hint text)
+    only ever use a handful of size+locale combinations.
+    """
+    if is_cjk_locale(locale):
+        return get_cjk_font(size)
+    return pygame.font.Font(None, size)

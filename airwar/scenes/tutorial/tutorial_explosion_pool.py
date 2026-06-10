@@ -12,12 +12,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from airwar.scenes.tutorial.entities_core import TutorialExplosion
+
 
 @dataclass
 class TutorialExplosionData:
     """Local copy of the explosion entry used by this pool.
 
-    Mirrors :class:`airwar.scenes.tutorial_scene.TutorialExplosion`
+    Mirrors :class:`~airwar.scenes.tutorial.entities_core.TutorialExplosion`
     (kept for backward compat). The pool writes entries through
     the scene's own :class:`TutorialExplosion` dataclass so the
     renderer, which reads ``scene._tutorial_explosions``, keeps
@@ -33,10 +35,14 @@ class TutorialExplosionPool:
     """Per-frame explosion tick + spawn helper.
 
     The scene keeps ``self._tutorial_explosions`` as a list of
-    :class:`airwar.scenes.tutorial_scene.TutorialExplosion`
+    :class:`~airwar.scenes.tutorial.entities_core.TutorialExplosion`
     dataclasses (the renderer and collision code read it
     directly). This pool ticks timers and drops expired entries
     in-place, and spawns new entries via the scene dataclass.
+
+    The dataclass is imported from the leaf
+    :mod:`airwar.scenes.tutorial.entities_core` module (M-4) so the
+    pool no longer needs a method-level local import.
     """
 
     def __init__(self, scene) -> None:
@@ -51,8 +57,6 @@ class TutorialExplosionPool:
 
     def spawn(self, center: tuple[int, int]) -> None:
         """Append a fresh explosion to ``scene._tutorial_explosions``."""
-        from airwar.scenes.tutorial_scene import TutorialExplosion  # avoid cycle
-
         self._scene._tutorial_explosions.append(TutorialExplosion(center))
 
 

@@ -21,8 +21,6 @@ the tests import them by name from
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 import pygame
 
 from airwar.config import TUTORIAL_STAGES, TutorialStage, get_screen_height, get_screen_width
@@ -54,46 +52,17 @@ from .tutorial.models import TutorialBaseGameController, TutorialBasePlayerStatu
 from .tutorial.stages import BaseStage, build_stage
 from .tutorial_scene_renderer import TutorialSceneRenderer
 
-
-@dataclass
-class TutorialEnemy:
-    rect: pygame.Rect
-    health: int
-    max_health: int
-    speed: float
-    score_value: int
-    kind: str = "target"
-    active: bool = True
-    phase: float = 0.0
-    fire_timer: int = 0
-
-
-@dataclass
-class TutorialBullet:
-    rect: pygame.Rect
-    velocity: pygame.Vector2
-    owner: str
-    damage: int
-    bullet_type: str = "single"
-    active: bool = True
-
-
-@dataclass
-class TutorialExplosion:
-    center: tuple[int, int]
-    timer: int = 28
-    duration: int = 28
-
-
-@dataclass
-class TutorialBoss:
-    rect: pygame.Rect
-    health: int
-    max_health: int
-    active: bool = True
-    phase: float = 0.0
-    fire_timer: int = 0
-    enraged: bool = False
+# Re-export the entity dataclasses from their canonical home so the existing
+# import path ``from airwar.scenes.tutorial_scene import TutorialBullet``
+# keeps working. The canonical definitions live in
+# :mod:`airwar.scenes.tutorial.entities_core` so the sim / entity / pool
+# files in the subpackage can import them at module level (M-4).
+from airwar.scenes.tutorial.entities_core import (  # noqa: E402,F401
+    TutorialBoss,
+    TutorialBullet,
+    TutorialEnemy,
+    TutorialExplosion,
+)
 
 
 # Re-export the base-console data classes so existing imports

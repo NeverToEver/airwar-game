@@ -20,15 +20,17 @@ State diagram::
             |
             v  PlayerAliveState (orthogonal to PlayerState modifiers)
     +-------------------+   +-----------+   +----------+
-    |      NORMAL       |   | BOOSTING  |   | DASHING  |  ...
+    |      NORMAL       |   | BOOSTING  |   | SHIELDED |  ...
     +-------------------+   +-----------+   +----------+
-       ^     ^     ^
-       |     |     +--- SHIELDED
-       |     +--------- DOCKED
-       +--------------- RESPAWN_INVINCIBLE
+       ^                     ^              ^
+       |                     |              +--- DOCKED
+       |                     +----------------- RESPAWN_INVINCIBLE
+       +----------------------------------------- (self)
 
 Orthogonal modifiers (NOT in the state machine):
-    * ``is_phase_dash_enabled`` (talent unlock)
+    * ``is_phase_dash_enabled`` (talent unlock) — phase dash has its own
+      ``PlayerPhaseDash`` subsystem (``player.phase_dash.is_dashing()``)
+      and is intentionally NOT a substate here
     * ``_has_spread`` / ``_has_laser`` / ``_has_explosive`` (weapon mods)
     * ``mothership_cooldown_mult`` (talent scaling)
 
@@ -62,14 +64,17 @@ class PlayerAliveState(IntEnum):
 
     Mutually exclusive — at most one is active at a time. Transitions
     follow the legal-edge table in :class:`PlayerStateMachine`.
+
+    Note: phase dash lives in the orthogonal :class:`PlayerPhaseDash`
+    subsystem (``player.phase_dash``) and is intentionally NOT a substate
+    here — see the module docstring.
     """
 
     NORMAL = 0
     BOOSTING = 1
-    DASHING = 2
-    SHIELDED = 3
-    DOCKED = 4
-    RESPAWN_INVINCIBLE = 5
+    SHIELDED = 2
+    DOCKED = 3
+    RESPAWN_INVINCIBLE = 4
 
 
 # ---------------------------------------------------------------------------
@@ -82,7 +87,6 @@ class PlayerAliveState(IntEnum):
 _ALIVE_TRANSITIONS: dict[PlayerAliveState, set[PlayerAliveState]] = {
     PlayerAliveState.NORMAL: {
         PlayerAliveState.BOOSTING,
-        PlayerAliveState.DASHING,
         PlayerAliveState.SHIELDED,
         PlayerAliveState.DOCKED,
         PlayerAliveState.RESPAWN_INVINCIBLE,
@@ -93,10 +97,6 @@ _ALIVE_TRANSITIONS: dict[PlayerAliveState, set[PlayerAliveState]] = {
         PlayerAliveState.SHIELDED,
         PlayerAliveState.DOCKED,
         PlayerAliveState.RESPAWN_INVINCIBLE,
-    },
-    PlayerAliveState.DASHING: {
-        PlayerAliveState.NORMAL,
-        PlayerAliveState.DOCKED,
     },
     PlayerAliveState.SHIELDED: {
         PlayerAliveState.NORMAL,
@@ -245,25 +245,10 @@ class PlayerStateMachine:
             )
         if self._alive_substate == PlayerAliveState.SHIELDED:
             raise IllegalPlayerTransition("Cannot enter BOOSTING from SHIELDED: shield is incompatible with boost")
-        if self._alive_substate == PlayerAliveState.DASHING:
-            raise IllegalPlayerTransition("Cannot enter BOOSTING from DASHING: dash preempts boost")
         self.transition_substate(PlayerAliveState.BOOSTING)
 
     def exit_boost(self) -> None:
         if self._alive_substate == PlayerAliveState.BOOSTING:
-            self.transition_substate(PlayerAliveState.NORMAL)
-
-    def enter_dash(self) -> None:
-        # F03 S7: silent return removed. Dash preempts NORMAL only;
-        # any other substate raises IllegalPlayerTransition.
-        if self._alive_substate != PlayerAliveState.NORMAL:
-            raise IllegalPlayerTransition(
-                f"Cannot enter DASHING from {self._alive_substate.name}: dash only preempts NORMAL"
-            )
-        self.transition_substate(PlayerAliveState.DASHING)
-
-    def exit_dash(self) -> None:
-        if self._alive_substate == PlayerAliveState.DASHING:
             self.transition_substate(PlayerAliveState.NORMAL)
 
     def enter_respawn_invincibility(self, duration: int) -> None:
@@ -303,18 +288,12 @@ class PlayerStateMachine:
     def is_boosting(self) -> bool:
         return self._alive_substate == PlayerAliveState.BOOSTING
 
-    def is_dashing(self) -> bool:
-        return self._alive_substate == PlayerAliveState.DASHING
-
     def is_respawn_invincible(self) -> bool:
         return self._alive_substate == PlayerAliveState.RESPAWN_INVINCIBLE
 
     def should_lock_controls(self) -> bool:
         """Top-level predicate: should input be ignored this frame?"""
-        return self._alive_substate in (
-            PlayerAliveState.DOCKED,
-            PlayerAliveState.DASHING,
-        )
+        return self._alive_substate == PlayerAliveState.DOCKED
 
 
 __all__ = [

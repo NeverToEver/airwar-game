@@ -15,15 +15,17 @@ import math
 import pygame
 
 from airwar.config import get_screen_height, get_screen_width
+from airwar.scenes.tutorial.entities_core import TutorialEnemy
 
 
 class TutorialEnemySim:
     """Per-frame enemy drift + spawn factories.
 
-    The :class:`~airwar.scenes.tutorial_scene.TutorialEnemy`
-    dataclass itself stays defined alongside the scene (where the
-    collision code reads it). This simulator only writes into the
-    scene's ``_enemies`` list and ticks them.
+    The :class:`~airwar.scenes.tutorial.entities_core.TutorialEnemy`
+    dataclass is imported from the leaf :mod:`airwar.scenes.tutorial.entities_core`
+    module so this file does not need a method-level local import to
+    avoid the `tutorial_scene` cycle (M-4). The scene still re-exports
+    ``TutorialEnemy`` for backward compatibility.
     """
 
     def __init__(self, scene) -> None:
@@ -31,8 +33,6 @@ class TutorialEnemySim:
 
     def spawn_training_targets(self) -> None:
         """Spawn the three training targets used by the movement/aim stage."""
-        from airwar.scenes.tutorial_scene import TutorialEnemy  # avoid cycle
-
         scene = self._scene
         sw = get_screen_width()
         y = max(230, int(get_screen_height() * 0.30))
@@ -54,8 +54,6 @@ class TutorialEnemySim:
 
     def spawn_easy_enemy_wave(self, *, initial: bool) -> None:
         """Spawn a 1-enemy wave (or a 3-enemy initial wave) for combat basics."""
-        from airwar.scenes.tutorial_scene import TutorialEnemy  # avoid cycle
-
         scene = self._scene
         spawn_slots = 3 if initial else 1
         sw = get_screen_width()
@@ -84,8 +82,6 @@ class TutorialEnemySim:
 
     def spawn_homecoming_enemy_wave(self) -> None:
         """Spawn the homecoming-stage enemy wave (4 staggered lanes)."""
-        from airwar.scenes.tutorial_scene import TutorialEnemy  # avoid cycle
-
         scene = self._scene
         for index, lane in enumerate((0, 1, 3, 4)):
             rect = pygame.Rect(0, 0, scene.ENEMY_SIZE, scene.ENEMY_SIZE)

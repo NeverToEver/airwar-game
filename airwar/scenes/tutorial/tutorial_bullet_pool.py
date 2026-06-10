@@ -13,16 +13,16 @@ from __future__ import annotations
 import pygame
 
 from airwar.config import get_screen_height, get_screen_width
+from airwar.scenes.tutorial.entities_core import TutorialBullet
 
 
 class TutorialBulletPool:
     """Per-frame bullet tick + enemy bullet spawn helper.
 
-    The :class:`~airwar.scenes.tutorial_scene.TutorialBullet`
-    dataclass itself stays defined alongside the scene (where the
-    collision code can read it) -- this pool only manages the
-    per-frame movement and the spawn helper that points enemy
-    bullets at the player.
+    The :class:`~airwar.scenes.tutorial.entities_core.TutorialBullet`
+    dataclass is imported from the leaf :mod:`airwar.scenes.tutorial.entities_core`
+    module (M-4) so this pool no longer needs a method-level local
+    import to dodge the ``tutorial_scene`` cycle.
     """
 
     def __init__(self, scene) -> None:
@@ -44,8 +44,6 @@ class TutorialBulletPool:
 
     def spawn_enemy_bullet(self, center: tuple[int, int], *, damage: int) -> None:
         """Spawn an enemy bullet aimed at the player."""
-        from airwar.scenes.tutorial_scene import TutorialBullet  # avoid cycle
-
         scene = self._scene
         direction = pygame.Vector2(
             scene._player.centerx - center[0],

@@ -1,7 +1,10 @@
 """Layered lock arbitration for gameplay state flags."""
 
+import logging
 from dataclasses import dataclass
 from enum import IntEnum
+
+logger = logging.getLogger(__name__)
 
 
 class LockLayer(IntEnum):
@@ -24,6 +27,12 @@ class LockRequest:
     invincibility_duration: int = 0
 
 
+class LockLayerConflict(RuntimeError):
+    """Raised by :meth:`LockManager.acquire_strict` when a layer is
+    already locked with a different request. See M-10 for rationale.
+    """
+
+
 class LockManager:
     """Centralized arbitration for player invincibility, control locks, and pause blocking."""
 
@@ -44,6 +53,68 @@ class LockManager:
             self._recompute()
 
     def acquire(self, layer: LockLayer, request: LockRequest):
+        """Acquire ``request`` on ``layer``.
+
+        Silently replaces any prior request on the same layer. Use
+        :meth:`acquire_strict` if the call site wants to be told about a
+        conflict, or :meth:`acquire_or_update` to merge the new request
+        with the existing one (max duration, OR of booleans).
+        """
+        if layer in self._locks:
+            prior = self._locks[layer]
+            if prior != request:
+                logger.debug(
+                    "LockManager.acquire overwriting prior request on layer %s: %r -> %r",
+                    layer.name, prior, request,
+                )
+        self._locks[layer] = request
+        self._force_timer_update = True
+        self._recompute()
+
+    def acquire_or_update(self, layer: LockLayer, request: LockRequest):
+        """Acquire ``request`` on ``layer``, merging with the existing
+        request if one is present. Booleans are OR-ed together; the
+        invincibility timer takes the max of the two; the silent /
+        non-silent distinction follows the more-recent call.
+        """
+        existing = self._locks.get(layer)
+        if existing is None:
+            self._locks[layer] = request
+        else:
+            merged = LockRequest(
+                invincible=existing.invincible or request.invincible,
+                lock_controls=existing.lock_controls or request.lock_controls,
+                is_paused=existing.is_paused or request.is_paused,
+                is_silent_invincible=(
+                    request.is_silent_invincible
+                    if request.invincible
+                    else existing.is_silent_invincible
+                ),
+                invincibility_duration=max(
+                    existing.invincibility_duration, request.invincibility_duration
+                ),
+            )
+            if merged != existing:
+                logger.debug(
+                    "LockManager.acquire_or_update merged on layer %s: %r -> %r",
+                    layer.name, existing, merged,
+                )
+            self._locks[layer] = merged
+        self._force_timer_update = True
+        self._recompute()
+
+    def acquire_strict(self, layer: LockLayer, request: LockRequest):
+        """Like :meth:`acquire`, but raise ``LockLayerConflict`` if the
+        layer is already locked with a different request. Useful at
+        call sites that want a hard failure (rather than a silent
+        overwrite) when two systems race for the same layer.
+        """
+        existing = self._locks.get(layer)
+        if existing is not None and existing != request:
+            raise LockLayerConflict(
+                f"Lock layer {layer.name} already held with a different "
+                f"request: {existing!r} vs {request!r}"
+            )
         self._locks[layer] = request
         self._force_timer_update = True
         self._recompute()

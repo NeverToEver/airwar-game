@@ -56,7 +56,6 @@ def _legal_targets(current: PlayerAliveState) -> set[PlayerAliveState]:
     return {
         PlayerAliveState.NORMAL: {
             PlayerAliveState.BOOSTING,
-            PlayerAliveState.DASHING,
             PlayerAliveState.SHIELDED,
             PlayerAliveState.DOCKED,
             PlayerAliveState.RESPAWN_INVINCIBLE,
@@ -67,10 +66,6 @@ def _legal_targets(current: PlayerAliveState) -> set[PlayerAliveState]:
             PlayerAliveState.SHIELDED,
             PlayerAliveState.DOCKED,
             PlayerAliveState.RESPAWN_INVINCIBLE,
-        },
-        PlayerAliveState.DASHING: {
-            PlayerAliveState.NORMAL,
-            PlayerAliveState.DOCKED,
         },
         PlayerAliveState.SHIELDED: {
             PlayerAliveState.NORMAL,

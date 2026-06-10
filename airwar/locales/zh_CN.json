@@ -82,6 +82,8 @@
   "settings.hint": "TAB: 切换  |  ← →: 更改  |  ENTER: 确认  |  ESC: 返回",
   "settings.change_hold": "{label}: 按住",
   "settings.change_toggle": "{label}: 点按",
+  "settings.language_label": "语言",
+  "settings.change_language": "语言: {locale}",
   "exit_confirm.title_quit": "退出游戏",
   "exit_confirm.title_saved": "游戏已保存",
   "exit_confirm.option.main_menu": "返回主菜单",

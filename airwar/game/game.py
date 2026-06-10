@@ -34,6 +34,13 @@ class Game:
     def __init__(self):
         from airwar.i18n import set_locale
 
+        # H-10: apply the user's persisted language preference. The
+        # default (no stored preference, no logged-in user yet) is
+        # ``zh_CN`` — same as the pre-H-10 behaviour — so a first-launch
+        # user sees the historically-Chinese UI. The Welcome scene
+        # re-applies the language after login, once the username is
+        # known, so this initial read only matters for the first few
+        # frames before login.
         set_locale("zh_CN")
         self._window = create_window(SCREEN_WIDTH, SCREEN_HEIGHT, "Air War - Sky Combat", resizable=True)
         # Use the actual adaptive window size for the viewport's logical

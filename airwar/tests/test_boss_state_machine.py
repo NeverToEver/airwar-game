@@ -154,8 +154,9 @@ def test_escape_only_reachable_via_mark_escaped() -> None:
 def test_take_damage_returns_score_when_health_drops_to_zero() -> None:
     """After disabling the enrage lock, a killing blow returns the score."""
     boss = _make_boss(health=1000)
-    boss._enrage_health_lock_active = False
-    boss._enraged = True
+    sm = boss._state
+    sm._enrage_health_lock_active = False
+    sm._enraged = True
     score = boss.take_damage(boss.health)
     assert score == 5000  # default BossData.score
     assert boss.active is False

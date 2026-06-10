@@ -29,17 +29,21 @@ class ParticleSystem:
 
     def _init_cache(self) -> None:
         """Pre-create particle textures for common sizes."""
+        # The Flyweight cache is class-level so every ParticleSystem shares the
+        # same base surfaces (cheap, identical content). Per-frame alpha is
+        # applied in render() via `.copy()` — never in-place — so a single
+        # render call cannot leak its alpha into the next instance's blit.
         colors_config = self._tokens.colors
+        color = colors_config.PARTICLE_PRIMARY
         for base_size in PARTICLE_TEXTURE_SIZES:
-            for color_key in ["particle", "particle_alt"]:
-                key = (base_size, color_key)
-                if key not in self._texture_cache:
-                    surf = pygame.Surface((base_size * 4, base_size * 4), pygame.SRCALPHA)
-                    color = colors_config.PARTICLE_PRIMARY if color_key == "particle" else colors_config.PARTICLE_ALT
-                    for i in range(base_size * 2, 0, -2):
-                        layer_alpha = int(180 * (base_size * 2 - i) / (base_size * 2) * 0.28)
-                        pygame.draw.circle(surf, (*color, layer_alpha), (base_size * 2, base_size * 2), i)
-                    self._texture_cache[key] = surf
+            key = (base_size, "particle")
+            if key in self._texture_cache:
+                continue
+            surf = pygame.Surface((base_size * 4, base_size * 4), pygame.SRCALPHA)
+            for i in range(base_size * 2, 0, -2):
+                layer_alpha = int(180 * (base_size * 2 - i) / (base_size * 2) * 0.28)
+                pygame.draw.circle(surf, (*color, layer_alpha), (base_size * 2, base_size * 2), i)
+            self._texture_cache[key] = surf
 
     def _init_particles(self, count: int = 40, color_key: str = "particle") -> None:
         """Initialize particle data arrays."""
@@ -85,7 +89,11 @@ class ParticleSystem:
 
             cache_key = (base_size, p.get("color_key", "particle"))
             if cache_key in self._texture_cache:
-                particle_surf = self._texture_cache[cache_key]
+                # `.copy()` isolates the per-frame alpha so the shared Flyweight
+                # surface in `_texture_cache` is never mutated in place — two
+                # ParticleSystem instances can render concurrently without
+                # one blit "leaking" its alpha into the next instance's blit.
+                particle_surf = self._texture_cache[cache_key].copy()
                 particle_surf.set_alpha(alpha)
                 surface.blit(particle_surf, (x - base_size * 2, y - base_size * 2))
             else:

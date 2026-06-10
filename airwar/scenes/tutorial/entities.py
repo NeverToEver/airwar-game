@@ -14,6 +14,7 @@ import math
 import pygame
 
 from airwar.config import get_screen_height, get_screen_width
+from airwar.scenes.tutorial.entities_core import TutorialBoss, TutorialBullet, TutorialEnemy, TutorialExplosion
 
 
 def spawn_training_targets(scene) -> None:
@@ -88,8 +89,6 @@ def spawn_homecoming_enemy_wave(scene) -> None:
 
 def spawn_boss(scene) -> None:
     """Spawn the simplified tutorial boss at the top of the screen."""
-    from airwar.scenes.tutorial_scene import TutorialBoss
-
     sw = get_screen_width()
     rect = pygame.Rect(0, 0, scene.BOSS_W, scene.BOSS_H)
     rect.center = (sw // 2, 246)
@@ -98,8 +97,6 @@ def spawn_boss(scene) -> None:
 
 def spawn_enemy_bullet(scene, center: tuple[int, int], *, damage: int) -> None:
     """Spawn an enemy bullet aimed at the player."""
-    from airwar.scenes.tutorial_scene import TutorialBullet
-
     direction = pygame.Vector2(
         scene._player.centerx - center[0],
         scene._player.centery - center[1],
@@ -119,8 +116,6 @@ def spawn_enemy_bullet(scene, center: tuple[int, int], *, damage: int) -> None:
 
 def mothership_destroy_nearest_enemy(scene) -> None:
     """Mothership volley: deal 50 dmg to the closest active enemy."""
-    from airwar.scenes.tutorial_scene import TutorialExplosion
-
     active_enemies = [enemy for enemy in scene._enemies if enemy.active]
     if not active_enemies:
         return
@@ -183,8 +178,6 @@ def update_enemies(scene) -> None:
 
 def update_boss(scene) -> None:
     """Animate the boss (sway + enrage threshold) and fire its spread."""
-    from airwar.scenes.tutorial_scene import TutorialBullet
-
     boss = scene._boss
     if boss is None or not boss.active:
         return
@@ -283,8 +276,6 @@ def _make_enemy(
     fire_timer: int = 0,
 ):
     """Local factory so the module doesn't pull tutorial_scene at import time."""
-    from airwar.scenes.tutorial_scene import TutorialEnemy
-
     return TutorialEnemy(
         rect=rect,
         health=health,

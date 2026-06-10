@@ -15,6 +15,7 @@ from __future__ import annotations
 import pygame
 
 from airwar.config import get_screen_height, get_screen_width
+from airwar.scenes.tutorial.entities_core import TutorialBullet
 
 
 class TutorialPlayer:
@@ -89,8 +90,6 @@ class TutorialPlayer:
         if scene._fire_timer > 0:
             return
         scene._fire_timer = scene.FIRE_INTERVAL
-
-        from airwar.scenes.tutorial_scene import TutorialBullet  # local import: avoid cycle
 
         aim_direction = pygame.Vector2(
             scene._aim_pos[0] - scene._player.centerx,

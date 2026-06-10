@@ -274,7 +274,7 @@ def test_boss_enrage_releases_held_bullets_gradually_after_flow_finishes():
     assert still_held
     assert all(0 < bullet.velocity.length() <= bullet.enrage_release_speed + 1e-6 for bullet in first_released)
 
-    for _ in range(boss.ENRAGE_RELEASE_INTERVAL * (boss._enrage_attack_index + 1)):
+    for _ in range(boss.ENRAGE_RELEASE_INTERVAL * (boss._state._enrage_attack_index + 1)):
         manager.update_all()
 
     assert all(not getattr(bullet, "held", False) for bullet in collector.bullets)

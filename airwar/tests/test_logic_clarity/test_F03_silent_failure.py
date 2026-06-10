@@ -61,23 +61,23 @@ class TestF03IllegalPlayerTransitions:
             sm.enter_boost()
         assert sm.alive_substate == PlayerAliveState.SHIELDED
 
-    def test_enter_dash_when_shielded_raises(self):
-        """S7: enter_dash 非 NORMAL 应抛。"""
+    def test_enter_boost_when_shielded_raises_again(self):
+        """S6 (post-M-6 variant): enter_boost 当 SHIELDED 应抛。
+
+        The pre-M-6 ``enter_dash`` / ``enter_boost`` from-DASHING tests
+        were deleted when ``PlayerAliveState.DASHING`` was removed in
+        favour of the orthogonal ``PlayerPhaseDash`` subsystem. The
+        SHIELDED ↔ BOOSTING mutual-exclusion invariant is the surviving
+        equivalent, so this case is a re-pinned duplicate of the one
+        above — kept here to lock the post-M-6 contract from a second
+        test angle.
+        """
         sm = _make_sm()
         sm.activate_shield(60)
         assert sm.alive_substate == PlayerAliveState.SHIELDED
         with pytest.raises(IllegalPlayerTransition):
-            sm.enter_dash()
-        assert sm.alive_substate == PlayerAliveState.SHIELDED
-
-    def test_enter_boost_when_dashing_raises(self):
-        """S6 variant: enter_boost 当 DASHING 应抛。"""
-        sm = _make_sm()
-        sm.enter_dash()
-        assert sm.alive_substate == PlayerAliveState.DASHING
-        with pytest.raises(IllegalPlayerTransition):
             sm.enter_boost()
-        assert sm.alive_substate == PlayerAliveState.DASHING
+        assert sm.alive_substate == PlayerAliveState.SHIELDED
 
 
 class TestF03EventBusSubscribeOverflow:

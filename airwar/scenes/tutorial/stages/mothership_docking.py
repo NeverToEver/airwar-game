@@ -157,12 +157,6 @@ class MothershipDockingStage(BaseStage):
 
         if scene._dock_undock_phase == "mothership":
             scene._dock_undock_timer = max(0, scene._dock_undock_timer - 1)
-            return
-
-        # Re-entry: kick off a fresh player-eject cycle.
-        scene._dock_undock_phase = "player"
-        scene._dock_undock_timer = scene._dock_undock_player_frames
-        scene._dock_eject_position = pygame.Vector2(scene._player.center)
 
 
 __all__ = ["MOTHERSHIP_STAGE_ID", "MothershipDockingStage"]

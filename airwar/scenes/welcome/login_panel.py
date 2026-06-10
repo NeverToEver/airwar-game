@@ -18,6 +18,7 @@ from airwar.i18n import t
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.ui.scene_rendering_utils import fit_text_to_width
 from airwar.utils.database import DatabaseError
+from airwar.utils.fonts import get_font_for_locale
 
 from .layout import (
     BTN_H,
@@ -330,10 +331,15 @@ class LoginPanel:
             text_rect.right = max_right
         surface.blit(text_surf, text_rect)
 
-        # Placeholder
+        # Placeholder — the placeholder string is locale-translated, so the
+        # font must match the active locale (the user-typed text above keeps
+        # `scene.input_font` because the player can still type CJK even when
+        # the UI strings are English).
         if not text:
             ph = t("welcome.username_placeholder") if not is_password else t("welcome.password_placeholder")
-            ph_surf = scene.input_font.render(ph, True, SC.TEXT_DIM)
+            ph_size = scene._tokens.typography.BODY_SIZE
+            ph_font = get_font_for_locale(t.get_locale(), ph_size)
+            ph_surf = ph_font.render(ph, True, SC.TEXT_DIM)
             ph_rect = ph_surf.get_rect(midleft=(rect.x + 16, rect.centery))
             surface.blit(ph_surf, ph_rect)
 

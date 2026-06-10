@@ -5,13 +5,15 @@ HSM. Any future change that adds or removes an edge must update the
 test accordingly — the whole point of the HSM is to make illegal
 transitions impossible.
 
-The five invariants covered (one per test, mirroring design §6.4):
+The four invariants covered (mirroring design §6.4):
 
 1. NORMAL -> DOCKED is a legal transition (player can dock)
-2. DASHING -> SHIELDED is illegal (must pass through NORMAL)
-3. Respawn transitions return to RESPAWN_INVINCIBLE then NORMAL
-4. Shield expiration auto-transitions back to NORMAL
-5. Dead is a terminal state
+2. Respawn transitions return to RESPAWN_INVINCIBLE then NORMAL
+3. Shield expiration auto-transitions back to NORMAL
+4. Dead is a terminal state
+
+Note: phase dash lives in the orthogonal ``PlayerPhaseDash`` subsystem,
+not in this HSM, so the DASHING substate was removed in M-6.
 """
 
 from __future__ import annotations
@@ -51,18 +53,20 @@ def test_normal_to_docked_is_legal() -> None:
     assert sm.is_docked() is True
 
 
-def test_dashing_to_shielded_is_illegal() -> None:
-    """DASHING -> SHIELDED is not in the legal-edge table.
+def test_docked_to_shielded_is_illegal() -> None:
+    """DOCKED -> SHIELDED is not in the legal-edge table.
 
-    A dash must end (DASHING -> NORMAL) before the player can take
-    cover. Trying the direct edge must raise IllegalPlayerTransition.
+    The player must undock (DOCKED -> NORMAL) before taking cover.
+    Trying the direct edge must raise IllegalPlayerTransition.
+    Replaces the pre-M-6 `DASHING -> SHIELDED` test (DASHING was
+    removed when the orthogonal PlayerPhaseDash subsystem took over).
     """
     sm = _make_sm()
-    sm.transition_substate(PlayerAliveState.DASHING)
+    sm.transition_substate(PlayerAliveState.DOCKED)
     with __import__("pytest").raises(IllegalPlayerTransition):
         sm.transition_substate(PlayerAliveState.SHIELDED)
-    # Confirm we are still in DASHING (no partial state mutation).
-    assert sm.alive_substate == PlayerAliveState.DASHING
+    # Confirm we are still in DOCKED (no partial state mutation).
+    assert sm.alive_substate == PlayerAliveState.DOCKED
 
 
 def test_respawn_invincibility_lifecycle() -> None:
@@ -95,38 +99,41 @@ def test_dead_is_terminal() -> None:
     assert sm.state == PlayerState.DEAD
 
 
-def test_enter_boost_from_dash_raises() -> None:
-    """F03 S6: Boosting while dashing now raises (was silent no-op).
+def test_enter_boost_from_shield_raises() -> None:
+    """F03 S6: Boosting while shielded now raises (was silent no-op).
 
-    Dash preempts boost; callers must exit DASHING first.
+    Shield preempts boost; callers must deactivate the shield first.
+    Replaces the pre-M-6 `enter_boost_from_dash` test (DASHING was
+    removed when the orthogonal PlayerPhaseDash subsystem took over).
     """
     sm = _make_sm()
-    sm.transition_substate(PlayerAliveState.DASHING)
+    sm.activate_shield(duration=10)
     with pytest.raises(IllegalPlayerTransition):
         sm.enter_boost()
     # State unchanged after the rejected attempt
-    assert sm.alive_substate == PlayerAliveState.DASHING
+    assert sm.alive_substate == PlayerAliveState.SHIELDED
     assert sm.is_boosting() is False
 
 
-def test_should_lock_controls_in_dock_and_dash() -> None:
-    """Top-level predicate: lock controls while docked or dashing."""
+def test_should_lock_controls_when_docked() -> None:
+    """Top-level predicate: lock controls while docked.
+
+    Dash moved to the orthogonal ``PlayerPhaseDash`` subsystem in M-6, so
+    this test no longer covers the dash branch — it pins the only
+    remaining locked-controls substate (DOCKED).
+    """
     sm = _make_sm()
     assert sm.should_lock_controls() is False
     sm.enter_dock()
     assert sm.should_lock_controls() is True
     sm.exit_dock()
     assert sm.should_lock_controls() is False
-    sm.enter_dash()
-    assert sm.should_lock_controls() is True
-    sm.exit_dash()
-    assert sm.should_lock_controls() is False
 
 
 def test_force_substate_bypasses_legal_table() -> None:
     """force_substate is the documented escape hatch for save/restore."""
     sm = _make_sm()
-    sm.transition_substate(PlayerAliveState.DASHING)
-    # DASHING -> SHIELDED is illegal via the table, but force_substate works.
+    sm.transition_substate(PlayerAliveState.DOCKED)
+    # DOCKED -> SHIELDED is illegal via the table, but force_substate works.
     sm.force_substate(PlayerAliveState.SHIELDED)
     assert sm.alive_substate == PlayerAliveState.SHIELDED
