@@ -21,10 +21,9 @@ class Bullet(Entity):
     bullet types (single, spread, laser, explosive) with trail effects
     for laser bullets.
 
-    Class Attributes:
-        _trail_surface_cache: Cache for trail surface rendering.
-        _trail_cache_order: LRU cache order for trail surfaces (deque).
-        _TRAIL_CACHE_MAX_SIZE: Maximum number of cached trail surfaces.
+    Note: The real trail surface cache lives on
+    ``airwar.game.rendering.entity_renderer.EntityRenderer``; this class
+    keeps no class-level cache of its own.
 
     Attributes:
         data: BulletData containing bullet configuration.
@@ -33,9 +32,6 @@ class Bullet(Entity):
         _hit_enemies: List of enemy IDs already hit by this bullet.
     """
 
-    _trail_surface_cache: dict = {}
-    _trail_cache_order: deque = deque()
-    _TRAIL_CACHE_MAX_SIZE: int = 256
     OFFSCREEN_MARGIN: int = 80
 
     def __init__(self, x: float, y: float, data: BulletData):
