@@ -248,8 +248,15 @@ def _collides(
 
 @pytest.mark.smoke
 @given(
-    st.lists(bullet_spec, min_size=1, max_size=6),
-    st.lists(enemy_spec, min_size=1, max_size=6),
+    # Ids must be unique within each side: production code uses
+    # ``eid = -i - 1`` for enemies and the bullet list index for
+    # bullets, both of which are unique. The Rust spatial hash uses
+    # ``HashMap<i32, AABB>`` internally, so a duplicate id would
+    # silently overwrite the first entry and break AABB symmetry for
+    # that input. The Python fallback handles duplicates correctly,
+    # but the Rust fast-path is the production code path.
+    st.lists(bullet_spec, min_size=1, max_size=6, unique_by=lambda b: b[0]),
+    st.lists(enemy_spec, min_size=1, max_size=6, unique_by=lambda e: e[0]),
 )
 @settings(max_examples=30, suppress_health_check=[HealthCheck.too_slow])
 def test_collision_is_symmetric(
