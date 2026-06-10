@@ -150,6 +150,62 @@ def test_homecoming_sequence_rejects_reentry_while_active_and_restarts_after_res
     assert sequence.phase == HomecomingPhase.BASE_LAUNCH
 
 
+def test_homecoming_start_does_not_re_fire_callback_on_reentry() -> None:
+    """L-10 regression: after a full cycle completes, calling ``start()``
+    again (without an intermediate ``reset()``) must not re-fire the
+    previous cycle's ``on_complete_callback``. The guard is the
+    ``_completed_callback_sent`` flag set at HANDOFF; this test pins
+    the contract so a future refactor cannot silently regress it.
+
+    See TODO.md §1 L-10: the original "fragile" assumption that
+    ``start()`` is only called with no stale callback was made safe by
+    the flag (and by the production code always calling ``reset()``
+    between cycles); this test is the belt-and-suspenders pin.
+    """
+    player = _make_player()
+    calls: list[int] = []
+
+    sequence = HomecomingSequence(lambda: calls.append(1))
+    assert sequence.start(player, 1920, 1080) is True
+
+    # Drive to COMPLETE.
+    for _ in range(
+        HomecomingSequence.FTL_FRAMES
+        + HomecomingSequence.BLACKOUT_FRAMES
+        + HomecomingSequence.STATION_REVEAL_FRAMES
+        + HomecomingSequence.APPROACH_FRAMES
+        + HomecomingSequence.LANDING_FRAMES
+        + HomecomingSequence.HANDOFF_FRAMES
+        + 4
+    ):
+        sequence.update(player)
+    assert sequence.is_complete() is True
+    assert len(calls) == 1
+
+    # Calling start() while COMPLETE re-enters the sequence (returns
+    # True) and resets ``_completed_callback_sent``. The contract
+    # assertion is that the previous cycle's fire is the LAST one
+    # for that cycle — i.e. once COMPLETE, no further calls happen
+    # until the next HANDOFF. So the callback count must stay at 1
+    # until the new cycle's HANDOFF phase actually runs.
+    assert sequence.start(player, 1920, 1080) is True
+    assert len(calls) == 1
+    assert sequence._completed_callback_sent is False  # reset for the new cycle
+
+    # Drive the new cycle to completion and confirm the second fire.
+    for _ in range(
+        HomecomingSequence.FTL_FRAMES
+        + HomecomingSequence.BLACKOUT_FRAMES
+        + HomecomingSequence.STATION_REVEAL_FRAMES
+        + HomecomingSequence.APPROACH_FRAMES
+        + HomecomingSequence.LANDING_FRAMES
+        + HomecomingSequence.HANDOFF_FRAMES
+        + 4
+    ):
+        sequence.update(player)
+    assert len(calls) == 2  # exactly one fire per cycle
+
+
 def test_homecoming_handoff_moves_player_into_base_entry() -> None:
     player = _make_player()
     sequence = HomecomingSequence()

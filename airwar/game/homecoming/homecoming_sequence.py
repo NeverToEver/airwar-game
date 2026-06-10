@@ -76,6 +76,17 @@ class HomecomingSequence:
         if self.is_active():
             return False
 
+        # Clear only the departure / orbital-strike callbacks from any
+        # previous cycle. We deliberately keep ``_on_complete_callback``
+        # because the production code-path passes it via the
+        # ``HomecomingSequence(...)`` constructor and expects it to
+        # survive across the ``start()`` boundary. The
+        # ``_completed_callback_sent`` flag already prevents double-fire
+        # within one cycle, and ``reset()`` is the documented way to
+        # drop a callback between cycles.
+        self._on_departure_complete_callback = None
+        self._on_orbital_strike_callback = None
+
         self._screen_size = (screen_width, screen_height)
         self._start_center = (float(player.rect.centerx), float(player.rect.centery))
         self._current_center = self._start_center

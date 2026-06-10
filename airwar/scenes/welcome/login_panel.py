@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any
 import pygame
 
 from airwar.config.design_tokens import SceneColors
-from airwar.i18n import t
+from airwar.i18n import get_translator, t
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.ui.scene_rendering_utils import fit_text_to_width
 from airwar.utils.database import DatabaseError
@@ -338,7 +338,7 @@ class LoginPanel:
         if not text:
             ph = t("welcome.username_placeholder") if not is_password else t("welcome.password_placeholder")
             ph_size = scene._tokens.typography.BODY_SIZE
-            ph_font = get_font_for_locale(t.get_locale(), ph_size)
+            ph_font = get_font_for_locale(get_translator().get_locale(), ph_size)
             ph_surf = ph_font.render(ph, True, SC.TEXT_DIM)
             ph_rect = ph_surf.get_rect(midleft=(rect.x + 16, rect.centery))
             surface.blit(ph_surf, ph_rect)

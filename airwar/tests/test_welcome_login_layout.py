@@ -192,3 +192,27 @@ def test_welcome_layout_adaptive_panel_height() -> None:
         f"stacked right panel overflows screen: right_y={small['right_y']} "
         f"panel_h={small['panel_h']} sh=553"
     )
+
+
+def test_login_panel_placeholder_uses_translator_get_locale() -> None:
+    """L-6 regression: ``_draw_input`` previously called ``t.get_locale()``
+    on the i18n ``t()`` wrapper function, raising ``AttributeError: 'function'
+    object has no attribute 'get_locale'`` once the input box reached the
+    placeholder render branch. The fix routes through ``get_translator()``
+    which returns the singleton :class:`Translator` instance.
+
+    Render the welcome scene on a small window (so the placeholder branch
+    executes) and assert it does not raise.
+    """
+    from airwar.i18n import get_translator
+
+    scene = _make_scene()
+    surface = pygame.Surface((984, 553), pygame.SRCALPHA)
+    # Reset the locale to the project default so the test is hermetic
+    # regardless of earlier tests having switched it.
+    get_translator().set_locale("zh_CN")
+    scene.render(surface)  # must not raise
+    # And the English locale path must also render — exercises the
+    # ``get_font_for_locale`` Latin branch in addition to CJK.
+    get_translator().set_locale("en_US")
+    scene.render(surface)
