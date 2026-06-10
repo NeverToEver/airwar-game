@@ -14,22 +14,7 @@ from airwar.game.mother_ship import (
     ProgressBarUI,
 )
 from airwar.game.mother_ship.event_bus import EVENT_START_UNDOCKING_ANIMATION
-
-
-class FakeTarget:
-    def __init__(self, x=960, y=360, width=40, height=40, health=200, score=90):
-        self.rect = Rect(x, y, width, height)
-        self.health = health
-        self.active = True
-        self.data = SimpleNamespace(score=score)
-
-    def get_hitbox(self):
-        return self.rect
-
-    def take_damage(self, damage):
-        self.health -= damage
-        if self.health <= 0:
-            self.active = False
+from airwar.tests.conftest import StubEnemy
 
 
 class FakeGameScene:
@@ -234,7 +219,8 @@ def test_mothership_gatling_turrets_sweep_out_of_sync():
 
 def test_mothership_gatling_fires_high_frequency_sweep_bullets():
     integrator = _make_integrator()
-    integrator._game_scene = FakeGameScene(enemies=[FakeTarget(960, 220)])
+    target = StubEnemy(Rect(960, 220, 40, 40), health=200, score=90)
+    integrator._game_scene = FakeGameScene(enemies=[target])
 
     for _ in range(integrator.MOTHERSHIP_GATLING_FIRE_RATE):
         integrator._update_mothership_firing()
@@ -255,7 +241,7 @@ def test_mothership_gatling_fires_high_frequency_sweep_bullets():
 
 
 def test_mothership_gatling_hit_does_not_trigger_missile_explosion():
-    target = FakeTarget(x=500, y=500, width=40, height=40, health=80)
+    target = StubEnemy(Rect(500, 500, 40, 40), health=80)
     scene = FakeGameScene(enemies=[target])
     integrator = _make_integrator()
     integrator._game_scene = scene
@@ -275,7 +261,7 @@ def test_mothership_gatling_hit_does_not_trigger_missile_explosion():
 
 
 def test_mothership_boss_kill_triggers_wreck_explosion_before_clear():
-    boss = FakeTarget(x=500, y=500, width=120, height=120, health=1, score=1000)
+    boss = StubEnemy(Rect(500, 500, 120, 120), health=1, score=1000)
     scene = FakeGameScene(boss=boss)
     integrator = _make_integrator()
     integrator._game_scene = scene

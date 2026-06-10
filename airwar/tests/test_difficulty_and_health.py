@@ -5,12 +5,6 @@ from airwar.game.systems.difficulty_manager import DifficultyManager
 from airwar.game.systems.health_system import HealthSystem
 
 
-class FakePlayer:
-    def __init__(self, health=50, max_health=100):
-        self.health = health
-        self.max_health = max_health
-
-
 class RecordingListener:
     def __init__(self):
         self.params = []
@@ -54,26 +48,28 @@ def test_difficulty_manager_notifies_and_removes_failing_listeners():
     assert failing not in manager._listeners
 
 
-def test_health_system_normal_regen_waits_for_delay_and_interval():
-    player = FakePlayer(health=50, max_health=100)
+def test_health_system_normal_regen_waits_for_delay_and_interval(stub_player):
+    stub_player.health = 50
+    stub_player.max_health = 100
     system = HealthSystem("medium")
     settings = HEALTH_REGEN["medium"]
 
     for _ in range(settings["delay"] + settings["interval"] - 2):
-        system.update(player)
+        system.update(stub_player)
 
-    assert player.health == 50
+    assert stub_player.health == 50
 
-    system.update(player)
+    system.update(stub_player)
 
-    assert player.health == 52
+    assert stub_player.health == 52
 
 
-def test_health_system_buff_regen_uses_shorter_fixed_tick():
-    player = FakePlayer(health=50, max_health=51)
+def test_health_system_buff_regen_uses_shorter_fixed_tick(stub_player):
+    stub_player.health = 50
+    stub_player.max_health = 51
     system = HealthSystem("medium")
 
     for _ in range(60):
-        system.update(player, has_regen_buff=True)
+        system.update(stub_player, has_regen_buff=True)
 
-    assert player.health == 51
+    assert stub_player.health == 51
