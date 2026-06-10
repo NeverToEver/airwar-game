@@ -405,6 +405,12 @@ class BenchmarkScene(Scene, MouseInteractiveMixin):
         enter_surf = self.button_font.render(t("benchmark.enter_button"), True, SC.TEXT_PRIMARY)
         surface.blit(enter_surf, enter_surf.get_rect(center=enter_rect.center))
 
+        # Keyboard hint directly under the button (separate from the
+        # body-font "info.lines" pair so the hint is visually anchored
+        # to the button, not to the page-level description).
+        hint_surf = self.hint_font.render(t("benchmark.enter_hint"), True, SC.TEXT_DIM)
+        surface.blit(hint_surf, hint_surf.get_rect(center=(sw // 2, enter_rect.bottom + 24)))
+
         # Back button
         back_w = ResponsiveHelper.scale(160, scale)
         back_h = ResponsiveHelper.scale(50, scale)
