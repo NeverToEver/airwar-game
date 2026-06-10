@@ -67,7 +67,10 @@ class Enemy(Entity):
         entity_id: Unique identifier for this entity.
     """
 
-    # --- Entry/Exit constants ---
+    # --- Tuning constants (P1-4 consolidation) ---
+    # Values live here as literals (backward compat) and are mirrored in
+    # GAME_CONSTANTS.ENEMY_TUNING. The centralised dataclass is the
+    # documented source of truth — keep in sync if you tune the enemy.
     ENTRY_START_Y = 150
     EXIT_X_OFFSETS = (-300, 300, 0, -150, 150)
     EXIT_END_Y = -150
@@ -78,7 +81,6 @@ class Enemy(Entity):
     FIRE_RATE_MIN = 10
     ENEMY_BULLET_SPEED = 5.0
 
-    # --- Movement pattern range constants ---
     SINE_AMP_RANGE = (1.5, 3.0)
     SINE_FREQ_RANGE = (0.03, 0.06)
     ZIGZAG_INTERVAL_RANGE = (30, 60)
@@ -572,6 +574,8 @@ class EnemySpawner:
         _wave_enemies_spawned: Count of enemies spawned in current wave.
     """
 
+    # P1-4: Values live here as literals (backward compat) and are mirrored
+    # in GAME_CONSTANTS.ENEMY_TUNING. Keep in sync if you tune the spawner.
     ENEMIES_PER_FRAME = 2
     DEFAULT_SPEED = 3.0
     DEFAULT_SPAWN_RATE = 30
@@ -811,6 +815,8 @@ class EliteEnemy(Enemy):
         _shield_pulse: Timer for energy shield visual effect.
     """
 
+    # P1-4: Values live here as literals (backward compat) and are mirrored
+    # in GAME_CONSTANTS.ENEMY_TUNING. Keep in sync if you tune the elite.
     VISUAL_SCALE = 1.3
     COLLISION_SCALE = 1.18
     ENTRY_SPEED = 0.03
