@@ -46,7 +46,7 @@ class SceneSwitcher:
             if hasattr(welcome, "should_quit") and welcome.should_quit():
                 return (False, None)
             if hasattr(welcome, "should_open_tutorial") and welcome.should_open_tutorial():
-                result = self._run_tutorial_flow()
+                result = self.run_tutorial_flow()
                 if result == "quit":
                     return (False, None)
                 continue
