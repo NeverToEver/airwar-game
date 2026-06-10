@@ -198,27 +198,110 @@ class DifficultyManagerProtocol(Protocol):
 
 
 # ---------------------------------------------------------------------------
-# F06 I3 / Phase 5-α: GameSceneProtocol split into 8 focused sub-protocols
+# F06 I3 / Phase 5-α (revoked 2026-06-10, P0-5):
 #
-# The historical ``GameSceneProtocol`` mixed 8 unrelated concerns
-# (score / cycle / pause / buffs / difficulty / player access /
-# notifications / homecoming / lifecycle). Tests that only need one
-# domain were forced to mock the whole surface. Each sub-protocol is
-# now its own ``@runtime_checkable`` contract so a fake can implement
-# only what it uses. ``GameSceneProtocol`` itself is preserved as a
-# union of the 8 sub-protocols for callers/tests that want the full
-# GameScene contract.
+#   The 8-way GameSceneProtocol split (IScoreProvider / ICycleProvider /
+#   IPauseProvider / IBuffProvider / IDifficultyProvider /
+#   IPlayerAccessProvider / INotificationProvider / IHomecomingProvider /
+#   IGameLifecycleProvider) was introduced as a speculative "focused
+#   contract" decomposition. A 2026-06-10 audit confirmed:
 #
-# Zero behavioral change: the original protocol had no production
-# caller and was never imported by any test. The split is a pure
-# refactor of the contract definition.
+#     - 0 runtime consumers (no production code imported any sub-protocol)
+#     - 0 test consumers (no test imported any sub-protocol)
+#     - 4 accompanying ``# type: ignore`` lines existed solely to make
+#       ``hasattr()`` materialize attributes on the empty Protocol bodies
+#
+#   The split never landed a real consumer, and the union of 9
+#   sub-protocols plus 4 class-level descriptor injections made
+#   GameSceneProtocol harder to read for no measurable win. Reverted
+#   to a single flat Protocol below.
+#
+#   The 9 sub-protocol definitions are preserved here as a comment for
+#   future re-spawn: if a real consumer (e.g. a focused test fake that
+#   only needs the score surface) emerges, uncomment the relevant
+#   sub-protocol block and re-add it to the GameSceneProtocol bases.
+#
+#   --- IScoreProvider (revoked) ---
+#   @runtime_checkable
+#   class IScoreProvider(Protocol):
+#       def set_score(self, value: int) -> None: ...
+#       def add_score(self, amount: int) -> None: ...
+#       def add_kill(self) -> None: ...
+#       def add_boss_kill(self) -> None: ...
+#       def get_kill_count(self) -> int: ...
+#       def get_boss_kill_count(self) -> int: ...
+#
+#   --- ICycleProvider (revoked) ---
+#   @runtime_checkable
+#   class ICycleProvider(Protocol):
+#       def set_cycle_count(self, value: int) -> None: ...
+#       def restore_from_save(self, save_data: Any) -> None: ...
+#       def create_save_data(self) -> Any: ...
+#       def is_game_over(self) -> bool: ...
+#
+#   --- IPauseProvider (revoked) ---
+#   @runtime_checkable
+#   class IPauseProvider(Protocol):
+#       def pause(self) -> None: ...
+#       def resume(self) -> None: ...
+#       def paused(self) -> bool: ...
+#       def consume_pause_request(self) -> bool: ...
+#
+#   --- IBuffProvider (revoked) ---
+#   @runtime_checkable
+#   class IBuffProvider(Protocol):
+#       def unlocked_buffs(self) -> list[str]: ...
+#
+#   --- IDifficultyProvider (revoked) ---
+#   @runtime_checkable
+#   class IDifficultyProvider(Protocol):
+#       def set_difficulty(self, value: str) -> None: ...
+#       def difficulty(self) -> str: ...
+#
+#   --- IPlayerAccessProvider (revoked) ---
+#   @runtime_checkable
+#   class IPlayerAccessProvider(Protocol):
+#       def player(self) -> object: ...
+#       def get_boss(self) -> Any: ...
+#       def get_enemies(self) -> list[Any]: ...
+#       def clear_boss(self) -> None: ...
+#
+#   --- INotificationProvider (revoked) ---
+#   @runtime_checkable
+#   class INotificationProvider(Protocol):
+#       def show_notification(self, message: str) -> None: ...
+#
+#   --- IHomecomingProvider (revoked) ---
+#   @runtime_checkable
+#   class IHomecomingProvider(Protocol):
+#       def is_homecoming_active(self) -> bool: ...
+#       def is_homecoming_locked(self) -> bool: ...
+#       def is_homecoming_complete(self) -> bool: ...
+#       def event_bus(self) -> object: ...
+#       def is_mothership_docked(self) -> bool: ...
+#
+#   --- IGameLifecycleProvider (revoked) ---
+#   @runtime_checkable
+#   class IGameLifecycleProvider(Protocol):
+#       def update(self, *args: Any, **kwargs: Any) -> None: ...
+#       def render(self, surface: Any) -> None: ...
+#       def handle_events(self, event: Any) -> None: ...
+#       def enter(self, **kwargs: Any) -> None: ...
+#       def exit(self) -> None: ...
 # ---------------------------------------------------------------------------
 
 
 @runtime_checkable
-class IScoreProvider(Protocol):
-    """Score / kill-count surface of GameScene."""
+class GameSceneProtocol(Protocol):
+    """Full structural protocol for the public surface of GameScene.
 
+    The historical decomposition into 8 focused sub-protocols was
+    revoked in P0-5 (2026-06-10) after audit confirmed zero runtime
+    + zero test consumers. Sub-protocols are preserved as comments
+    above for future re-spawn when a real consumer emerges.
+    """
+
+    # --- Score / kill-count surface ---
     def set_score(self, value: int) -> None: ...
     def add_score(self, amount: int) -> None: ...
     def add_kill(self) -> None: ...
@@ -226,120 +309,47 @@ class IScoreProvider(Protocol):
     def get_kill_count(self) -> int: ...
     def get_boss_kill_count(self) -> int: ...
 
-
-@runtime_checkable
-class ICycleProvider(Protocol):
-    """Cycle counter and save/load surface of GameScene."""
-
+    # --- Cycle counter and save/load surface ---
     def set_cycle_count(self, value: int) -> None: ...
     def restore_from_save(self, save_data: Any) -> None: ...
     def create_save_data(self) -> Any: ...
     def is_game_over(self) -> bool: ...
 
-
-@runtime_checkable
-class IPauseProvider(Protocol):
-    """Pause / resume surface of GameScene."""
-
+    # --- Pause / resume surface ---
     def pause(self) -> None: ...
     def resume(self) -> None: ...
     def paused(self) -> bool: ...
     def consume_pause_request(self) -> bool: ...
 
-
-@runtime_checkable
-class IBuffProvider(Protocol):
-    """Unlocked-buff surface of GameScene."""
-
+    # --- Unlocked-buff surface ---
     def unlocked_buffs(self) -> list[str]: ...
 
-
-@runtime_checkable
-class IDifficultyProvider(Protocol):
-    """Difficulty get/set surface of GameScene."""
-
+    # --- Difficulty get/set surface ---
     def set_difficulty(self, value: str) -> None: ...
     def difficulty(self) -> str: ...
 
-
-@runtime_checkable
-class IPlayerAccessProvider(Protocol):
-    """Player / boss / enemy accessor surface of GameScene."""
-
+    # --- Player / boss / enemy accessor surface ---
     def player(self) -> object: ...
     def get_boss(self) -> Any: ...
     def get_enemies(self) -> list[Any]: ...
     def clear_boss(self) -> None: ...
 
-
-@runtime_checkable
-class INotificationProvider(Protocol):
-    """Notification surface of GameScene."""
-
+    # --- Notification surface ---
     def show_notification(self, message: str) -> None: ...
 
-
-@runtime_checkable
-class IHomecomingProvider(Protocol):
-    """Homecoming / mothership query surface of GameScene."""
-
+    # --- Homecoming / mothership query surface ---
     def is_homecoming_active(self) -> bool: ...
     def is_homecoming_locked(self) -> bool: ...
     def is_homecoming_complete(self) -> bool: ...
     def event_bus(self) -> object: ...
     def is_mothership_docked(self) -> bool: ...
 
-
-@runtime_checkable
-class IGameLifecycleProvider(Protocol):
-    """Scene-lifecycle surface (update / render / events / enter / exit)."""
-
+    # --- Scene-lifecycle surface ---
     def update(self, *args: Any, **kwargs: Any) -> None: ...
     def render(self, surface: Any) -> None: ...
     def handle_events(self, event: Any) -> None: ...
     def enter(self, **kwargs: Any) -> None: ...
     def exit(self) -> None: ...
-
-
-@runtime_checkable
-class GameSceneProtocol(
-    IScoreProvider,
-    ICycleProvider,
-    IPauseProvider,
-    IBuffProvider,
-    IDifficultyProvider,
-    IPlayerAccessProvider,
-    INotificationProvider,
-    IHomecomingProvider,
-    IGameLifecycleProvider,
-    Protocol,
-):
-    """Full structural protocol for the public surface of GameScene.
-
-    Composes 8 focused sub-protocols (``IScoreProvider``,
-    ``ICycleProvider``, ``IPauseProvider``, ``IBuffProvider``,
-    ``IDifficultyProvider``, ``IPlayerAccessProvider``,
-    ``INotificationProvider``, ``IHomecomingProvider``,
-    ``IGameLifecycleProvider``). Tests that only need one domain
-    should depend on the sub-protocol directly so the mock surface
-    stays narrow; depend on ``GameSceneProtocol`` only when the full
-    GameScene contract is required.
-    """
-
-
-# Real class attributes so ``hasattr(GameSceneProtocol, 'score')`` returns True.
-# Kept on the union so both forms (``getattr(GameSceneProtocol, 'score')`` and
-# isinstance checks via the sub-protocols) continue to work.  These four
-# assignments are the one place where mypy cannot see that the dynamic
-# ``Protocol`` exposes these as class-level descriptors; the runtime
-# behaviour is verified by the GameSceneProtocol fixture tests.
-# ``difficulty`` and ``unlocked_buffs`` clash with same-named methods on
-# the sub-protocols (method-assign) and with their type signatures
-# (assignment), so each line carries a targeted ignore.
-GameSceneProtocol.score = 0  # type: ignore[attr-defined]
-GameSceneProtocol.cycle_count = 0  # type: ignore[attr-defined]
-GameSceneProtocol.difficulty = "medium"  # type: ignore[method-assign,assignment]
-GameSceneProtocol.unlocked_buffs = []  # type: ignore[method-assign,assignment]
 
 
 # ---------------------------------------------------------------------------
