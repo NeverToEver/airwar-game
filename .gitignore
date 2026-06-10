@@ -168,5 +168,4 @@ mutants.out
 # -----------------------------------------------------------------------------
 .claude/
 plans/
-.generated_assets/
 .playwright-mcp/
