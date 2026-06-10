@@ -7,6 +7,13 @@ import sys
 
 APP_DIR_NAME = "airwar"
 
+# Default location for generated sprite/font/boss image caches, co-located with
+# the package. The directory is git-ignored (see top-level .gitignore).
+_PACKAGE_DATA_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "data",
+)
+
 
 def _home() -> str:
     return os.path.expanduser("~")
@@ -49,4 +56,4 @@ def generated_asset_cache_dir() -> str:
     override = os.environ.get("AIRWAR_GENERATED_ASSET_DIR")
     if override:
         return os.path.abspath(os.path.expanduser(override))
-    return os.path.join(user_cache_dir(), "generated_assets")
+    return os.path.join(_PACKAGE_DATA_DIR, "generated_assets")
