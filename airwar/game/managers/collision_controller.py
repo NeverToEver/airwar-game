@@ -46,7 +46,6 @@ if TYPE_CHECKING:
     from airwar.entities.player import Player
 
 from airwar.core_bindings import (
-    PersistentSpatialHash,
     batch_collide_bullets_vs_entities,
 )
 
@@ -80,6 +79,7 @@ class CollisionController:
     Attributes:
         _events: Registered collision event callbacks.
         _use_rust: Whether Rust batch collision is enabled.
+        _previous_enemy_ids: Set of enemy ids tracked from the previous frame.
     """
 
     GRID_CELL_SIZE = 100
@@ -92,8 +92,6 @@ class CollisionController:
         self._enemy_grid_cells = {}
         self._grid_cell_size = self.GRID_CELL_SIZE
         self._use_rust = True
-        # Persistent spatial hash for incremental collision detection
-        self._persistent_hash = PersistentSpatialHash(self._grid_cell_size)
         self._previous_enemy_ids: set = set()
         # Reusable temp containers for Rust batch collision
         self._bullet_data: list[tuple] = []

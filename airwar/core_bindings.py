@@ -7,7 +7,6 @@ import random
 
 try:
     from airwar_core import (
-        PersistentSpatialHash,
         # Collision functions
         batch_collide_bullets_vs_entities,
         batch_hallucinated_enemy_centers,
@@ -115,39 +114,6 @@ except (ImportError, OSError):
                 and self.min_y < other.max_y
                 and self.max_y > other.min_y
             )
-
-    class PersistentSpatialHash:
-        """Pure-Python fallback for the Rust persistent spatial hash."""
-
-        def __init__(self, cell_size: int) -> None:
-            self.cell_size = int(cell_size)
-            self._entities: dict[int, _AABB] = {}
-
-        def clear(self) -> None:
-            self._entities.clear()
-
-        def update_entity(self, entity_id: int, x: float, y: float, half_size: float) -> None:
-            self._entities[int(entity_id)] = _AABB.from_xy_half_size(x, y, half_size)
-
-        def update_entities(self, entities: list[tuple[int, float, float, float]]) -> None:
-            for entity_id, x, y, half_size in entities:
-                self.update_entity(entity_id, x, y, half_size)
-
-        def remove_entity(self, entity_id: int) -> None:
-            self._entities.pop(int(entity_id), None)
-
-        def get_collisions(self) -> list[tuple[int, int]]:
-            items = list(self._entities.items())
-            pairs: list[tuple[int, int]] = []
-            for i, (left_id, left_bounds) in enumerate(items):
-                for right_id, right_bounds in items[i + 1 :]:
-                    if left_bounds.intersects(right_bounds):
-                        pairs.append((min(left_id, right_id), max(left_id, right_id)))
-            return pairs
-
-        def query(self, x: float, y: float, half_size: float) -> list[int]:
-            query_bounds = _AABB.from_xy_half_size(x, y, half_size)
-            return [entity_id for entity_id, bounds in self._entities.items() if query_bounds.intersects(bounds)]
 
     def batch_collide_bullets_vs_entities(
         bullets: list[tuple[int, float, float, float, float]],
@@ -736,7 +702,6 @@ except (ImportError, OSError):
 
 __all__ = [
     "RUST_AVAILABLE",
-    "PersistentSpatialHash",
     # Collision functions
     "batch_collide_bullets_vs_entities",
     "batch_hallucinated_enemy_centers",
