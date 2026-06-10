@@ -224,6 +224,9 @@ class EnrageSubMachine:
             return self._boss.health, 0
         if not self._enraged and self._boss.max_health > 0:
             projected = self._boss.health - damage
+            if projected <= 0:
+                # Lethal hit — boss dies regardless of enrage lock
+                return 0, self._boss.data.score
             if projected <= self._enrage_health_lock_value:
                 self._boss.health = self._enrage_health_lock_value
                 return self._boss.health, 0

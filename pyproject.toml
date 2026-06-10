@@ -70,7 +70,7 @@ ignore_missing_imports = true
 # -----------------------------------------------------------------------------
 [tool.mutmut]
 backup_dir = ".mutmut-cache"
-runner = "python -m pytest -x -q"
+runner = "python -m pytest -x -q --no-cov --override-ini=\"addopts=\""
 tests_dir = "airwar/tests"
 paths_to_mutate = "airwar"
 

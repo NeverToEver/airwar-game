@@ -1,4 +1,5 @@
 import json
+from unittest.mock import patch
 
 import pytest
 
@@ -125,3 +126,27 @@ def test_load_missing_required_field_returns_none(tmp_path):
     manager = PersistenceManager(save_dir=str(tmp_path))
 
     assert manager.load_game() is None
+
+
+def test_persistence_atomic_write_calls_fsync(tmp_path):
+    """save_game must flush+fsync before os.replace to prevent data loss on crash."""
+    import os
+
+    call_log: list[str] = []
+    real_fsync = os.fsync
+
+    def tracking_fsync(fd):
+        call_log.append("fsync")
+        real_fsync(fd)
+
+    def tracking_replace(src, dst):
+        call_log.append("replace")
+
+    manager = PersistenceManager(save_dir=str(tmp_path))
+    save_data = GameSaveData(score=100, username="pilot")
+
+    with patch("airwar.game.mother_ship.persistence_manager.os.fsync", side_effect=tracking_fsync):
+        with patch("airwar.game.mother_ship.persistence_manager.os.replace", side_effect=tracking_replace):
+            manager.save_game(save_data)
+
+    assert call_log == ["fsync", "replace"], "fsync must precede os.replace"

@@ -86,6 +86,8 @@ class PersistenceManager(IPersistenceManager):
                     logger.error(f"Failed to remove stale temp file {tmp_path}: {e}")
             with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump(save_dict, f, indent=2, ensure_ascii=False)
+                f.flush()
+                os.fsync(f.fileno())
             os.replace(tmp_path, self._save_path)
 
             logger.info(f"Game saved successfully to {self._save_path}")

@@ -82,6 +82,25 @@ def test_enrage_health_lock_clamps_damage_to_lock_value() -> None:
     assert score == 0
 
 
+def test_boss_take_damage_lethal_when_never_enraged() -> None:
+    """A lethal hit on a boss that never triggered enrage must kill it.
+
+    Regression: before the fix, ``_enrage_health_lock_value`` defaulted to 0
+    and the pre-enrage branch swallowed the lethal hit, returning score=0 so
+    ``mark_dead()`` never fired and the boss froze at HP=0.
+    """
+    boss = _make_boss(health=1000)
+    sm = boss._state
+    sm.finish_entry()
+    # Lock value stays at 0 (never enrage-triggered).
+    assert sm._enrage_health_lock_value == 0
+    # Lethal damage via the full take_damage path (triggers mark_dead).
+    score = boss.take_damage(1000)
+    assert score > 0, "Lethal hit must return positive score so mark_dead() fires"
+    assert boss.active is False
+    assert boss._state.state == BossState.DEAD
+
+
 def test_enrage_visual_intensity_is_bounded() -> None:
     """Visual intensity must be in [0, 0.88] at all times."""
     boss = _make_boss(health=1000)
