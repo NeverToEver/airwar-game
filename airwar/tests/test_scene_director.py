@@ -95,6 +95,11 @@ class FakeExitConfirmScene:
         self.result = result
         self.enter = MagicMock()
         self.exit = MagicMock()
+        # SceneSwitcher._run_scene_loop now pre-renders once before
+        # the first dispatch (so the first click has button rects to
+        # land on — see commit f262b33). The fake must accept the
+        # render call without raising.
+        self.render = MagicMock()
 
     def is_running(self):
         return False

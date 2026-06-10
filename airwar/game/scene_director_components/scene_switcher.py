@@ -159,6 +159,21 @@ class SceneSwitcher:
         Returns:
             "quit" if the user closed the window, "ended" if the scene exited normally.
         """
+        # Render once before the first dispatch so scenes that register
+        # clickable buttons in ``render()`` (e.g. via the
+        # ``MouseInteractiveMixin`` / ``register_button`` pattern) have
+        # valid ``_button_rects`` when the first user click is
+        # dispatched. Without this pre-render, scenes that call
+        # ``self.clear_buttons()`` in ``enter()`` (to reset state from
+        # a prior visit) would silently drop the first click because
+        # the dispatch happens before the first render. See
+        # ``test_benchmark_button_routing`` for the regression case.
+        #
+        # Gated on ``is_running()`` so a scene that has already exited
+        # (e.g. a unit-test stub with ``is_running() -> False``) does
+        # not have its pre-render fired before the loop bails out.
+        if scene.is_running():
+            self._render_scene(scene)
         while self._director._running and scene.is_running():
             events = self._poll_events()
             if not self._check_quit(events):
