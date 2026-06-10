@@ -98,6 +98,7 @@ $RECYCLE.BIN/
 # -----------------------------------------------------------------------------
 .env
 .env.*
+!.env.example
 *.env
 secrets.*
 credentials.*
@@ -111,7 +112,8 @@ credentials.*
 # -----------------------------------------------------------------------------
 airwar_core/target/
 /target/
-Cargo.lock
+# Cargo.lock IS tracked for binary-producing crates (FFI consumers must
+# reproduce exact toolchain versions). Removed in ROADMAP §4 P1-8 (2026-06-10).
 
 # PyInstaller build artifacts
 *.spec
