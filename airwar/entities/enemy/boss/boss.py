@@ -87,6 +87,11 @@ class Boss(Entity):
 
     # Re-exported tuning constants so legacy ``Boss.ENRAGE_DURATION``
     # style imports continue to work after the split.
+    # P1-4: HITBOX scales are mirrored from GAME_CONSTANTS.BOSS_TUNING.
+    # They live as class-body literals here because the Boss class is
+    # defined before airwar.game.constants is fully loaded; the centralised
+    # value in BOSS_TUNING.HITBOX_WIDTH_SCALE / HITBOX_HEIGHT_SCALE is the
+    # canonical source — keep these in sync if you tune the boss.
     ATTACK_DIRECTIONS = boss_attack.ATTACK_DIRECTIONS
     DEFAULT_PHASE_DURATION = boss_movement.DEFAULT_PHASE_DURATION
     ENTRY_SPEED = boss_movement.ENTRY_SPEED

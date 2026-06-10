@@ -36,8 +36,11 @@ if TYPE_CHECKING:
     from .boss import Boss
 
 
-# Re-exported for backward compatibility with the ``Boss`` class
-# attributes that other modules import.
+# P1-4: Module-level constants kept as literals (backward compat with
+# the ``Boss`` class attributes and other importers). The canonical
+# source of truth is ``GAME_CONSTANTS.BOSS_TUNING`` in
+# :mod:`airwar.game.constants`; the values below mirror it. Keep in
+# sync if you tune the boss movement.
 DEFAULT_PHASE_DURATION: int = 120
 ENTRY_SPEED: float = 2
 ESCAPE_DRIFT: float = 0.5
