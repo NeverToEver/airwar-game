@@ -26,54 +26,69 @@ def _get_glow_texture(radius: int, base_color=(255, 120, 20), alpha_mult=0.15) -
     """Get or create a pre-rendered soft radial glow texture.
 
     The glow is rendered once and cached — callers just blit it.
+
+    The cache is LRU (least-recently-used): on hit the key is moved to
+    the back, on insert at capacity the front (oldest) entry is evicted.
     """
     cache_key = (radius, base_color, alpha_mult)
-    if cache_key not in _glow_texture_cache:
-        if len(_glow_texture_cache) >= _MAX_CACHE_SIZE:
-            # 淘汰最旧的条目防止内存无限增长
-            _glow_texture_cache.pop(next(iter(_glow_texture_cache)))
-        size = radius * 2 + 2
-        surf = pygame.Surface((size, size), pygame.SRCALPHA)
-        for r in range(radius, 0, -1):
-            ring_alpha = int(255 * alpha_mult * (r / radius))
-            if ring_alpha > 0:
-                pygame.draw.circle(
-                    surf,
-                    (*base_color, ring_alpha),
-                    (radius + 1, radius + 1),
-                    r,
-                )
-        _glow_texture_cache[cache_key] = surf
-    return _glow_texture_cache[cache_key]
+    if cache_key in _glow_texture_cache:
+        _glow_texture_cache.move_to_end(cache_key)
+        return _glow_texture_cache[cache_key]
+    if len(_glow_texture_cache) >= _MAX_CACHE_SIZE:
+        _glow_texture_cache.popitem(last=False)
+    size = radius * 2 + 2
+    surf = pygame.Surface((size, size), pygame.SRCALPHA)
+    for r in range(radius, 0, -1):
+        ring_alpha = int(255 * alpha_mult * (r / radius))
+        if ring_alpha > 0:
+            pygame.draw.circle(
+                surf,
+                (*base_color, ring_alpha),
+                (radius + 1, radius + 1),
+                r,
+            )
+    _glow_texture_cache[cache_key] = surf
+    return surf
 
 
 def _get_spark_core(size: int) -> pygame.Surface:
-    """Get or create a cached bright dot for spark particle cores."""
-    if size not in _spark_core_cache:
-        if len(_spark_core_cache) >= _MAX_CACHE_SIZE:
-            _spark_core_cache.pop(next(iter(_spark_core_cache)))
-        s = size * 2 + 2
-        surf = pygame.Surface((s, s), pygame.SRCALPHA)
-        pygame.draw.circle(surf, (255, 202, 132, 210), (size + 1, size + 1), size)
-        _spark_core_cache[size] = surf
-    return _spark_core_cache[size]
+    """Get or create a cached bright dot for spark particle cores.
+
+    LRU eviction: on hit the key is moved to the back, on insert at
+    capacity the front (oldest) entry is evicted.
+    """
+    if size in _spark_core_cache:
+        _spark_core_cache.move_to_end(size)
+        return _spark_core_cache[size]
+    if len(_spark_core_cache) >= _MAX_CACHE_SIZE:
+        _spark_core_cache.popitem(last=False)
+    s = size * 2 + 2
+    surf = pygame.Surface((s, s), pygame.SRCALPHA)
+    pygame.draw.circle(surf, (255, 202, 132, 210), (size + 1, size + 1), size)
+    _spark_core_cache[size] = surf
+    return surf
 
 
 def _get_flash_surface(radius: int) -> pygame.Surface:
     """Get or create a cached flash surface with dual circles.
 
     The flash consists of an outer white circle and an inner warm-tinted circle.
+
+    LRU eviction: on hit the key is moved to the back, on insert at
+    capacity the front (oldest) entry is evicted.
     """
-    if radius not in _flash_cache:
-        if len(_flash_cache) >= _MAX_CACHE_SIZE:
-            _flash_cache.pop(next(iter(_flash_cache)))
-        size = radius * 4 + 2
-        surf = pygame.Surface((size, size), pygame.SRCALPHA)
-        surf.fill((0, 0, 0, 0))
-        pygame.draw.circle(surf, (255, 188, 96, 180), (radius * 2 + 1, radius * 2 + 1), radius)
-        pygame.draw.circle(surf, (255, 154, 72, 115), (radius * 2 + 1, radius * 2 + 1), int(radius * 0.6))
-        _flash_cache[radius] = surf
-    return _flash_cache[radius]
+    if radius in _flash_cache:
+        _flash_cache.move_to_end(radius)
+        return _flash_cache[radius]
+    if len(_flash_cache) >= _MAX_CACHE_SIZE:
+        _flash_cache.popitem(last=False)
+    size = radius * 4 + 2
+    surf = pygame.Surface((size, size), pygame.SRCALPHA)
+    surf.fill((0, 0, 0, 0))
+    pygame.draw.circle(surf, (255, 188, 96, 180), (radius * 2 + 1, radius * 2 + 1), radius)
+    pygame.draw.circle(surf, (255, 154, 72, 115), (radius * 2 + 1, radius * 2 + 1), int(radius * 0.6))
+    _flash_cache[radius] = surf
+    return surf
 
 
 class ExplosionEffect:
