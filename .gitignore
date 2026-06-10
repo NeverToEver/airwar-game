@@ -171,3 +171,5 @@ mutants.out
 .claude/
 plans/
 .playwright-mcp/
+*.generated_assets/
+/.generated_assets/
