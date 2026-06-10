@@ -175,3 +175,8 @@ plans/
 .playwright-mcp/
 *.generated_assets/
 /.generated_assets/
+
+# Session-scoped docs (issue scans, handoffs, temporary analyses).
+# Historical entries already in git via `git mv` remain tracked;
+# new files in this directory are ignored.
+docs/.sessions/
