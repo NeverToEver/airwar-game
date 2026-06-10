@@ -1,0 +1,73 @@
+name: Mutation Tests
+
+# P2-5: nightly mutation testing via mutmut 2.x. Slow (10-30 min),
+# but catches tests that don't actually assert behavior.
+# Schedule is nightly UTC = late evening Asia/Shanghai.
+
+on:
+  schedule:
+    # 02:00 UTC = 10:00 Asia/Shanghai.
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: mutation-tests
+  cancel-in-progress: true
+
+jobs:
+  mutate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: airwar_core
+
+      - name: Install system packages
+        run: sudo apt-get install -y libsdl2-dev
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+
+      - name: Build Rust extension
+        run: |
+          python -m maturin build --release --manifest-path airwar_core/Cargo.toml --out "$RUNNER_TEMP/airwar-wheels"
+          python -m pip install "$RUNNER_TEMP"/airwar-wheels/*.whl
+
+      - name: Run mutmut
+        env:
+          SDL_VIDEODRIVER: dummy
+          SDL_AUDIODRIVER: dummy
+        # Nightly run is informational, not a gate — failing mutmut
+        # does not block PRs. Report is uploaded as artifact for review.
+        run: |
+          python -m mutmut run --logger stderr 2>&1 | tee mutmut-output.log
+          python -m mutmut results 2>&1 | tee mutmut-results.log
+          # Don't fail the job on surviving mutants; just record them.
+          exit 0
+
+      - name: Upload mutmut logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutmut-logs
+          path: |
+            mutmut-output.log
+            mutmut-results.log
+          retention-days: 14
