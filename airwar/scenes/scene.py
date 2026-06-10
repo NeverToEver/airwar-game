@@ -38,6 +38,45 @@ class ExitConfirmAction(Enum):
     QUIT_GAME = "quit_game"
 
 
+class SceneError(Exception):
+    """Base class for SceneManager transition errors.
+
+    Mirrors the HSM discipline (IllegalPlayerTransition, IllegalBossTransition):
+    a single root type lets callers `except SceneError` to catch all
+    scene-level illegal transitions, while subclasses carry the specific
+    failure mode.
+    """
+
+
+class SceneAlreadyActiveError(SceneError):
+    """Raised when ``SceneManager.switch()`` is called with the scene that
+    is already the active scene.
+
+    Mirrors ``IllegalPlayerTransition`` and ``IllegalBossTransition``:
+    makes silent no-op transitions loud, so callers can detect
+    double-switch bugs (e.g. a button-click path that re-fires the same
+    switch after the previous frame's switch already landed).
+    """
+
+    def __init__(self, name: str) -> None:
+        super().__init__(f"Scene '{name}' is already active")
+        self.scene_name = name
+
+
+class SceneNotRegisteredError(SceneError, KeyError):
+    """Raised when ``SceneManager.switch()`` is called with a name that
+    was never registered.
+
+    Subclasses ``KeyError`` so legacy callers that catch ``KeyError`` on
+    the old ``self._scenes[name]`` lookup keep working, while new code
+    can opt into the explicit type.
+    """
+
+    def __init__(self, name: str) -> None:
+        super().__init__(f"Scene '{name}' is not registered")
+        self.scene_name = name
+
+
 class Scene(ABC):
     """Abstract base class for all game scenes.
 
@@ -125,7 +164,17 @@ class SceneManager:
         Args:
             name: Name of the scene to switch to.
             **kwargs: Data to pass to the new scene's enter() method.
+
+        Raises:
+            SceneAlreadyActiveError: If the target scene is already the
+                current active scene.
+            SceneNotRegisteredError: If the named scene was never
+                ``register()``-ed.
         """
+        if name == self._current_scene_name and self._current_scene is not None:
+            raise SceneAlreadyActiveError(name)
+        if name not in self._scenes:
+            raise SceneNotRegisteredError(name)
         if self._current_scene:
             self._current_scene.exit()
         self._current_scene = self._scenes[name]
