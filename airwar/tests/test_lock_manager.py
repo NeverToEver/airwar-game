@@ -4,6 +4,11 @@ import pytest
 
 from airwar.game.systems.lock_manager import LockLayer, LockManager, LockRequest
 
+# LockManager arbitrates invincibility / control locks across all gameplay
+# systems (homecoming, mothership, boss enrage, phase dash, give-up, pause).
+# Pure logic, no I/O — include in smoke.
+pytestmark = pytest.mark.smoke
+
 HOMECOMING_LOCK_TIMER = 999999
 
 

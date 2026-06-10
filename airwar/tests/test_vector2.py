@@ -7,6 +7,10 @@ import pytest
 from airwar.core_bindings import RUST_AVAILABLE
 from airwar.entities.base import Vector2
 
+# Vector2 is the bedrock math primitive — every movement / collision test
+# transitively depends on it. Include in the smoke subset.
+pytestmark = pytest.mark.smoke
+
 
 def test_construct_default():
     v = Vector2()

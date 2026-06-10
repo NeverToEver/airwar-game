@@ -32,6 +32,10 @@ from airwar.entities.player_state import (
     PlayerStateMachine,
 )
 
+# Player HSM legal-transition table — every gameplay action funnels through
+# this. Pure logic, no rendering. Smoke these so HSM regressions fail fast.
+pytestmark = pytest.mark.smoke
+
 
 class _StubPlayer:
     """Minimal duck-typed Player that satisfies PlayerStateMachine.__init__."""

@@ -4,6 +4,9 @@ from airwar.config import HEALTH_REGEN
 from airwar.game.systems.difficulty_manager import DifficultyManager
 from airwar.game.systems.health_system import HealthSystem
 
+# Difficulty scaling + health regen tick — pure logic. Smoke subset.
+pytestmark = pytest.mark.smoke
+
 
 class FakePlayer:
     def __init__(self, health=50, max_health=100):
