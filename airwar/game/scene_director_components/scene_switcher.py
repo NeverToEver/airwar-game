@@ -35,10 +35,18 @@ class SceneSwitcher:
 
     def run_welcome_flow(self) -> tuple:
         """Single-page beginner interface: login + difficulty + controls in one screen."""
+        # Switch to the welcome scene once, before the loop. The
+        # sub-scene flows (tutorial, settings, benchmark) are entered
+        # via ``scene.enter()`` directly without a corresponding
+        # ``scene_manager.switch`` (the user has to be able to leave
+        # the sub-scene by clicking Back, not by the switcher
+        # silently swapping the active scene back). Re-calling
+        # ``switch("welcome")`` on the second iteration would raise
+        # ``SceneAlreadyActiveError`` because ``welcome`` is still
+        # ``SceneManager._current_scene`` from the initial switch.
+        self._scene_manager.switch("welcome", viewport=self._viewport)
+        welcome = self._scene_manager.get_current_scene()
         while self._director._running:
-            self._scene_manager.switch("welcome", viewport=self._viewport)
-            welcome = self._scene_manager.get_current_scene()
-
             result = self._run_scene_loop(welcome)
             if result == "quit":
                 return (False, None)
