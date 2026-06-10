@@ -39,6 +39,9 @@ extend-exclude = [
     "dist",
     "airwar_core/target",
     "vulture_whitelist.py",
+    # AirWar.spec is a PyInstaller-injected scope (SPECPATH, Analysis, PYZ,
+    # EXE, COLLECT are runtime-provided). Not project Python source.
+    "AirWar.spec",
 ]
 
 # Personal hobby project: keep only the basic correctness rules.

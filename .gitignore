@@ -118,6 +118,8 @@ airwar_core/target/
 # PyInstaller build artifacts
 *.spec
 *.spec.bak
+# Our SSOT PyInstaller spec is intentionally tracked (see ROADMAP §4 P1-7).
+!AirWar.spec
 
 # -----------------------------------------------------------------------------
 # Game Runtime Data
