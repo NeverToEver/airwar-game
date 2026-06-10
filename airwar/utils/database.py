@@ -111,6 +111,11 @@ class UserDB(SimpleDB):
     def __init__(self, db_path: str | None = None):
         super().__init__(db_path)
 
+    @classmethod
+    def reset_instance(cls) -> None:
+        """Clear any cached singleton. Intended for tests only."""
+        cls._instance = None  # type: ignore[attr-defined]
+
     def create_user(self, user_id: str, password: str) -> bool:
         data = self._load()
         if user_id in data:
