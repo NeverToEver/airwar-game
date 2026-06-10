@@ -1,3 +1,5 @@
+import pytest
+
 import airwar.game.managers.collision_controller as collision_module
 from airwar.entities.base import BulletData, Rect
 from airwar.game.constants import GAME_CONSTANTS
