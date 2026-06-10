@@ -27,6 +27,7 @@ import pygame
 
 from airwar.config import TUTORIAL_STAGES, TutorialStage, get_screen_height, get_screen_width
 from airwar.config.design_tokens import SceneColors, get_design_tokens
+from airwar.i18n import t as _t
 from airwar.game.mother_ship import MotherShip
 from airwar.game.rendering import GameRenderer
 from airwar.ui.aim_crosshair import AimCrosshair
@@ -750,8 +751,8 @@ class TutorialScene(Scene, MouseInteractiveMixin):
     def _tutorial_missions(self) -> list[dict]:
         return [
             {
-                "name": "歼灭先锋",
-                "desc": "击杀5个敌人",
+                "name": _t("tutorial.mission.eliminate.name"),
+                "desc": _t("tutorial.mission.eliminate.desc"),
                 "target": "kills",
                 "goal": 5,
                 "progress": min(self._kills, 5),
@@ -759,8 +760,8 @@ class TutorialScene(Scene, MouseInteractiveMixin):
                 "claimed": False,
             },
             {
-                "name": "支援链路",
-                "desc": "完成一次母舰停靠",
+                "name": _t("tutorial.mission.support.name"),
+                "desc": _t("tutorial.mission.support.desc"),
                 "target": "mothership",
                 "goal": 1,
                 "progress": 1 if self._dock_sub_phase in ("docked", "eject_player") else 0,
@@ -768,8 +769,8 @@ class TutorialScene(Scene, MouseInteractiveMixin):
                 "claimed": False,
             },
             {
-                "name": "返航整备",
-                "desc": "进入基地控制台",
+                "name": _t("tutorial.mission.homecoming.name"),
+                "desc": _t("tutorial.mission.homecoming.desc"),
                 "target": "homecoming",
                 "goal": 1,
                 "progress": 1 if self._base_sub_phase in ("base", "depart") else 0,

@@ -14,6 +14,20 @@ class TutorialStage:
     objective_count: int
     duration: int
     spawn_setup: str
+    title_key: str = ""
+    instructions_keys: tuple[str, ...] = ()
+    objective_key: str = ""
+
+
+def _k(stage_id: str, field: str, idx: int | None = None) -> str:
+    """Build a translation key for a tutorial stage field."""
+    if idx is not None:
+        return f"tutorial.stage.{stage_id}.{field}.{idx}"
+    return f"tutorial.stage.{stage_id}.{field}"
+
+
+def _instr_keys(stage_id: str, count: int) -> tuple[str, ...]:
+    return tuple(_k(stage_id, "instructions", i) for i in range(count))
 
 
 TUTORIAL_STAGES = [
@@ -29,6 +43,9 @@ TUTORIAL_STAGES = [
         objective_count=3,
         duration=0,
         spawn_setup="movement_targets",
+        title_key=_k("movement_aiming", "title"),
+        instructions_keys=_instr_keys("movement_aiming", 3),
+        objective_key=_k("movement_aiming", "objective"),
     ),
     TutorialStage(
         id="boost_phase_dash",
@@ -42,6 +59,9 @@ TUTORIAL_STAGES = [
         objective_count=4,
         duration=0,
         spawn_setup="none",
+        title_key=_k("boost_phase_dash", "title"),
+        instructions_keys=_instr_keys("boost_phase_dash", 3),
+        objective_key=_k("boost_phase_dash", "objective"),
     ),
     TutorialStage(
         id="combat_basics",
@@ -55,6 +75,9 @@ TUTORIAL_STAGES = [
         objective_count=5,
         duration=0,
         spawn_setup="easy_enemies",
+        title_key=_k("combat_basics", "title"),
+        instructions_keys=_instr_keys("combat_basics", 3),
+        objective_key=_k("combat_basics", "objective"),
     ),
     TutorialStage(
         id="mothership_docking",
@@ -68,6 +91,9 @@ TUTORIAL_STAGES = [
         objective_count=1,
         duration=0,
         spawn_setup="none",
+        title_key=_k("mothership_docking", "title"),
+        instructions_keys=_instr_keys("mothership_docking", 3),
+        objective_key=_k("mothership_docking", "objective"),
     ),
     TutorialStage(
         id="homecoming_base",
@@ -81,6 +107,9 @@ TUTORIAL_STAGES = [
         objective_count=1,
         duration=0,
         spawn_setup="none",
+        title_key=_k("homecoming_base", "title"),
+        instructions_keys=_instr_keys("homecoming_base", 3),
+        objective_key=_k("homecoming_base", "objective"),
     ),
     TutorialStage(
         id="boss_encounter",
@@ -94,6 +123,9 @@ TUTORIAL_STAGES = [
         objective_count=1,
         duration=0,
         spawn_setup="boss",
+        title_key=_k("boss_encounter", "title"),
+        instructions_keys=_instr_keys("boss_encounter", 3),
+        objective_key=_k("boss_encounter", "objective"),
     ),
     TutorialStage(
         id="tutorial_complete",
@@ -107,6 +139,9 @@ TUTORIAL_STAGES = [
         objective_count=1,
         duration=0,
         spawn_setup="none",
+        title_key=_k("tutorial_complete", "title"),
+        instructions_keys=_instr_keys("tutorial_complete", 3),
+        objective_key=_k("tutorial_complete", "objective"),
     ),
 ]
 

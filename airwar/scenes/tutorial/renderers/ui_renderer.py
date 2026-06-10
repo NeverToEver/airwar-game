@@ -121,10 +121,12 @@ class UIRenderer:
         surface.blit(badge_top, badge_top.get_rect(center=(badge_rect.centerx, badge_rect.centery - 12)))
         surface.blit(badge_num, badge_num.get_rect(center=(badge_rect.centerx, badge_rect.centery + 12)))
 
-        title = s._heading_font.render(s._stage.title, True, SceneColors.ACCENT_TEAL_BRIGHT)
+        stage_title = t(s._stage.title_key) if s._stage.title_key else s._stage.title
+        title = s._heading_font.render(stage_title, True, SceneColors.ACCENT_TEAL_BRIGHT)
         surface.blit(title, title.get_rect(midleft=(content_left, y + 32)))
 
-        objective = f"{t('tutorial.objective_prefix')}{s._stage.objective}"
+        obj_text = t(s._stage.objective_key) if s._stage.objective_key else s._stage.objective
+        objective = f"{t('tutorial.objective_prefix')}{obj_text}"
         obj_surf = fit_text_to_width(s._small_font, objective, SceneColors.ACCENT_PRIMARY, max_text_w)
         surface.blit(obj_surf, obj_surf.get_rect(midleft=(content_left, y + 66)))
 
@@ -264,7 +266,8 @@ class UIRenderer:
         y = panel.y + 142
         for index, stage in enumerate(TUTORIAL_STAGES, start=1):
             mark_color = SceneColors.ACCENT_TEAL_BRIGHT if stage.id in s._cleared_stage_ids else SceneColors.TEXT_DIM
-            label = f"{index}. {stage.title}"
+            stage_title = t(stage.title_key) if stage.title_key else stage.title
+            label = f"{index}. {stage_title}"
             text = s._small_font.render(label, True, mark_color)
             surface.blit(text, (panel.x + 72, y))
             y += 36
@@ -336,7 +339,8 @@ class UIRenderer:
 
         stage_label = t("tutorial.stage_label", index=s._stage_index + 1)
         stage_text = s._body_font.render(stage_label, True, SceneColors.ACCENT_PRIMARY)
-        title_text = fit_text_to_width(s._heading_font, s._stage.title, SceneColors.TEXT_BRIGHT, card_w - 96)
+        stage_title = t(s._stage.title_key) if s._stage.title_key else s._stage.title
+        title_text = fit_text_to_width(s._heading_font, stage_title, SceneColors.TEXT_BRIGHT, card_w - 96)
         card.blit(stage_text, stage_text.get_rect(center=(card_w // 2, 34)))
         card.blit(title_text, title_text.get_rect(center=(card_w // 2, 76)))
 
@@ -496,6 +500,8 @@ class UIRenderer:
                 return [t("tutorial.homecoming_base_text")]
             return [t("tutorial.homecoming_depart_text")]
 
+        if s._stage.instructions_keys:
+            return [t(k) for k in s._stage.instructions_keys]
         return s._stage.instructions
 
     def _objective_counter_text(self) -> str:

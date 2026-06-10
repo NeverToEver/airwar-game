@@ -74,3 +74,29 @@ def test_singleton_t_helper_uses_module_translator():
     assert a.get_locale() == DEFAULT_LOCALE
     # The convenience t() helper should delegate to the same singleton.
     assert t("__definitely_missing__") == "__definitely_missing__"
+
+
+def test_missing_key_warns_exactly_once(isolated_translator, caplog):
+    """Repeated calls with the same missing key should warn only once."""
+    with caplog.at_level("WARNING"):
+        for _ in range(5):
+            isolated_translator.t("missing.once.key")
+    warnings = [r for r in caplog.records if "Missing translation" in r.message and "missing.once.key" in r.message]
+    assert len(warnings) == 1
+
+
+_CJK_RE = __import__("re").compile(r"[一-鿿]")
+
+
+def test_en_us_tutorial_keys_have_no_cjk():
+    """en_US tutorial stage translations must not contain CJK characters."""
+    from airwar.config.tutorial.tutorial_stages import TUTORIAL_STAGES
+
+    tr = Translator(default_locale="en_US")
+    for stage in TUTORIAL_STAGES:
+        if stage.title_key:
+            assert not _CJK_RE.search(tr.t(stage.title_key)), f"CJK in en_US {stage.title_key}"
+        if stage.objective_key:
+            assert not _CJK_RE.search(tr.t(stage.objective_key)), f"CJK in en_US {stage.objective_key}"
+        for key in stage.instructions_keys:
+            assert not _CJK_RE.search(tr.t(key)), f"CJK in en_US {key}"

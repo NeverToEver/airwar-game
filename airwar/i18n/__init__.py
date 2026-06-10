@@ -39,6 +39,7 @@ class Translator:
         self._locales_dir = locales_dir or _LOCALES_DIR
         self._locale = default_locale
         self._catalogs: dict[str, dict[str, str]] = {}
+        self._missing: set[tuple[str, str]] = set()  # (locale, key) already warned
         self._lock = RLock()
         # Eagerly load the default locale so first-frame t() calls are O(1).
         self._load_locale(default_locale)
@@ -56,11 +57,14 @@ class Translator:
 
         value = catalog.get(key)
         if value is None:
-            _logger.warning(
-                "Missing translation for key=%r in locale=%r; falling back to key",
-                key,
-                self._locale,
-            )
+            warn_key = (self._locale, key)
+            if warn_key not in self._missing:
+                self._missing.add(warn_key)
+                _logger.warning(
+                    "Missing translation for key=%r in locale=%r; falling back to key",
+                    key,
+                    self._locale,
+                )
             value = key
 
         if kwargs:
