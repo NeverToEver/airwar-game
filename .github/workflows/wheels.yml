@@ -1,0 +1,59 @@
+name: Build Wheels
+
+# P2-1: multi-platform wheel matrix via cibuildwheel.
+# Closes the single-platform gap in CI: ci.yml only builds + tests
+# the wheel on ubuntu-latest. This workflow builds cp3{11,12,13}
+# wheels on linux + macos-13 + windows and uploads them as artifacts,
+# gated to manual `workflow_dispatch` and `release: published`.
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+concurrency:
+  group: build-wheels-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build_wheels:
+    name: Wheel on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-13, windows-latest]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build wheels with cibuildwheel
+        # cibuildwheel operates on airwar_core/ (the maturin pyproject.toml).
+        # Output naming: wheel/airwar_core-0.1.0-cp311-...whl
+        env:
+          # Build cp311 / cp312 / cp313 wheels (project requires >= 3.11).
+          CIBW_BUILD: "cp3{11,12,13}-*"
+          CIBW_ARCHS: auto
+          # maturin is the build backend; cibuildwheel invokes it via
+          # `pip wheel` under the hood after installing maturin.
+          CIBW_BEFORE_BUILD: "pip install maturin"
+          CIBW_BUILD_VERBOSITY: "1"
+          CIBW_SKIP: "*-musllinux_* *-manylinux_i686 pp*"
+        run: |
+          python -m pip install cibuildwheel==2.20.0
+          python -m cibuildwheel --output-dir wheel airwar_core
+
+      - name: Upload wheels artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.os }}
+          path: wheel/*.whl
+          if-no-files-found: error
+          retention-days: 14
