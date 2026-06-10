@@ -677,6 +677,11 @@ class GameIntegrator:
 
         is_docked = self._state_machine.current_state == MotherShipState.DOCKED
 
+        sm = self._state_machine
+        mothership_state = sm.current_state.value
+        cooldown_progress = sm.cooldown.cooldown_progress if sm.current_state == MotherShipState.COOLDOWN else 0.0
+        stay_progress = sm.stay_progress.stay_progress if is_docked else 0.0
+
         player = self._game_scene.player
         return GameSaveData(
             score=self._game_scene.get_score(),
@@ -693,6 +698,9 @@ class GameIntegrator:
             player_x=player.rect.x if player else 0,
             player_y=player.rect.y if player else 0,
             is_in_mothership=is_docked,
+            mothership_state=mothership_state,
+            mothership_cooldown_progress=cooldown_progress,
+            mothership_stay_progress=stay_progress,
             username=self._game_scene.get_username(),
             requisition_points=(
                 self._game_scene.game_controller.state.requisition_points if self._game_scene.game_controller else 0
@@ -860,8 +868,8 @@ class GameIntegrator:
     def get_docking_position(self) -> tuple:
         return self._mother_ship.get_docking_position()
 
-    def force_docked_state(self) -> None:
-        self._state_machine.force_state(MotherShipState.DOCKED)
+    def force_docked_state(self, stay_progress: float = 0.0) -> None:
+        self._state_machine.restore_docked_state(stay_progress)
         self._mother_ship.show()
         self._player_control_disabled = False
         self._activate_invincibility()

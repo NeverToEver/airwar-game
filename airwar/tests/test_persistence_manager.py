@@ -150,3 +150,42 @@ def test_persistence_atomic_write_calls_fsync(tmp_path):
             manager.save_game(save_data)
 
     assert call_log == ["fsync", "replace"], "fsync must precede os.replace"
+
+
+def test_mothership_state_round_trip(tmp_path):
+    """Mothership state fields survive save/load round-trip."""
+    manager = PersistenceManager(save_dir=str(tmp_path))
+    save_data = GameSaveData(
+        score=500,
+        username="pilot",
+        is_in_mothership=True,
+        mothership_state="docked",
+        mothership_stay_progress=0.5,
+        mothership_cooldown_progress=0.0,
+    )
+
+    assert manager.save_game(save_data) is True
+
+    loaded = manager.load_game()
+    assert loaded is not None
+    assert loaded.is_in_mothership is True
+    assert loaded.mothership_state == "docked"
+    assert loaded.mothership_stay_progress == pytest.approx(0.5)
+    assert loaded.mothership_cooldown_progress == pytest.approx(0.0)
+
+
+def test_v2_save_migrates_to_v3(tmp_path):
+    """A v2 save file (missing mothership fields) loads with defaults."""
+    import json
+
+    save_path = tmp_path / PersistenceManager.DEFAULT_SAVE_FILE_NAME
+    save_path.write_text(
+        json.dumps({"version": 2, "score": 100, "username": "pilot"}), encoding="utf-8"
+    )
+
+    manager = PersistenceManager(save_dir=str(tmp_path))
+    loaded = manager.load_game()
+    assert loaded is not None
+    assert loaded.mothership_state == "idle"
+    assert loaded.mothership_cooldown_progress == 0.0
+    assert loaded.mothership_stay_progress == 0.0

@@ -76,12 +76,18 @@ class SaveRestoreManager:
         player.health = min(max(1, save_data.player_health), player.max_health)
 
         if save_data.is_in_mothership:
-            self._restore_to_mothership_state()
+            stay_prog = getattr(save_data, "mothership_stay_progress", 0.0)
+            self._restore_to_mothership_state(stay_progress=stay_prog)
         else:
             sw = get_screen_width()
             sh = get_screen_height()
             player.rect.x = max(0, min(save_data.player_x, sw - player.rect.width))
             player.rect.y = max(0, min(save_data.player_y, sh - player.rect.height))
+            # Restore COOLDOWN state if saved while cooling down
+            ms_state = getattr(save_data, "mothership_state", "idle")
+            cd_prog = getattr(save_data, "mothership_cooldown_progress", 0.0)
+            if ms_state == "cooldown" and cd_prog > 0 and self._mother_ship_integrator:
+                self._mother_ship_integrator._state_machine.restore_cooldown_state(cd_prog)
 
         game_controller.state.is_entrance_playing = False
         game_controller.state.entrance_timer = 0
@@ -129,12 +135,12 @@ class SaveRestoreManager:
         )
         manager.apply_to_reward_system(self._reward_system, self._player)
 
-    def _restore_to_mothership_state(self) -> None:
+    def _restore_to_mothership_state(self, stay_progress: float = 0.0) -> None:
         """Restore mothership state with player docked inside."""
         if not self._player:
             return
         if self._mother_ship_integrator:
-            self._mother_ship_integrator.force_docked_state()
+            self._mother_ship_integrator.force_docked_state(stay_progress=stay_progress)
             docking_pos = self._mother_ship_integrator.get_docking_position()
             self._player.rect.x = docking_pos[0] - self._player.rect.width // 2
             self._player.rect.y = docking_pos[1] - self._player.rect.height // 2

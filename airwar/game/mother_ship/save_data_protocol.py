@@ -53,6 +53,9 @@ class ISaveData(Protocol):
     player_x: float
     player_y: float
     is_in_mothership: bool
+    mothership_state: str
+    mothership_cooldown_progress: float
+    mothership_stay_progress: float
 
     # --- Talent / loadout ---
     unlocked_buffs: list[str]

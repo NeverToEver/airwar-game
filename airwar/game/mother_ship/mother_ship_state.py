@@ -6,7 +6,7 @@ from enum import Enum
 
 import pygame
 
-CURRENT_SAVE_VERSION = 2
+CURRENT_SAVE_VERSION = 3
 
 
 class SaveDataCorruptedError(Exception):
@@ -172,6 +172,9 @@ class GameSaveData:
     player_x: float = 0.0
     player_y: float = 0.0
     is_in_mothership: bool = False
+    mothership_state: str = "idle"
+    mothership_cooldown_progress: float = 0.0
+    mothership_stay_progress: float = 0.0
     username: str = ""
     requisition_points: int = 0
 
@@ -194,6 +197,9 @@ class GameSaveData:
                 "player_x": self.player_x,
                 "player_y": self.player_y,
                 "is_in_mothership": self.is_in_mothership,
+                "mothership_state": self.mothership_state,
+                "mothership_cooldown_progress": self.mothership_cooldown_progress,
+                "mothership_stay_progress": self.mothership_stay_progress,
                 "username": self.username,
                 "requisition_points": self.requisition_points,
             }
@@ -203,6 +209,9 @@ class GameSaveData:
     def from_dict(cls, data: dict) -> "GameSaveData":
         if "version" not in data:
             data = cls._migrate_legacy_save(data)
+
+        if data.get("version", 0) < CURRENT_SAVE_VERSION:
+            data = cls._migrate_v2_to_v3(data)
 
         if data.get("version", 0) > CURRENT_SAVE_VERSION:
             raise SaveDataCorruptedError(
@@ -216,6 +225,9 @@ class GameSaveData:
 
         data.setdefault("player_x", 0.0)
         data.setdefault("player_y", 0.0)
+        data.setdefault("mothership_state", "idle")
+        data.setdefault("mothership_cooldown_progress", 0.0)
+        data.setdefault("mothership_stay_progress", 0.0)
         data = normalize_save_data(data)
 
         return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
@@ -223,4 +235,13 @@ class GameSaveData:
     @classmethod
     def _migrate_legacy_save(cls, data: dict) -> dict:
         data["version"] = 1
+        return data
+
+    @classmethod
+    def _migrate_v2_to_v3(cls, data: dict) -> dict:
+        """Migrate v2 save to v3 — add mothership state fields."""
+        data.setdefault("mothership_state", "idle")
+        data.setdefault("mothership_cooldown_progress", 0.0)
+        data.setdefault("mothership_stay_progress", 0.0)
+        data["version"] = 3
         return data

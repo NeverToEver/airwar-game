@@ -195,5 +195,27 @@ class MotherShipStateMachine(IMotherShipStateMachine):
         """
         self._current_state = state
 
+    def restore_docked_state(self, stay_progress: float = 0.0) -> None:
+        """Restore to DOCKED state with backdated stay timer.
+
+        Args:
+            stay_progress: 0.0-1.0 fraction of the 20s stay already elapsed.
+        """
+        now = pygame.time.get_ticks() / 1000.0
+        elapsed = stay_progress * self._stay_progress.stay_duration
+        self._current_state = MotherShipState.DOCKED
+        self._stay_progress.start_stay(now - elapsed)
+
+    def restore_cooldown_state(self, cooldown_progress: float = 0.0) -> None:
+        """Restore to COOLDOWN state with backdated cooldown timer.
+
+        Args:
+            cooldown_progress: 0.0-1.0 fraction of the cooldown already elapsed.
+        """
+        now = pygame.time.get_ticks() / 1000.0
+        elapsed = cooldown_progress * self._cooldown.cooldown_duration
+        self._current_state = MotherShipState.COOLDOWN
+        self._cooldown.start_cooldown(now - elapsed)
+
     def is_exit_in_progress(self) -> bool:
         return self._exit_in_progress
