@@ -27,7 +27,6 @@ from types import SimpleNamespace
 
 import pygame
 
-from airwar.scenes.tutorial.entities_core import TutorialBoss, TutorialBullet, TutorialEnemy
 from airwar.scenes.tutorial.tutorial_boss_sim import TutorialBoss as BossSim
 from airwar.scenes.tutorial.tutorial_enemy_sim import TutorialEnemySim
 from airwar.scenes.tutorial.tutorial_player_sim import TutorialPlayer

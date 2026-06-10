@@ -5,7 +5,7 @@ BossManager, MilestoneManager, UIManager, GameLoopManager, etc.
 Each file should import from here instead of defining its own copy.
 """
 
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Protocol
 
 
 class PlayerProtocol(Protocol):

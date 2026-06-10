@@ -18,7 +18,6 @@ from __future__ import annotations
 import pygame
 import pytest
 
-from airwar.scenes import settings_scene as settings_module
 from airwar.scenes.settings_scene import SettingsScene
 
 

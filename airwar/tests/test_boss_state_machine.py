@@ -33,6 +33,7 @@ from airwar.entities.enemy.boss import (
     BossState,
     IllegalBossTransition,
 )
+from airwar.entities.enemy.boss.boss_state import _BOSS_TRANSITIONS
 
 
 def _make_boss(health: int = 1000) -> Boss:
@@ -363,8 +364,6 @@ def test_illegal_transition_enrage_active_to_active_skips_return() -> None:
 # ``IllegalBossTransition``. This catches regressions if someone adds an
 # edge to the table without updating the tests.
 # ---------------------------------------------------------------------------
-
-from airwar.entities.enemy.boss.boss_state import _BOSS_TRANSITIONS
 
 ALL_STATES = list(BossState)
 _ILLEGAL_PAIRS = [

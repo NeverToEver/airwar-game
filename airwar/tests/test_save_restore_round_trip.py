@@ -33,8 +33,6 @@ round-trip for arbitrary ``GameSaveData`` payloads.
 from __future__ import annotations
 
 import json
-import os
-import sys
 from dataclasses import asdict
 
 import pytest
