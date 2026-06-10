@@ -77,6 +77,24 @@ class SceneNotRegisteredError(SceneError, KeyError):
         self.scene_name = name
 
 
+class SceneUnknownError(SceneError):
+    """Raised when ``SceneManager.update()`` / ``render()`` /
+    ``handle_events()`` is called while no scene is active.
+
+    Catch-all for the "scene director forgot to switch to a scene"
+    bug class. Previously the manager silently no-op'd when
+    ``_current_scene`` was ``None`` -- hiding framework mis-wiring
+    until a downstream consumer hit a ``None`` reference. Now the
+    call surfaces a ``SceneUnknownError`` so the bug is loud at the
+    source, mirroring ``IllegalPlayerTransition`` /
+    ``IllegalBossTransition`` discipline.
+    """
+
+    def __init__(self, operation: str) -> None:
+        super().__init__(f"SceneManager.{operation}() called with no active scene")
+        self.operation = operation
+
+
 class Scene(ABC):
     """Abstract base class for all game scenes.
 
@@ -193,22 +211,43 @@ class SceneManager:
         return self._current_scene_name
 
     def update(self, *args, **kwargs) -> None:
-        """Update the currently active scene."""
-        if self._current_scene:
-            self._current_scene.update(*args, **kwargs)
+        """Update the currently active scene.
+
+        Raises:
+            SceneUnknownError: If no scene is currently active (caller
+                forgot to ``switch()`` first).
+        """
+        if self._current_scene is None:
+            raise SceneUnknownError("update")
+        self._current_scene.update(*args, **kwargs)
 
     def render(self, surface: pygame.Surface) -> None:
         """Render the currently active scene.
 
         Args:
             surface: Pygame surface to render onto.
+
+        Raises:
+            SceneUnknownError: If no scene is currently active (caller
+                forgot to ``switch()`` first).
         """
-        if self._current_scene:
-            self._current_scene.render(surface)
+        if self._current_scene is None:
+            raise SceneUnknownError("render")
+        self._current_scene.render(surface)
 
     def handle_events(self, event: pygame.event.Event) -> None:
-        if self._current_scene:
-            self._current_scene.handle_events(event)
+        """Dispatch a pygame event to the currently active scene.
+
+        Args:
+            event: Pygame event to dispatch.
+
+        Raises:
+            SceneUnknownError: If no scene is currently active (caller
+                forgot to ``switch()`` first).
+        """
+        if self._current_scene is None:
+            raise SceneUnknownError("handle_events")
+        self._current_scene.handle_events(event)
 
     def get_scene(self, name: str) -> Scene:
         """Get a registered scene by name.
