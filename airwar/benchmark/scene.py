@@ -256,6 +256,14 @@ class BenchmarkScene(Scene, MouseInteractiveMixin):
         self._wants_to_leave = False
         self.clear_hover()
         self.clear_buttons()
+        # Populate button rects now so the first mouse-click dispatched
+        # by SceneSwitcher (which runs before the first render) actually
+        # has targets. Without this, the very first click is silently
+        # dropped because ``_button_rects`` is empty. The rects get
+        # re-registered on every render with the real surface size, so
+        # the worst case here is "slightly stale rects for one frame
+        # on resize" — much better than "no clicks ever register".
+        self._register_idle_buttons()
 
         # Force-import all scenario modules so ALL_SCENARIOS is populated
         # for the worker thread.  Done here (rather than at import time)
@@ -370,6 +378,38 @@ class BenchmarkScene(Scene, MouseInteractiveMixin):
         title_surf = self.title_font.render(t("benchmark.title"), True, SC.GOLD_PRIMARY)
         surface.blit(title_surf, title_surf.get_rect(center=(sw // 2, 80)))
 
+    def _register_idle_buttons(self) -> None:
+        """Populate ``_button_rects`` with idle-state button positions.
+
+        Called once from ``enter()`` so the first mouse-click
+        dispatched by ``SceneSwitcher._run_scene_loop`` (which
+        dispatches before the first ``render()`` call) actually
+        has targets. Re-rendered on every subsequent frame from
+        ``_render_idle`` with the real surface dimensions.
+
+        Uses the configured screen width/height as a safe
+        approximation for the not-yet-attached surface; the first
+        real render overwrites these rects with the actual viewport
+        size, so the worst case is "rects are off by a few px for
+        one frame on resize".
+        """
+        from airwar.config import get_screen_height, get_screen_width
+
+        sw, sh = get_screen_width(), get_screen_height()
+        scale = ResponsiveHelper.get_scale_factor(sw, sh)
+
+        enter_w = ResponsiveHelper.scale(360, scale)
+        enter_h = ResponsiveHelper.scale(80, scale)
+        enter_rect = pygame.Rect(0, 0, enter_w, enter_h)
+        enter_rect.center = (sw // 2, sh // 2 - 20)
+        self.register_button(self.ENTER_BUTTON, enter_rect)
+
+        back_w = ResponsiveHelper.scale(160, scale)
+        back_h = ResponsiveHelper.scale(50, scale)
+        back_rect = pygame.Rect(0, 0, back_w, back_h)
+        back_rect.center = (sw // 2, sh - 80)
+        self.register_button(self.BACK_BUTTON, back_rect)
+
     def _render_idle(self, surface, sw, sh):
         SC = SceneColors
         scale = ResponsiveHelper.get_scale_factor(sw, sh)
@@ -383,6 +423,7 @@ class BenchmarkScene(Scene, MouseInteractiveMixin):
         enter_rect = pygame.Rect(0, 0, enter_w, enter_h)
         enter_rect.center = (sw // 2, sh // 2 - 20)
         self.register_button(self.ENTER_BUTTON, enter_rect)
+        self._enter_rect = enter_rect  # cache for _render_idle reuse
         enter_hover = self.is_button_hovered(self.ENTER_BUTTON)
         # Pulse the enter button.
         pulse = (math.sin(self._animation_time * 0.06) + 1) * 0.5
@@ -417,6 +458,7 @@ class BenchmarkScene(Scene, MouseInteractiveMixin):
         back_rect = pygame.Rect(0, 0, back_w, back_h)
         back_rect.center = (sw // 2, sh - 80)
         self.register_button(self.BACK_BUTTON, back_rect)
+        self._back_rect = back_rect  # cache for _render_idle reuse
         back_hover = self.is_button_hovered(self.BACK_BUTTON)
         draw_chamfered_panel(
             surface,
