@@ -280,6 +280,18 @@ def test_handle_game_over_invokes_evaluate_achievements():
     director._evaluate_achievements.assert_called_once_with(game_scene)
 
 
+def test_run_uses_overridable_flow_forwarders():
+    """Smoke tests and harnesses patch the director-level flow methods."""
+    director = _director()
+    director._run_welcome_flow = MagicMock(return_value=(True, None))
+    director._run_game_flow = MagicMock(return_value="quit")
+
+    director.run()
+
+    director._run_welcome_flow.assert_called_once_with()
+    director._run_game_flow.assert_called_once_with()
+
+
 def test_welcome_flow_resets_per_run_achievement_state(tmp_path):
     """Each welcome iteration must reset dock count and registry reference.
 
