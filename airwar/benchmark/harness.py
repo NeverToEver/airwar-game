@@ -243,7 +243,17 @@ class ScenarioRunner:
         scene_manager = director._scene_manager
         # Run enter() on the target scene if it isn't already active.
         if scene_manager.get_current_scene_name() != self.target_scene:
-            scene_manager.switch(self.target_scene)
+            enter_kwargs: dict[str, object] = {}
+            if self.target_scene == "game":
+                enter_kwargs = {
+                    "difficulty": self.difficulty,
+                    "username": self.username,
+                    "settings_ref": getattr(director, "_settings_ref", {}),
+                    "viewport": getattr(director, "_viewport", None),
+                }
+            elif self.target_scene in ("welcome", "tutorial"):
+                enter_kwargs = {"viewport": getattr(director, "_viewport", None)}
+            scene_manager.switch(self.target_scene, **enter_kwargs)
 
     # -- Input scheduling -----------------------------------------------
 
@@ -312,16 +322,24 @@ class ScenarioRunner:
                 self._frame += 1
                 continue
 
-            # Drain pygame queue into scene.handle_events.
-            for raw_event in pygame.event.get():
-                # Map mouse coordinates through the viewport.
-                if hasattr(raw_event, "pos"):
-                    attrs = getattr(raw_event, "dict", {}).copy()
-                    attrs["pos"] = viewport.screen_to_logical(*raw_event.pos)
-                    event = pygame.event.Event(raw_event.type, attrs)
-                else:
-                    event = raw_event
-                scene.handle_events(event)
+            switcher = getattr(director, "_switcher", None)
+            if switcher is not None:
+                events = switcher._poll_events()
+                if not switcher._check_quit(events):
+                    break
+                switcher._handle_resize_if_needed(events)
+                switcher._handle_scene_events(events, target_scene=scene)
+            else:
+                # Fallback for isolated tests that provide a lightweight
+                # director without the normal SceneSwitcher.
+                for raw_event in pygame.event.get():
+                    if hasattr(raw_event, "pos"):
+                        attrs = getattr(raw_event, "dict", {}).copy()
+                        attrs["pos"] = viewport.screen_to_logical(*raw_event.pos)
+                        event = pygame.event.Event(raw_event.type, attrs)
+                    else:
+                        event = raw_event
+                    scene.handle_events(event)
 
             # Update.
             scene.update()
