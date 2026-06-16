@@ -66,15 +66,6 @@ ignore_missing_imports = true
 "airwar/utils/sprites.py" = ["F401"]
 
 # -----------------------------------------------------------------------------
-# Mutation testing (mutmut 2.x)
-# -----------------------------------------------------------------------------
-[tool.mutmut]
-backup_dir = ".mutmut-cache"
-runner = "python -m pytest -x -q --no-cov --override-ini=\"addopts=\""
-tests_dir = "airwar/tests"
-paths_to_mutate = "airwar"
-
-# -----------------------------------------------------------------------------
 # Coverage (pytest-cov)
 # -----------------------------------------------------------------------------
 [tool.coverage.run]

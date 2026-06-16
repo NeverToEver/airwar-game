@@ -3,6 +3,8 @@
 import logging
 from collections.abc import Callable
 
+from airwar.config.constants_access import get_game_constants
+
 from .interfaces import IEventBus
 
 logger = logging.getLogger(__name__)
@@ -104,17 +106,13 @@ class EventBus(IEventBus):
     ``unsubscribe()`` before resubscribing.
     """
 
-    # Per-event subscriber cap. Legitimate runtime wiring subscribes at most
-    # a handful of callbacks per channel (GameIntegrator alone uses ~14
-    # channels, with at most one callback each). 1000 leaves several orders of
-    # magnitude of headroom while still catching a runaway subscription leak
-    # in long sessions before it can grow the dict without bound.
-    MAX_SUBSCRIBERS: int = 1000
+    # Backward-compatible aliases for values in GAME_CONSTANTS.EVENTS.
+    MAX_SUBSCRIBERS: int = get_game_constants().EVENTS.MAX_SUBSCRIBERS
 
     def __init__(self):
         self._subscribers: dict[str, list[Callable]] = {}
         self._failure_counts: dict[tuple[str, int], int] = {}
-        self._max_callback_failures: int | None = 3
+        self._max_callback_failures: int | None = get_game_constants().EVENTS.MAX_CALLBACK_FAILURES
 
     def subscribe(self, event: str, callback: Callable) -> bool:
         """Subscribe ``callback`` to ``event``.

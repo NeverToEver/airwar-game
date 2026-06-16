@@ -1,23 +1,6 @@
 """Mothership package — docking system for saving game progress."""
 
-from .event_bus import EventBus
-from .game_integrator import GameIntegrator
-from .input_detector import InputDetector
-from .interfaces import (
-    IEventBus,
-    IInputDetector,
-    IMotherShipStateMachine,
-    IMotherShipUI,
-    IPersistenceManager,
-)
-from .mother_ship import MotherShip
-from .mother_ship_motion import MotherShipMotion
-from .mother_ship_renderer import MotherShipRenderer
-from .mother_ship_state import DockingProgress, GameSaveData, MotherShipState, SaveDataCorruptedError
-from .persistence_manager import PersistenceManager
-from .progress_bar_ui import ProgressBarUI
-from .save_data_protocol import ISaveData
-from .state_machine import MotherShipStateMachine
+from importlib import import_module
 
 __all__ = [
     "DockingProgress",
@@ -40,3 +23,34 @@ __all__ = [
     "ProgressBarUI",
     "SaveDataCorruptedError",
 ]
+
+_LAZY_EXPORTS = {
+    "DockingProgress": ".mother_ship_state",
+    "EventBus": ".event_bus",
+    "GameIntegrator": ".game_integrator",
+    "GameSaveData": ".mother_ship_state",
+    "IEventBus": ".interfaces",
+    "IInputDetector": ".interfaces",
+    "IMotherShipStateMachine": ".interfaces",
+    "IMotherShipUI": ".interfaces",
+    "IPersistenceManager": ".interfaces",
+    "ISaveData": ".save_data_protocol",
+    "InputDetector": ".input_detector",
+    "MotherShip": ".mother_ship",
+    "MotherShipMotion": ".mother_ship_motion",
+    "MotherShipRenderer": ".mother_ship_renderer",
+    "MotherShipState": ".mother_ship_state",
+    "MotherShipStateMachine": ".state_machine",
+    "PersistenceManager": ".persistence_manager",
+    "ProgressBarUI": ".progress_bar_ui",
+    "SaveDataCorruptedError": ".mother_ship_state",
+}
+
+
+def __getattr__(name: str):
+    if name in _LAZY_EXPORTS:
+        module = import_module(_LAZY_EXPORTS[name], __name__)
+        value = getattr(module, name)
+        globals()[name] = value
+        return value
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

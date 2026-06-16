@@ -56,7 +56,6 @@ EXCLUDES = [
     # Heavy debugging / dev tools that should never ship in a release build.
     "pytest",
     "pytest_cov",
-    "mutmut",
     "hypothesis",
     "vulture",
     "mypy",

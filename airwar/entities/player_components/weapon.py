@@ -1,6 +1,6 @@
 """Player weapon component.
 
-Owns: bullet pool, fire / auto_fire / cooldown, weapon modifiers
+Owns: bullet list, fire / auto_fire / cooldown, weapon modifiers
 (spread / laser / explosive), muzzle geometry, and bullet creation.
 
 Extracted from the original 755-line Player god class (Phase 4 W-delta).
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 
 class PlayerWeapon:
-    """Weapon state: bullet pool, cooldown, weapon modifiers.
+    """Weapon state: bullet list, cooldown, weapon modifiers.
 
     Args:
         owner: The Player instance (read ``rect``/``bullet_damage``,

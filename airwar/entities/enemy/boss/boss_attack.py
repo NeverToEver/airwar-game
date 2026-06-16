@@ -37,16 +37,15 @@ if TYPE_CHECKING:
     from .boss import Boss
 
 
-# P1-4: Module-level constants kept as literals (backward compat with
-# the ``Boss`` class attributes and other importers). The canonical
-# source of truth is ``GAME_CONSTANTS.BOSS_TUNING`` in
-# :mod:`airwar.game.constants`; the values below mirror it. Keep in
-# sync if you tune the boss attack.
-ATTACK_DIRECTIONS = ["down", "left", "right", "up"]
-SPREAD_DAMAGE_INCREMENT = 2
-AIM_DAMAGE_INCREMENT = 3
-AIM_BULLET_COUNT = 3
-WAVE_BULLET_COUNT = 8
+_BOSS_TUNING = get_game_constants().BOSS_TUNING
+
+# Backward-compatible aliases. The values are sourced from
+# GAME_CONSTANTS.BOSS_TUNING so boss attack tuning has one definition.
+ATTACK_DIRECTIONS = list(_BOSS_TUNING.ATTACK_DIRECTIONS)
+SPREAD_DAMAGE_INCREMENT = _BOSS_TUNING.SPREAD_DAMAGE_INCREMENT
+AIM_DAMAGE_INCREMENT = _BOSS_TUNING.AIM_DAMAGE_INCREMENT
+AIM_BULLET_COUNT = _BOSS_TUNING.AIM_BULLET_COUNT
+WAVE_BULLET_COUNT = _BOSS_TUNING.WAVE_BULLET_COUNT
 
 
 class BossAttackPatterns:

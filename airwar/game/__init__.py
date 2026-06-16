@@ -1,23 +1,6 @@
 """Game engine package — scene management, game loop, and rendering."""
 
-# Systems modules
-from .managers.collision_controller import CollisionController
-
-# Controller modules (migrated to managers)
-from .managers.game_controller import GameController, GameState
-from .managers.spawn_controller import SpawnController
-
-# Rendering modules (includes HUD)
-from .rendering import HUDRenderer
-
-# Rendering modules
-from .rendering.game_renderer import GameEntities, GameRenderer
-
-# Spawners
-from .spawners.enemy_bullet_spawner import EnemyBulletSpawner
-from .systems.health_system import HealthSystem
-from .systems.notification_manager import NotificationManager
-from .systems.reward_system import RewardSystem
+from importlib import import_module
 
 __all__ = [
     "CollisionController",
@@ -33,13 +16,26 @@ __all__ = [
     "SpawnController",
 ]
 
-# Lazy import to avoid circular import
-_game_module = None
+_LAZY_EXPORTS = {
+    "CollisionController": ".managers.collision_controller",
+    "EnemyBulletSpawner": ".spawners.enemy_bullet_spawner",
+    "Game": ".game",
+    "GameController": ".managers.game_controller",
+    "GameEntities": ".rendering.game_renderer",
+    "GameRenderer": ".rendering.game_renderer",
+    "GameState": ".managers.game_controller",
+    "HUDRenderer": ".rendering",
+    "HealthSystem": ".systems.health_system",
+    "NotificationManager": ".systems.notification_manager",
+    "RewardSystem": ".systems.reward_system",
+    "SpawnController": ".managers.spawn_controller",
+}
 
 
 def __getattr__(name):
-    if name == "Game":
-        from .game import Game
-
-        return Game
+    if name in _LAZY_EXPORTS:
+        module = import_module(_LAZY_EXPORTS[name], __name__)
+        value = getattr(module, name)
+        globals()[name] = value
+        return value
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

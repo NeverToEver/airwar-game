@@ -285,7 +285,8 @@ class EnemyTuningConstants:
         Movement defaults: DEFAULT_MOVE_*, DEFAULT_NOISE_*,
                     DEFAULT_AGGRESSIVE_*, DEFAULT_ZIGZAG_*,
                     DEFAULT_SPIRAL_*
-        Elite:      VISUAL_SCALE, COLLISION_SCALE, SPAWN_START_Y
+        Elite:      VISUAL_SCALE, COLLISION_SCALE, ELITE_ENTRY_SPEED,
+                    SPAWN_START_Y
     """
 
     # --- Entry/Exit ---
@@ -357,6 +358,7 @@ class EnemyTuningConstants:
     # --- Elite enemy ---
     VISUAL_SCALE: float = 1.3
     COLLISION_SCALE: float = 1.18
+    ELITE_ENTRY_SPEED: float = 0.03
     SPAWN_START_Y: int = -80
 
 

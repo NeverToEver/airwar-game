@@ -4,7 +4,7 @@ Extracted from the 755-line Player god class. Each component owns
 state and behavior for one of seven responsibilities:
 
 * :class:`PlayerMovement`     -- position update, ctrl/precision mode
-* :class:`PlayerWeapon`       -- bullet pool, fire/auto_fire, weapon mods
+* :class:`PlayerWeapon`       -- bullet list, fire/auto_fire, weapon mods
 * :class:`PlayerBoost`        -- boost energy, recovery, ramp
 * :class:`PlayerShield`       -- shield timer, immunity
 * :class:`PlayerPhaseDash`    -- phase dash state machine (incl. enum)

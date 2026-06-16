@@ -29,6 +29,8 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING
 
+from airwar.config.constants_access import get_game_constants
+
 if TYPE_CHECKING:
     from .boss import Boss
 
@@ -37,36 +39,38 @@ if TYPE_CHECKING:
 # Constants (re-exported so ``Boss.ENRAGE_DURATION`` keeps working)
 # ---------------------------------------------------------------------------
 
-ENRAGE_TRIGGER_RATIO: float = 0.30
-ENRAGE_DURATION: int = 360
-ENRAGE_TRANSITION_DURATION: int = 54
-ENRAGE_SLOW_FACTOR: float = 0.24
-ENRAGE_BULLET_SPEED: float = 3.2
-ENRAGE_LASER_SPEED: float = 3.7
-ENRAGE_RELEASE_BULLET_SPEED: float = 1.55
-ENRAGE_RELEASE_LASER_SPEED: float = 1.35
-ENRAGE_ATTACK_INTERVAL: int = 42
-ENRAGE_ATTACK_WINDUP: int = 24
-ENRAGE_RELEASE_INTERVAL: int = 6
-ENRAGE_SNAPSHOT_LASER_COUNT: int = 4
-ENRAGE_SNAPSHOT_RING_COUNT: int = 8
-ENRAGE_PATH_RADIUS_SCALE: float = 1.50
-ENRAGE_SQUARE_PATH_RATIO: float = 0.48
-ENRAGE_TRAIL_LENGTH: int = 42
-ENRAGE_TRAIL_RENDER_MAX: int = 16
-ENRAGE_TRAIL_FINAL_SCALE: float = 3.0
-ENRAGE_TRAIL_SCALE: float = 0.5
-ENRAGE_TRAIL_BLUR_PASSES: int = 2
-ENRAGE_EXIT_BACK_OFFSET: int = 118
-ENRAGE_MUZZLE_FLASH_DURATION: int = 12
-ENRAGE_MUZZLE_FLASH_PULSES: int = 2
-ENRAGE_MUZZLE_FORWARD_SCALE: float = 0.58
-ENRAGE_MUZZLE_SIDE_SCALE: float = 0.34
-ENRAGE_RELEASE_HOLD_DURATION: int = 42
-ENRAGE_RETURN_DURATION: int = 48
-ENRAGE_CORE_COLOR: tuple[int, int, int] = (126, 220, 255)
-ENRAGE_DANGER_COLOR: tuple[int, int, int] = (230, 72, 68)
-ENRAGE_TRAIL_TINT: tuple[int, int, int] = (96, 154, 220)
+_BOSS_ENRAGE = get_game_constants().BOSS_ENRAGE
+
+ENRAGE_TRIGGER_RATIO: float = _BOSS_ENRAGE.TRIGGER_RATIO
+ENRAGE_DURATION: int = _BOSS_ENRAGE.DURATION
+ENRAGE_TRANSITION_DURATION: int = _BOSS_ENRAGE.TRANSITION_DURATION
+ENRAGE_SLOW_FACTOR: float = _BOSS_ENRAGE.SLOW_FACTOR
+ENRAGE_BULLET_SPEED: float = _BOSS_ENRAGE.BULLET_SPEED
+ENRAGE_LASER_SPEED: float = _BOSS_ENRAGE.LASER_SPEED
+ENRAGE_RELEASE_BULLET_SPEED: float = _BOSS_ENRAGE.RELEASE_BULLET_SPEED
+ENRAGE_RELEASE_LASER_SPEED: float = _BOSS_ENRAGE.RELEASE_LASER_SPEED
+ENRAGE_ATTACK_INTERVAL: int = _BOSS_ENRAGE.ATTACK_INTERVAL
+ENRAGE_ATTACK_WINDUP: int = _BOSS_ENRAGE.ATTACK_WINDUP
+ENRAGE_RELEASE_INTERVAL: int = _BOSS_ENRAGE.RELEASE_INTERVAL
+ENRAGE_SNAPSHOT_LASER_COUNT: int = _BOSS_ENRAGE.SNAPSHOT_LASER_COUNT
+ENRAGE_SNAPSHOT_RING_COUNT: int = _BOSS_ENRAGE.SNAPSHOT_RING_COUNT
+ENRAGE_PATH_RADIUS_SCALE: float = _BOSS_ENRAGE.PATH_RADIUS_SCALE
+ENRAGE_SQUARE_PATH_RATIO: float = _BOSS_ENRAGE.SQUARE_PATH_RATIO
+ENRAGE_TRAIL_LENGTH: int = _BOSS_ENRAGE.TRAIL_LENGTH
+ENRAGE_TRAIL_RENDER_MAX: int = _BOSS_ENRAGE.TRAIL_RENDER_MAX
+ENRAGE_TRAIL_FINAL_SCALE: float = _BOSS_ENRAGE.TRAIL_FINAL_SCALE
+ENRAGE_TRAIL_SCALE: float = _BOSS_ENRAGE.TRAIL_SCALE
+ENRAGE_TRAIL_BLUR_PASSES: int = _BOSS_ENRAGE.TRAIL_BLUR_PASSES
+ENRAGE_EXIT_BACK_OFFSET: int = _BOSS_ENRAGE.EXIT_BACK_OFFSET
+ENRAGE_MUZZLE_FLASH_DURATION: int = _BOSS_ENRAGE.MUZZLE_FLASH_DURATION
+ENRAGE_MUZZLE_FLASH_PULSES: int = _BOSS_ENRAGE.MUZZLE_FLASH_PULSES
+ENRAGE_MUZZLE_FORWARD_SCALE: float = _BOSS_ENRAGE.MUZZLE_FORWARD_SCALE
+ENRAGE_MUZZLE_SIDE_SCALE: float = _BOSS_ENRAGE.MUZZLE_SIDE_SCALE
+ENRAGE_RELEASE_HOLD_DURATION: int = _BOSS_ENRAGE.RELEASE_HOLD_DURATION
+ENRAGE_RETURN_DURATION: int = _BOSS_ENRAGE.RETURN_DURATION
+ENRAGE_CORE_COLOR: tuple[int, int, int] = _BOSS_ENRAGE.CORE_COLOR
+ENRAGE_DANGER_COLOR: tuple[int, int, int] = _BOSS_ENRAGE.DANGER_COLOR
+ENRAGE_TRAIL_TINT: tuple[int, int, int] = _BOSS_ENRAGE.TRAIL_TINT
 
 
 # ---------------------------------------------------------------------------
@@ -470,17 +474,14 @@ class BossStateMachine:
 
 
 def __getattr__(name: str):
-    """F04 M9: lazy module-level access for 27 ENRAGE_* constants.
+    """F04 M9: fallback module-level access for ENRAGE_* constants.
 
-    The constants are sourced from GAME_CONSTANTS.BOSS_ENRAGE so the
-    single source of truth is airwar.game.constants. We use lazy
-    resolution (PEP 562) so this module can be imported before
-    airwar.game.constants is fully resolved (avoids circular import
-    between entities and game packages).
+    Defined constants above are already aliases from
+    GAME_CONSTANTS.BOSS_ENRAGE. This fallback keeps future ENRAGE_*
+    additions source-compatible if callers import them before this
+    module grows an explicit alias.
     """
     if name.startswith("ENRAGE_") and name[7:].isupper():
-        from airwar.config.constants_access import get_game_constants
-
         return getattr(get_game_constants().BOSS_ENRAGE, name[7:])
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 

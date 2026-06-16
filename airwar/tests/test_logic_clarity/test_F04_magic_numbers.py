@@ -59,51 +59,90 @@ class TestF04FrameConstantsInConfig:
     """M2, M3: DOCKING_INVINCIBILITY_FRAMES / AUTO_SAVE_INTERVAL 应在常量。"""
 
     def test_constants_module_has_permanent_invincibility(self):
-        # Post-refactor: should be in GAME_CONSTANTS.PERSISTENCE
-        from airwar.config import constants_access
+        from airwar.game.constants import GAME_CONSTANTS
 
-        # For now, just check the access module exists
-        assert constants_access is not None
+        assert GAME_CONSTANTS.PERSISTENCE.PERMANENT_INVINCIBILITY_FRAMES == 999_999
+        assert GAME_CONSTANTS.PERSISTENCE.DOCKING_INVINCIBILITY_FRAMES == 1200
+        assert GAME_CONSTANTS.PERSISTENCE.AUTO_SAVE_INTERVAL == 1800
 
 
 class TestF04EnrageConstantsInGameConstants:
     """M9: 27 个 ENRAGE_* 常量应在 GAME_CONSTANTS.BOSS.ENRAGE。"""
 
     def test_enrage_constants_centralized(self):
-        # Current state: ENRAGE_* are in boss_state.py module
-        # Post-refactor: should be in GAME_CONSTANTS
+        from airwar.game.constants import GAME_CONSTANTS
         from airwar.entities.enemy.boss import boss_state
 
-        # Check current location
-        assert hasattr(boss_state, "ENRAGE_DURATION")
-        assert hasattr(boss_state, "ENRAGE_TRIGGER_RATIO")
-        # Post-refactor: also accessible from GAME_CONSTANTS
-        # We document the gap
-
-        # The constants_access module currently has GAME_CONSTANTS
-        # but the enrage constants are re-exported as Boss class attributes
-        # via backward-compat shims, not in GAME_CONSTANTS proper.
-        # The test passes by ensuring current shim works:
-        assert True  # current state
+        expected = {
+            "ENRAGE_TRIGGER_RATIO": "TRIGGER_RATIO",
+            "ENRAGE_DURATION": "DURATION",
+            "ENRAGE_TRANSITION_DURATION": "TRANSITION_DURATION",
+            "ENRAGE_SLOW_FACTOR": "SLOW_FACTOR",
+            "ENRAGE_BULLET_SPEED": "BULLET_SPEED",
+            "ENRAGE_LASER_SPEED": "LASER_SPEED",
+            "ENRAGE_RELEASE_BULLET_SPEED": "RELEASE_BULLET_SPEED",
+            "ENRAGE_RELEASE_LASER_SPEED": "RELEASE_LASER_SPEED",
+            "ENRAGE_ATTACK_INTERVAL": "ATTACK_INTERVAL",
+            "ENRAGE_ATTACK_WINDUP": "ATTACK_WINDUP",
+            "ENRAGE_RELEASE_INTERVAL": "RELEASE_INTERVAL",
+            "ENRAGE_SNAPSHOT_LASER_COUNT": "SNAPSHOT_LASER_COUNT",
+            "ENRAGE_SNAPSHOT_RING_COUNT": "SNAPSHOT_RING_COUNT",
+            "ENRAGE_PATH_RADIUS_SCALE": "PATH_RADIUS_SCALE",
+            "ENRAGE_SQUARE_PATH_RATIO": "SQUARE_PATH_RATIO",
+            "ENRAGE_TRAIL_LENGTH": "TRAIL_LENGTH",
+            "ENRAGE_TRAIL_RENDER_MAX": "TRAIL_RENDER_MAX",
+            "ENRAGE_TRAIL_FINAL_SCALE": "TRAIL_FINAL_SCALE",
+            "ENRAGE_TRAIL_SCALE": "TRAIL_SCALE",
+            "ENRAGE_TRAIL_BLUR_PASSES": "TRAIL_BLUR_PASSES",
+            "ENRAGE_EXIT_BACK_OFFSET": "EXIT_BACK_OFFSET",
+            "ENRAGE_MUZZLE_FLASH_DURATION": "MUZZLE_FLASH_DURATION",
+            "ENRAGE_MUZZLE_FLASH_PULSES": "MUZZLE_FLASH_PULSES",
+            "ENRAGE_MUZZLE_FORWARD_SCALE": "MUZZLE_FORWARD_SCALE",
+            "ENRAGE_MUZZLE_SIDE_SCALE": "MUZZLE_SIDE_SCALE",
+            "ENRAGE_RELEASE_HOLD_DURATION": "RELEASE_HOLD_DURATION",
+            "ENRAGE_RETURN_DURATION": "RETURN_DURATION",
+            "ENRAGE_CORE_COLOR": "CORE_COLOR",
+            "ENRAGE_DANGER_COLOR": "DANGER_COLOR",
+            "ENRAGE_TRAIL_TINT": "TRAIL_TINT",
+        }
+        assert len(expected) == 30
+        for legacy_name, constants_name in expected.items():
+            assert getattr(boss_state, legacy_name) == getattr(GAME_CONSTANTS.BOSS_ENRAGE, constants_name)
 
 
 class TestF04HomecomingPhaseFramesInConstants:
     """M10: 6 阶段帧数应在 GAME_CONSTANTS.HOMECOMING.PHASES。"""
 
     def test_homecoming_phase_frames_in_current_location(self):
-        # The 6 phase frames are currently in homecoming_sequence.py
-        # Post-refactor: should be in GAME_CONSTANTS
         from airwar.game.homecoming import homecoming_sequence
+        from airwar.game.constants import GAME_CONSTANTS
 
-        assert hasattr(homecoming_sequence, "HomecomingSequence")
+        expected = {
+            "FTL_FRAMES": "FTL_ESCAPE",
+            "BLACKOUT_FRAMES": "BLACKOUT",
+            "STATION_REVEAL_FRAMES": "STATION_REVEAL",
+            "APPROACH_FRAMES": "APPROACH",
+            "LANDING_FRAMES": "LANDING",
+            "HANDOFF_FRAMES": "HANDOFF",
+            "BASE_LAUNCH_FRAMES": "BASE_LAUNCH",
+            "RETURN_BLACKOUT_FRAMES": "RETURN_BLACKOUT",
+            "ORBITAL_STRIKE_FRAMES": "ORBITAL_STRIKE",
+            "ORBITAL_STRIKE_IMPACT_PROGRESS": "ORBITAL_STRIKE_IMPACT_PROGRESS",
+        }
+        for legacy_name, constants_name in expected.items():
+            assert getattr(homecoming_sequence.HomecomingSequence, legacy_name) == getattr(
+                GAME_CONSTANTS.HOMECOMING_PHASES,
+                constants_name,
+            )
 
 
 class TestF04MaxSubscribersInConstants:
     """M11: MAX_SUBSCRIBERS 应在 GAME_CONSTANTS。"""
 
     def test_max_subscribers_currently_in_event_bus(self):
+        from airwar.game.constants import GAME_CONSTANTS
         from airwar.game.mother_ship.event_bus import EventBus
 
-        assert hasattr(EventBus, "MAX_SUBSCRIBERS")
-        # Post-refactor: also accessible from GAME_CONSTANTS
-        assert EventBus.MAX_SUBSCRIBERS == 1000
+        bus = EventBus()
+        assert EventBus.MAX_SUBSCRIBERS == GAME_CONSTANTS.EVENTS.MAX_SUBSCRIBERS
+        assert bus._max_callback_failures == GAME_CONSTANTS.EVENTS.MAX_CALLBACK_FAILURES

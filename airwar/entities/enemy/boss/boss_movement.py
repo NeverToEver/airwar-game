@@ -31,26 +31,26 @@ import random
 from typing import TYPE_CHECKING
 
 from airwar.config import get_screen_height, get_screen_width
+from airwar.config.constants_access import get_game_constants
 
 if TYPE_CHECKING:
     from .boss import Boss
 
 
-# P1-4: Module-level constants kept as literals (backward compat with
-# the ``Boss`` class attributes and other importers). The canonical
-# source of truth is ``GAME_CONSTANTS.BOSS_TUNING`` in
-# :mod:`airwar.game.constants`; the values below mirror it. Keep in
-# sync if you tune the boss movement.
-DEFAULT_PHASE_DURATION: int = 120
-ENTRY_SPEED: float = 2
-ESCAPE_DRIFT: float = 0.5
-LERP_FACTOR: float = 0.025
-MIN_Y: int = 50
-CENTER_OFFSET: int = 60
-AIM_DASH_DISTANCE: int = 220
-AIM_DASH_PHASE_BONUS: int = 35
-AIM_DASH_MAX_DISTANCE_RATIO: float = 0.58
-AIM_DASH_DURATION: int = 10
+_BOSS_TUNING = get_game_constants().BOSS_TUNING
+
+# Backward-compatible aliases. The values are sourced from
+# GAME_CONSTANTS.BOSS_TUNING so boss movement tuning has one definition.
+DEFAULT_PHASE_DURATION: int = _BOSS_TUNING.DEFAULT_PHASE_DURATION
+ENTRY_SPEED: float = _BOSS_TUNING.ENTRY_SPEED
+ESCAPE_DRIFT: float = _BOSS_TUNING.ESCAPE_DRIFT
+LERP_FACTOR: float = _BOSS_TUNING.LERP_FACTOR
+MIN_Y: int = _BOSS_TUNING.MIN_Y
+CENTER_OFFSET: int = _BOSS_TUNING.CENTER_OFFSET
+AIM_DASH_DISTANCE: int = _BOSS_TUNING.AIM_DASH_DISTANCE
+AIM_DASH_PHASE_BONUS: int = _BOSS_TUNING.AIM_DASH_PHASE_BONUS
+AIM_DASH_MAX_DISTANCE_RATIO: float = _BOSS_TUNING.AIM_DASH_MAX_DISTANCE_RATIO
+AIM_DASH_DURATION: int = _BOSS_TUNING.AIM_DASH_DURATION
 
 
 class BossMovement:
@@ -156,8 +156,6 @@ class BossMovement:
         boss.rect.y += math.sin(boss.survival_timer * 0.025) * 0.4
 
         # Escape warning drift when approaching escape time.
-        from airwar.config.constants_access import get_game_constants
-
         if boss.survival_timer >= boss.data.escape_time - get_game_constants().ENEMY.ESCAPE_WARNING:
             boss._show_escape_warning = True
             boss.rect.y -= ESCAPE_DRIFT

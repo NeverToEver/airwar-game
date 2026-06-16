@@ -44,6 +44,9 @@ if TYPE_CHECKING:
     from .enemy import Enemy
 
 
+_BOSS_TUNING = get_game_constants().BOSS_TUNING
+
+
 @dataclass
 class BossData:
     """Data class for Boss entity configuration.
@@ -86,12 +89,8 @@ class Boss(Entity):
     """
 
     # Re-exported tuning constants so legacy ``Boss.ENRAGE_DURATION``
-    # style imports continue to work after the split.
-    # P1-4: HITBOX scales are mirrored from GAME_CONSTANTS.BOSS_TUNING.
-    # They live as class-body literals here because the Boss class is
-    # defined before airwar.game.constants is fully loaded; the centralised
-    # value in BOSS_TUNING.HITBOX_WIDTH_SCALE / HITBOX_HEIGHT_SCALE is the
-    # canonical source — keep these in sync if you tune the boss.
+    # style imports continue to work after the split. Values are sourced
+    # from GAME_CONSTANTS.BOSS_TUNING / BOSS_ENRAGE.
     ATTACK_DIRECTIONS = boss_attack.ATTACK_DIRECTIONS
     DEFAULT_PHASE_DURATION = boss_movement.DEFAULT_PHASE_DURATION
     ENTRY_SPEED = boss_movement.ENTRY_SPEED
@@ -103,8 +102,8 @@ class Boss(Entity):
     AIM_DAMAGE_INCREMENT = boss_attack.AIM_DAMAGE_INCREMENT
     AIM_BULLET_COUNT = boss_attack.AIM_BULLET_COUNT
     WAVE_BULLET_COUNT = boss_attack.WAVE_BULLET_COUNT
-    HITBOX_WIDTH_SCALE = 1.78
-    HITBOX_HEIGHT_SCALE = 1.22
+    HITBOX_WIDTH_SCALE = _BOSS_TUNING.HITBOX_WIDTH_SCALE
+    HITBOX_HEIGHT_SCALE = _BOSS_TUNING.HITBOX_HEIGHT_SCALE
     AIM_DASH_DISTANCE = boss_movement.AIM_DASH_DISTANCE
     AIM_DASH_PHASE_BONUS = boss_movement.AIM_DASH_PHASE_BONUS
     AIM_DASH_MAX_DISTANCE_RATIO = boss_movement.AIM_DASH_MAX_DISTANCE_RATIO

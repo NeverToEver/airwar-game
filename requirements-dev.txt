@@ -6,7 +6,6 @@ ruff>=0.8,<1
 mypy>=1.10,<2
 vulture>=0.10,<1
 pytest-cov>=5,<7
-mutmut>=2.0,<3
 hypothesis>=6.0
 # Optional in production (sound_manager uses it for sine-wave beep
 # generation and falls back to pure Python when missing), but required

@@ -19,15 +19,7 @@ Usage:
     bullet_manager.update_all()
 """
 
-from .boss_manager import BossManager
-from .bullet_manager import BulletManager
-from .collision_controller import CollisionController, CollisionResult
-from .game_controller import GameController, GameState
-from .game_loop_manager import GameLoopManager
-from .input_coordinator import InputCoordinator
-from .milestone_manager import MilestoneManager
-from .spawn_controller import SpawnController
-from .ui_manager import UIManager
+from importlib import import_module
 
 __all__ = [
     "BossManager",
@@ -42,3 +34,26 @@ __all__ = [
     "SpawnController",
     "UIManager",
 ]
+
+_LAZY_EXPORTS = {
+    "BossManager": ".boss_manager",
+    "BulletManager": ".bullet_manager",
+    "CollisionController": ".collision_controller",
+    "CollisionResult": ".collision_controller",
+    "GameController": ".game_controller",
+    "GameLoopManager": ".game_loop_manager",
+    "GameState": ".game_controller",
+    "InputCoordinator": ".input_coordinator",
+    "MilestoneManager": ".milestone_manager",
+    "SpawnController": ".spawn_controller",
+    "UIManager": ".ui_manager",
+}
+
+
+def __getattr__(name: str):
+    if name in _LAZY_EXPORTS:
+        module = import_module(_LAZY_EXPORTS[name], __name__)
+        value = getattr(module, name)
+        globals()[name] = value
+        return value
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

@@ -1,14 +1,9 @@
-"""Tests for the P1-2 pre-allocated pool/buffer additions.
+"""Tests for the P1-2 pre-allocated entity-buffer additions.
 
 Covers:
-- ``BulletPool`` in ``airwar.game.managers.bullet_manager``:
-  acquire/release lifecycle, capacity-bounded behaviour, fallback
-  to direct construction when saturated, and idempotent release.
 - ``EntityBuffer`` in ``airwar.game.managers.game_loop_manager``:
   reset/add/iter/grow lifecycle, length/boolean contract, and
   ``to_list`` snapshot semantics.
-- ``BulletManager.pool`` accessor exposes the pool and
-  ``acquire_bullet`` / ``release_bullet`` route through it.
 - ``GameLoopManager`` wires ``_entity_buf`` and ``_batch_indices``
   and reuses them across ``_update_entities`` calls (no per-frame
   list re-allocation observed via id()).
@@ -20,129 +15,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from airwar.entities.bullet import Bullet, BulletData
-from airwar.game.managers.bullet_manager import BulletManager, BulletPool
 from airwar.game.managers.game_controller import GameplayState
 from airwar.game.managers.game_loop_manager import EntityBuffer, GameLoopManager
 from airwar.game.systems.lock_manager import LockManager
-
-
-# ---------------------------------------------------------------------------
-# BulletPool tests
-# ---------------------------------------------------------------------------
-
-
-class TestBulletPool:
-    def test_pre_allocates_full_capacity(self) -> None:
-        """A fresh pool should be empty of nothing — every slot is real."""
-        pool = BulletPool(capacity=10)
-        assert pool.capacity == 10
-        assert pool.free_count == 10
-        assert len(pool) == 10
-
-    def test_acquire_returns_bullet_with_correct_data(self) -> None:
-        pool = BulletPool(capacity=4)
-        data = BulletData(damage=25, speed=12.0, owner="player", bullet_type="single")
-        bullet = pool.acquire(100.0, 200.0, data)
-
-        assert isinstance(bullet, Bullet)
-        assert bullet.data.damage == 25
-        assert bullet.data.speed == 12.0
-        assert bullet.data.owner == "player"
-        assert bullet.active is True
-        # Position is centred on (x, y) — see ``_reinit``.
-        assert bullet.rect.x == pytest.approx(95.0)
-        assert bullet.rect.y == pytest.approx(195.0)
-        # One slot is now in use.
-        assert pool.free_count == 3
-
-    def test_acquire_when_pool_empty_falls_back_to_construction(self) -> None:
-        """Draining the pool must not block spawners — direct-construct fallback."""
-        pool = BulletPool(capacity=2)
-        # Drain the pool.
-        for _ in range(2):
-            pool.acquire(0.0, 0.0, BulletData())
-        assert pool.free_count == 0
-        c = pool.acquire(50.0, 50.0, BulletData())
-        assert isinstance(c, Bullet)
-        assert c.data is not None
-
-    def test_release_returns_bullet_to_pool(self) -> None:
-        pool = BulletPool(capacity=3)
-        bullet = pool.acquire(0.0, 0.0, BulletData())
-        assert pool.free_count == 2
-        pool.release(bullet)
-        assert pool.free_count == 3
-
-    def test_release_does_not_grow_past_capacity(self) -> None:
-        """Releasing a bullet when the pool is full is a no-op (GC reclaims)."""
-        pool = BulletPool(capacity=2)
-        bullet = pool.acquire(0.0, 0.0, BulletData())
-        # Free count is 1 (one slot in use, one free).
-        assert pool.free_count == 1
-        pool.release(bullet)
-        assert pool.free_count == 2
-        # Release a second, fresh bullet; pool is full, count stays at 2.
-        other = Bullet(0.0, 0.0, BulletData())
-        pool.release(other)
-        assert pool.free_count == 2
-
-    def test_acquire_after_release_returns_a_usable_bullet(self) -> None:
-        """Acquired bullet is in a fresh state (active=True, _trail cleared)."""
-        pool = BulletPool(capacity=2)
-        first = pool.acquire(0.0, 0.0, BulletData(damage=99))
-        first._trail.append((1, 2, 3, 4))
-        pool.release(first)
-        second = pool.acquire(10.0, 20.0, BulletData(damage=5))
-        # Deque ``popleft`` returns the oldest element (FIFO); the
-        # pool's contract is reuse, not strict LIFO, so identity is
-        # best-effort. The reusable state contract is what matters.
-        assert second.data.damage == 5
-        assert second.active is True
-        assert len(second._trail) == 0
-        # Position is recentred on the new (10, 20) origin.
-        assert second.rect.x == pytest.approx(5.0)
-        assert second.rect.y == pytest.approx(15.0)
-
-    def test_acquire_reinits_angle_offset(self) -> None:
-        pool = BulletPool(capacity=2)
-        data = BulletData(speed=14.0, angle_offset=10.0)
-        bullet = pool.acquire(0.0, 0.0, data)
-        # The angle offset path uses cos(10°) ≈ 0.9848 for the
-        # forward (y) component, scaled by data.speed.
-        expected = -14.0 * 0.9848077530
-        assert bullet.velocity.y == pytest.approx(expected, abs=1e-3)
-        assert bullet.velocity.x == pytest.approx(14.0 * 0.1736481776, abs=1e-3)
-
-    def test_capacity_clamped_to_minimum_one(self) -> None:
-        pool = BulletPool(capacity=0)
-        assert pool.capacity == 1
-        assert pool.free_count == 1
-
-    def test_bullet_manager_exposes_pool(self) -> None:
-        """``BulletManager`` should wire a BulletPool in __init__."""
-        player = SimpleNamespace()
-        spawn = SimpleNamespace()
-        mgr = BulletManager(player, spawn)
-        assert isinstance(mgr.pool, BulletPool)
-        assert mgr.pool.capacity == BulletPool.POOL_CAPACITY
-
-    def test_bullet_manager_acquire_release_route(self) -> None:
-        player = SimpleNamespace()
-        spawn = SimpleNamespace()
-        mgr = BulletManager(player, spawn)
-        bullet = mgr.acquire_bullet(10.0, 20.0, BulletData(damage=42))
-        assert bullet.data.damage == 42
-        mgr.release_bullet(bullet)
-        # Released bullets return to the pool's free list.
-        assert mgr.pool.free_count == BulletPool.POOL_CAPACITY
-
-    def test_release_marks_bullet_inactive(self) -> None:
-        pool = BulletPool(capacity=2)
-        bullet = pool.acquire(0.0, 0.0, BulletData())
-        assert bullet.active is True
-        pool.release(bullet)
-        assert bullet.active is False
 
 
 # ---------------------------------------------------------------------------

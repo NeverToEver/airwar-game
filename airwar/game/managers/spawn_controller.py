@@ -4,6 +4,7 @@ import random
 from typing import TYPE_CHECKING
 
 from airwar.config import BASE_ENEMY_PARAMS, DIFFICULTY_SETTINGS, get_screen_width
+from airwar.config.constants_access import get_game_constants
 from airwar.entities import Boss, BossData, Bullet, Enemy, EnemySpawner, EnemyState
 from airwar.entities.interfaces import IBulletSpawner
 
@@ -124,7 +125,7 @@ class SpawnController:
 
         Wires an `EnemyBulletSpawner` over `self.enemy_bullets` and
         forwards it through `set_bullet_spawner` so enemies and boss
-        share a single bullet pool.
+        share a single enemy bullet list.
         """
         bullet_spawner = EnemyBulletSpawner(self.enemy_bullets)
         self.set_bullet_spawner(bullet_spawner)
@@ -232,7 +233,7 @@ class SpawnController:
             else max(1, bullet_damage) * self.PLAYER_BULLETS_PER_SHOT / self.PLAYER_FIRE_INTERVAL
         )
         kill_frames = boss_health / damage_per_frame
-        return round(kill_frames * self.ESCAPE_TIME_SAFETY_MULTIPLIER + Boss.ENRAGE_DURATION)
+        return round(kill_frames * self.ESCAPE_TIME_SAFETY_MULTIPLIER + get_game_constants().BOSS_ENRAGE.DURATION)
 
     def reset_boss_timer(self, penalty: bool = False) -> None:
         """Reset the boss spawn timer, optionally applying escape penalty.

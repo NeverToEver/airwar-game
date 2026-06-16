@@ -5,8 +5,8 @@ import struct
 from collections.abc import Callable
 
 from airwar.config import get_screen_height, get_screen_width
+from airwar.config.constants_access import get_game_constants
 from airwar.core_bindings import batch_update_movements, batch_update_movements_buf
-from airwar.entities.enemy.boss.boss_state import ENRAGE_TRANSITION_DURATION
 
 from ..constants import PlayerConstants
 from ..explosion_animation import ExplosionManager
@@ -252,12 +252,13 @@ class GameLoopManager:
             return
         if self._should_lock_player_for_boss_enrage():
             in_transition = getattr(boss, "_enrage_transition_timer", 0) > 0
+            enrage_transition_duration = get_game_constants().BOSS_ENRAGE.TRANSITION_DURATION
             self._lock_manager.acquire(
                 LockLayer.BOSS_ENRAGE,
                 LockRequest(
                     lock_controls=True,
                     invincible=in_transition,
-                    invincibility_duration=ENRAGE_TRANSITION_DURATION if in_transition else 0,
+                    invincibility_duration=enrage_transition_duration if in_transition else 0,
                 ),
             )
         else:
