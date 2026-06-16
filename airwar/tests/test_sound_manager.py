@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pygame
 import pytest
@@ -102,6 +102,21 @@ def test_play_sfx_bullet_fire_populates_cache():
     manager.init()
     manager.play_sfx("bullet_fire")
     assert "bullet_fire" in manager._sfx_cache
+
+
+def test_play_sfx_bullet_fire_is_rate_limited():
+    manager = SoundManager()
+    manager._initialized = True
+    sound = Mock()
+    manager._sfx_cache["bullet_fire"] = sound
+
+    with patch.object(pygame.time, "get_ticks", side_effect=[1000, 1100, 1150]):
+        manager.play_sfx("bullet_fire")
+        manager.play_sfx("bullet_fire")
+        manager.play_sfx("bullet_fire")
+
+    assert sound.set_volume.call_count == 2
+    assert sound.play.call_count == 2
 
 
 # ----------------------------------------------------------------------

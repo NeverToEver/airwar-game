@@ -37,7 +37,12 @@ logger = logging.getLogger(__name__)
 # stereo). Mixed down to mono after generation to halve the buffer.
 _DEFAULT_SAMPLE_RATE = 22050
 _DEFAULT_SFX_DURATION_MS = 60
-_BEEP_FREQUENCY_HZ = 880.0  # A5 - bright, short bullet-fire tone
+_BULLET_FIRE_DURATION_MS = 42
+_BULLET_FIRE_FREQUENCY_HZ = 240.0
+_BULLET_FIRE_GAIN = 0.28
+_SFX_MIN_INTERVAL_MS = {
+    "bullet_fire": 150,
+}
 
 
 class SoundManager:
@@ -57,6 +62,7 @@ class SoundManager:
         self._volume: float = 0.6
         self._muted: bool = False
         self._sfx_cache: dict[str, pygame.mixer.Sound] = {}
+        self._sfx_last_play_ms: dict[str, int] = {}
         self._bgm_track: str | None = None
         self._bgm_volume: float = 0.5
 
@@ -118,6 +124,13 @@ class SoundManager:
             if sound is None:
                 return
             self._sfx_cache[name] = sound
+        min_interval_ms = _SFX_MIN_INTERVAL_MS.get(name, 0)
+        if min_interval_ms > 0:
+            now = pygame.time.get_ticks()
+            last_play_ms = self._sfx_last_play_ms.get(name)
+            if last_play_ms is not None and now - last_play_ms < min_interval_ms:
+                return
+            self._sfx_last_play_ms[name] = now
         sound.set_volume(self._volume)
         sound.play()
 
@@ -125,9 +138,11 @@ class SoundManager:
         """Generate (or look up) a sound for the given name."""
         if name == "bullet_fire":
             return _generate_beep(
-                frequency_hz=_BEEP_FREQUENCY_HZ,
-                duration_ms=_DEFAULT_SFX_DURATION_MS,
+                frequency_hz=_BULLET_FIRE_FREQUENCY_HZ,
+                duration_ms=_BULLET_FIRE_DURATION_MS,
                 sample_rate=_DEFAULT_SAMPLE_RATE,
+                gain=_BULLET_FIRE_GAIN,
+                harmonics=(1.0, 0.35),
             )
         if name == "player_hit":
             # Low, long beep on player damage — feedback for the hit-stop +
@@ -260,6 +275,7 @@ class SoundManager:
     def reset(self) -> None:
         """Clear cached state. Test-only helper."""
         self._sfx_cache.clear()
+        self._sfx_last_play_ms.clear()
         self._bgm_track = None
         self._muted = False
         self._volume = 0.6
@@ -376,6 +392,9 @@ def _generate_beep(
     frequency_hz: float,
     duration_ms: int,
     sample_rate: int,
+    *,
+    gain: float = 1.0,
+    harmonics: tuple[float, ...] = (1.0,),
 ) -> pygame.mixer.Sound:
     """Build a short sine-wave tone as a :class:`pygame.mixer.Sound`.
 
@@ -394,7 +413,13 @@ def _generate_beep(
 
     n_samples = int(mixer_rate * duration_ms / 1000)
     t = np.arange(n_samples, dtype=np.float32) / mixer_rate
-    wave = np.sin(2.0 * math.pi * frequency_hz * t)
+    wave = np.zeros_like(t)
+    harmonic_weight = 0.0
+    for multiplier, amplitude in enumerate(harmonics, start=1):
+        wave += amplitude * np.sin(2.0 * math.pi * frequency_hz * multiplier * t)
+        harmonic_weight += abs(amplitude)
+    if harmonic_weight > 0.0:
+        wave /= harmonic_weight
 
     # 5ms attack + release envelope to avoid pops.
     env_n = max(1, int(mixer_rate * 0.005))
@@ -404,7 +429,7 @@ def _generate_beep(
     wave *= envelope
 
     # Scale to int16 range with a small headroom.
-    pcm = np.clip(wave * 30000, -32768, 32767).astype(np.int16)
+    pcm = np.clip(wave * 30000 * max(0.0, gain), -32768, 32767).astype(np.int16)
 
     # Match the mixer's channel layout. pygame.sndarray.make_sound
     # rejects arrays whose second dim does not equal the mixer's
