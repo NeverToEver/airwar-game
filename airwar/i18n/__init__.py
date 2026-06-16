@@ -152,6 +152,11 @@ def set_locale(locale: str) -> None:
     get_translator().set_locale(locale)
 
 
+def get_locale() -> str:
+    """Convenience wrapper around the singleton's :meth:`Translator.get_locale`."""
+    return get_translator().get_locale()
+
+
 def reset_translator_for_tests(translator: Translator | None = None) -> Translator:
     """Replace the singleton. Intended for tests; not for production use."""
     global _singleton
