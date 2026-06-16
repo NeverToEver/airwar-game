@@ -130,7 +130,7 @@ class SpawnController:
         bullet_spawner = EnemyBulletSpawner(self.enemy_bullets)
         self.set_bullet_spawner(bullet_spawner)
 
-    def update(self, score: int, slow_factor: float, player_pos: tuple | None = None) -> bool:
+    def update(self, slow_factor: float, player_pos: tuple | None = None) -> bool:
         """Advance spawn state by one frame.
 
         Drives the enemy spawner (only when no boss is active) and
@@ -138,8 +138,6 @@ class SpawnController:
         spawned by the caller.
 
         Args:
-            score: Current player score (currently unused; reserved for
-                score-based spawn gating).
             slow_factor: World time-scale factor (e.g. 0.5 during slow).
             player_pos: Optional (x, y) player position used by adaptive
                 spawn strategies.

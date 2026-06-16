@@ -272,9 +272,7 @@ class GameLoopManager:
         player_pos = (player.rect.centerx, player.rect.centery)
         player_dps = self._estimate_player_dps(player)
         self._spawn_controller.balance_for_player_dps(player_dps)
-        spawn_needed = self._spawn_controller.update(
-            self._game_controller.state.score, self._reward_system.slow_factor, player_pos
-        )
+        spawn_needed = self._spawn_controller.update(self._reward_system.slow_factor, player_pos)
 
         if spawn_needed:
             boss = self._spawn_controller.spawn_boss(
