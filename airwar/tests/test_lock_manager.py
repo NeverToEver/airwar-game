@@ -5,7 +5,7 @@ import pytest
 from airwar.game.systems.lock_manager import LockLayer, LockLayerConflict, LockManager, LockRequest
 
 # LockManager arbitrates invincibility / control locks across all gameplay
-# systems (homecoming, mothership, boss enrage, phase dash, give-up, pause).
+# systems (homecoming, mothership, boss enrage, phase dash, player hit, give-up, pause).
 # Pure logic, no I/O — include in smoke.
 pytestmark = pytest.mark.smoke
 
@@ -117,6 +117,7 @@ def test_lock_layer_priority_order_is_explicit() -> None:
         LockLayer.MOTHERSHIP,
         LockLayer.BOSS_ENRAGE,
         LockLayer.PHASE_DASH,
+        LockLayer.PLAYER_HIT,
         LockLayer.GIVE_UP,
         LockLayer.GAME_PAUSE,
     ]
@@ -302,4 +303,3 @@ def test_acquire_or_update_with_no_existing_layer_is_plain_acquire() -> None:
     )
     assert manager.is_locked(LockLayer.GAME_PAUSE) is True
     assert game_state.is_paused is True
-

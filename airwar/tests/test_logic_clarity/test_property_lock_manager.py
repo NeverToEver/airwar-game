@@ -8,7 +8,7 @@ Verifies invariants of the lock-arbitration layer:
 3. ``clear()`` removes every active layer.
 4. A freshly-cleared LockManager has no active layers.
 
-The five ``LockLayer`` values are ordered by ``IntEnum`` priority; the
+The ``LockLayer`` values are ordered by ``IntEnum`` priority; the
 manager iterates ``sorted(self._locks.keys(), reverse=True)`` and uses
 the first match for invincibility. Paused/controls are OR'd across all
 active layers.
@@ -48,9 +48,9 @@ def _make_subject():
 
 
 all_layers = st.sampled_from(list(LockLayer))
-layer_lists = st.lists(all_layers, min_size=1, max_size=6, unique=True)
+layer_lists = st.lists(all_layers, min_size=1, max_size=len(LockLayer), unique=True)
 # Subsets of layers (possibly empty).
-layer_subsets = st.lists(all_layers, max_size=6, unique=True)
+layer_subsets = st.lists(all_layers, max_size=len(LockLayer), unique=True)
 
 
 # ---------------------------------------------------------------------------
@@ -192,13 +192,14 @@ def test_fresh_lock_manager_has_no_active_layers() -> None:
 
 def test_lock_layer_priority_order_is_stable() -> None:
     """Pinned: HOMECOMING(100) > MOTHERSHIP(80) > BOSS_ENRAGE(60) >
-    PHASE_DASH(40) > GIVE_UP(20) > GAME_PAUSE(10).
+    PHASE_DASH(40) > PLAYER_HIT(30) > GIVE_UP(20) > GAME_PAUSE(10).
     """
     assert sorted(LockLayer, reverse=True) == [
         LockLayer.HOMECOMING,
         LockLayer.MOTHERSHIP,
         LockLayer.BOSS_ENRAGE,
         LockLayer.PHASE_DASH,
+        LockLayer.PLAYER_HIT,
         LockLayer.GIVE_UP,
         LockLayer.GAME_PAUSE,
     ]

@@ -1,6 +1,6 @@
 """Core smoke tests — entity lifecycle, collision, buffs, config, game state."""
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pygame
 import pytest
@@ -212,6 +212,43 @@ class TestGameState:
         p = Player(400, 900, PygameInputHandler())
         gc.on_player_hit(p.health, p)
         assert gc.state.gameplay_state == GameplayState.DYING
+
+    def test_player_hit_invincibility_uses_transient_lock_and_expires(self):
+        from airwar.entities import Player
+        from airwar.game.constants import GAME_CONSTANTS
+        from airwar.game.managers.game_controller import GameController
+        from airwar.game.systems.lock_manager import LockLayer, LockManager, LockRequest
+        from airwar.input import PygameInputHandler
+
+        gc = GameController("medium", "test")
+        p = Player(400, 900, PygameInputHandler())
+        lock_manager = LockManager(gc.state, p)
+        gc.set_lock_manager(lock_manager)
+
+        with patch("airwar.audio.sound_manager.get_sound_manager"):
+            gc.on_player_hit(1, p)
+
+        assert lock_manager.is_locked(LockLayer.PLAYER_HIT) is True
+        assert lock_manager.is_locked(LockLayer.MOTHERSHIP) is False
+        assert gc.state.is_player_invincible is True
+        assert gc.state.invincibility_timer == GAME_CONSTANTS.PLAYER.INVINCIBILITY_DURATION
+
+        for _ in range(GAME_CONSTANTS.PLAYER.INVINCIBILITY_DURATION):
+            gc.update(p, has_regen=False)
+
+        assert lock_manager.is_locked(LockLayer.PLAYER_HIT) is False
+        assert gc.state.is_player_invincible is False
+        assert gc.state.invincibility_timer == 0
+
+        lock_manager.acquire(
+            LockLayer.MOTHERSHIP,
+            LockRequest(invincible=True, is_silent_invincible=True, invincibility_duration=999999),
+        )
+        gc.set_invincible(True, timer=GAME_CONSTANTS.PLAYER.INVINCIBILITY_DURATION)
+        gc.set_invincible(False)
+        assert lock_manager.is_locked(LockLayer.MOTHERSHIP) is True
+        assert lock_manager.is_locked(LockLayer.PLAYER_HIT) is False
+        assert gc.state.is_player_invincible is True
 
 
 # ── Reward System ────────────────────────────────────────────────────────────

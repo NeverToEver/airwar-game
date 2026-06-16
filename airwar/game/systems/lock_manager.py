@@ -14,6 +14,7 @@ class LockLayer(IntEnum):
     MOTHERSHIP = 80
     BOSS_ENRAGE = 60
     PHASE_DASH = 40
+    PLAYER_HIT = 30
     GIVE_UP = 20
     GAME_PAUSE = 10
 

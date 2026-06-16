@@ -111,11 +111,11 @@ class GameController:
         )
         if invincible:
             self._lock_manager.acquire(
-                LockLayer.MOTHERSHIP,
+                LockLayer.PLAYER_HIT,
                 LockRequest(invincible=True, is_silent_invincible=silent, invincibility_duration=timer),
             )
         else:
-            self._lock_manager.release(LockLayer.MOTHERSHIP)
+            self._lock_manager.release(LockLayer.PLAYER_HIT)
 
     def set_paused(self, paused: bool) -> None:
         """Set game paused state via the centralized LockManager.
