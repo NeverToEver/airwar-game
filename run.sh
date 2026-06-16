@@ -112,6 +112,12 @@ if command -v cargo >/dev/null 2>&1; then
 fi
 
 # SDL2 system library
+#
+# pygame wheels bundle SDL2 on macOS/Linux/Windows. `ctypes.util.find_library`
+# only detects a separately installed system SDL2, so treating it as required
+# blocks valid macOS installs where `import pygame` works and reports an SDL
+# runtime. Keep the system package install path for users who explicitly ask
+# for it, but do not block the launcher when only bundled SDL is present.
 SDL2_AVAILABLE=false
 if "$PYTHON" -c "import ctypes.util; raise SystemExit(0 if ctypes.util.find_library('SDL2') else 1)" 2>/dev/null; then
     SDL2_AVAILABLE=true
@@ -131,12 +137,12 @@ if ! $SDL2_AVAILABLE; then
             exit 1
         fi
     else
-        print_install_hint "SDL2" "libsdl2-dev" "sdl2"
-        echo "  To let this script install it, rerun: ./run.sh --install-deps"
-        exit 1
+        warn "System SDL2 was not found. Continuing; pygame wheels normally bundle SDL2."
+        echo "  To install a system SDL2 anyway, rerun: ./run.sh --install-deps"
     fi
+else
+    ok "SDL2: system library available"
 fi
-ok "SDL2: available"
 
 # Virtual environment
 VENV_DIR="$SCRIPT_DIR/.venv"
@@ -171,8 +177,14 @@ if command -v cargo >/dev/null 2>&1; then
 
     if $NEED_BUILD; then
         log "Building Rust extension (airwar_core)..."
+        mkdir -p "$RUST_DIR/airwar_core"
+        cat > "$RUST_DIR/airwar_core/__init__.py" <<'PY'
+"""Editable-install bridge for the PyO3 airwar_core extension."""
+
+from .airwar_core import *  # noqa: F403
+PY
         python -m pip install --quiet 'maturin>=1,<2'
-        if (cd "$RUST_DIR" && maturin develop --release); then
+        if python -m maturin develop --release --manifest-path "$RUST_DIR/Cargo.toml"; then
             touch "$RUST_MARKER"
             ok "Rust extension: built"
         else
