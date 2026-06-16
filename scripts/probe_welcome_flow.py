@@ -9,11 +9,17 @@ from __future__ import annotations
 
 import os
 import logging
+import sys
+from pathlib import Path
 
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
-import pygame
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+import pygame  # noqa: E402
 
 logging.basicConfig(level=logging.WARNING)
 logging.getLogger("airwar").setLevel(logging.WARNING)
@@ -176,7 +182,11 @@ def main() -> None:
             print(f"  {name}: missing")
             continue
         try:
-            sm.switch(name)
+            if sm.get_current_scene_name() != name:
+                sm.switch(name)
+                scene = sm.get_current_scene()
+            else:
+                scene = sm.get_current_scene()
             excs = _drive(scene, sm, 5)
             if excs:
                 print(f"  {name}: EXCEPTION  {excs[0][0]}: {excs[0][1]}")

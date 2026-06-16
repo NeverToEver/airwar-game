@@ -81,11 +81,11 @@ class SceneDirector:
     def run(self) -> None:
         self._running = True
         while self._running:
-            welcome_ok, save_data = self._switcher.run_welcome_flow()
+            welcome_ok, save_data = self._run_welcome_flow()
             if not welcome_ok:
                 break
             self._pending_save_data = save_data
-            result = self._switcher.run_game_flow()
+            result = self._run_game_flow()
             if result == "quit":
                 break
             if result in ("main_menu", "restart"):

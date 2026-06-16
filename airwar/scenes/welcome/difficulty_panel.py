@@ -111,13 +111,14 @@ class DifficultyPanel:
         diff_end_y = diff_start_y + diff_n * DIFF_OPTION_H + (diff_n - 1) * DIFF_GAP
 
         # -- Benchmark + Leaderboard buttons (row between difficulty and controls) --
-        # Natural position sits just below the difficulty options, but when
-        # the responsive panel is shorter than the natural content height,
-        # pin the buttons to the panel's bottom edge so they remain
-        # reachable even on very small windows.
+        # Natural position sits just below the difficulty options. If the
+        # whole window is too short, constrain the row to the screen edge
+        # instead of the compressed panel chrome so it does not overlap the
+        # difficulty buttons.
         btn_row_h = 36
         natural_btn_row_y = diff_end_y + 14
-        btn_row_y = min(natural_btn_row_y, actual_h - btn_row_h - 12)
+        max_btn_row_y = surface.get_height() - btn_row_h - 12
+        btn_row_y = min(natural_btn_row_y, max_btn_row_y)
         # Width 200 fits "进入自动化测试" (7 CJK chars at SMALL_SIZE).
         bm_btn_w = 200
         bm_rect = pygame.Rect(px + 20, btn_row_y, bm_btn_w, btn_row_h)

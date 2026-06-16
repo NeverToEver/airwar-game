@@ -432,19 +432,21 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         """
         title_clearance = 110
         bottom_clearance = 96
-        panel_gap = self.PANEL_GAP
+        panel_gap = min(self.PANEL_GAP, 24)
         stacked_gap = self.STACKED_PANEL_GAP
 
-        if sw >= self.PANEL_W * 2 + panel_gap + 24:
+        min_side_margin = 8
+        side_by_side_gap = min(panel_gap, max(8, sw - self.PANEL_W * 2 - min_side_margin * 2))
+        if sw >= self.PANEL_W * 2 + min_side_margin * 2 + 8:
             # Side-by-side: cap panel_h at available vertical space.
-            start_x = (sw - (self.PANEL_W * 2 + panel_gap)) // 2
+            start_x = (sw - (self.PANEL_W * 2 + side_by_side_gap)) // 2
             available_h = max(0, sh - title_clearance - bottom_clearance)
             panel_h = min(self.PANEL_H, available_h)
             panel_y = max(title_clearance, (sh - panel_h) // 2 - 20)
             return {
                 "left_x": start_x,
                 "left_y": panel_y,
-                "right_x": start_x + self.PANEL_W + panel_gap,
+                "right_x": start_x + self.PANEL_W + side_by_side_gap,
                 "right_y": panel_y,
                 "panel_h": panel_h,
             }

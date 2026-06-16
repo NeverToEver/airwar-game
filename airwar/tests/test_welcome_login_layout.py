@@ -180,18 +180,53 @@ def test_welcome_layout_keeps_benchmark_button_on_screen_at_small_window() -> No
 
 
 def test_welcome_layout_adaptive_panel_height() -> None:
-    """At the design size, panel_h equals the natural PANEL_H; at a
-    smaller viewport, panel_h shrinks to keep both panels on screen."""
+    """At the design size panel_h is natural; small viewports stay in bounds."""
     scene = _make_scene()
     big = scene._get_layout(1920, 1080)
     assert big["panel_h"] == scene.PANEL_H
-    # Stacked mode: right panel + bottom clearance must fit in the screen
     small = scene._get_layout(984, 553)
     assert small["panel_h"] <= scene.PANEL_H
-    assert small["right_y"] + small["panel_h"] + 96 <= 553, (
-        f"stacked right panel overflows screen: right_y={small['right_y']} "
+    assert small["left_x"] >= 0
+    assert small["right_x"] + scene.PANEL_W <= 984
+    assert small["right_y"] + small["panel_h"] <= 553, (
+        f"right panel overflows screen: right_y={small['right_y']} "
         f"panel_h={small['panel_h']} sh=553"
     )
+
+
+def test_welcome_buttons_do_not_overlap_at_small_window() -> None:
+    """Clickable regions must not overlap when the window is narrow."""
+    scene = _make_scene()
+    surface = pygame.Surface((984, 553), pygame.SRCALPHA)
+    scene.render(surface)
+
+    names = [
+        "username_field",
+        "username_dropdown",
+        "password_field",
+        "login",
+        "register",
+        "settings",
+        "skip_login",
+        "delete_user",
+        "tutorial",
+        "diff_easy",
+        "diff_medium",
+        "diff_hard",
+        "benchmark",
+        "leaderboard",
+    ]
+    rects = {name: scene.get_button_rect(name) for name in names}
+    missing = [name for name, rect in rects.items() if rect is None]
+    assert not missing
+
+    for i, name_a in enumerate(names):
+        for name_b in names[i + 1:]:
+            rect_a = rects[name_a]
+            rect_b = rects[name_b]
+            assert not rect_a.colliderect(rect_b), (
+                f"{name_a} overlaps {name_b}: {rect_a.clip(rect_b)}"
+            )
 
 
 def test_login_panel_placeholder_uses_translator_get_locale() -> None:

@@ -35,15 +35,10 @@ class SceneSwitcher:
 
     def run_welcome_flow(self) -> tuple:
         """Single-page beginner interface: login + difficulty + controls in one screen."""
-        # Switch to the welcome scene once, before the loop. The
-        # sub-scene flows (tutorial, settings, benchmark) are entered
-        # via ``scene.enter()`` directly without a corresponding
-        # ``scene_manager.switch`` (the user has to be able to leave
-        # the sub-scene by clicking Back, not by the switcher
-        # silently swapping the active scene back). Re-calling
-        # ``switch("welcome")`` on the second iteration would raise
-        # ``SceneAlreadyActiveError`` because ``welcome`` is still
-        # ``SceneManager._current_scene`` from the initial switch.
+        # Switch to the welcome scene once, before the loop. Child flows
+        # restore it through ``_resume_welcome_scene`` so the next
+        # iteration always has a running welcome scene and no stale
+        # one-shot navigation request.
         self._scene_manager.switch("welcome", viewport=self._viewport)
         welcome = self._scene_manager.get_current_scene()
         while self._director._running:
@@ -57,14 +52,19 @@ class SceneSwitcher:
                 result = self.run_tutorial_flow()
                 if result == "quit":
                     return (False, None)
+                self._resume_welcome_scene(welcome, "tutorial")
                 continue
             if hasattr(welcome, "should_open_settings") and welcome.should_open_settings():
+                self._consume_welcome_request(welcome, "settings")
                 if not self._show_settings_menu():
                     return (False, None)
+                self._resume_welcome_scene(welcome)
                 continue
             if hasattr(welcome, "should_open_benchmark") and welcome.should_open_benchmark():
+                self._consume_welcome_request(welcome, "benchmark")
                 if not self._show_benchmark_menu():
                     return (False, None)
+                self._resume_welcome_scene(welcome)
                 continue
             if welcome.is_ready():
                 self._director._current_user = welcome.get_username()
@@ -80,6 +80,25 @@ class SceneSwitcher:
                 return (True, save_data)
             return (True, None)
         return (False, None)
+
+    def _consume_welcome_request(self, welcome, request: str | None = None) -> None:
+        """Clear one-shot welcome navigation flags before re-running welcome."""
+        if request in (None, "tutorial") and hasattr(welcome, "tutorial_requested"):
+            welcome.tutorial_requested = False
+        if request in (None, "settings") and hasattr(welcome, "settings_requested"):
+            welcome.settings_requested = False
+        if request in (None, "benchmark") and hasattr(welcome, "benchmark_requested"):
+            welcome.benchmark_requested = False
+
+    def _resume_welcome_scene(self, welcome, consumed_request: str | None = None) -> None:
+        """Make the already-registered welcome scene ready for another loop."""
+        self._consume_welcome_request(welcome, consumed_request)
+        if hasattr(welcome, "running"):
+            welcome.running = True
+        if hasattr(welcome, "clear_hover"):
+            welcome.clear_hover()
+        if self._scene_manager.get_current_scene_name() != "welcome":
+            self._scene_manager.switch("welcome", viewport=self._viewport)
 
     def run_tutorial_flow(self) -> str:
         tutorial = self._scene_manager.get_scene("tutorial")
