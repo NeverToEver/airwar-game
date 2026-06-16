@@ -38,6 +38,8 @@
   "welcome.guest_button": "Guest Mode",
   "welcome.settings_button": "Settings",
   "welcome.delete_button": "Delete User",
+  "warning.ammo_depleted": "Mothership Ammo Depleted",
+  "warning.prepare_to_leave": "Preparing to Undock",
   "welcome.leaderboard_button": "Leaderboard",
   "welcome.username_label": "Username",
   "welcome.password_label": "Password",

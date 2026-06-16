@@ -5,6 +5,7 @@ import math
 
 import pygame
 
+from airwar.i18n import t
 from airwar.utils.fonts import get_cjk_font
 
 
@@ -19,8 +20,8 @@ class WarningBanner:
     Timing is wall-clock driven via pygame.time.get_ticks().
     """
 
-    WARNING_TEXT = "母舰弹药耗尽"
-    SUB_TEXT = "准备脱离"
+    WARNING_TEXT_KEY = "warning.ammo_depleted"
+    SUB_TEXT_KEY = "warning.prepare_to_leave"
     BANNER_HEIGHT = 60
     HAZARD_WIDTH = 70
     HAZARD_STRIPE = 10
@@ -120,8 +121,8 @@ class WarningBanner:
         if self._main_font is None:
             self._main_font = get_cjk_font(28)
             self._sub_font = get_cjk_font(20)
-        self._main_text = self._main_font.render(self.WARNING_TEXT, True, self.WARNING_TEXT_COLOR)
-        self._sub_text = self._sub_font.render(self.SUB_TEXT, True, self.SUB_TEXT_COLOR)
+        self._main_text = self._main_font.render(t(self.WARNING_TEXT_KEY), True, self.WARNING_TEXT_COLOR)
+        self._sub_text = self._sub_font.render(t(self.SUB_TEXT_KEY), True, self.SUB_TEXT_COLOR)
         return True
 
     def reset(self) -> None:

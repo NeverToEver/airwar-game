@@ -38,6 +38,8 @@
   "welcome.guest_button": "游客模式",
   "welcome.settings_button": "设置",
   "welcome.delete_button": "删除用户",
+  "warning.ammo_depleted": "母舰弹药耗尽",
+  "warning.prepare_to_leave": "准备脱离",
   "welcome.leaderboard_button": "排行榜",
   "welcome.username_label": "用户名",
   "welcome.password_label": "密码",
