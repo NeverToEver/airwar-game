@@ -66,44 +66,6 @@ from airwar.ui.reward_selector import RewardSelector
 from airwar.ui.warning_banner import WarningBanner
 from airwar.utils.mouse_interaction import MouseInteractiveMixin
 from airwar.utils.sprites import prewarm_glow_caches, prewarm_ship_sprite_caches
-
-
-def _clear_module_caches() -> None:
-    """Clear module-level caches to free memory on scene switch.
-
-    These caches persist across game sessions and accumulate Surface
-    objects. Clearing them on scene exit prevents memory growth during
-    long play sessions.
-    """
-    # chamfered_panel caches
-    try:
-        from airwar.ui import chamfered_panel
-        chamfered_panel._panel_surface_cache.clear()
-        chamfered_panel._bg_cache.clear()
-        chamfered_panel._border_cache.clear()
-        chamfered_panel._glow_cache.clear()
-    except (ImportError, AttributeError):
-        pass
-
-    # menu_background caches
-    try:
-        from airwar.ui.menu_background import MenuBackground
-        MenuBackground._gradient_cache.clear()
-        MenuBackground._scan_glow_cache.clear()
-    except (ImportError, AttributeError):
-        pass
-
-    # explosion effect caches
-    try:
-        from airwar.game.explosion_animation.explosion_effect import (
-            _glow_texture_cache, _spark_core_cache, _flash_cache,
-        )
-        _glow_texture_cache.clear()
-        _spark_core_cache.clear()
-        _flash_cache.clear()
-    except (ImportError, AttributeError):
-        pass
-
 from .game_scene_factory import GameSceneFactory
 from .game_scene_protocol_adapter import IGameSceneAdapter
 from .game_scene_renderer import GameSceneRenderer
@@ -720,3 +682,40 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
     def clear_ripple_effects(self) -> None:
         return self._protocol.clear_ripple_effects()
+
+
+def _clear_module_caches() -> None:
+    """Clear module-level caches to free memory on scene switch.
+
+    These caches persist across game sessions and accumulate Surface
+    objects. Clearing them on scene exit prevents memory growth during
+    long play sessions.
+    """
+    # chamfered_panel caches
+    try:
+        from airwar.ui import chamfered_panel
+        chamfered_panel._panel_surface_cache.clear()
+        chamfered_panel._bg_cache.clear()
+        chamfered_panel._border_cache.clear()
+        chamfered_panel._glow_cache.clear()
+    except (ImportError, AttributeError):
+        pass
+
+    # menu_background caches
+    try:
+        from airwar.ui.menu_background import MenuBackground
+        MenuBackground._gradient_cache.clear()
+        MenuBackground._scan_glow_cache.clear()
+    except (ImportError, AttributeError):
+        pass
+
+    # explosion effect caches
+    try:
+        from airwar.game.explosion_animation.explosion_effect import (
+            _glow_texture_cache, _spark_core_cache, _flash_cache,
+        )
+        _glow_texture_cache.clear()
+        _spark_core_cache.clear()
+        _flash_cache.clear()
+    except (ImportError, AttributeError):
+        pass
