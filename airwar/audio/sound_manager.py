@@ -118,12 +118,13 @@ class SoundManager:
         if self._muted:
             return
 
-        sound = self._sfx_cache.get(name)
-        if sound is None:
+        _UNAVAILABLE = object()  # sentinel for SFX that cannot be generated
+        sound = self._sfx_cache.get(name, _UNAVAILABLE)
+        if sound is _UNAVAILABLE:
             sound = self._build_sfx(name)
-            if sound is None:
-                return
-            self._sfx_cache[name] = sound
+            self._sfx_cache[name] = sound  # cache even if None to avoid retrying
+        if sound is None:
+            return
         min_interval_ms = _SFX_MIN_INTERVAL_MS.get(name, 0)
         if min_interval_ms > 0:
             now = pygame.time.get_ticks()
@@ -395,14 +396,19 @@ def _generate_beep(
     *,
     gain: float = 1.0,
     harmonics: tuple[float, ...] = (1.0,),
-) -> pygame.mixer.Sound:
+) -> pygame.mixer.Sound | None:
     """Build a short sine-wave tone as a :class:`pygame.mixer.Sound`.
 
     Applies a linear attack/release envelope so the click at frame 0
     does not produce an audible pop. Channel layout matches the
     currently-initialized mixer (mono or stereo).
+
+    Returns ``None`` when ``numpy`` is not installed (SFX are optional).
     """
-    import numpy as np  # local import: numpy is not required for core game
+    try:
+        import numpy as np  # local import: numpy is not required for core game
+    except ImportError:
+        return None
 
     # pygame.sndarray hands the buffer to the mixer without resampling;
     # to land on the requested duration we must match the mixer's

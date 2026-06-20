@@ -162,9 +162,8 @@ class MothershipAnimations:
         current_y = self._entering_start_y + (self._entering_target_y - self._entering_start_y) * eased
         self._integrator._mother_ship.set_position(int(self._entering_target_x), int(current_y))
 
-        # Fire missiles during fly-in for cover
-        self._integrator._update_mothership_firing()
-        self._integrator._update_mothership_bullets()
+        # Firing and bullet updates are handled by GameIntegrator.update()
+        # to avoid double-updating per frame.
 
         if progress >= 1.0:
             self._entering_animation_active = False
@@ -188,9 +187,8 @@ class MothershipAnimations:
 
         self._integrator._game_scene.set_player_position_topleft(current_x, current_y)
 
-        # Continue firing during docking animation for cover fire
-        self._integrator._update_mothership_firing()
-        self._integrator._update_mothership_bullets()
+        # Firing and bullet updates are handled by GameIntegrator.update()
+        # to avoid double-updating per frame.
 
         if progress >= 1.0:
             self._docking_animation_active = False

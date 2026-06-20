@@ -1,4 +1,5 @@
 use pyo3::prelude::*;
+use pyo3::types::PyBytes;
 use std::cell::Cell;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -97,7 +98,7 @@ type ParticleRenderData = (f32, f32, f32, f32, f32, u8, u8, u8);
 /// Each particle is rendered as a filled glow circle with additive blending.
 /// Returns raw RGBA pixel buffer of `screen_width * screen_height * 4` bytes.
 #[pyfunction]
-pub fn batch_render_particles(particles: Vec<ParticleRenderData>, screen_width: i32, screen_height: i32) -> Vec<u8> {
+pub fn batch_render_particles(py: Python<'_>, particles: Vec<ParticleRenderData>, screen_width: i32, screen_height: i32) -> Bound<'_, PyBytes> {
     let width = screen_width as usize;
     let height = screen_height as usize;
     let mut buf = vec![0u8; width * height * 4];
@@ -152,7 +153,7 @@ pub fn batch_render_particles(particles: Vec<ParticleRenderData>, screen_width: 
         }
     }
 
-    buf
+    PyBytes::new_bound(py, &buf)
 }
 
 thread_local! {

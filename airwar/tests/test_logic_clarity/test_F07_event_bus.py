@@ -100,14 +100,14 @@ class TestF07SubscribeReturnValueHandling:
         """
         from airwar.game.mother_ship.event_hub import HANDLER_BINDINGS
 
-        # F07 E1: 12 events now bound via HANDLER_BINDINGS table.
-        assert len(HANDLER_BINDINGS) == 12, f"Expected 12 HANDLER_BINDINGS, got {len(HANDLER_BINDINGS)}"
+        # F07 E1: 13 events now bound via HANDLER_BINDINGS table.
+        assert len(HANDLER_BINDINGS) == 13, f"Expected 13 HANDLER_BINDINGS, got {len(HANDLER_BINDINGS)}"
 
     def test_event_hub_centralizes_subscriptions(self):
-        """F07 E1 + god-class split: 12 subscriptions go through MothershipEventHub."""
+        """F07 E1 + god-class split: 13 subscriptions go through MothershipEventHub."""
         from airwar.game.mother_ship.event_hub import HANDLER_BINDINGS
 
-        assert len(HANDLER_BINDINGS) == 12
+        assert len(HANDLER_BINDINGS) == 13
         for event_name, handler_name in HANDLER_BINDINGS:
             assert event_name.startswith("EVENT_"), f"Bad event name: {event_name}"
             assert handler_name.startswith("_on_"), f"Bad handler: {handler_name}"

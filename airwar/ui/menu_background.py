@@ -254,8 +254,14 @@ class MenuBackground:
             pygame.draw.circle(surface, SceneColors.PARTICLE_COLOR, (int(x), int(y)), int(p["size"]))
 
     def _get_scan_glow_surface(self, orientation: str, length: int, radius: int, base_alpha: int) -> pygame.Surface:
-        """Get or create a cached glow gradient surface for scan beams."""
-        cache_key = (orientation, length, radius, base_alpha)
+        """Get or create a cached glow gradient surface for scan beams.
+
+        Quantizes alpha to steps of 20 to prevent unbounded cache growth.
+        Without quantization, the continuously-changing pulse alpha creates
+        a new cache entry every frame, causing memory leaks.
+        """
+        quantized_alpha = (base_alpha // 20) * 20
+        cache_key = (orientation, length, radius, quantized_alpha)
         if cache_key not in MenuBackground._scan_glow_cache:
             thickness = radius * 2 + 4
             if orientation == "h":
@@ -274,6 +280,9 @@ class MenuBackground:
                         pygame.draw.line(surf, (*accel_color, alpha), (0, i), (length, i))
                     else:
                         pygame.draw.line(surf, (*accel_color, alpha), (i, 0), (i, length))
+            # Evict oldest entries if cache is too large
+            if len(MenuBackground._scan_glow_cache) >= 32:
+                MenuBackground._scan_glow_cache.pop(next(iter(MenuBackground._scan_glow_cache)))
             MenuBackground._scan_glow_cache[cache_key] = surf
         return MenuBackground._scan_glow_cache[cache_key]
 

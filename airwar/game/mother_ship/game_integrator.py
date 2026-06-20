@@ -95,6 +95,7 @@ class GameIntegrator:
     MOTHERSHIP_GATLING_BULLET_TYPE = MOTHERSHIP_GATLING_BULLET_TYPE
 
     MOTHERSHIP_BULLET_DESPAWN_MARGIN = 80
+    MOTHERSHIP_MAX_BULLETS = 20
     AMMO_CELL_COUNT = 10.0
     # F04 M2: link to GAME_CONSTANTS (was bare 1200)
     DOCKING_INVINCIBILITY_FRAMES = GAME_CONSTANTS.PERSISTENCE.DOCKING_INVINCIBILITY_FRAMES
@@ -144,6 +145,7 @@ class GameIntegrator:
         self._mothership_bullets: list[Bullet] = []
         self._entity_renderer = EntityRenderer()
         self._mothership_fire_timer = 0
+        self._exit_refund_progress: float = 0.0  # Ammo refund on early exit (0.0-0.3)
         self._score_reduction_factor = 1.0 / 3.0
 
     # ── F08: animation state forwarders (preserved attribute names) ───────
@@ -415,6 +417,8 @@ class GameIntegrator:
     def _fire_at_enemies(self) -> None:
         if not self._game_scene:
             return
+        if len(self._mothership_bullets) >= self.MOTHERSHIP_MAX_BULLETS:
+            return
 
         mother_ship_pos = self._mother_ship.get_docking_position()
         targets = self._get_mothership_targets()
@@ -466,6 +470,7 @@ class GameIntegrator:
         boss = self._game_scene.get_boss()
         screen_width = get_screen_width()
         screen_height = get_screen_height()
+        margin = self.MOTHERSHIP_BULLET_DESPAWN_MARGIN
 
         for bullet in self._mothership_bullets[:]:
             bullet.update()
@@ -473,9 +478,16 @@ class GameIntegrator:
             if not bullet.active:
                 continue
 
+            # Skip collision for off-screen bullets — early despawn avoids
+            # the O(bullets × enemies) colliderect loop for distant bullets.
+            bx, by = bullet.rect.centerx, bullet.rect.centery
+            if bx < -margin or bx > screen_width + margin or by < -margin or by > screen_height + margin:
+                bullet.active = False
+                continue
+
             bullet_damage = bullet.data.damage
             hit = False
-            hit_x, hit_y = bullet.rect.centerx, bullet.rect.centery
+            hit_x, hit_y = bx, by
 
             for enemy in enemies:
                 if not enemy.active:
@@ -496,19 +508,8 @@ class GameIntegrator:
             if hit:
                 bullet.active = False
                 if bullet.data.is_explosive:
-                    # Trigger explosion at hit point
                     self._trigger_explosion(hit_x, hit_y)
-                    # AoE damage to all nearby enemies
                     self._apply_missile_splash(hit_x, hit_y, enemies, boss)
-
-            margin = self.MOTHERSHIP_BULLET_DESPAWN_MARGIN
-            if (
-                bullet.rect.x < -margin
-                or bullet.rect.x > screen_width + margin
-                or bullet.rect.y < -margin
-                or bullet.rect.y > screen_height + margin
-            ):
-                bullet.active = False
 
         self._mothership_bullets = [b for b in self._mothership_bullets if b.active]
 
@@ -629,6 +630,22 @@ class GameIntegrator:
 
     def _on_cooldown_started(self, **kwargs) -> None:
         self._deactivate_invincibility()
+        # Apply ammo refund from early exit: start cooldown with partial progress
+        # so the player regenerates ammo faster.
+        if self._exit_refund_progress > 0.0:
+            self._state_machine.restore_cooldown_state(self._exit_refund_progress)
+            self._exit_refund_progress = 0.0
+
+    def _on_exit_complete(self, **kwargs) -> None:
+        """Calculate ammo refund when player exits mothership early.
+
+        Refund is proportional to remaining stay time, capped at 30% of
+        total ammo to prevent abuse.
+        """
+        stay = self._state_machine.stay_progress
+        remaining_ratio = max(0.0, 1.0 - stay.stay_progress)
+        # Refund up to 30% of total ammo, proportional to remaining stay
+        self._exit_refund_progress = min(0.3, remaining_ratio * 0.5)
 
     def _on_stay_started(self, **kwargs) -> None:
         pass

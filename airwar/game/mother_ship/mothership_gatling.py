@@ -42,7 +42,7 @@ class GatlingTurretSpec(NamedTuple):
 # Gatling damage / cadence constants. Moved verbatim from GameIntegrator
 # so the firing logic and tests have a single source of truth.
 MOTHERSHIP_GATLING_DAMAGE = 24
-MOTHERSHIP_GATLING_FIRE_RATE = 3
+MOTHERSHIP_GATLING_FIRE_RATE = 8
 MOTHERSHIP_GATLING_BULLET_SPEED = 18
 MOTHERSHIP_GATLING_TOTAL_SWEEP_DEGREES = 120
 MOTHERSHIP_GATLING_SWEEP_ARC_DEGREES = 80
@@ -94,6 +94,8 @@ class MothershipGatling:
 
     def _fire_gatling_sweep(self) -> None:
         if not self._integrator._game_scene or not self._integrator._get_mothership_targets():
+            return
+        if len(self._integrator._mothership_bullets) >= self._integrator.MOTHERSHIP_MAX_BULLETS:
             return
 
         mother_ship_pos = self._integrator._mother_ship.get_docking_position()

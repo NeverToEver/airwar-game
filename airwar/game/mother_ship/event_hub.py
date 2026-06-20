@@ -38,6 +38,7 @@ HANDLER_BINDINGS: list[tuple[str, str]] = [
     ("EVENT_UNDOCK_REQUESTED", "_on_undock_requested"),
     ("EVENT_EXIT_STARTED", "_on_exit_started"),
     ("EVENT_EXIT_PROGRESS_UPDATE", "_on_exit_progress_update"),
+    ("EVENT_EXIT_COMPLETE", "_on_exit_complete"),
     ("EVENT_EXIT_CANCELLED", "_on_exit_cancelled"),
 ]
 

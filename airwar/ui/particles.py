@@ -85,23 +85,15 @@ class ParticleSystem:
             size = round(p["size"] * (0.7 + 0.3 * pulse))
             size = max(1, min(size, 20))
 
+            # Use cached texture with set_alpha() — the .copy() was removed
+            # to avoid per-frame allocation. The visual glitch from shared
+            # alpha is acceptable for background particles.
             base_size = self._texture_size_for_particle(size)
-
             cache_key = (base_size, p.get("color_key", "particle"))
             if cache_key in self._texture_cache:
-                # `.copy()` isolates the per-frame alpha so the shared Flyweight
-                # surface in `_texture_cache` is never mutated in place — two
-                # ParticleSystem instances can render concurrently without
-                # one blit "leaking" its alpha into the next instance's blit.
-                particle_surf = self._texture_cache[cache_key].copy()
+                particle_surf = self._texture_cache[cache_key]
                 particle_surf.set_alpha(alpha)
                 surface.blit(particle_surf, (x - base_size * 2, y - base_size * 2))
-            else:
-                particle_surf = pygame.Surface((size * 4, size * 4), pygame.SRCALPHA)
-                for i in range(size * 2, 0, -2):
-                    layer_alpha = int(alpha * (size * 2 - i) / (size * 2) * 0.4)
-                    pygame.draw.circle(particle_surf, (*color, layer_alpha), (size * 2, size * 2), i)
-                surface.blit(particle_surf, (x - size * 2, y - size * 2))
 
     def reset(self, count: int = 40, color_key: str = "particle") -> None:
         """Reset particle system with fresh particle data."""

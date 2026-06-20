@@ -121,8 +121,9 @@ class LockManager:
         self._recompute()
 
     def release(self, layer: LockLayer):
-        self._locks.pop(layer, None)
-        self._force_timer_update = True
+        removed = self._locks.pop(layer, None)
+        if removed is not None:
+            self._force_timer_update = True
         self._recompute()
 
     def clear(self) -> None:

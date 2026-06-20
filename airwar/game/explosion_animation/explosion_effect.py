@@ -99,9 +99,9 @@ def _get_flash_surface(radius: int) -> pygame.Surface:
 class ExplosionEffect:
     """Explosion effect — manages the complete lifecycle of an explosion animation"""
 
-    PARTICLE_COUNT = 30
-    SPARK_COUNT = 20
-    DEBRIS_COUNT = 10
+    PARTICLE_COUNT = 15
+    SPARK_COUNT = 10
+    DEBRIS_COUNT = 5
     PARTICLE_LIFE_MIN = 20
     PARTICLE_LIFE_MAX = 40
     SPARK_LIFE_MIN = 10
@@ -293,7 +293,11 @@ class ExplosionEffect:
         self._render_sparks(surface)
 
     def _render_central_glow(self, surface: pygame.Surface) -> None:
-        """Render central glow core — uses cached texture."""
+        """Render central glow core using direct draw.
+
+        Uses pygame.draw.circle instead of cached textures to avoid
+        set_alpha() mutation on shared cached surfaces.
+        """
         if self._central_glow <= 0.01:
             return
 
@@ -302,12 +306,19 @@ class ExplosionEffect:
             return
 
         alpha = int(self.CENTRAL_GLOW_ALPHA_MAX * self._central_glow)
-        glow_surf = _get_glow_texture(glow_radius, (255, 120, 20), 0.14)
-        glow_surf.set_alpha(alpha)
-        surface.blit(glow_surf, (int(self._x) - glow_radius - 1, int(self._y) - glow_radius - 1))
+        center = (int(self._x), int(self._y))
+        # Draw concentric circles for soft glow effect
+        for i in range(glow_radius, 0, -max(1, glow_radius // 6)):
+            layer_alpha = int(alpha * (i / glow_radius) * 0.7)
+            if layer_alpha > 0:
+                pygame.draw.circle(surface, (255, 120, 20, layer_alpha), center, i)
 
     def _render_core_flash(self, surface: pygame.Surface) -> None:
-        """Render bright flash at explosion center"""
+        """Render bright flash at explosion center.
+
+        Uses direct draw calls instead of cached+copied surfaces to avoid
+        per-frame Surface allocation (~10 copies/frame with 10 explosions).
+        """
         if self._core_flash <= 0.01:
             return
 
@@ -317,12 +328,13 @@ class ExplosionEffect:
 
         center = (int(self._x), int(self._y))
         alpha = int(self.CORE_FLASH_ALPHA_MAX * self._core_flash)
+        draw_radius = flash_radius * 2
 
-        flash_surf = _get_flash_surface(flash_radius)
-        cached_flash = flash_surf.copy()
-        cached_flash.set_alpha(alpha)
-
-        surface.blit(cached_flash, (center[0] - flash_radius * 2 - 1, center[1] - flash_radius * 2 - 1))
+        # Outer glow — direct draw avoids Surface.copy() + set_alpha()
+        pygame.draw.circle(surface, (255, 255, 200, alpha), center, draw_radius)
+        # Inner bright core
+        inner_alpha = min(255, alpha + 60)
+        pygame.draw.circle(surface, (255, 255, 255, inner_alpha), center, max(1, draw_radius // 2))
 
     def _render_shockwave(self, surface: pygame.Surface) -> None:
         """Render expanding shockwave ring"""
@@ -359,68 +371,43 @@ class ExplosionEffect:
             self._render_debris_particle(surface, particle)
 
     def _render_debris_particle(self, surface: pygame.Surface, particle: ExplosionParticle) -> None:
-        """Render a debris particle with trail effect."""
+        """Render a debris particle with trail effect.
+
+        Uses direct draw calls instead of cached+set_alpha surfaces to avoid
+        cache corruption (set_alpha mutates the cached surface in-place).
+        """
         alpha = min(self.PARTICLE_ALPHA_MAX, particle.get_alpha())
         if alpha < GAME_CONSTANTS.ANIMATION.PARTICLE_ALPHA_VISIBILITY_THRESHOLD:
             return
 
         life_ratio = particle.life / particle.max_life
         gray = int(180 * life_ratio)
-        (gray + 50, gray + 30, gray)
+        color = (gray + 50, gray + 30, gray)
         size = max(1, int(particle.size * (alpha / 255)))
 
-        # Trail dots — 3 faint circles behind the particle
+        # Trail dots
         for i in range(2):
             trail_alpha = int(alpha * (1.0 - i / 3) * 0.5)
             trail_size = max(1, size - i)
             trail_x = int(particle.x - particle.vx * i * 0.3)
             trail_y = int(particle.y - particle.vy * i * 0.3)
             if trail_alpha > 10:
-                trail_surf = _get_spark_core(trail_size)
-                trail_surf.set_alpha(trail_alpha)
-                surface.blit(trail_surf, (trail_x - trail_size - 1, trail_y - trail_size - 1))
+                pygame.draw.circle(surface, (*color, trail_alpha), (trail_x, trail_y), trail_size)
 
         # Main debris dot
-        core_surf = _get_spark_core(size)
-        core_surf.set_alpha(alpha)
-        surface.blit(core_surf, (int(particle.x) - size - 1, int(particle.y) - size - 1))
+        pygame.draw.circle(surface, (*color, alpha), (int(particle.x), int(particle.y)), size)
 
     def _render_particles(self, surface: pygame.Surface) -> None:
         """Render main explosion particles with glow — batched via Rust."""
         if not self._particles:
             return
 
-        # Collect particle data for batch rendering
-        particle_data = []
+        # Render each particle individually using cached textures.
+        # This avoids allocating a full-screen RGBA buffer (~8 MB at 1920×1080)
+        # per explosion per frame — the previous batch_render_particles approach
+        # was the single largest performance bottleneck.
         for particle in self._particles:
-            alpha = min(self.PARTICLE_ALPHA_MAX, particle.get_alpha())
-            if alpha < GAME_CONSTANTS.ANIMATION.PARTICLE_ALPHA_VISIBILITY_THRESHOLD:
-                continue
-            color = particle.get_color()
-            size = max(1, int(particle.size * (alpha / 255)))
-            glow_radius = size * 3
-            alpha_norm = alpha / 255.0
-            particle_data.append(
-                (
-                    particle.x,
-                    particle.y,
-                    float(size),
-                    float(glow_radius),
-                    alpha_norm,
-                    color[0],
-                    color[1],
-                    color[2],
-                )
-            )
-
-        if not particle_data:
-            return
-
-        # Render via Rust batch into a sub-region surface
-        screen_w, screen_h = surface.get_size()
-        buf = batch_render_particles(particle_data, screen_w, screen_h)
-        particle_surf = pygame.image.frombuffer(buf, (screen_w, screen_h), "RGBA")
-        surface.blit(particle_surf, (0, 0))
+            self._render_main_particle(surface, particle)
 
     def _render_main_particle(self, surface: pygame.Surface, particle: ExplosionParticle) -> None:
         """Render a main particle with soft glow — uses cached textures."""
@@ -432,24 +419,21 @@ class ExplosionEffect:
         size = max(1, int(particle.size * (alpha / 255)))
         px, py = int(particle.x), int(particle.y)
 
-        # Soft glow from cached texture — avoids per-frame draw.circle loops
+        # Soft glow — direct draw avoids set_alpha() cache pollution
         glow_radius = size * 3
-        if glow_radius > 1:
-            glow_surf = _get_glow_texture(glow_radius, color, 0.08)
-            glow_surf.set_alpha(alpha)
-            surface.blit(glow_surf, (px - glow_radius - 1, py - glow_radius - 1))
+        if glow_radius >= 4:
+            for i in range(glow_radius, 0, -max(1, glow_radius // 4)):
+                layer_alpha = int(alpha * (i / glow_radius) * 0.08)
+                if layer_alpha > 0:
+                    pygame.draw.circle(surface, (*color, layer_alpha), (px, py), i)
 
-        # Core dot from cached texture
-        core_surf = _get_spark_core(size)
-        core_surf.set_alpha(alpha)
-        surface.blit(core_surf, (px - size - 1, py - size - 1))
+        # Core dot
+        pygame.draw.circle(surface, (*color, alpha), (px, py), size)
 
         # Bright inner core
         inner_size = max(1, size // 2)
-        inner_surf = _get_spark_core(inner_size)
-        bright_alpha = min(self.PARTICLE_ALPHA_MAX, alpha + self.INNER_CORE_ALPHA_BONUS)
-        inner_surf.set_alpha(bright_alpha)
-        surface.blit(inner_surf, (px - inner_size - 1, py - inner_size - 1))
+        bright_alpha = min(255, alpha + self.INNER_CORE_ALPHA_BONUS)
+        pygame.draw.circle(surface, (255, 255, 255, bright_alpha), (px, py), inner_size)
 
     def _render_sparks(self, surface: pygame.Surface) -> None:
         """Render fast spark particles"""
@@ -457,15 +441,14 @@ class ExplosionEffect:
             self._render_spark_particle(surface, spark)
 
     def _render_spark_particle(self, surface: pygame.Surface, particle: ExplosionParticle) -> None:
-        """Render a spark particle — uses cached core texture, skips line draw."""
+        """Render a spark particle using direct draw to avoid cache pollution."""
         alpha = min(self.PARTICLE_ALPHA_MAX, particle.get_alpha())
         if alpha < GAME_CONSTANTS.ANIMATION.PARTICLE_ALPHA_VISIBILITY_THRESHOLD:
             return
 
         core_size = max(1, int(particle.size))
-        core_surf = _get_spark_core(core_size)
-        core_surf.set_alpha(alpha)
-        surface.blit(core_surf, (int(particle.x) - core_size - 1, int(particle.y) - core_size - 1))
+        color = particle.get_color()
+        pygame.draw.circle(surface, (*color, alpha), (int(particle.x), int(particle.y)), core_size)
 
     def reset(self) -> None:
         """Reset effect instance (called before returning to pool)"""
