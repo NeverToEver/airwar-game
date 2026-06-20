@@ -7,7 +7,6 @@ from collections import OrderedDict
 import pygame
 
 from airwar.core_bindings import (
-    batch_render_particles,
     batch_update_particles,
     generate_explosion_particles,
 )
