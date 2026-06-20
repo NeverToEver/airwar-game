@@ -2,7 +2,137 @@
 
 [English version](./README.en.md)
 
-一款基于 Python + Pygame 的 2D 空战射击游戏，支持可选 Rust 原生扩展加速。包含完整的 7 阶段新手教程、Boss 战、基地指挥中心（征用点数经济）、鼠标辅瞄、以及运行期生成素材的本地缓存。
+一款基于 Python + Pygame 的 2D 空战射击游戏，支持可选 Rust 原生扩展加速。
+
+## 项目特点
+
+- **可选 Rust 加速** — `airwar_core/` 使用 PyO3 + maturin 提供性能热点的原生实现（向量运算、碰撞检测、批量移动、粒子系统、子弹更新、光效生成），缺失时自动回退纯 Python 实现，零配置开箱即用
+- **场景架构** — `SceneManager` 管理 Welcome → Tutorial → Game → Pause/Death/Settings/Exit 完整生命周期，每个场景独立封装 `enter/exit/handle_events/update/render` 接口
+- **HSM 状态机** — 玩家和 Boss 均采用分层状态机驱动：Player 使用 `_ALIVE_TRANSITIONS` 转移表 + `IllegalPlayerTransition` 异常保护；Boss 使用 8 状态 `_BOSS_TRANSITIONS` 转移表 + 暴走子状态机
+- **LockManager 优先级仲裁** — 6 层优先级（HOMECOMING 100 / MOTHERSHIP 80 / BOSS_ENRAGE 60 / PHASE_DASH 40 / GIVE_UP 20 / GAME_PAUSE 10）统一管理无敌、控制锁、暂停互锁
+- **15 步更新流水线** — `GameScene.update()` 严格按序执行：tick_hit_stop → 输入/动画/暂停门 → 碰撞检测 → 死实体清理 → 里程碑检查，保证状态一致性
+- **i18n 国际化** — 支持 zh_CN / en_US，134 个翻译键，`t(key, **kwargs)` 公共 API
+- **运行期素材缓存** — 首次启动生成飞船/光效等 Surface 并缓存到本地，后续启动直接复用
+- **924 个测试用例** — pytest 驱动，支持 headless SDL 环境运行，覆盖率门禁 40%
+
+## 技术路线
+
+本项目采用 **Pygame-native** 技术路线：
+
+```
+Python 3.11+ + Pygame (核心)
+       ↓
+Rust + PyO3 (可选性能层)
+       ↓
+maturin (构建工具)
+```
+
+- **核心层**: Python + Pygame 负责游戏逻辑、渲染、输入处理
+- **性能层**: Rust 通过 PyO3 绑定加速热点计算（碰撞、向量、粒子、批量更新）
+- **回退策略**: `core_bindings.py` 使用 `try: from airwar_core import ... except (ImportError, OSError)` 实现优雅降级，`RUST_AVAILABLE` 标志位供消费方检查
+- **不依赖外部引擎**: 纯 Pygame 实现，不迁移 Godot/Unity 等引擎
+
+## 开发框架
+
+| 组件 | 技术 | 用途 |
+|------|------|------|
+| **语言** | Python 3.11+ | 游戏逻辑、配置、测试 |
+| **游戏引擎** | Pygame 2.6+ | 渲染、事件循环、音频 |
+| **图像处理** | Pillow 12+ | 精灵缩放、格式转换 |
+| **原生扩展** | Rust + PyO3 0.22 | 性能热点加速 |
+| **构建工具** | maturin 1.0 | Rust → Python 绑定编译 |
+| **打包** | PyInstaller 6+ | 生成独立可执行文件 |
+| **测试** | pytest 8+ | 单元测试、属性测试 |
+| **Lint** | ruff 0.8+ | 代码风格检查（E/W/F 规则） |
+
+## 详细项目描述
+
+### 游戏玩法
+
+玩家驾驶战机在太空中与敌机和 Boss 战斗，通过击杀获取分数和增益，最终挑战 Boss 完成关卡。
+
+**核心系统:**
+
+- **自动射击 + 鼠标辅瞄** — 战机持续自动射击，鼠标控制瞄准方向；`AimAssistSystem` 实现两层目标选择（自动锁定最近敌人 / 大幅鼠标移动时优先切换到移动方向目标），原始输入加入短延迟平滑
+- **加速系统** — 长按 Shift 启动推进，1.7 倍速，消耗燃料并延迟恢复；270° 弧形仪表 UI
+- **相位冲刺** — 需天赋解锁，按下松开 Shift 触发，消耗 25% 燃料进行 250px 无敌突进
+- **武器模式** — 散射弹（扇形 3 发，-10°/0°/+10°）和激光（单发高伤害 35），两种模式可组合形成散射激光
+- **13 种增益** — 覆盖生命、攻击、防御、功能四类，含双路线天赋系统（进攻/支援）与路线内互斥选项
+- **里程碑奖励** — 达到分数阈值后选择强化，支持天赋路线切换与配置保存
+
+### 母舰与基地
+
+- **母舰系统** — 长按 H 对接保存进度，母舰可移动并提供爆炸导弹支援（250 伤害 / 80px 范围），10 发弹匣限制
+- **基地指挥中心** — 长按 B 返航后进入停机坪，使用征用点数（RP）进行维修（-2RP）、补给（-2RP）和天赋路线切换；RP 通过击杀 Boss（+5）和完成基地任务（+3）获得
+- **轨道打击** — 从基地出发时触发全屏清弹，提供安全的出击窗口
+
+### Boss 战
+
+- 多阶段移动和攻击模式（巡逻/扫描/悬停/追击）
+- Boss 血量降至 30% 时触发核心过载：6 秒暴走序列，攻击节奏加快、枪口焰跳动频率大幅提升
+- 暴走视觉表现：Boss 扩散光圈 + 屏幕边缘暗角 + 扰动叠加
+- 受击清弹：玩家受击进入短暂无敌时清理普通敌弹，Boss 暴走弹幕不被清除
+
+### 新手教程
+
+主菜单可进入 7 阶段教学关卡：
+1. 移动瞄准
+2. 加速突进
+3. 战斗基础
+4. 母舰停靠（虚影显现、火力支援、弹射脱离三阶段演示）
+5. 返航基地（含整备流程）
+6. Boss 遭遇
+
+教程复用真实游戏 UI 组件，体验与正式战斗一致。
+
+## 技术架构
+
+### 场景系统
+
+```
+WelcomeScene → TutorialScene (首次游戏) → GameScene
+     │                                      ├─ PauseScene (ESC)
+     │                                      ├─ DeathScene (玩家死亡)
+     │                                      ├─ ExitConfirmScene (退出确认)
+     │                                      ├─ SettingsScene (设置)
+     └─ GameScene (返回玩家)
+```
+
+### 实体层次
+
+```
+Entity (base) — rect, collision_rect, active
+  ├─ Player — HSM 驱动，_ALIVE_TRANSITIONS 转移表
+  ├─ Enemy — 8 种移动模式
+  │    └─ Boss — 4 组件协调器
+  │         ├─ BossStateMachine (8 状态 HSM + 暴走子状态)
+  │         ├─ BossMovement (巡逻/扫描/悬停/追击)
+  │         ├─ BossAttackPatterns (散射/瞄准/波浪/快照)
+  │         └─ BossRenderer (精灵/朝向/暴走尾迹)
+  └─ Bullet
+```
+
+### Manager 拆分
+
+| Manager | 职责 |
+|---------|------|
+| `CollisionController` | 碰撞检测（支持 Rust 批量碰撞） |
+| `SpawnManager` | 敌机生成与波次管理 |
+| `BulletManager` | 子弹生命周期管理 |
+| `BossManager` | Boss 出现与行为协调 |
+| `MilestoneManager` | 里程碑触发与奖励选择 |
+| `InputCoordinator` | 输入事件分发 |
+
+### LockManager 优先级
+
+| 层级 | 优先级 | 触发条件 |
+|------|--------|----------|
+| `HOMECOMING` | 100 | FTL 返航基地 |
+| `MOTHERSHIP` | 80 | 母舰停靠 |
+| `BOSS_ENRAGE` | 60 | Boss HP < 30% |
+| `PHASE_DASH` | 40 | 相位冲刺 |
+| `GIVE_UP` | 20 | 放弃出击 |
+| `GAME_PAUSE` | 10 | ESC 暂停 / 奖励选择 |
 
 ## 快速开始
 
@@ -31,7 +161,7 @@ python3 main.py
 | 按键 / 输入 | 功能 |
 |-------------|------|
 | 方向键 / WASD | 移动战机 |
-| Ctrl 长按 | 微调姿态，移动速度降至 35%，战机外圈显示蓝色指示环，用于密集弹幕中精细走位 |
+| Ctrl 长按 | 微调姿态，移动速度降至 35%，战机外圈显示蓝色指示环 |
 | 鼠标 | 控制瞄准方向，带目标辅瞄与平滑输入延迟 |
 | Shift 长按 | 加速推进，消耗加速燃料，速度提升至 1.7 倍 |
 | Shift 按下松开 | 相位冲刺（需天赋解锁），消耗 25% 燃料，无敌冲刺 250px |
@@ -42,83 +172,19 @@ python3 main.py
 | K 长按 3 秒 | 放弃当前出击 |
 | L | 展开 / 收起 HUD 面板 |
 
-## 当前版本内容
-
-- 默认 1920x1080 分辨率，支持窗口自适应缩放。
-- 三种难度：简单 / 普通 / 困难，并带动态难度成长。
-- 自动射击 + 鼠标辅瞄：默认锁定敌人，鼠标大幅移动时优先切换到移动方向目标；原始输入加入短延迟平滑，降低辅瞄抢鼠标带来的顿挫。
-- 加速系统：长按 Shift 启动推进，带燃料消耗、延迟恢复和 270 度环形仪表 UI。按下松开可触发相位冲刺（需天赋解锁），消耗 25% 燃料进行短距离无敌突进。
-- 武器模式：散射弹（扇形 3 发，-10°/0°/+10°）和激光（单发高伤害 35），两种模式可组合使用形成散射激光。
-- 13 种增益，覆盖生命、攻击、防御、功能四类，含双路线天赋系统（进攻/支援）与路线内互斥选项。
-- 里程碑奖励系统：达到分数阈值后选择强化，支持天赋路线切换与配置保存。
-- 母舰系统：长按 H 对接保存，母舰可移动，带 10 发弹匣限制的爆炸导弹支援（250 伤害 / 80px 范围），弹药用尽时触发警告横幅。
-- 基地指挥中心：长按 B 返航后经过 FTL 动画进入停机坪基地，使用征用点数（RP）进行维修（-2RP）、补给（-2RP）和天赋路线切换（进攻路线：散射/激光，支援路线：相位冲刺/母舰冷却减半）。RP 通过击杀 Boss（+5）和完成基地任务（+3）获得，点数随存档保留。再次按 B 或点击「继续出击」出发并触发轨道打击清屏。
-- Boss 战：多阶段移动和攻击；Boss 血量降至 30% 时触发核心过载，攻击节奏加快、枪口焰跳动频率大幅提升。暴走总时长 6 秒，视觉表现为 Boss 扩散光圈 + 屏幕边缘暗角。每发弹幕都会触发枪口闪光，压迫感更强。
-- 受击清弹：玩家受击进入短暂无敌时会清理普通敌弹；Boss 暴走布置弹幕不会被该清弹机制移除，但玩家无敌仍然生效。
-- 运行期绘制素材缓存：首次启动时生成飞船 / 光效等素材并缓存在本地，后续启动复用图片素材以降低重复绘制成本。
-- Rust 原生扩展：用于向量、碰撞、批量移动、粒子、子弹、光效等性能热点；缺失时使用纯 Python 回退。
-- 微调姿态：按住 Ctrl 减缓移速至 35%，战机外圈显示蓝色指示环，用于密集弹幕精细走位。优先于加速系统。
-- 一键启动：Windows 用户双击 `run.bat`，Linux 用户执行 `./run.sh`。脚本自动处理虚拟环境、依赖安装、Rust 工具链下载和扩展编译。
-- 新手教程：主菜单可进入 7 阶段教学关卡，涵盖移动瞄准、加速突进、战斗基础、母舰停靠（含虚影显现、火力支援、弹射脱离三阶段演示）、返航基地（含整备流程）、Boss 遭遇。教程复用真实游戏 UI 组件，体验与正式战斗一致。
-
-## 技术栈
-
-- Python 3.x
-- Pygame
-- Pillow
-- Pytest / Ruff
-- Rust + PyO3 + maturin（可选加速模块）
-
-## 项目结构
-
-```text
-airwar-game/
-|-- main.py                    # 游戏启动入口
-|-- airwar/                    # Python 游戏源码
-|   |-- config/                # 配置、设计令牌、难度参数
-|   |-- entities/              # 玩家、敌人、Boss、子弹等实体
-|   |-- game/                  # 游戏主流程、管理器、系统、渲染、母舰、动画、状态锁仲裁
-|   |-- scenes/                # 欢迎、教程、战斗、暂停、死亡、退出确认等场景
-|   |-- ui/                    # HUD、奖励选择、基地指挥中心、准星、提示等 UI
-|   |-- input/                 # 输入处理
-|   |-- utils/                 # 数据库、字体、素材绘制与缓存等工具
-|   |-- window/                # 窗口创建与缩放
-|   |-- tests/                 # Python 测试
-|   `-- core_bindings.py       # Rust 扩展绑定入口
-|-- airwar_core/               # Rust 原生扩展
-|   `-- src/
-|       |-- lib.rs             # 模块导出入口
-|       |-- vector2.rs         # 向量计算
-|       |-- collision.rs       # 空间哈希碰撞
-|       |-- movement.rs        # 敌人 / Boss 运动计算
-|       |-- particles.rs       # 粒子更新与生成
-|       |-- bullets.rs         # 子弹批量更新
-|       `-- sprites.rs         # 光效素材生成
-|-- scripts/                   # 开发辅助脚本
-|-- tests/                     # 根目录级测试
-|-- docs/                      # 文档与审计记录
-|-- build_linux.sh             # Linux 打包脚本
-|-- build_macos.sh             # macOS 打包脚本
-|-- build_windows.bat          # Windows 打包脚本
-|-- requirements.txt
-|-- requirements-dev.txt
-|-- pytest.ini
-`-- pyproject.toml
-```
-
-## 架构概览
-
-- 场景模式：`SceneManager` 管理欢迎、游戏、暂停、死亡、退出确认等场景生命周期。
-- GameScene 职责拆分：瞄准辅助（`AimAssistSystem`）、狂暴覆盖渲染（`BossEnrageRenderer`）、存档恢复（`SaveRestoreManager`）、暂停按钮（`PauseButtonComponent`）均为独立组件，GameScene 只做编排。
-- 状态锁仲裁：`LockManager` 统一管理母舰停靠、返航基地、Boss 过载、相位冲刺之间的玩家无敌/控制/暂停互锁，按优先级堆叠避免状态冲突。
-- 管理器拆分：生成、碰撞、子弹、Boss、里程碑、输入协调等逻辑由独立 manager 处理。
-- 系统拆分：生命、奖励、难度、通知、天赋平衡等玩法规则集中在 `airwar/game/systems/`。
-- UI 与渲染分层：HUD、准星、基地指挥中心、奖励选择等组件独立于核心玩法逻辑。
-- Rust 原生扩展为可选组件：`airwar/core_bindings.py` 会优先导入 `airwar_core`，缺失时设置 `RUST_AVAILABLE=False` 并使用纯 Python 回退。
-
 ## Rust 原生扩展
 
-`airwar_core/` 使用 PyO3 + maturin 提供可选性能加速。没有安装时，游戏会继续使用纯 Python 回退。
+`airwar_core/` 使用 PyO3 + maturin 提供可选性能加速。模块包括：
+
+| 模块 | 功能 |
+|------|------|
+| `vector2.rs` | 向量运算（加减乘除、归一化、点积、插值、角度） |
+| `collision.rs` | 空间哈希碰撞检测 |
+| `movement.rs` | 敌机/Boss 移动计算（批量更新） |
+| `particles.rs` | 粒子系统更新与渲染 |
+| `bullets.rs` | 子弹批量更新 |
+| `sprites.rs` | 光效素材生成（子弹光晕、爆炸光圈） |
+| `starfield.rs` | 星空背景计算 |
 
 ### 安装
 
@@ -137,25 +203,47 @@ maturin develop --release
 python3 -c "from airwar.core_bindings import batch_update_bullets; print('Rust 原生扩展: 已安装')"
 ```
 
-## 素材缓存与性能分析
+## 项目结构
 
-游戏会把首次运行时生成的素材保存到本地缓存目录，避免每次启动都重复绘制同一批 Surface。可以使用脚本观察生成素材的缓存效果：
-
-```bash
-python3 scripts/profile_generated_assets.py
-```
-
-## CI（GitHub Actions）
-
-每次 push 和 pull_request 触发，单 job 运行在 `ubuntu-latest`：
-
-1. Python 3.11+ + Rust stable + libsdl2-dev
-2. pip install + maturin build + ruff check + compileall + shellcheck + pytest
-
-本地模拟 CI：
-
-```bash
-python3 -m ruff check . && python3 -m compileall -q airwar main.py && python3 -m pytest
+```text
+airwar-game/
+├── main.py                    # 游戏启动入口
+├── airwar/                    # Python 游戏源码
+│   ├── config/                # 配置、设计令牌、难度参数
+│   ├── entities/              # 玩家、敌人、Boss、子弹等实体
+│   ├── game/                  # 游戏主流程、管理器、系统、渲染、母舰、动画
+│   │   ├── managers/          # 碰撞、生成、子弹、Boss、里程碑等管理器
+│   │   ├── systems/           # 生命、奖励、难度、通知、天赋等系统
+│   │   └── homecoming/        # 返航基地序列
+│   ├── scenes/                # 欢迎、教程、战斗、暂停、死亡、退出、设置等场景
+│   ├── ui/                    # HUD、奖励选择、基地指挥中心、准星、提示等 UI
+│   ├── i18n/                  # 国际化翻译器
+│   ├── locales/               # 语言文件 (zh_CN.json, en_US.json)
+│   ├── input/                 # 输入处理
+│   ├── utils/                 # 数据库、字体、素材绘制与缓存等工具
+│   ├── window/                # 窗口创建与缩放
+│   ├── tests/                 # Python 测试
+│   └── core_bindings.py       # Rust 扩展绑定入口
+├── airwar_core/               # Rust 原生扩展
+│   └── src/
+│       ├── lib.rs             # 模块导出入口
+│       ├── vector2.rs         # 向量计算
+│       ├── collision.rs       # 空间哈希碰撞
+│       ├── movement.rs        # 敌人 / Boss 运动计算
+│       ├── particles.rs       # 粒子更新与生成
+│       ├── bullets.rs         # 子弹批量更新
+│       ├── sprites.rs         # 光效素材生成
+│       └── starfield.rs       # 星空背景计算
+├── scripts/                   # 开发辅助脚本
+├── tests/                     # 根目录级测试
+├── docs/                      # 文档与架构决策记录 (ADR)
+├── build_linux.sh             # Linux 打包脚本
+├── build_macos.sh             # macOS 打包脚本
+├── build_windows.bat          # Windows 打包脚本
+├── requirements.txt
+├── requirements-dev.txt
+├── pytest.ini
+└── pyproject.toml
 ```
 
 ## 测试与代码检查
@@ -169,6 +257,9 @@ pip install -r requirements-dev.txt
 # 全量测试
 python3 -m pytest
 
+# 烟雾测试（快速验证核心功能）
+python3 -m pytest -m smoke
+
 # 代码检查
 python3 -m ruff check .
 
@@ -177,6 +268,19 @@ python3 -m pytest airwar/tests/test_core.py
 
 # 指定测试用例
 python3 -m pytest airwar/tests/test_core.py::TestPlayer -v
+```
+
+## CI（GitHub Actions）
+
+每次 push 和 pull_request 触发，单 job 运行在 `ubuntu-latest`：
+
+1. Python 3.11+ + Rust stable + libsdl2-dev
+2. pip install + maturin build + ruff check + compileall + shellcheck + pytest
+
+本地模拟 CI：
+
+```bash
+python3 -m ruff check . && python3 -m compileall -q airwar main.py && python3 -m pytest
 ```
 
 ## 打包
@@ -193,3 +297,7 @@ build_windows.bat
 ```
 
 打包产物位于 `dist/AirWar`。构建阶段需要 Python 3.11+、Rust 工具链和对应平台编译器；运行打包产物时不需要用户手动安装 Python 或 Rust。
+
+## 许可证
+
+本项目采用 [MIT 许可证](./LICENSE)。
