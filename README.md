@@ -140,7 +140,7 @@ WelcomeScene → TutorialScene → GameScene
 - `airwar/leaderboard/` — 排行榜客户端、服务层、FastAPI 服务器。
 - `airwar_core/` — Rust 原生扩展。
 
-更详细的设计说明见 [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)。
+> 这些文档保留在本地工作区，未纳入版本控制。
 
 ## 打包
 

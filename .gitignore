@@ -171,6 +171,24 @@ plans/
 *.generated_assets/
 /.generated_assets/
 
+# -----------------------------------------------------------------------------
+# Internal documentation (kept local-only)
+# -----------------------------------------------------------------------------
+# Design docs, audit reports, development notes, and AI/agent instructions
+# reveal project intent and workflow. They are intentionally excluded from
+# version control and remain local working files.
+CLAUDE.md
+STRUCTURE.md
+SECURITY.md
+cloud.md
+agent.md
+*.agent.md
+*.handoff.md
+*.scan.md
+.agents/
+docs/
+.github/PULL_REQUEST_TEMPLATE.md
+
 # Session-scoped docs (issue scans, handoffs, temporary analyses).
 # Historical entries already in git via `git mv` remain tracked;
 # new files in this directory are ignored.

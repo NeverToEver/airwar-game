@@ -140,7 +140,7 @@ Core modules:
 - `airwar/leaderboard/` — Leaderboard client, service layer, FastAPI server.
 - `airwar_core/` — Rust native extension.
 
-For more details see [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
+> These documents are kept as local working files and are not under version control.
 
 ## Packaging
 
