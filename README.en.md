@@ -12,8 +12,9 @@ A 2D space-shooter built with Python + Pygame, with an optional Rust extension f
 - **LockManager priority arbitration** — 6 priority layers (HOMECOMING 100 / MOTHERSHIP 80 / BOSS_ENRAGE 60 / PHASE_DASH 40 / GIVE_UP 20 / GAME_PAUSE 10) unify invincibility, control-lock, and pause conflicts.
 - **15-step update pipeline** — `GameScene.update()` executes in strict order: tick_hit_stop → input/animation/pause-gate → collision detection → dead-entity cleanup → milestone check.
 - **i18n internationalization** — Supports zh_CN / en_US, 134 translation keys, `t(key, **kwargs)` public API.
+- **Optional remote leaderboard** — `airwar/leaderboard/` provides a FastAPI + SQLite local simulation server; `LeaderboardService` switches automatically between remote and local JSON leaderboards, falling back seamlessly when the server is unreachable.
 - **Runtime asset cache** — First-run sprite/font surfaces are generated and cached locally; subsequent launches reuse cached images.
-- **924 test cases** — pytest-driven, supports headless SDL environments, 40% coverage gate.
+- **1015 test cases** — pytest-driven, supports headless SDL environments, 40% coverage gate.
 
 ## Technical Approach
 
@@ -44,6 +45,7 @@ maturin (build tool)
 | **Packaging** | PyInstaller 6+ | Standalone executable generation |
 | **Testing** | pytest 8+ | Unit tests, property tests |
 | **Linting** | ruff 0.8+ | Code style checking (E/W/F rules) |
+| **Leaderboard server** | FastAPI + uvicorn | Local simulated remote leaderboard server |
 
 ## Detailed Description
 
@@ -143,6 +145,14 @@ Entity (base) — rect, collision_rect, active
 
 On first run the launcher will create a virtualenv and install Python dependencies. The Rust toolchain and SDL2 system headers are only installed when you pass `--install-deps` or set `AIRWAR_INSTALL_DEPS=1`; the game runs fine on the pure-Python fallback if you skip them.
 
+**Launch with remote leaderboard server** (local simulation; server starts in the background and connects automatically):
+
+- **Windows:** double-click `run_with_server.bat`
+- **Linux / macOS:** `chmod +x run_with_server.sh && ./run_with_server.sh`
+- **macOS double-click:** `run_with_server.command`
+
+This starts the FastAPI leaderboard server (default `http://127.0.0.1:8000`) and shuts it down when the game exits. Use `run.sh` / `run.bat` for offline-only play.
+
 **Local cleanup:** double-click `uninstall.bat` (Windows) or run `./uninstall.sh` (Linux/macOS) to remove the local virtualenv, build artefacts, and caches. Source, save data, account data, and config files are left untouched.
 
 > Windows note: the Rust build step requires Visual C++ Build Tools. If the build fails, the script will print the download link. Install the "Desktop development with C++" workload.
@@ -171,6 +181,58 @@ python3 main.py
 | H (hold 3 s) | Dock with the mothership and save progress |
 | K (hold 3 s) | Surrender the current sortie |
 | L | Toggle HUD expanded / collapsed |
+
+## Remote Leaderboard
+
+The project includes an optional remote leaderboard subsystem for validating the "game client + FastAPI remote database" architecture.
+
+### Architecture
+
+```
+Game / UI
+    │
+    ▼
+LeaderboardService  ──  local UserDB (JSON, always write-through)
+    │
+    ▼
+RemoteLeaderboardClient ── urllib (stdlib)
+    │
+    ▼
+FastAPI server ── SQLiteLeaderboardStore
+```
+
+- **Local-first fallback**: scores are always written to the local `UserDB`; the remote FastAPI server is used only when reachable (`auto` mode) or explicitly requested (`remote` mode). When the server is down the leaderboard falls back to local data.
+- **Modes**: `auto` / `remote` / `local`, controlled via `AIRWAR_LEADERBOARD_MODE`.
+- **Zero runtime dependency**: the game client uses `urllib.request` from the standard library. FastAPI/uvicorn live in `[project.optional-dependencies].server` only.
+
+### Start the server manually
+
+```bash
+# Install server dependencies
+pip install -e ".[server]"
+
+# Start the server
+python -m airwar.leaderboard.server --port 8000 --db-path ./leaderboard.db
+```
+
+### One-click launch (server + game)
+
+```bash
+# Linux / macOS
+./run_with_server.sh
+
+# Windows
+run_with_server.bat
+```
+
+### Environment variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AIRWAR_LEADERBOARD_URL` | `http://localhost:8000` | Remote server URL |
+| `AIRWAR_LEADERBOARD_MODE` | `auto` | `auto` / `remote` / `local` |
+| `AIRWAR_LEADERBOARD_TIMEOUT` | `3.0` | HTTP request timeout (seconds) |
+| `AIRWAR_LEADERBOARD_DB_PATH` | `leaderboard.db` under platform data dir | Server SQLite path |
 
 ## Rust Native Extension
 
@@ -217,6 +279,7 @@ airwar-game/
 │   │   └── homecoming/        # Homecoming sequence
 │   ├── scenes/                # Welcome, tutorial, gameplay, pause, death, exit, settings
 │   ├── ui/                    # HUD, reward selector, base console, crosshair, gauges
+│   ├── leaderboard/           # Remote leaderboard client, service layer, FastAPI server
 │   ├── i18n/                  # Internationalization translator
 │   ├── locales/               # Language files (zh_CN.json, en_US.json)
 │   ├── input/                 # Input handling

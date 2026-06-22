@@ -178,5 +178,10 @@
   "tutorial.mission.support.name": "Supply Link",
   "tutorial.mission.support.desc": "Complete one mothership dock",
   "tutorial.mission.homecoming.name": "Base Resupply",
-  "tutorial.mission.homecoming.desc": "Enter the base console"
+  "tutorial.mission.homecoming.desc": "Enter the base console",
+  "leaderboard.title": "Leaderboard",
+  "leaderboard.empty": "No records",
+  "leaderboard.footer.global": "Global Leaderboard",
+  "leaderboard.footer.local": "Local High Scores",
+  "leaderboard.footer.offline": "Local High Scores (Offline)"
 }

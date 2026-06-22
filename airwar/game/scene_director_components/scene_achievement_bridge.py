@@ -16,6 +16,7 @@ from ...utils.database import DatabaseError
 from ..achievements import build_default_registry
 from ..mother_ship.event_bus import EVENT_DOCKING_COMPLETE
 from ..mother_ship.interfaces import IEventBus
+from airwar.leaderboard import LeaderboardService
 
 
 class SceneAchievementBridge:
@@ -52,7 +53,7 @@ class SceneAchievementBridge:
             return None
 
     def submit_leaderboard_score(self, score: int) -> int:
-        """Record the final score on the local leaderboard.
+        """Record the final score on the leaderboard (remote + local fallback).
 
         Args:
             score: Final score for the just-ended run.
@@ -65,7 +66,8 @@ class SceneAchievementBridge:
             return 0
         name = self._director._current_user if self._director._current_user else "Guest"
         try:
-            return self._director._user_db.submit_score(name, score)
+            service = LeaderboardService(self._director._user_db)
+            return service.submit_score(name, score)
         except DatabaseError:
             self._logger.warning("Failed to submit leaderboard score", exc_info=True)
             return 0

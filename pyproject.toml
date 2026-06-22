@@ -19,6 +19,11 @@ dev = [
     "maturin>=1,<2",
     "pyinstaller>=6,<7",
     "ruff>=0.8,<1",
+    "httpx>=0.28,<1",
+]
+server = [
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.34,<1",
 ]
 rust = [
     "airwar_core>=0.1.0",
@@ -42,6 +47,13 @@ extend-exclude = [
     # AirWar.spec is a PyInstaller-injected scope (SPECPATH, Analysis, PYZ,
     # EXE, COLLECT are runtime-provided). Not project Python source.
     "AirWar.spec",
+    # Shell/batch launchers are not Python source.
+    "run.sh",
+    "run.bat",
+    "run.command",
+    "run_with_server.sh",
+    "run_with_server.bat",
+    "run_with_server.command",
 ]
 
 # Personal hobby project: keep only the basic correctness rules.

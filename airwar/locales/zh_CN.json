@@ -178,5 +178,10 @@
   "tutorial.mission.support.name": "支援链路",
   "tutorial.mission.support.desc": "完成一次母舰停靠",
   "tutorial.mission.homecoming.name": "返航整备",
-  "tutorial.mission.homecoming.desc": "进入基地控制台"
+  "tutorial.mission.homecoming.desc": "进入基地控制台",
+  "leaderboard.title": "排行榜",
+  "leaderboard.empty": "暂无记录",
+  "leaderboard.footer.global": "全球排行榜",
+  "leaderboard.footer.local": "本地最高分",
+  "leaderboard.footer.offline": "本地最高分 (离线)"
 }

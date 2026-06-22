@@ -42,7 +42,7 @@ class LeaderboardOverlay:
         surface.blit(dim, (0, 0))
 
         if self._view is None:
-            self._view = LeaderboardView(scene.db)
+            self._view = LeaderboardView(self._scene.leaderboard_service)
         self._view.render(surface, sw, sh)
 
         # Close button at top-right of the panel

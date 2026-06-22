@@ -19,6 +19,7 @@ import pygame
 
 from airwar.config.design_tokens import SceneColors, SceneLayout, get_design_tokens
 from airwar.i18n import t
+from airwar.leaderboard import LeaderboardService
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.ui.menu_background import MenuBackground
 from airwar.ui.particles import ParticleSystem
@@ -107,6 +108,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         self.clear_hover()
         self.clear_buttons()
         self.db = UserDB()
+        self.leaderboard_service = LeaderboardService(self.db)
         self.running = True
         self.username = ""
         self.password = ""

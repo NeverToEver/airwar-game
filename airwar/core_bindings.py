@@ -365,7 +365,7 @@ except (ImportError, OSError):
         import struct
 
         count = len(base_buf) // 48
-        base_fmt = "<Bxxxfff fffffff"  # u8 + pad2 + 11*f32 = 48 bytes
+        base_fmt = "<Bxxxfffffffffff"  # u8 + pad3 + 11*f32 = 48 bytes
         extra_fmt = "<fffffffI"  # 7*f32 + i32 = 32 bytes
         base_list = []
         extra_list = []

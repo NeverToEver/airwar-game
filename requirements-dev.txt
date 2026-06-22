@@ -12,3 +12,5 @@ hypothesis>=6.0
 # by tests that exercise the audio lazy-import path (e.g. test_player_aiming,
 # test_core::test_player_fires_when_cooldown_ready, test_sound_manager).
 numpy>=1.24,<3
+# Used by FastAPI TestClient and leaderboard server integration tests.
+httpx>=0.28,<1

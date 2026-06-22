@@ -417,14 +417,13 @@ class GameController:
             if self.state.invincibility_timer <= 0:
                 self.set_invincible(False)
 
-        # Juice: decay damage_intensity and tick hit-stop. Both fields are
-        # additive state — see STRUCTURE.md §6.6.
+        # Juice: decay damage_intensity. hit_stop_timer is decremented in
+        # GameSceneUpdater._step_tick_hit_stop (pipeline step 0) so it ticks
+        # down even when pause_check short-circuits the frame.
         if self.state.damage_intensity > 0.0:
             self.state.damage_intensity = max(
                 0.0, self.state.damage_intensity - 0.033
             )
-        if self.state.hit_stop_timer > 0:
-            self.state.hit_stop_timer -= 1
 
         # Mirror invincibility state to the player for alpha-blink rendering.
         # Cheap (two attribute writes); the blink is a pure render-time effect.

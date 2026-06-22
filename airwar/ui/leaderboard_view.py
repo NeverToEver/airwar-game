@@ -1,8 +1,10 @@
-"""Leaderboard view — renders the top 10 local high scores."""
+"""Leaderboard view — renders the top 10 high scores (local or remote)."""
 
 import pygame
 
 from airwar.config.design_tokens import SceneColors, get_design_tokens
+from airwar.i18n import t
+from airwar.leaderboard import LeaderboardService
 from airwar.ui.chamfered_panel import draw_chamfered_panel
 from airwar.utils.database import LEADERBOARD_CAP, UserDB
 from airwar.utils.fonts import get_cjk_font
@@ -11,10 +13,11 @@ from airwar.utils.fonts import get_cjk_font
 class LeaderboardView:
     """Simple, self-contained leaderboard overlay renderer.
 
-    Reads the top scores from a :class:`UserDB` instance (defaulting to the
-    shared on-disk database) and renders them as a centered panel. Holds no
-    per-frame state beyond the most recently fetched entries; calling
-    :meth:`render` after a death is the typical use pattern.
+    Reads the top scores from a :class:`LeaderboardService` instance
+    (defaulting to the shared on-disk local database) and renders them as
+    a centered panel. The footer indicates whether the data comes from the
+    global remote server, the local database, or a local fallback due to a
+    remote outage.
     """
 
     PANEL_W = 520
@@ -26,8 +29,8 @@ class LeaderboardView:
     SCORE_COL_W = 140
     ROW_INDENT = 24
 
-    def __init__(self, user_db: UserDB | None = None):
-        self._user_db = user_db if user_db is not None else UserDB()
+    def __init__(self, service: LeaderboardService | None = None):
+        self._service = service if service is not None else LeaderboardService(UserDB())
         self._tokens = get_design_tokens()
         self._fonts_initialized = False
         self._title_font = None
@@ -44,13 +47,27 @@ class LeaderboardView:
         self._empty_font = get_cjk_font(tokens.typography.HUD_SIZE)
         self._fonts_initialized = True
 
+    def set_service(self, service: LeaderboardService) -> None:
+        """Inject an alternate service (e.g. one wired to a test database)."""
+        self._service = service
+
     def set_user_db(self, user_db: UserDB) -> None:
-        """Inject an alternate database (e.g. an in-memory one for tests)."""
-        self._user_db = user_db
+        """Backward-compatible helper that wraps a raw UserDB in a service."""
+        self._service = LeaderboardService(user_db)
 
     def fetch_entries(self) -> list[dict]:
         """Return the current top-10 leaderboard entries."""
-        return self._user_db.get_leaderboard()
+        return self._service.get_leaderboard()
+
+    def _footer_text(self) -> str:
+        """Compose the footer label based on the active backend."""
+        if self._service.is_remote_active():
+            suffix = t("leaderboard.footer.global")
+        elif self._service.is_local_only():
+            suffix = t("leaderboard.footer.local")
+        else:
+            suffix = t("leaderboard.footer.offline")
+        return f"Top {LEADERBOARD_CAP}  ·  {suffix}"
 
     def render(self, surface: pygame.Surface, screen_w: int, screen_h: int) -> None:
         """Render the leaderboard panel centered on the given surface."""
@@ -75,7 +92,7 @@ class LeaderboardView:
             self.CHAMFER,
         )
 
-        title = self._title_font.render("排行榜", True, SC.GOLD_PRIMARY)
+        title = self._title_font.render(t("leaderboard.title"), True, SC.GOLD_PRIMARY)
         surface.blit(title, title.get_rect(center=(screen_w // 2, panel_y + 50)))
 
         separator_y = panel_y + 96
@@ -88,13 +105,13 @@ class LeaderboardView:
         )
 
         if not entries:
-            empty = self._empty_font.render("暂无记录", True, SC.TEXT_DIM)
+            empty = self._empty_font.render(t("leaderboard.empty"), True, SC.TEXT_DIM)
             surface.blit(empty, empty.get_rect(center=(screen_w // 2, panel_y + panel_h // 2)))
         else:
             self._render_rows(surface, entries, panel_x, separator_y + self.HEADER_GAP, panel_w)
 
         footer_y = panel_y + panel_h - 30
-        footer = self._empty_font.render(f"Top {LEADERBOARD_CAP}  ·  本地最高分", True, SC.TEXT_DIM)
+        footer = self._empty_font.render(self._footer_text(), True, SC.TEXT_DIM)
         surface.blit(footer, footer.get_rect(center=(screen_w // 2, footer_y)))
 
     def _render_rows(

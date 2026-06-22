@@ -12,8 +12,9 @@
 - **LockManager 优先级仲裁** — 6 层优先级（HOMECOMING 100 / MOTHERSHIP 80 / BOSS_ENRAGE 60 / PHASE_DASH 40 / GIVE_UP 20 / GAME_PAUSE 10）统一管理无敌、控制锁、暂停互锁
 - **15 步更新流水线** — `GameScene.update()` 严格按序执行：tick_hit_stop → 输入/动画/暂停门 → 碰撞检测 → 死实体清理 → 里程碑检查，保证状态一致性
 - **i18n 国际化** — 支持 zh_CN / en_US，134 个翻译键，`t(key, **kwargs)` 公共 API
+- **可选远程排行榜** — `airwar/leaderboard/` 提供 FastAPI + SQLite 本地模拟服务器，`LeaderboardService` 自动在远程与本地 JSON 排行榜之间切换，远程不可用时无缝回退
 - **运行期素材缓存** — 首次启动生成飞船/光效等 Surface 并缓存到本地，后续启动直接复用
-- **924 个测试用例** — pytest 驱动，支持 headless SDL 环境运行，覆盖率门禁 40%
+- **1015 个测试用例** — pytest 驱动，支持 headless SDL 环境运行，覆盖率门禁 40%
 
 ## 技术路线
 
@@ -44,6 +45,7 @@ maturin (构建工具)
 | **打包** | PyInstaller 6+ | 生成独立可执行文件 |
 | **测试** | pytest 8+ | 单元测试、属性测试 |
 | **Lint** | ruff 0.8+ | 代码风格检查（E/W/F 规则） |
+| **排行榜服务** | FastAPI + uvicorn | 本地模拟远程排行榜服务器 |
 
 ## 详细项目描述
 
@@ -143,6 +145,14 @@ Entity (base) — rect, collision_rect, active
 
 首次运行时会自动创建虚拟环境并安装 Python 依赖。Rust 工具链和系统依赖只会在显式传入 `--install-deps` 或设置 `AIRWAR_INSTALL_DEPS=1` 时安装。
 
+**带远程排行榜服务器的启动方式**（本地模拟，自动后台启动服务器并连接）：
+
+- **Windows**：双击 `run_with_server.bat`
+- **Linux / macOS**：`chmod +x run_with_server.sh && ./run_with_server.sh`
+- **macOS 双击**：`run_with_server.command`
+
+这会自动启动 FastAPI 排行榜服务器（默认 `http://127.0.0.1:8000`），游戏结束后服务器一同关闭。只玩单机模式时仍使用 `run.sh` / `run.bat`。
+
 **本地清理**：双击 `uninstall.bat`（Windows）或执行 `./uninstall.sh`（Linux/macOS）会移除本地虚拟环境、构建产物和缓存，但不会删除源码、存档、账号数据或配置。
 
 > Windows 用户注意：Rust 编译需要 Visual C++ Build Tools。如果编译失败，脚本会提供下载链接。选择「Desktop development with C++」安装即可。
@@ -171,6 +181,58 @@ python3 main.py
 | H 长按 3 秒 | 呼叫母舰并对接保存进度 |
 | K 长按 3 秒 | 放弃当前出击 |
 | L | 展开 / 收起 HUD 面板 |
+
+## 远程排行榜
+
+项目内置一个可选的远程排行榜子系统，用于验证「游戏客户端 + FastAPI 远程数据库」架构。
+
+### 架构
+
+```
+Game / UI
+    │
+    ▼
+LeaderboardService  ── 本地 UserDB (JSON, 始终写穿)
+    │
+    ▼
+RemoteLeaderboardClient ── urllib (stdlib)
+    │
+    ▼
+FastAPI server ── SQLiteLeaderboardStore
+```
+
+- **本地优先回退**：无论远程是否可用，分数都会写入本地 `UserDB`；远程不可用时排行榜自动显示本地数据
+- **模式**：`auto`（自动探测）/ `remote`（仅远程）/ `local`（仅本地），通过 `AIRWAR_LEADERBOARD_MODE` 设置
+- **零运行时依赖**：游戏客户端使用标准库 `urllib.request`；FastAPI/uvicorn 只在 `[server]` extras 中
+
+### 启动服务器
+
+```bash
+# 安装 server 依赖
+pip install -e ".[server]"
+
+# 手动启动
+python -m airwar.leaderboard.server --port 8000 --db-path ./leaderboard.db
+```
+
+### 一键启动（服务器 + 游戏）
+
+```bash
+# Linux / macOS
+./run_with_server.sh
+
+# Windows
+run_with_server.bat
+```
+
+### 环境变量
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `AIRWAR_LEADERBOARD_URL` | `http://localhost:8000` | 远程服务器地址 |
+| `AIRWAR_LEADERBOARD_MODE` | `auto` | `auto` / `remote` / `local` |
+| `AIRWAR_LEADERBOARD_TIMEOUT` | `3.0` | HTTP 请求超时（秒） |
+| `AIRWAR_LEADERBOARD_DB_PATH` | 平台数据目录下的 `leaderboard.db` | 服务器 SQLite 路径 |
 
 ## Rust 原生扩展
 
@@ -217,6 +279,7 @@ airwar-game/
 │   │   └── homecoming/        # 返航基地序列
 │   ├── scenes/                # 欢迎、教程、战斗、暂停、死亡、退出、设置等场景
 │   ├── ui/                    # HUD、奖励选择、基地指挥中心、准星、提示等 UI
+│   ├── leaderboard/           # 远程排行榜客户端、服务层、FastAPI 服务器
 │   ├── i18n/                  # 国际化翻译器
 │   ├── locales/               # 语言文件 (zh_CN.json, en_US.json)
 │   ├── input/                 # 输入处理
