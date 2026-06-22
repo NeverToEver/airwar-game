@@ -6,6 +6,13 @@ import tempfile
 from pathlib import Path
 
 import pytest
+
+# FastAPI/uvicorn are optional server dependencies; skip the whole module if
+# they are not installed so that environments without the [server] extras still
+# collect the rest of the test suite successfully.
+pytest.importorskip("fastapi")
+pytest.importorskip("uvicorn")
+
 from fastapi.testclient import TestClient
 
 from airwar.leaderboard.server import create_app
