@@ -30,8 +30,7 @@ class InputDetector(IInputDetector):
         self._exit_start_time = 0.0
         self._exit_required_duration = 2.0
 
-    def update(self) -> None:
-        current_time = pygame.time.get_ticks() / 1000.0
+    def update(self, current_time: float) -> None:
         self._last_update_time = current_time
 
         is_h_currently_pressed = pygame.key.get_pressed()[self.H_KEY]

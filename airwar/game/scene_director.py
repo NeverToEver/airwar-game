@@ -1,12 +1,11 @@
 """Scene orchestration -- manages scene transitions and lifecycle.
 
-Slim coordinator (Phase 4 W-β). All 40 logic methods are 1-line
-forwarders to one of three component classes held as private
+Slim coordinator (Phase 4 W-β). Logic methods are 1-line
+forwarders to one of two component classes held as private
 attributes:
 
 * :class:`SceneSwitcher` -- welcome/tutorial/game flow + per-scene main loop.
 * :class:`SceneStatePersistence` -- save / restore / clear game state.
-* :class:`SceneAchievementBridge` -- achievement registry, event-bus wiring, evaluation.
 
 The pause/menu action dispatch (``_handle_pause_toggle``,
 ``_pause_action_result``, ``_dispatch_pause_result``,
@@ -25,11 +24,10 @@ import pygame
 from ..scenes import GameScene, SceneManager
 from ..scenes.scene import PauseAction
 from ..utils.database import DatabaseError
-from .achievements import AchievementRegistry
 from .mother_ship import GameSaveData, PersistenceManager
-from .mother_ship.interfaces import IEventBus
 from .scaled_viewport import ScaledViewport
-from .scene_director_components import SceneAchievementBridge, SceneStatePersistence, SceneSwitcher
+from .scene_director_components import SceneStatePersistence, SceneSwitcher
+from airwar.leaderboard import LeaderboardService
 
 
 class SceneDirector:
@@ -62,19 +60,10 @@ class SceneDirector:
         self._pending_save_data = None
         self._save_dir = None
         self._settings_ref = {"ctrl_mode": "hold", "shift_boost_mode": "hold"}
-        # Achievement system — populated by _create_achievement_registry
-        # after a successful welcome flow. None for guest sessions or
-        # when no UserDB is wired up.
-        self._achievement_registry: AchievementRegistry | None = None
-        # Per-run counter incremented on EVENT_DOCKING_COMPLETE.
-        # Reset to 0 in _run_welcome_flow on every welcome iteration
-        # so a restart-from-menu starts fresh.
-        self._mothership_dock_count: int = 0
 
         # Phase 4 components
         self._switcher = SceneSwitcher(self, self._scene_manager, self._viewport)
         self._persistence = SceneStatePersistence(self)
-        self._achievements = SceneAchievementBridge(self)
 
         self._switcher.update_viewport_from_window()
 
@@ -236,6 +225,35 @@ class SceneDirector:
     def _apply_settings_to_player(self, player) -> None:
         player.apply_settings(self._settings_ref)
 
+    def _update_user_stats(self, score: int, kills: int) -> int | None:
+        if not self._current_user or not self._user_db:
+            return None
+        try:
+            user_data = self._user_db.get_user_data(self._current_user)
+            new_high = max(score, user_data.get("high_score", 0))
+            self._user_db.update_user_data(
+                self._current_user,
+                {
+                    "high_score": new_high,
+                    "total_kills": user_data.get("total_kills", 0) + kills,
+                    "games_played": user_data.get("games_played", 0) + 1,
+                },
+            )
+            return new_high
+        except DatabaseError:
+            self._logger.warning("Failed to update user stats", exc_info=True)
+            return None
+
+    def _submit_leaderboard_score(self, score: int) -> int:
+        if not self._user_db:
+            return 0
+        name = self._current_user or "Guest"
+        try:
+            return LeaderboardService(self._user_db).submit_score(name, score)
+        except DatabaseError:
+            self._logger.warning("Failed to submit leaderboard score", exc_info=True)
+            return 0
+
     # -- Persistence forwarders -------------------------------------------------
 
     def _check_and_get_saved_game(self, username: str) -> GameSaveData | None:
@@ -258,23 +276,3 @@ class SceneDirector:
 
     def _quit_without_saving(self) -> None:
         self._persistence.quit_without_saving()
-
-    # -- Achievement bridge forwarders ------------------------------------------
-
-    def _create_achievement_registry(self) -> None:
-        self._achievements.create_achievement_registry()
-
-    def _acquire_event_bus(self) -> IEventBus | None:
-        return self._achievements.acquire_event_bus()
-
-    def _on_mothership_docking_complete(self, **_kwargs: object) -> None:
-        self._achievements.on_mothership_docking_complete(**_kwargs)
-
-    def _evaluate_achievements(self, game_scene: GameScene) -> list[str]:
-        return self._achievements.evaluate_achievements(game_scene)
-
-    def _update_user_stats(self, score: int, kills: int) -> int | None:
-        return self._achievements.update_user_stats(score, kills)
-
-    def _submit_leaderboard_score(self, score: int) -> int:
-        return self._achievements.submit_leaderboard_score(score)

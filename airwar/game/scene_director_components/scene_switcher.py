@@ -14,6 +14,7 @@ import pygame
 from ...config import FPS, set_display_size
 from ...scenes import GameScene, SceneManager
 from ...scenes.scene import ExitConfirmAction, PauseAction, Scene
+from ..frame_context import FrameClock, FrameContext
 from ..scaled_viewport import ScaledViewport
 
 
@@ -30,6 +31,7 @@ class SceneSwitcher:
         self._logger = logging.getLogger(director.__class__.__name__)
         self._scene_manager = scene_manager
         self._viewport = viewport
+        self._frame_clock = FrameClock()
 
     # -- Scene-flow entry points -------------------------------------------------
 
@@ -63,13 +65,7 @@ class SceneSwitcher:
             if welcome.is_ready():
                 self._director._current_user = welcome.get_username()
                 self._director._selected_difficulty = welcome.get_difficulty()
-                # Reset per-run achievement state so a restart-from-menu
-                # does not carry over the previous run's dock count or
-                # registry reference.
-                self._director._mothership_dock_count = 0
-                self._director._achievement_registry = None
                 self._director._load_user_settings()
-                self._director._create_achievement_registry()
                 save_data = self._director._check_and_get_saved_game(self._director._current_user)
                 return (True, save_data)
             return (True, None)
@@ -98,6 +94,7 @@ class SceneSwitcher:
             return "main_menu"
 
         self._scene_manager.switch("tutorial", viewport=self._viewport)
+        self._reset_game_timing()
         tutorial = self._scene_manager.get_current_scene()
 
         result = self._run_scene_loop(tutorial)
@@ -112,8 +109,10 @@ class SceneSwitcher:
             difficulty=self._director._selected_difficulty,
             username=self._director._current_user or "Guest",
             settings_ref=self._director._settings_ref,
+            save_service=self._director._persistence.save_service,
             viewport=self._viewport,
         )
+        self._reset_game_timing()
 
         current_scene = self._scene_manager.get_current_scene()
         if self._director._pending_save_data and isinstance(current_scene, GameScene):
@@ -121,6 +120,7 @@ class SceneSwitcher:
             self._director._pending_save_data = None
             self._logger.info("Game restored from pending save data")
         while self._director._running:
+            frame = self._next_frame(simulate=True)
             escape_handled = False
             current_scene = self._scene_manager.get_current_scene()
 
@@ -150,10 +150,9 @@ class SceneSwitcher:
                     if result:
                         return result
 
-            self._scene_manager.update()
+            self._scene_manager.update(frame)
             self._render_current_scene()
             self._director._window.flip()
-            self._director._window.tick(FPS)
 
             if isinstance(current_scene, GameScene) and current_scene.is_game_over():
                 self._director._clear_saved_game()
@@ -192,6 +191,7 @@ class SceneSwitcher:
         if scene.is_running():
             self._render_scene(scene)
         while self._director._running and scene.is_running():
+            frame = self._next_frame(simulate=bool(getattr(scene, "uses_fixed_simulation", False)))
             events = self._poll_events()
             if not self._check_quit(events):
                 return "quit"
@@ -206,13 +206,21 @@ class SceneSwitcher:
             # ``target_scene`` here makes the dispatch explicit and
             # immune to that mismatch.
             self._handle_scene_events(events, skip_escape=escape_handled, target_scene=scene)
-            scene.update()
+            scene.update(frame)
             self._render_scene(scene)
             self._director._window.flip()
-            self._director._window.tick(FPS)
         return "quit" if not self._director._running else "ended"
 
     # -- Event polling and dispatch ---------------------------------------------
+
+    def _reset_game_timing(self) -> None:
+        self._frame_clock.reset()
+        reset_timing = getattr(self._director._window, "reset_timing", None)
+        if reset_timing is not None:
+            reset_timing()
+
+    def _next_frame(self, *, simulate: bool) -> FrameContext:
+        return self._frame_clock.advance(self._director._window.tick(FPS), simulate=simulate)
 
     def _poll_events(self) -> list[pygame.event.Event]:
         return [self._map_mouse_event(event) for event in pygame.event.get()]
@@ -391,9 +399,6 @@ class SceneSwitcher:
         boss_kills = game_scene.get_boss_kill_count()
         self._director._update_user_stats(final_score, kills)
         self._director._submit_leaderboard_score(final_score)
-        # Final achievement pass — must run before the death scene so
-        # any per-run unlocks are evaluated against the final stats.
-        newly_unlocked = self._director._evaluate_achievements(game_scene)
 
         death_scene = self._scene_manager.get_scene("death")
         if not death_scene:
@@ -404,7 +409,6 @@ class SceneSwitcher:
             kills=kills,
             boss_kills=boss_kills,
             username=self._director._current_user,
-            newly_unlocked_achievements=newly_unlocked,
         )
 
         self._run_scene_loop(death_scene)

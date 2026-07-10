@@ -4,7 +4,6 @@ import time
 from dataclasses import dataclass, field
 from enum import Enum
 
-import pygame
 
 CURRENT_SAVE_VERSION = 3
 
@@ -111,10 +110,10 @@ class MotherShipCooldown:
     def can_activate(self) -> bool:
         return not self.is_in_cooldown
 
-    def get_remaining_time(self) -> float:
+    def get_remaining_time(self, current_time: float) -> float:
         if not self.is_in_cooldown:
             return 0.0
-        return max(0.0, self.cooldown_duration - (pygame.time.get_ticks() / 1000.0 - self.cooldown_start_time))
+        return max(0.0, self.cooldown_duration - (current_time - self.cooldown_start_time))
 
 
 @dataclass

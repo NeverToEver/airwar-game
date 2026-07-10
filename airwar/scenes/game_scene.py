@@ -21,8 +21,7 @@ from airwar.config import get_screen_height, get_screen_width
 from airwar.config.design_tokens import get_design_tokens
 from airwar.entities import Player
 from airwar.game.constants import GAME_CONSTANTS
-from airwar.game.give_up import GiveUpDetector
-from airwar.game.homecoming import HomecomingDetector, HomecomingSequence
+from airwar.game.frame_context import FrameContext
 from airwar.game.managers import (
     BossManager,
     BulletManager,
@@ -34,16 +33,7 @@ from airwar.game.managers import (
 from airwar.game.managers.collision_controller import CollisionController
 from airwar.game.managers.game_controller import GameController
 from airwar.game.managers.spawn_controller import SpawnController
-from airwar.game.mother_ship import (
-    EventBus,
-    GameIntegrator,
-    InputDetector,
-    MotherShip,
-    MotherShipState,
-    MotherShipStateMachine,
-    PersistenceManager,
-    ProgressBarUI,
-)
+from airwar.game.mother_ship import MotherShipState
 from airwar.game.mother_ship.interfaces import IGameScene
 from airwar.game.rendering.boss_enrage_renderer import BossEnrageRenderer
 from airwar.game.rendering.game_renderer import GameRenderer
@@ -51,16 +41,14 @@ from airwar.game.rendering.haunting_renderer import HauntingRenderer
 from airwar.game.rendering.hud_renderer import HUDRenderer
 from airwar.game.rendering.juice_renderer import JuiceController
 from airwar.game.systems.aim_assist_system import AimAssistSystem
+from airwar.game.systems.game_save_service import GameSaveService
 from airwar.game.systems.lock_manager import LockLayer, LockManager, LockRequest
 from airwar.game.systems.notification_manager import NotificationManager
 from airwar.game.systems.reward_system import RewardSystem
 from airwar.game.systems.save_restore_manager import SaveRestoreManager
 from airwar.ui.aim_crosshair import AimCrosshair
 from airwar.ui.ammo_magazine import AmmoMagazine
-from airwar.ui.base_talent_console import BaseTalentConsole
 from airwar.ui.boost_gauge import BoostGauge
-from airwar.ui.give_up_ui import GiveUpUI
-from airwar.ui.homecoming_ui import HomecomingUI
 from airwar.ui.pause_button import PauseButtonComponent
 from airwar.ui.reward_selector import RewardSelector
 from airwar.ui.warning_banner import WarningBanner
@@ -70,6 +58,7 @@ from .game_scene_factory import GameSceneFactory
 from .game_scene_protocol_adapter import IGameSceneAdapter
 from .game_scene_renderer import GameSceneRenderer
 from .game_scene_event_dispatcher import GameSceneEventDispatcher
+from .game_session import GameSession
 from .game_scene_updater import GameSceneUpdater
 from .scene import Scene
 
@@ -88,6 +77,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     """
 
     PAUSE_BUTTON_SIZE = PauseButtonComponent.PAUSE_BUTTON_SIZE
+    uses_fixed_simulation = True
     PAUSE_BUTTON_MARGIN = PauseButtonComponent.PAUSE_BUTTON_MARGIN
     PAUSE_BAR_WIDTH = PauseButtonComponent.PAUSE_BAR_WIDTH
     PAUSE_BAR_HEIGHT = PauseButtonComponent.PAUSE_BAR_HEIGHT
@@ -101,7 +91,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     PERMANENT_INVINCIBILITY_FRAMES = GAME_CONSTANTS.PERSISTENCE.PERMANENT_INVINCIBILITY_FRAMES
     DOCKING_INVINCIBILITY_FRAMES = GAME_CONSTANTS.PERSISTENCE.DOCKING_INVINCIBILITY_FRAMES
 
-    AUTO_SAVE_INTERVAL = GAME_CONSTANTS.PERSISTENCE.AUTO_SAVE_INTERVAL
+    AUTO_SAVE_INTERVAL_SECONDS = GAME_CONSTANTS.PERSISTENCE.AUTO_SAVE_INTERVAL_SECONDS
     BULLET_CLEAR_DEDUP_FRAMES = GAME_CONSTANTS.PERSISTENCE.BULLET_CLEAR_DEDUP_FRAMES
 
     def __init__(self):
@@ -120,6 +110,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._lock_manager = LockManager(None)
         self._protocol = IGameSceneAdapter(self)
         self._factory = GameSceneFactory()
+        self._session: GameSession | None = None
         self.game_controller: GameController | None = None
         self.game_renderer: GameRenderer = None
         self.health_system = None
@@ -152,10 +143,11 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._ui_manager: UIManager = None
         self._game_loop_manager: GameLoopManager = None
         self._scene_renderer: GameSceneRenderer = None
+        self._save_service: GameSaveService | None = None
         self._viewport = None
         # Per-frame state migrated to GameSceneUpdater (Phase 5-ε):
         # _phase_dash_invincibility_active / _survival_frames /
-        # _last_bullet_clear_frame / _auto_save_timer. Read via the
+        # _last_bullet_clear_frame / _auto_save_elapsed. Read via the
         # @property shims below; write via the updater's reset_state().
         self._updater = GameSceneUpdater(self)
         # Per-event dispatch body extracted to GameSceneEventDispatcher
@@ -176,6 +168,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             self._haunting_renderer.dispose()
         self._haunting_renderer = HauntingRenderer()
         self._viewport = kwargs.get("viewport")
+        self._save_service = kwargs.get("save_service")
 
         # Prewarm glow caches before gameplay starts
         self._loading_progress = 20
@@ -189,52 +182,42 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._init_pause_button_layout()
         self._aim_assist.set_raw_aim_position(self._get_logical_mouse_pos())
 
-        self._factory.build(self, screen_width, screen_height, kwargs)
+        self._attach_session(self._factory.build(self, screen_width, screen_height, kwargs))
         self._updater.reset_state()
 
-    def _setup_reward_selector(self) -> None:
-        self.reward_selector.hide = lambda: setattr(self.reward_selector, "visible", False)
-        self.reward_selector.visible = False
-
-    def _init_mother_ship_system(self, screen_width: int, screen_height: int) -> None:
-        event_bus = EventBus()
-        input_detector = InputDetector(event_bus)
-        state_machine = MotherShipStateMachine(event_bus)
-        persistence_manager = PersistenceManager(username=self.get_username())
-        progress_bar_ui = ProgressBarUI(screen_width, screen_height)
-        mother_ship = MotherShip(screen_width, screen_height)
-
-        self._mother_ship_integrator = GameIntegrator(
-            event_bus=event_bus,
-            input_detector=input_detector,
-            state_machine=state_machine,
-            persistence_manager=persistence_manager,
-            progress_bar_ui=progress_bar_ui,
-            mother_ship=mother_ship,
-        )
-        self._mother_ship_integrator.attach_game_scene(self)
-
-    def _init_give_up_system(self, screen_width: int, screen_height: int) -> None:
-        self._give_up_detector = GiveUpDetector(self._on_give_up_complete)
-        self._give_up_ui = GiveUpUI(screen_width)
-
-    def _init_homecoming_system(self, screen_width: int, screen_height: int) -> None:
-        from airwar.game.systems.homecoming_coordinator import HomecomingCoordinator
-
-        detector = HomecomingDetector(self._on_homecoming_requested)
-        sequence = HomecomingSequence(self._on_homecoming_complete)
-        ui = HomecomingUI(screen_width, screen_height)
-        console = BaseTalentConsole(screen_width, screen_height)
-        coordinator = HomecomingCoordinator(detector, sequence, ui, console)
-        # F07: SceneHomecomingDispatcher owns the 8 callback methods.
-        self._set_homecoming_coordinator(coordinator)
-        self._homecoming_coordinator.set_save_fn(self._save_base_loadout)
-        self._homecoming_detector = detector
-        self._homecoming_sequence = sequence
-        self._homecoming_ui = ui
-        self._base_talent_console = console
+    def _attach_session(self, session: GameSession) -> None:
+        """Install legacy facade attributes from the typed session boundary."""
+        self._session = session
+        self.game_controller = session.game_controller
+        self.game_renderer = session.game_renderer
+        self.reward_system = session.reward_system
+        self.hud_renderer = session.hud_renderer
+        self.notification_manager = session.notification_manager
+        self.spawn_controller = session.spawn_controller
+        self.collision_controller = session.collision_controller
+        self.player = session.player
+        self.reward_selector = session.reward_selector
+        self._boost_gauge = session.boost_gauge
+        self._ammo_magazine = session.ammo_magazine
+        self._warning_banner = session.warning_banner
+        self._aim_crosshair = session.aim_crosshair
+        self._mother_ship_integrator = session.mother_ship_integrator
+        self._give_up_detector = session.give_up_detector
+        self._give_up_ui = session.give_up_ui
+        self._set_homecoming_coordinator(session.homecoming_coordinator)
+        self._homecoming_detector = session.homecoming_detector
+        self._homecoming_sequence = session.homecoming_sequence
+        self._homecoming_ui = session.homecoming_ui
+        self._base_talent_console = session.base_talent_console
         self._talent_balance_manager = None
         self._homecoming_base_pending = False
+        self._bullet_manager = session.bullet_manager
+        self._boss_manager = session.boss_manager
+        self._milestone_manager = session.milestone_manager
+        self._input_coordinator = session.input_coordinator
+        self._ui_manager = session.ui_manager
+        self._game_loop_manager = session.game_loop_manager
+        self._scene_renderer = session.scene_renderer
 
     def exit(self) -> None:
         if self._haunting_renderer:
@@ -274,7 +257,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             return True
         return False
 
-    def update(self, *args, **kwargs) -> None:
+    def update(self, frame: FrameContext | None = None, *args, **kwargs) -> None:
         """Per-frame update.
 
         Update order: delegates to :class:`GameSceneUpdater` which owns
@@ -297,7 +280,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         14. milestone_check
         15. auto_save
         """
-        self._updater.run()
+        self._updater.run(frame)
 
     def _should_suppress_haunting(self) -> bool:
         """Suppress haunting visuals when player is inside or near mothership."""
@@ -386,10 +369,10 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             return
         object.__setattr__(self, name, value)
 
-    def _update_homecoming(self) -> None:
+    def _update_homecoming(self, delta_seconds: float) -> None:
         """Backward-compat forwarder to SceneHomecomingDispatcher."""
         if self._homecoming_dispatcher is not None:
-            self._homecoming_dispatcher.update()
+            self._homecoming_dispatcher.update(delta_seconds)
 
     def _on_homecoming_requested(self) -> None:
         if self._homecoming_dispatcher is not None:
@@ -420,11 +403,15 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     def _save_base_loadout(self) -> bool:
         if not self._mother_ship_integrator:
             return False
-        save_data = self._mother_ship_integrator.create_save_data()
-        if not save_data:
+        return self.save_snapshot(force_outside_mothership=True)
+
+    def save_snapshot(self, *, force_outside_mothership: bool = False) -> bool:
+        if self._save_service is None:
             return False
-        save_data.is_in_mothership = False
-        return PersistenceManager(username=save_data.username).save_game(save_data)
+        save_data = self.create_save_data()
+        if save_data is None:
+            return False
+        return self._save_service.save(save_data, force_outside_mothership=force_outside_mothership)
 
     def _sync_lock_manager_targets(self) -> None:
         if self.game_controller:
@@ -539,8 +526,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         return self._updater._last_bullet_clear_frame
 
     @property
-    def _auto_save_timer(self) -> int:
-        return self._updater._auto_save_timer
+    def _auto_save_elapsed(self) -> float:
+        return self._updater._auto_save_elapsed
 
     @property
     def paused(self) -> bool:
@@ -590,13 +577,6 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if not self._mother_ship_integrator:
             return False
         return self._mother_ship_integrator.is_docked()
-
-    @property
-    def event_bus(self) -> EventBus | None:
-        """Expose the in-game event bus for achievement integration."""
-        if not self._mother_ship_integrator:
-            return None
-        return self._mother_ship_integrator.event_bus
 
     # IGameScene forwarders - all1-line delegations to self._protocol
 

@@ -20,8 +20,8 @@ the early homecoming / aim blocks to run before the pause check at the
 from __future__ import annotations
 
 from airwar.game.constants import GAME_CONSTANTS
+from airwar.game.frame_context import FrameContext, SimulationStep
 from airwar.game.managers.game_controller import GameplayState
-from airwar.game.mother_ship import PersistenceManager
 from airwar.game.mother_ship.event_bus import EVENT_UNDOCK_REQUESTED
 from airwar.game.systems.lock_manager import LockLayer, LockRequest
 
@@ -48,13 +48,21 @@ class GameSceneUpdater:
         self._phase_dash_invincibility_active = False
         self._survival_frames = 0
         self._last_bullet_clear_frame = GAME_CONSTANTS.GAMEPLAY.bullet_clear_dedup_initial_frame()
-        self._auto_save_timer = 0
+        self._auto_save_elapsed = 0.0
+        self._frame = SimulationStep(FrameContext.FIXED_DELTA_SECONDS, 0.0)
         self._pipeline = UpdatePipeline()
         self._wire_steps()
 
-    def run(self) -> None:
+    def run(self, frame: FrameContext | None = None) -> None:
         """Execute the 15 PIPELINE_ORDER steps in canonical order with short-circuit."""
-        self._pipeline.execute()
+        context = frame or FrameContext(
+            FrameContext.FIXED_DELTA_SECONDS,
+            FrameContext.FIXED_DELTA_SECONDS,
+            1,
+        )
+        for step in context.steps():
+            self._frame = step
+            self._pipeline.execute()
 
     def reset_state(self) -> None:
         """Reset per-frame state for a fresh ``enter()`` on the owning scene.
@@ -65,8 +73,9 @@ class GameSceneUpdater:
         self._phase_dash_invincibility_active = False
         self._survival_frames = 0
         self._last_bullet_clear_frame = GAME_CONSTANTS.GAMEPLAY.bullet_clear_dedup_initial_frame()
-        self._auto_save_timer = 0
+        self._auto_save_elapsed = 0.0
         self._docked = False
+        self._frame = SimulationStep(FrameContext.FIXED_DELTA_SECONDS, 0.0)
 
     # ---- Step registration ----
 
@@ -146,7 +155,7 @@ class GameSceneUpdater:
         scene._aim_assist.update(scene.spawn_controller, scene._get_logical_mouse_pos())
         scene._sync_player_aim_target()
         scene._aim_crosshair.update()
-        scene._update_homecoming()
+        scene._update_homecoming(self._frame.delta_seconds)
 
         if scene.game_renderer and scene.game_renderer.integrated_hud:
             unlocked_buffs = getattr(scene.reward_system, "unlocked_buffs", [])
@@ -174,7 +183,7 @@ class GameSceneUpdater:
         if scene._game_loop_manager.is_entrance_playing():
             scene._game_loop_manager.update_entrance(scene.player)
             if scene._mother_ship_integrator:
-                scene._mother_ship_integrator.update()
+                scene._mother_ship_integrator.update(self._frame.delta_seconds, self._frame.elapsed_seconds)
             return False
         return None
 
@@ -213,13 +222,13 @@ class GameSceneUpdater:
         scene = self._scene
         self._docked = False
         if scene._mother_ship_integrator:
-            scene._mother_ship_integrator.update()
+            scene._mother_ship_integrator.update(self._frame.delta_seconds, self._frame.elapsed_seconds)
             self._docked = scene._mother_ship_integrator.is_docked()
         self._update_mothership_ammo_warning()
 
     def _step_give_up_detector(self) -> None:
         """Step 9: give-up input detector (L319)."""
-        self._scene._input_coordinator.update_give_up()
+        self._scene._input_coordinator.update_give_up(self._frame.delta_seconds)
 
     def _step_core_logic(self) -> None:
         """Step 10: game loop + docking position lock (L320-326).
@@ -276,9 +285,9 @@ class GameSceneUpdater:
         juice = getattr(scene, "_juice_controller", None)
         if juice is not None:
             juice.update()
-        self._auto_save_timer += 1
-        if self._auto_save_timer >= scene.AUTO_SAVE_INTERVAL:
-            self._auto_save_timer = 0
+        self._auto_save_elapsed += self._frame.delta_seconds
+        if self._auto_save_elapsed >= scene.AUTO_SAVE_INTERVAL_SECONDS:
+            self._auto_save_elapsed = 0.0
             self._try_auto_save()
 
     # ---- Migrated helpers (verbatim from GameScene) ----
@@ -303,10 +312,7 @@ class GameSceneUpdater:
             return
         if not scene.game_controller or not scene.game_controller.is_playing():
             return
-        save_data = scene._mother_ship_integrator.create_save_data()
-        if save_data:
-            save_data.is_in_mothership = False
-            PersistenceManager(username=save_data.username).save_game(save_data)
+        scene.save_snapshot(force_outside_mothership=True)
 
     def _sync_player_phase_dash_invincibility(self) -> None:
         scene = self._scene

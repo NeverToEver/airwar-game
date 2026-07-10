@@ -71,7 +71,7 @@ class SceneHomecomingDispatcher:
             return False
         return self._coordinator.is_base_pending()
 
-    def update(self) -> None:
+    def update(self, delta_seconds: float) -> None:
         """Per-frame homecoming update (coordinator tick)."""
         if self._coordinator is None:
             return
@@ -84,6 +84,7 @@ class SceneHomecomingDispatcher:
             s.spawn_controller,
             s._game_loop_manager,
             s.notification_manager,
+            delta_seconds,
         )
 
     def on_requested(self) -> None:

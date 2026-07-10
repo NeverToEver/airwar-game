@@ -16,6 +16,7 @@ from airwar.config import get_screen_height, get_screen_width
 from airwar.entities.base import BulletData
 from airwar.entities.bullet import Bullet
 from airwar.game.constants import GAME_CONSTANTS
+from airwar.game.frame_context import FrameContext
 
 from ..rendering.entity_renderer import EntityRenderer
 from ..systems.lock_manager import LockLayer, LockRequest
@@ -47,7 +48,6 @@ if TYPE_CHECKING:
     from .event_bus import EventBus
     from .input_detector import InputDetector
     from .mother_ship import MotherShip
-    from .persistence_manager import PersistenceManager
     from .state_machine import MotherShipStateMachine
 
 
@@ -106,14 +106,12 @@ class GameIntegrator:
         event_bus: "EventBus",
         input_detector: "InputDetector",
         state_machine: "MotherShipStateMachine",
-        persistence_manager: "PersistenceManager",
         progress_bar_ui: "ProgressBarUI",
         mother_ship: "MotherShip",
     ):
         self._event_bus = event_bus
         self._input_detector = input_detector
         self._state_machine = state_machine
-        self._persistence_manager = persistence_manager
         self._progress_bar_ui = progress_bar_ui
         self._mother_ship = mother_ship
 
@@ -127,7 +125,8 @@ class GameIntegrator:
 
         self._mothership_bullets: list[Bullet] = []
         self._entity_renderer = EntityRenderer()
-        self._mothership_fire_timer = 0
+        self._mothership_fire_elapsed = 0.0
+        self._current_time = 0.0
         self._exit_refund_progress: float = 0.0  # Ammo refund on early exit (0.0-0.3)
         self._score_reduction_factor = 1.0 / 3.0
 
@@ -184,7 +183,8 @@ class GameIntegrator:
 
         self._mother_ship.set_player_input(x_input, y_input)
 
-    def update(self) -> None:
+    def update(self, delta_seconds: float, elapsed_seconds: float) -> None:
+        self._current_time = elapsed_seconds
         self._update_mothership_input()
 
         # Run animations without blocking the game loop
@@ -199,28 +199,27 @@ class GameIntegrator:
 
         # Always update input detector and state machine so the
         # game loop continues running during animations
-        self._input_detector.update()
-        current_time = pygame.time.get_ticks() / 1000.0
-        self._state_machine.update(current_time)
+        self._state_machine.set_current_time(elapsed_seconds)
+        self._input_detector.update(elapsed_seconds)
+        self._state_machine.update(elapsed_seconds)
         self._mother_ship.update()
 
         if self._state_machine.is_docked():
-            self._update_mothership_firing()
+            self._update_mothership_firing(delta_seconds)
             self._update_mothership_bullets()
             dock_pos = self._mother_ship.get_docking_position()
             self._game_scene.set_player_position(dock_pos[0], dock_pos[1])
         elif self._state_machine.is_entering():
             self._update_mothership_bullets()
 
-    def _update_mothership_firing(self) -> None:
+    def _update_mothership_firing(self, delta_seconds: float) -> None:
         if not self._game_scene or not self._game_scene.spawn_controller:
             return
 
-        # Frame-based timing (not delta-time): consistent with other firing logic, assumes stable 60fps.
-        # Fire rate drops when framerate drops — an acceptable trade-off.
-        self._mothership_fire_timer += 1
-        if self._mothership_fire_timer >= self.MOTHERSHIP_FIRE_RATE:
-            self._mothership_fire_timer = 0
+        self._mothership_fire_elapsed += delta_seconds
+        fire_interval = self.MOTHERSHIP_FIRE_RATE * FrameContext.FIXED_DELTA_SECONDS
+        if self._mothership_fire_elapsed >= fire_interval:
+            self._mothership_fire_elapsed -= fire_interval
             self._fire_at_enemies()
         self._update_mothership_gatling()
 
@@ -543,7 +542,7 @@ class GameIntegrator:
 
     def _clear_mothership_bullets(self) -> None:
         self._mothership_bullets.clear()
-        self._mothership_fire_timer = 0
+        self._mothership_fire_elapsed = 0.0
         self._gatling.reset_timers()
 
     def _get_entity_score(self, entity, fallback: int) -> int:
@@ -592,7 +591,7 @@ class GameIntegrator:
         state = self._state_machine.current_state
         cd = self._state_machine.cooldown
         stay = self._state_machine.stay_progress
-        stay.update_stay(pygame.time.get_ticks() / 1000.0)  # Ensure progress is fresh
+        stay.update_stay(self._current_time)
 
         # Compute ammo count based on state
         is_present = state in (
@@ -627,7 +626,7 @@ class GameIntegrator:
             "is_in_cooldown": is_cooldown,
             "is_docked": is_docked,
             "cooldown_progress": cd.cooldown_progress,
-            "cooldown_remaining": cd.get_remaining_time(),
+            "cooldown_remaining": cd.get_remaining_time(self._current_time),
             "cooldown_duration": cd.cooldown_duration,
             "cooldown_base_duration": cd.BASE_COOLDOWN,
             "cooldown_multiplier": cd.cooldown_multiplier,
@@ -637,7 +636,7 @@ class GameIntegrator:
             ),
             "stay_progress": stay.stay_progress,
             "stay_remaining": (
-                max(0.0, stay.stay_duration - (pygame.time.get_ticks() / 1000.0 - stay.stay_start_time))
+                max(0.0, stay.stay_duration - (self._current_time - stay.stay_start_time))
                 if stay.is_staying
                 else 0.0
             ),

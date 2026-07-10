@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from ...scenes import GameScene
 from ..mother_ship import GameSaveData, PersistenceManager
+from ..systems.game_save_service import GameSaveService
 
 
 class SceneStatePersistence:
@@ -21,15 +22,14 @@ class SceneStatePersistence:
 
     def __init__(self, director) -> None:
         self._director = director
+        self._save_service = GameSaveService(director._save_dir)
+
+    @property
+    def save_service(self) -> GameSaveService:
+        return self._save_service
 
     def check_and_get_saved_game(self, username: str) -> GameSaveData | None:
-        if not username:
-            return None
-        for persistence_manager in self._candidate_persistence_managers(username):
-            save_data = persistence_manager.load_game()
-            if save_data and save_data.username == username:
-                return save_data
-        return None
+        return self._save_service.load(username)
 
     def perform_save(self, game_scene: GameScene) -> bool:
         if not game_scene:
@@ -37,20 +37,17 @@ class SceneStatePersistence:
         save_data = game_scene.create_save_data()
         if not save_data:
             return False
-        if not game_scene.is_mothership_docked():
-            save_data.is_in_mothership = False
-        persistence_manager = PersistenceManager(save_dir=self._director._save_dir, username=save_data.username)
-        return persistence_manager.save_game(save_data)
+        return self._save_service.save(
+            save_data,
+            force_outside_mothership=not game_scene.is_mothership_docked(),
+        )
 
     def save_game_on_quit(self, game_scene: GameScene) -> None:
         if not self.perform_save(game_scene):
             self._director._logger.warning("Failed to save game during quit")
 
     def clear_saved_game(self) -> None:
-        for persistence_manager in self._candidate_persistence_managers(self._director._current_user):
-            save_data = persistence_manager.load_game()
-            if save_data and save_data.username == self._director._current_user:
-                persistence_manager.delete_save()
+        self._save_service.clear(self._director._current_user)
 
     def save_and_quit(self, game_scene: GameScene) -> bool:
         saved = self.perform_save(game_scene)
@@ -62,7 +59,4 @@ class SceneStatePersistence:
         self.clear_saved_game()
 
     def _candidate_persistence_managers(self, username: str) -> list[PersistenceManager]:
-        return [
-            PersistenceManager(save_dir=self._director._save_dir, username=username),
-            PersistenceManager(save_dir=self._director._save_dir),
-        ]
+        return self._save_service.candidate_managers(username)

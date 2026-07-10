@@ -1,7 +1,5 @@
 """Mothership state machine — docking flow and state transitions."""
 
-import pygame
-
 from .event_bus import (
     EVENT_COOLDOWN_STARTED,
     EVENT_DOCKING_ANIMATION_COMPLETE,
@@ -53,6 +51,7 @@ class MotherShipStateMachine(IMotherShipStateMachine):
         self._cooldown = MotherShipCooldown()
         self._stay_progress = DockedStayProgress()
         self._exit_in_progress = False
+        self._current_time = 0.0
         self._register_handlers()
 
     def _register_handlers(self) -> None:
@@ -120,13 +119,13 @@ class MotherShipStateMachine(IMotherShipStateMachine):
         if self._can_transition_to(MotherShipState.DOCKED):
             self._change_state(MotherShipState.DOCKED)
             self._event_bus.publish(EVENT_STATE_CHANGED, state=self._current_state)
-            self._stay_progress.start_stay(pygame.time.get_ticks() / 1000.0)
+            self._stay_progress.start_stay(self._current_time)
             self._event_bus.publish(EVENT_STAY_STARTED)
 
     def _on_undocking_animation_complete(self, **kwargs) -> None:
         if self._current_state == MotherShipState.UNDOCKING:
             self._change_state(MotherShipState.COOLDOWN)
-            self._cooldown.start_cooldown(pygame.time.get_ticks() / 1000.0)
+            self._cooldown.start_cooldown(self._current_time)
             self._stay_progress.reset()
             self._exit_in_progress = False
             self._event_bus.publish(EVENT_STATE_CHANGED, state=self._current_state)
@@ -168,7 +167,12 @@ class MotherShipStateMachine(IMotherShipStateMachine):
     def _change_state(self, new_state: MotherShipState) -> None:
         self._current_state = new_state
 
+    def set_current_time(self, current_time: float) -> None:
+        """Set the shared simulation time before processing input events."""
+        self._current_time = current_time
+
     def update(self, current_time: float) -> None:
+        self.set_current_time(current_time)
         if self._current_state == MotherShipState.COOLDOWN:
             self._cooldown.update_cooldown(current_time)
             if not self._cooldown.is_in_cooldown:
@@ -201,7 +205,7 @@ class MotherShipStateMachine(IMotherShipStateMachine):
         Args:
             stay_progress: 0.0-1.0 fraction of the 20s stay already elapsed.
         """
-        now = pygame.time.get_ticks() / 1000.0
+        now = self._current_time
         elapsed = stay_progress * self._stay_progress.stay_duration
         self._current_state = MotherShipState.DOCKED
         self._stay_progress.start_stay(now - elapsed)
@@ -212,7 +216,7 @@ class MotherShipStateMachine(IMotherShipStateMachine):
         Args:
             cooldown_progress: 0.0-1.0 fraction of the cooldown already elapsed.
         """
-        now = pygame.time.get_ticks() / 1000.0
+        now = self._current_time
         elapsed = cooldown_progress * self._cooldown.cooldown_duration
         self._current_state = MotherShipState.COOLDOWN
         self._cooldown.start_cooldown(now - elapsed)

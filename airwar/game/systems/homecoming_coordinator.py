@@ -119,6 +119,7 @@ class HomecomingCoordinator:
         spawn_controller,
         game_loop_manager,
         notification_manager,
+        delta_seconds: float,
     ):
         if not self._detector or not self._sequence:
             return
@@ -130,7 +131,7 @@ class HomecomingCoordinator:
             return
 
         can_use = self._can_request(game_controller, player)
-        self._detector.update(GAME_CONSTANTS.TIMING.FIXED_DELTA_TIME, enabled=can_use)
+        self._detector.update(delta_seconds, enabled=can_use)
 
         if self._ui:
             if self._detector.is_active():

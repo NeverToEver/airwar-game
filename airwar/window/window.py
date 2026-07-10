@@ -140,9 +140,16 @@ class Window:
         if self._screen:
             pygame.display.update()
 
-    def tick(self, fps: int = 60) -> None:
+    def tick(self, fps: int = 60) -> float:
+        """Wait for the frame cap and return elapsed wall time in seconds."""
         if self._clock:
-            self._clock.tick_busy_loop(fps)
+            return self._clock.tick_busy_loop(fps) / 1000.0
+        return 0.0
+
+    def reset_timing(self) -> None:
+        """Discard elapsed time accumulated while a scene was loading."""
+        if self._clock:
+            self._clock.tick(0)
 
     def get_events(self) -> list[pygame.event.Event]:
         return pygame.event.get()

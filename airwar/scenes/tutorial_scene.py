@@ -25,6 +25,7 @@ from airwar.config import TUTORIAL_STAGES, TutorialStage, get_screen_height, get
 from airwar.config.design_tokens import SceneColors, get_design_tokens
 from airwar.i18n import t as _t
 from airwar.game.mother_ship import MotherShip
+from airwar.game.frame_context import FrameContext
 from airwar.game.rendering import GameRenderer
 from airwar.ui.aim_crosshair import AimCrosshair
 from airwar.ui.ammo_magazine import AmmoMagazine
@@ -72,6 +73,8 @@ from airwar.scenes.tutorial.entities_core import (  # noqa: E402,F401
 
 class TutorialScene(Scene, MouseInteractiveMixin):
     """Self-contained tutorial with a stage machine and simplified combat."""
+
+    uses_fixed_simulation = True
 
     PLAYER_W = 68
     PLAYER_H = 82
@@ -256,7 +259,12 @@ class TutorialScene(Scene, MouseInteractiveMixin):
                 if self.handle_mouse_click(event.pos):
                     self._handle_button_click(self.get_hovered_button())
 
-    def update(self, *args, **kwargs) -> None:
+    def update(self, frame: FrameContext | None = None, *args, **kwargs) -> None:
+        steps = frame.simulation_steps if frame is not None else 1
+        for _ in range(steps):
+            self._update_simulation()
+
+    def _update_simulation(self) -> None:
         if not self.running:
             return
 

@@ -1,21 +1,4 @@
-"""GameScene factory - Phase42.2 god-class split.
-
-Extracts the enter() subsystem construction logic into a dedicated
-factory. The factory builds every subsystem the scene needs,
-returning a typed dict the scene attaches to itself.
-
-Construction order (1:1 with the original enter() body):
-1. game_controller
-2. game_renderer
-3. hud_renderer
-4. spawn_controller
-5. collision_controller
-6. player (with boost + reward baselines)
-7. UI components
-8. _setup_reward_selector
-9. Subsystem groups (mothership, give-up, homecoming)
-10. Managers (bullet, boss, milestone, input, ui, game_loop)
-"""
+"""Construct the typed collaborators for one active game session."""
 
 from __future__ import annotations
 
@@ -24,6 +7,8 @@ from typing import TYPE_CHECKING
 from airwar.config import BOOST_CONFIG, DIFFICULTY_SETTINGS
 from airwar.entities import Player
 from airwar.game.constants import PlayerConstants
+from airwar.game.give_up import GiveUpDetector
+from airwar.game.homecoming import HomecomingDetector, HomecomingSequence
 from airwar.game.managers import (
     BossManager,
     BulletManager,
@@ -35,21 +20,35 @@ from airwar.game.managers import (
 from airwar.game.managers.collision_controller import CollisionController
 from airwar.game.managers.game_controller import GameController
 from airwar.game.managers.spawn_controller import SpawnController
+from airwar.game.mother_ship import (
+    EventBus,
+    GameIntegrator,
+    InputDetector,
+    MotherShip,
+    MotherShipStateMachine,
+    ProgressBarUI,
+)
 from airwar.game.rendering.game_renderer import GameRenderer
 from airwar.game.rendering.hud_renderer import HUDRenderer
+from airwar.game.systems.homecoming_coordinator import HomecomingCoordinator
 from airwar.input import PygameInputHandler
 from airwar.ui.aim_crosshair import AimCrosshair
 from airwar.ui.ammo_magazine import AmmoMagazine
+from airwar.ui.base_talent_console import BaseTalentConsole
 from airwar.ui.boost_gauge import BoostGauge
+from airwar.ui.give_up_ui import GiveUpUI
+from airwar.ui.homecoming_ui import HomecomingUI
 from airwar.ui.warning_banner import WarningBanner
+
+from .game_scene_renderer import GameSceneRenderer
+from .game_session import GameSession
 
 if TYPE_CHECKING:
     from .game_scene import GameScene
-from .game_scene_renderer import GameSceneRenderer
 
 
 class GameSceneFactory:
-    """Builds every subsystem wired into a GameScene during enter()."""
+    """Build a ``GameSession`` without making ``GameScene`` its state store."""
 
     def build(
         self,
@@ -57,111 +56,131 @@ class GameSceneFactory:
         screen_width: int,
         screen_height: int,
         kwargs: dict,
-    ) -> dict[str, object]:
+    ) -> GameSession:
         difficulty = kwargs.get("difficulty", "medium")
         username = kwargs.get("username", "Player")
         settings_ref = kwargs.get("settings_ref", {})
         settings = DIFFICULTY_SETTINGS[difficulty]
 
-        # Core game systems
-        scene.game_controller = GameController(difficulty, username)
-        scene.game_controller.set_lock_manager(scene._lock_manager)
-        scene._lock_manager.set_game_state(scene.game_controller.state)
+        game_controller = GameController(difficulty, username)
+        game_controller.set_lock_manager(scene._lock_manager)
+        scene._lock_manager.set_game_state(game_controller.state)
 
-        scene.game_renderer = GameRenderer()
-        scene.game_renderer.init_background(screen_width, screen_height)
+        game_renderer = GameRenderer()
+        game_renderer.init_background(screen_width, screen_height)
+        reward_system = game_controller.reward_system
+        hud_renderer = HUDRenderer()
+        notification_manager = game_controller.notification_manager
 
-        scene.reward_system = scene.game_controller.reward_system
-        scene.hud_renderer = HUDRenderer()
-        scene.notification_manager = scene.game_controller.notification_manager
+        spawn_controller = SpawnController(settings)
+        spawn_controller.init_bullet_system()
+        collision_controller = CollisionController()
 
-        scene.spawn_controller = SpawnController(settings)
-        scene.spawn_controller.init_bullet_system()
-
-        scene.collision_controller = CollisionController()
-
-        input_handler = PygameInputHandler()
-        scene.player = Player(
+        player = Player(
             screen_width // 2 - PlayerConstants.INITIAL_X_OFFSET,
             screen_height - PlayerConstants.SCREEN_BOTTOM_OFFSET,
-            input_handler,
+            PygameInputHandler(),
         )
-        scene._lock_manager.set_player(scene.player)
-        scene._sync_player_aim_target()
-        scene.player.rect.y = PlayerConstants.INITIAL_Y
-        scene.player.bullet_damage = settings["bullet_damage"]
+        scene._lock_manager.set_player(player)
+        player.set_aim_target(*scene._aim_assist.get_aim_position())
+        player.rect.y = PlayerConstants.INITIAL_Y
+        player.bullet_damage = settings["bullet_damage"]
         boost_cfg = BOOST_CONFIG[difficulty]
-        scene.player.boost_max = boost_cfg["max_boost"]
-        scene.player.boost_current = boost_cfg["max_boost"]
-        scene.player.boost_recovery_rate = boost_cfg["recovery_rate"]
-        scene.player.boost_speed_mult = boost_cfg["speed_mult"]
-        scene.player.boost_recovery_delay = boost_cfg["recovery_delay"]
-        scene.player.boost_recovery_ramp = boost_cfg["recovery_ramp"]
-        scene.player.apply_settings(settings_ref)
-        scene.reward_system.capture_player_baselines(scene.player)
+        player.boost_max = boost_cfg["max_boost"]
+        player.boost_current = boost_cfg["max_boost"]
+        player.boost_recovery_rate = boost_cfg["recovery_rate"]
+        player.boost_speed_mult = boost_cfg["speed_mult"]
+        player.boost_recovery_delay = boost_cfg["recovery_delay"]
+        player.boost_recovery_ramp = boost_cfg["recovery_ramp"]
+        player.apply_settings(settings_ref)
+        reward_system.capture_player_baselines(player)
 
-        # UI components
-        scene._boost_gauge = BoostGauge()
-        scene._ammo_magazine = AmmoMagazine()
-        scene._warning_banner = WarningBanner()
-        scene._aim_crosshair = AimCrosshair()
-        scene._scene_renderer = GameSceneRenderer(scene)
+        reward_selector = scene.reward_selector
+        reward_selector.hide = lambda: setattr(reward_selector, "visible", False)
+        reward_selector.visible = False
+        boost_gauge = BoostGauge()
+        ammo_magazine = AmmoMagazine()
+        warning_banner = WarningBanner()
+        aim_crosshair = AimCrosshair()
 
-        scene._setup_reward_selector()
-
-        # Subsystem groups (delegate to scene so F07 dispatcher hook fires)
-        scene._init_mother_ship_system(screen_width, screen_height)
-        scene._init_give_up_system(screen_width, screen_height)
-        scene._init_homecoming_system(screen_width, screen_height)
-
-        # Managers
-        scene._bullet_manager = BulletManager(scene.player, scene.spawn_controller)
-        scene._boss_manager = BossManager(
-            scene.spawn_controller,
-            scene.game_controller,
-            scene.reward_system,
-            scene._bullet_manager,
+        event_bus = EventBus()
+        mother_ship_integrator = GameIntegrator(
+            event_bus=event_bus,
+            input_detector=InputDetector(event_bus),
+            state_machine=MotherShipStateMachine(event_bus),
+            progress_bar_ui=ProgressBarUI(screen_width, screen_height),
+            mother_ship=MotherShip(screen_width, screen_height),
         )
-        scene._milestone_manager = MilestoneManager(scene.game_controller, scene.reward_system)
-        scene._milestone_manager.set_reward_selector(scene.reward_selector)
-        scene._input_coordinator = InputCoordinator(
-            scene.player,
-            scene.game_controller,
-            scene.reward_selector,
-            scene._give_up_detector,
-            scene._give_up_ui,
+        mother_ship_integrator.attach_game_scene(scene)
+
+        give_up_detector = GiveUpDetector(scene._on_give_up_complete)
+        give_up_ui = GiveUpUI(screen_width)
+
+        homecoming_detector = HomecomingDetector(scene._on_homecoming_requested)
+        homecoming_sequence = HomecomingSequence(scene._on_homecoming_complete)
+        homecoming_ui = HomecomingUI(screen_width, screen_height)
+        base_talent_console = BaseTalentConsole(screen_width, screen_height)
+        homecoming_coordinator = HomecomingCoordinator(
+            homecoming_detector,
+            homecoming_sequence,
+            homecoming_ui,
+            base_talent_console,
         )
-        scene._ui_manager = UIManager(
-            scene.game_renderer,
-            scene.game_controller,
-            scene.reward_system,
+        homecoming_coordinator.set_save_fn(scene._save_base_loadout)
+
+        bullet_manager = BulletManager(player, spawn_controller)
+        boss_manager = BossManager(spawn_controller, game_controller, reward_system, bullet_manager)
+        milestone_manager = MilestoneManager(game_controller, reward_system)
+        milestone_manager.set_reward_selector(reward_selector)
+        input_coordinator = InputCoordinator(
+            player,
+            game_controller,
+            reward_selector,
+            give_up_detector,
+            give_up_ui,
         )
-        scene._game_loop_manager = GameLoopManager(
-            scene.game_controller,
-            scene.game_renderer,
-            scene.spawn_controller,
-            scene.reward_system,
-            scene._bullet_manager,
-            scene._boss_manager,
-            scene.collision_controller,
+        ui_manager = UIManager(game_renderer, game_controller, reward_system)
+        game_loop_manager = GameLoopManager(
+            game_controller,
+            game_renderer,
+            spawn_controller,
+            reward_system,
+            bullet_manager,
+            boss_manager,
+            collision_controller,
             scene._lock_manager,
         )
 
-        return {
-            "game_controller": scene.game_controller,
-            "reward_system": scene.reward_system,
-            "hud_renderer": scene.hud_renderer,
-            "notification_manager": scene.notification_manager,
-            "spawn_controller": scene.spawn_controller,
-            "collision_controller": scene.collision_controller,
-            "player": scene.player,
-            "bullet_manager": scene._bullet_manager,
-            "boss_manager": scene._boss_manager,
-            "milestone_manager": scene._milestone_manager,
-            "input_coordinator": scene._input_coordinator,
-            "ui_manager": scene._ui_manager,
-            "game_loop_manager": scene._game_loop_manager,
-        }
+        return GameSession(
+            game_controller=game_controller,
+            game_renderer=game_renderer,
+            reward_system=reward_system,
+            hud_renderer=hud_renderer,
+            notification_manager=notification_manager,
+            spawn_controller=spawn_controller,
+            collision_controller=collision_controller,
+            player=player,
+            reward_selector=reward_selector,
+            boost_gauge=boost_gauge,
+            ammo_magazine=ammo_magazine,
+            warning_banner=warning_banner,
+            aim_crosshair=aim_crosshair,
+            mother_ship_integrator=mother_ship_integrator,
+            give_up_detector=give_up_detector,
+            give_up_ui=give_up_ui,
+            homecoming_coordinator=homecoming_coordinator,
+            homecoming_detector=homecoming_detector,
+            homecoming_sequence=homecoming_sequence,
+            homecoming_ui=homecoming_ui,
+            base_talent_console=base_talent_console,
+            bullet_manager=bullet_manager,
+            boss_manager=boss_manager,
+            milestone_manager=milestone_manager,
+            input_coordinator=input_coordinator,
+            ui_manager=ui_manager,
+            game_loop_manager=game_loop_manager,
+            scene_renderer=GameSceneRenderer(scene),
+        )
 
 
 __all__ = ["GameSceneFactory"]

@@ -6,7 +6,6 @@ import pygame
 
 from airwar.config.design_tokens import SceneColors, SceneLayout, get_design_tokens
 from airwar.i18n import t
-from airwar.ui.achievement_notification import AchievementNotification
 from airwar.ui.effects import EffectsRenderer
 from airwar.ui.menu_background import MenuBackground
 from airwar.ui.particles import ParticleSystem
@@ -39,9 +38,6 @@ class DeathScene(Scene, MouseSelectableMixin):
         self.animation_time = 0
         self.glow_offset = 0
         self.ripples = []
-
-        newly_unlocked = kwargs.get("newly_unlocked_achievements") or []
-        self._achievement_notification = AchievementNotification(newly_unlocked)
 
         self._tokens = get_design_tokens()
 
@@ -123,10 +119,6 @@ class DeathScene(Scene, MouseSelectableMixin):
             ripple["alpha"] -= 3
             if ripple["alpha"] <= 0:
                 self.ripples.remove(ripple)
-
-        notification = getattr(self, "_achievement_notification", None)
-        if notification is not None:
-            notification.update()
 
     def _draw_ripples(self, surface: pygame.Surface) -> None:
         colors = self._tokens.colors
@@ -227,10 +219,6 @@ class DeathScene(Scene, MouseSelectableMixin):
         controls = self.desc_font.render(t("pause.hint.navigate"), True, SceneColors.DESC_TEXT)
         controls_offset = ResponsiveHelper.scale(SceneLayout.DEATH_BOTTOM_CONTROLS_OFFSET, scale)
         surface.blit(controls, controls.get_rect(center=(width // 2, height - controls_offset)))
-
-        notification = getattr(self, "_achievement_notification", None)
-        if notification is not None:
-            notification.render(surface)
 
     def get_result(self):
         return self.result

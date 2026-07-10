@@ -4,7 +4,6 @@ from typing import Protocol
 
 import pygame
 
-from ..constants import GAME_CONSTANTS
 from ..protocols import (
     GameControllerProtocol,
     GiveUpDetectorProtocol,
@@ -53,12 +52,12 @@ class InputCoordinator:
     def _can_fire(self) -> bool:
         return not self._game_controller.state.is_paused and not self._reward_selector.visible
 
-    def update_give_up(self) -> None:
+    def update_give_up(self, delta_seconds: float) -> None:
         if not self._can_use_give_up():
             self._give_up_ui.hide()
             return
 
-        self._give_up_detector.update(GAME_CONSTANTS.TIMING.FIXED_DELTA_TIME)
+        self._give_up_detector.update(delta_seconds)
 
         if self._give_up_detector.is_active():
             self._give_up_ui.show()
