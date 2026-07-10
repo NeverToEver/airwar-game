@@ -1,14 +1,8 @@
 """Collision detection between entities using spatial hashing.
 
-Phase 4 god-class split: this module is now a slim coordinator that owns
-one instance per collision strategy (see :mod:`airwar.game.managers.collisions`)
-and delegates the heavy lifting to them. The public API and all
-attributes are preserved verbatim — only the implementation is split.
-
-The 33-method god class was split into 4 strategy components per
-``docs/logic-clarity/11-phase5b-handoff.md`` §7.1 (the previous
-08-deep-godclass-split-plan.md was retired in the 2026-06-08 docs
-cleanup):
+This module coordinates one instance per collision strategy (see
+:mod:`airwar.game.managers.collisions`) and delegates the heavy lifting to
+them:
 
 * :class:`~airwar.game.managers.collisions.BulletVsEntitiesStrategy`
   -- player bullets vs enemies + boss.
@@ -22,7 +16,7 @@ cleanup):
 The Python spatial-hash helpers (``_add_to_grid``, ``_get_potential_collisions``,
 ``_get_potential_explosion_targets``, ``_get_potential_boss_bullets``,
 ``_get_entities_in_cells``) stay on the controller because both the
-strategies and the test suite need them.
+strategies need them.
 """
 
 from __future__ import annotations
@@ -293,9 +287,9 @@ class CollisionController:
 
         Args:
             player: Player entity whose bullets and hitbox participate.
-            enemies: Active enemy entities to test against.
+            enemies: Active enemy entities checked for collisions.
             boss: Active boss entity or None if not in boss phase.
-            enemy_bullets: Live enemy bullets to test against the player.
+            enemy_bullets: Live enemy bullets checked against the player.
             reward_system: RewardSystem providing `piercing_level`,
                 `calculate_damage_taken`, and `try_dodge` helpers.
             explosive_level: Talent level for explosive bullet AoE.
@@ -319,7 +313,7 @@ class CollisionController:
         )
 
         # The Rust collision path builds its own spatial data from batch input.
-        # Keep the Python grid only when explicitly disabled by tests.
+        # Keep the Python grid for the non-Rust collision path.
         self._clear_grid()
         if self._uses_rust_batch_collision():
             for enemy in enemies:
@@ -401,11 +395,11 @@ class CollisionController:
     def check_player_vs_enemies(
         self, player_hitbox, enemies: list[Enemy], try_dodge_func: Callable, on_player_hit_func: Callable
     ) -> bool:
-        """Test whether the player's hitbox collides with any active enemy.
+        """Check whether the player's hitbox collides with any active enemy.
 
         Args:
             player_hitbox: pygame.Rect-like hitbox for the player.
-            enemies: Active enemy entities to test against.
+            enemies: Active enemy entities checked for collisions.
             try_dodge_func: Callable returning True if the player dodged.
             on_player_hit_func: Callable invoked with damage on collision.
 

@@ -4,9 +4,7 @@ This module extracts the entering / docking / undocking animation state
 machines from ``GameIntegrator``. The integrator keeps the public
 animation query methods (``is_*_animation_active``,
 ``get_*_animation_progress``, ``get_*_animation_start``) as 1-line
-forwarders, and the private ``_*_animation_*`` attributes remain
-accessible via property forwarders so existing tests and call sites
-work without change.
+forwarders used by the mothership flow.
 """
 
 from __future__ import annotations
@@ -29,10 +27,8 @@ class MothershipAnimations:
     """F08 god-class split: entering / docking / undocking state machines.
 
     Owns the per-animation flags, frame counters, durations, and target
-    positions. State is stored on this object; the integrator exposes
-    the legacy ``_*_animation_*`` attribute names via property forwarders
-    so existing call sites that read or write those names (including
-    tests) keep working without change.
+    positions. State is stored on this object and queried through the
+    integrator's animation commands.
     """
 
     # ── Entering animation ────────────────────────────────────────────────

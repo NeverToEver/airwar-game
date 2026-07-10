@@ -109,8 +109,7 @@ class Bullet(Entity):
     def render(self, surface: pygame.Surface) -> None:
         """Blit the bullet's sprite at its current position.
 
-        A no-op if no sprite has been assigned (e.g. during headless
-        tests that build entities without loading assets).
+        A no-op if no sprite has been assigned.
 
         Args:
             surface: Target pygame surface to draw onto.

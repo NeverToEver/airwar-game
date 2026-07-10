@@ -46,6 +46,19 @@ class GameSceneRenderer:
 
     def __init__(self, scene: GameScene) -> None:
         self._scene = scene
+        # Low-health effects are only occasional, but allocating full-screen
+        # alpha surfaces when they do fire causes visible frame-time spikes.
+        self._damage_overlay_size: tuple[int, int] | None = None
+        self._damage_aberration = None
+        self._damage_flash = None
+        self._damage_aberration_frame = 0
+
+    def dispose(self) -> None:
+        """Release full-screen transient effect surfaces on scene exit."""
+        self._damage_overlay_size = None
+        self._damage_aberration = None
+        self._damage_flash = None
+        self._damage_aberration_frame = 0
 
     def render(self, surface) -> None:
         scene = self._scene
@@ -148,15 +161,13 @@ class GameSceneRenderer:
         """Juice overlay: low-HP chromatic aberration + damage flash.
 
         Two stacked effects:
-        1. **Low-HP chromatic aberration** (sustained): when health < 50%, blit
-           the world surface three times with R/G/B channels offset by ±1px
-           using additive blend. Intensity ramps from 0 (at 50% HP) to 1
-           (at 0% HP).
+        1. **Low-HP chromatic aberration** (sustained): when health < 50%, blend
+           horizontally offset world copies using additive blend. Intensity ramps
+           from 0 (at 50% HP) to 1 (at 0% HP).
         2. **Damage flash** (transient): when ``state.damage_intensity > 0``,
            fill a red-tinted fullscreen surface with alpha = damage_intensity.
 
-        Both are no-ops when the relevant state is 0 — see STRUCTURE.md §6.6
-        for the additive-state pattern.
+        Both are no-ops when the relevant state is 0.
         """
         import pygame  # local import keeps the module's import cost flat
         scene = self._scene
@@ -172,21 +183,38 @@ class GameSceneRenderer:
             # Map [0, 0.5] → [1, 0] — 0% HP = full aberration, 50% HP = none.
             intensity = 1.0 - (health_ratio * 2.0)
             offset_px = max(1, int(2 * intensity))  # 1px at 25% HP, 2px at 0%
-            w, h = surface.get_size()
-            aberration = pygame.Surface((w, h), pygame.SRCALPHA)
-            aberration.blit(surface, (offset_px, 0), special_flags=pygame.BLEND_RGBA_ADD)
-            aberration.blit(surface, (-offset_px, 0), special_flags=pygame.BLEND_RGBA_ADD)
-            aberration.blit(surface, (0, offset_px), special_flags=pygame.BLEND_RGBA_ADD)
-            aberration.blit(surface, (0, -offset_px), special_flags=pygame.BLEND_RGBA_ADD)
+            aberration, _flash = self._get_damage_overlays(surface.get_size(), pygame)
+            self._damage_aberration_frame += 1
+
+            # A horizontal split is the conventional chromatic-aberration cue.
+            # Refreshing its full-screen composite every second frame keeps the
+            # effect stable while avoiding four full-screen copies per render.
+            if self._damage_aberration_frame == 1 or self._damage_aberration_frame % 2 == 0:
+                aberration.fill((0, 0, 0, 0))
+                aberration.blit(surface, (offset_px, 0), special_flags=pygame.BLEND_RGBA_ADD)
+                aberration.blit(surface, (-offset_px, 0), special_flags=pygame.BLEND_RGBA_ADD)
             surface.blit(aberration, (0, 0))
+        else:
+            self._damage_aberration_frame = 0
 
         # Effect 2: damage flash. Red vignette that fades over ~30 frames.
         if state.damage_intensity > 0.05:
-            w, h = surface.get_size()
-            flash = pygame.Surface((w, h), pygame.SRCALPHA)
+            _aberration, flash = self._get_damage_overlays(surface.get_size(), pygame)
             alpha = int(180 * state.damage_intensity)
+            # Per-pixel alpha is substantially faster than Surface.set_alpha()
+            # for a full-screen pygame blit, while retaining the same tint.
             flash.fill((220, 60, 50, alpha))
             surface.blit(flash, (0, 0))
+
+    def _get_damage_overlays(self, size: tuple[int, int], pygame):
+        """Return reusable full-screen surfaces for transient damage effects."""
+        if self._damage_overlay_size != size:
+            self._damage_overlay_size = size
+            self._damage_aberration = pygame.Surface(size, pygame.SRCALPHA)
+            self._damage_flash = pygame.Surface(size, pygame.SRCALPHA)
+            self._damage_flash.fill((220, 60, 50))
+            self._damage_aberration_frame = 0
+        return self._damage_aberration, self._damage_flash
 
     def _render_haunting_corruption(self, surface) -> None:
         scene = self._scene

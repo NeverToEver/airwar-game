@@ -5,9 +5,7 @@ stays focused on lifecycle + dispatch. Every function here is
 exclusively used by the homecoming-base stage (id
 ``homecoming_base``) and is intentionally a free function that takes
 the scene as its first argument (rather than a method on a class) --
-the scene keeps thin wrapper methods that delegate here so the
-existing test API (``scene._handle_base_console_action``, etc.) is
-preserved.
+the scene delegates to these helpers from its homecoming-base flow.
 """
 
 from __future__ import annotations

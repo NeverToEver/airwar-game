@@ -55,8 +55,7 @@ class HomecomingUI:
     LAUNCH_CORRIDOR_RING_ALPHA_RATIO_RANGE = 0.18
 
     def __init__(self, screen_width: int, screen_height: int):
-        # screen_height is intentionally unused (kept for signature compatibility
-        # with existing tests / call sites that pass it). See STRUCTURE.md.
+        # screen_height is intentionally unused by this horizontal overlay.
         del screen_height
         self._screen_width = screen_width
         self._visible = False
@@ -160,7 +159,7 @@ class HomecomingUI:
 
     # ---- backward-compat forwarders ------------------------------------------
     # Phase renderers now own the actual logic; these methods stay so that
-    # existing call sites (and tests) that reference them by name continue
+    # existing call sites that reference them by name continue
     # to work.
 
     @staticmethod

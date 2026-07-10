@@ -18,8 +18,7 @@ class BaseTalentOrchestrator:
     - :meth:`ensure_talent_balance_manager` — lazy init from reward system
     - :meth:`apply_talent_loadout` — apply effective levels + save
     - :meth:`handle_console_click` — public entry for UI clicks
-    - :meth:`_handle_action` — internal action dispatcher (preserved as
-      a method name for test backward compat; see handoff §3)
+    - :meth:`_handle_action` — internal action dispatcher
     - :meth:`set_save_fn` — forwarded from :class:`HomecomingCoordinator`
 
     The orchestrator references :class:`HomecomingCoordinator` for

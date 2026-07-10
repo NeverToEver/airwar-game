@@ -13,10 +13,8 @@ into five simulator/pool components living under
 * :class:`~airwar.scenes.tutorial.TutorialEnemySimulator` -- enemy sim
 
 The four entity dataclasses (``TutorialEnemy``, ``TutorialBullet``,
-``TutorialBoss``, ``TutorialExplosion``) stay defined here because
-the collision code in :mod:`airwar.scenes.tutorial.entities` and
-the tests import them by name from
-:mod:`airwar.scenes.tutorial_scene`.
+``TutorialBoss``, ``TutorialExplosion``) stay defined here because the
+collision code imports them from :mod:`airwar.scenes.tutorial_scene`.
 """
 
 from __future__ import annotations
@@ -141,10 +139,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
         # Active per-stage logic instance. Rebuilt by ``_load_stage``;
         # ``None`` until ``enter()`` runs.
         self._stage_instance: BaseStage | None = None
-        # Phase-4 simulator/pool components (Wave α split). Built
-        # once at construction; the scene keeps 1-line forwarders
-        # so existing test methods (``_update_player``,
-        # ``_update_bullets``, ``_update_boss``, ...) keep working.
+        # Simulator and pool components are built once per scene.
         self._player_sim = TutorialPlayer(self)
         self._boss_sim = TutorialBossSimulator(self)
         self._bullet_pool = TutorialBulletPool(self)
@@ -614,10 +609,8 @@ class TutorialScene(Scene, MouseInteractiveMixin):
     # -- Stage logic ---------------------------------------------------
     #
     # The per-stage bodies live in :mod:`airwar.scenes.tutorial.stages`.
-    # The methods below are thin back-compat wrappers so existing tests
-    # can call them directly;
-    # :meth:`_update_stage_logic` is the single dispatch site the
-    # scene's per-frame update() flow uses.
+    # :meth:`_update_stage_logic` is the single dispatch site the scene's
+    # per-frame update flow uses.
 
     def _update_stage_logic(self) -> None:
         if self._stage_instance is not None:
@@ -627,16 +620,15 @@ class TutorialScene(Scene, MouseInteractiveMixin):
             self._advance_after_delay()
 
     def _update_docking_stage(self) -> None:
-        """Back-compat wrapper around the mothership-docking stage."""
+        """Run the active mothership-docking stage."""
         if self._stage_instance is not None and self._stage.id == "mothership_docking":
             self._stage_instance.update()
             return
-        # Fallback before ``_load_stage`` has built an instance: keep
-        # the legacy behaviour (no advance) for the test path.
+        # No active stage is a no-op.
         return
 
     def _update_homecoming_stage(self) -> None:
-        """Back-compat wrapper around the homecoming-base stage."""
+        """Run the active homecoming-base stage."""
         if self._stage_instance is not None and self._stage.id == "homecoming_base":
             self._stage_instance.update()
 
@@ -659,9 +651,8 @@ class TutorialScene(Scene, MouseInteractiveMixin):
     # -- Entity setup and update ---------------------------------------
     #
     # The bodies live in :mod:`airwar.scenes.tutorial.entities` and
-    # the simulator/pool components. The methods below are thin
-    # back-compat wrappers so the rest of the scene (and existing
-    # tests) can keep calling them by name.
+    # the simulator/pool components. The scene delegates to them from
+    # its update flow.
 
     def _spawn_training_targets(self) -> None:
         self._enemy_sim.spawn_training_targets()

@@ -16,8 +16,8 @@ block_cipher = None
 # Project root (where this spec file lives)
 PROJECT_ROOT = os.path.abspath(SPECPATH)
 
-# Generated asset directory (mirrors conftest default; runtime override via
-# AIRWAR_GENERATED_ASSET_DIR env var). The directory itself is created on
+# Generated asset directory. AIRWAR_GENERATED_ASSET_DIR can override it at
+# runtime. The directory itself is created on
 # first run; we don't ship a populated one, so no need to include it.
 ASSET_DIR = os.path.join(PROJECT_ROOT, "airwar", "data", "generated_assets")
 if not os.path.isdir(ASSET_DIR):
@@ -54,18 +54,10 @@ if sys.platform == "darwin" and OSX_BUNDLE_ID:
 
 EXCLUDES = [
     # Heavy debugging / dev tools that should never ship in a release build.
-    "pytest",
-    "pytest_cov",
-    "hypothesis",
-    "vulture",
-    "mypy",
     "maturin",
     "matplotlib",
     "tkinter",
-    "test",
-    "unittest",
     "pydoc",
-    "doctest",
 ]
 
 a = Analysis(

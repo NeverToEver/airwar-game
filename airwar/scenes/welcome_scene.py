@@ -8,9 +8,8 @@ The scene coordinates five panels extracted under ``airwar.scenes.welcome``:
 * :mod:`.welcome.welcome_modals` -- guest-confirm and delete-confirm overlays
 * :mod:`.welcome.leaderboard_overlay` -- leaderboard toggle and view mount
 
-The public API (12 methods, scene attributes) is unchanged from the
-pre-split monolith; legacy private helpers used by tests remain as
-1-line forwarders to the new components.
+The scene keeps login, difficulty selection, tutorial access, settings, and
+the leaderboard in one compact start surface.
 """
 
 import logging
@@ -42,16 +41,9 @@ def _request(scene, kind: str) -> None:
         scene.tutorial_requested = True
     elif kind == "settings":
         scene.settings_requested = True
-    elif kind == "benchmark":
-        scene.benchmark_requested = True
     elif kind == "quit":
         scene.want_to_quit = True
     scene.running = False
-
-
-# Layout constants exposed as class attributes for backward compat (tests
-# read ``scene.PANEL_W``, ``scene.LOGIN_ROW_GAP``, etc.). The bindings live
-# inside the class body below.
 
 
 class WelcomeScene(Scene, MouseInteractiveMixin):
@@ -69,8 +61,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         ESC -- quit
     """
 
-    # Layout constants -- re-exposed from .welcome.layout for backward compat.
-    # Tests read these as ``scene.PANEL_W`` / ``scene.LOGIN_ROW_GAP`` / etc.
+    # Layout constants shared by the panel renderers.
     PANEL_W, PANEL_H = _layout.PANEL_W, _layout.PANEL_H
     CHAMFER, INPUT_W, INPUT_H, BTN_H = _layout.CHAMFER, _layout.INPUT_W, _layout.INPUT_H, _layout.BTN_H
     LOGIN_PAD_X, LOGIN_LABEL_W, LOGIN_LABEL_GAP = _layout.LOGIN_PAD_X, _layout.LOGIN_LABEL_W, _layout.LOGIN_LABEL_GAP
@@ -118,7 +109,6 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         self.want_to_quit = False
         self.tutorial_requested = False
         self.settings_requested = False
-        self.benchmark_requested = False
         self.show_guest_confirm = False
         self.guest_confirm_focus = "yes"  # 'yes' | 'no'
         self.show_delete_confirm = False
@@ -295,7 +285,6 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             "fullscreen": window.toggle_fullscreen,
             "tutorial": lambda: _request(scene, "tutorial"),
             "settings": lambda: _request(scene, "settings"),
-            "benchmark": lambda: _request(scene, "benchmark"),
             "quit": lambda: _request(scene, "quit"),
             "username_field": lp.focus_username_field,
             "username_dropdown": lp.toggle_user_dropdown,
@@ -319,7 +308,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             if index_text.isdigit():
                 lp.select_known_user(int(index_text))
 
-    # -- Internal click handlers (kept on the scene for tests + dispatcher use) --
+    # -- Internal click handlers --
 
     def _do_delete_user(self) -> None:
         self._login_panel.do_delete_user()
@@ -429,8 +418,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         The returned ``panel_h`` is the actual height both panels will
         render at. At the design size (1920x1080) it equals
         :data:`PANEL_H`; at smaller viewports it shrinks so both panels
-        stay within the screen bounds (so the benchmark/leaderboard
-        buttons remain reachable).
+        stay within the screen bounds so the leaderboard remains reachable.
         """
         title_clearance = 110
         bottom_clearance = 96
@@ -595,15 +583,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         """
         return self.settings_requested
 
-    def should_open_benchmark(self) -> bool:
-        """Return whether the user requested the benchmark scene.
-
-        Returns:
-            bool: True if the benchmark button was triggered.
-        """
-        return self.benchmark_requested
-
-    # -- Backward-compat private forwarders (called by tests) -----------
+    # -- Panel forwarders ------------------------------------------------
 
     def _get_login_layout(self, px: int, py: int) -> dict:
         return self._login_panel.get_login_layout(px, py)

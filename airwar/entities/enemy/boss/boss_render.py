@@ -5,8 +5,8 @@ across ``Boss.update``. This module collects the rendering-related state
 (_facing_angle, _muzzle_flash_*, _enrage_trail*) and exposes a single
 :meth:`BossRenderer.draw` method.
 
-Rendering touches no game logic — it can be safely disabled in unit
-tests (callers simply omit the surface).
+Rendering touches no game logic; callers simply omit the surface when no
+draw target is available.
 """
 
 from __future__ import annotations

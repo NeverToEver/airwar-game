@@ -4,10 +4,8 @@ Owns: phase-dash state machine (READY/WINDUP/ACTIVE/RECOVERY), the
 energy cost, the cooldown timer, the start/target positions, and
 the invincibility window.
 
-Extracted from the original 755-line Player god class (Phase 4 W-delta).
-The :class:`PhaseDashState` enum is re-exported at the package root
-for backward-compat with tests that import it directly from
-``airwar.entities.player``.
+Extracted from the original Player class to keep dash state local to the
+ability that owns it.
 """
 
 from __future__ import annotations

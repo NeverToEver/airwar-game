@@ -33,11 +33,6 @@ class GameConfig:
             cls._instance = cls()
         return cls._instance
 
-    @classmethod
-    def reset_instance(cls) -> None:
-        """Clear the cached singleton. Intended for tests only."""
-        cls._instance = None
-
     @property
     def screen_width(self) -> int:
         return self.get_screen_width()

@@ -1,8 +1,6 @@
 """Boss entity — thin coordinator over four components.
 
-Phase 5-β (see ADR 0005) moves the :class:`Boss` class out of
-:mod:`airwar.entities.enemy.enemy` into this file. The class is a thin
-coordinator over four components in the ``boss/`` subpackage:
+The class is a coordinator over four components in the ``boss/`` subpackage:
 
 * :class:`BossStateMachine` (in :mod:`.boss_state`) — lifecycle, enrage
   timers, damage-lock policy
@@ -13,13 +11,8 @@ coordinator over four components in the ``boss/`` subpackage:
 * :class:`BossRenderer` (in :mod:`.boss_render`) — sprite blit, facing
   angle, trail
 
-The class is intentionally a coordinator; all public attributes and
-the most-used private methods are preserved so callers (and the 79+
-Boss tests) keep working without any change. Backward-compat property
-shims (``_enraged`` / ``_enrage_health_lock_active`` /
-``_enrage_health_lock_value`` / ``_enrage_attack_index`` /
-``_enrage_attack_timer``) preserve the legacy attribute access that
-the pre-Phase 1 split used.
+The class is intentionally a coordinator; public gameplay behavior is
+delegated to the component that owns it.
 """
 
 from __future__ import annotations
@@ -83,9 +76,7 @@ class Boss(Entity):
     * :class:`BossAttackPatterns` -- spread/aim/wave/snapshot attacks
     * :class:`BossRenderer`     -- sprite blit, facing angle, trail
 
-    All public attributes and the most-used private methods are
-    preserved so callers (and the 79+ Boss tests) keep working without
-    any change.
+    Public gameplay behavior is delegated to the component that owns it.
     """
 
     # Re-exported tuning constants so legacy ``Boss.ENRAGE_DURATION``
@@ -164,7 +155,7 @@ class Boss(Entity):
         self._bullet_spawner: IBulletSpawner | None = None
         self.entity_id = id(self)
         self._hitbox = pygame.Rect(0, 0, 0, 0)
-        # Aim-dash state (mirrored on Boss for backward compat with tests)
+        # Aim-dash state used by movement and attacks.
         self._aim_dash_elapsed = 0
         self._aim_dash_duration = 0
         self._aim_dash_start_x = 0.0
@@ -369,22 +360,8 @@ class Boss(Entity):
         return self._state.enrage_snapshot_target
 
     # ------------------------------------------------------------------
-    # Backward-compatible private method shims
-    #
-    # These exist so tests / callers that previously poked the old
-    # internal methods continue to work. The shims delegate to the
-    # appropriate component and exist only for the duration of the
-    # deprecation window. New code should call the components directly.
+    # Component entry points used by the Boss update flow.
     # ------------------------------------------------------------------
-
-    def _clamp_to_arena(self) -> None:
-        self.rect.x, self.rect.y = self._movement.clamped_arena_position(self.rect.x, self.rect.y)
-
-    def _clamped_arena_position(self, x: float, y: float) -> tuple[float, float]:
-        return self._movement.clamped_arena_position(x, y)
-
-    def _select_next_target(self, player_pos=None) -> None:
-        self._movement.select_next_target(player_pos)
 
     def _fire(self, player_pos: tuple[float, float] | None = None) -> None:
         self.attack_direction = self._attack.choose_attack_direction()
@@ -405,30 +382,6 @@ class Boss(Entity):
         if self._bullet_spawner:
             for bullet in bullets:
                 self._bullet_spawner.spawn_bullet(bullet)
-
-    def _aim_attack(self, player_pos: tuple[float, float] | None = None) -> list[Bullet]:
-        return self._attack.aim_attack(player_pos)
-
-    def _spread_attack(self) -> list[Bullet]:
-        return self._attack.spread_attack()
-
-    def _wave_attack(self) -> list[Bullet]:
-        return self._attack.wave_attack()
-
-    def _get_direction_offsets(self) -> dict:
-        return self._attack.get_direction_offsets()
-
-    def _get_direction_sources(self) -> dict:
-        return self._attack.get_direction_sources()
-
-    def _get_target_offsets(self) -> dict:
-        return self._attack.get_target_offsets()
-
-    def _select_attack_direction_for_target(self, player_pos: tuple[float, float]) -> None:
-        self._attack.select_attack_direction_for_target(player_pos)
-
-    def _boss_muzzle_positions(self) -> tuple[tuple[float, float], tuple[float, float]]:
-        return self._attack.boss_muzzle_positions()
 
     def _primary_boss_muzzle_position(self) -> tuple[float, float]:
         return self._attack.primary_muzzle_position()
@@ -571,21 +524,6 @@ class Boss(Entity):
 
     def _enrage_path_center(self, target: tuple[float, float], progress: float) -> tuple[float, float]:
         return self._movement.enrage_path_center(target, progress)
-
-    def _update_enrage(self, player_pos: tuple[int, int] | None = None, player=None) -> None:
-        """Legacy entrypoint — kept for tests that called it directly."""
-        target = self._center_player_for_enrage(player, self._state.enrage_snapshot_target or player_pos)
-        self._state._enrage_snapshot_target = target
-        self._renderer.record_enrage_trail()
-        progress = self._state.enrage_progress()
-        self._movement.tick_enrage_active()
-        self._renderer.face_target(target)
-        self._attack.tick_muzzle_flash()
-        self._update_enrage_snapshot_attacks(target, progress)
-        self._state.tick_enrage_timer()
-        if self._state.enrage_timer <= 0:
-            self._move_behind_player_after_enrage(target)
-            self._release_enrage_bullets(target)
 
     def _update_enrage_transition(self, player_pos: tuple[int, int] | None = None, player=None) -> None:
         target = self._center_player_for_enrage(player, self._state.enrage_snapshot_target or player_pos)

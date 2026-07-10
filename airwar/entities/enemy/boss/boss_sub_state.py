@@ -1,7 +1,6 @@
 """Boss enrage sub-machine — 4-state enrage cycle + health-lock damage policy.
 
-Phase 5-β (see ADR 0005) splits the enrage sub-state from the top-level
-:class:`BossStateMachine` into this class. The sub-machine owns:
+The sub-machine owns the enrage state beneath :class:`BossStateMachine`:
 
 * 4 timer counters: ``_enrage_timer``, ``_enrage_transition_timer``,
   ``_enrage_release_hold_timer``, ``_enrage_return_timer``
@@ -11,12 +10,8 @@ Phase 5-β (see ADR 0005) splits the enrage sub-state from the top-level
 * 4 flags: ``_enraged``, ``_enrage_bullets_released``,
   ``_enrage_health_lock_active``, ``_enrage_health_lock_value``
 
-The top-level :class:`BossStateMachine` (in :mod:`.boss_state`) is now a
-thin facade that delegates to this class. The 5 health-lock setters
-(``_enraged`` / ``_enrage_health_lock_active`` / ``_enrage_health_lock_value``
-/ ``_enrage_attack_index`` / ``_enrage_attack_timer``) are exposed on the
-facade as properties with setters so tests that do
-``sm._enraged = True`` keep working unchanged.
+The top-level :class:`BossStateMachine` (in :mod:`.boss_state`) delegates
+enrage behavior to this class.
 """
 
 from __future__ import annotations

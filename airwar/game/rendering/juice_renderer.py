@@ -23,7 +23,7 @@ Usage in GameScene:
     self._juice_controller.update()
 
 The controller is intentionally deterministic when seeded — pass ``seed=42`` and
-the offset sequence is reproducible, which makes unit testing trivial.
+the offset sequence is reproducible across frames.
 """
 
 from __future__ import annotations
@@ -86,5 +86,5 @@ class JuiceController:
 
     @property
     def trauma(self) -> float:
-        """Current trauma level (0..1). Useful for tests and debug overlays."""
+        """Current trauma level (0..1). Useful for debug overlays."""
         return self._trauma

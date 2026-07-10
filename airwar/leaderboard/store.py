@@ -109,9 +109,3 @@ class SQLiteLeaderboardStore:
                 "SELECT COUNT(*) AS total FROM leaderboard"
             ).fetchone()
             return int(row["total"]) if row else 0
-
-    def clear(self) -> None:
-        """Remove all entries. Intended for tests."""
-        with self._connect() as conn:
-            conn.execute("DELETE FROM leaderboard")
-            conn.commit()

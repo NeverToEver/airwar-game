@@ -1,10 +1,7 @@
 """Entity-update helpers extracted from :mod:`tutorial_scene`.
 
 Per-frame entity updates (bullets, enemies, boss, collisions,
-cleanup, effects). Pure functions taking the scene as the first
-argument. The scene keeps thin wrapper methods so the existing
-private test API (e.g. ``scene._update_bullets``,
-``scene._handle_collisions``) is preserved.
+cleanup, effects). Pure functions taking the scene as the first argument.
 """
 
 from __future__ import annotations

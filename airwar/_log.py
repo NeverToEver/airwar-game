@@ -9,7 +9,7 @@ Public API:
 
     get_cache_dir() -> Path
         Return the cache directory used for both the log file and crash
-        dumps. Honors ``$AIRWAR_CACHE_DIR`` (used by tests) and falls back
+        dumps. Honors ``$AIRWAR_CACHE_DIR`` and falls back
         to ``$XDG_CACHE_HOME/airwar`` or ``~/.cache/airwar`` on POSIX and
         ``%LOCALAPPDATA%\\airwar`` on Windows.
 

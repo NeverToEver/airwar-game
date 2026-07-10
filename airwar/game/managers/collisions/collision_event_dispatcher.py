@@ -8,8 +8,7 @@ Extracted from ``CollisionController``. Owns:
 
 The dispatcher is intentionally lightweight — it does not own the
 ``_events`` list itself; that lives on the parent ``CollisionController``
-so backward-compat callers (and tests that read ``controller.events``) keep
-working unchanged.
+so callers can read ``controller.events`` after collision processing.
 """
 
 from __future__ import annotations
@@ -42,8 +41,7 @@ class CollisionEventDispatcher:
     """Owns the ``player_hit`` callback assembly + ``CollisionEvent`` type.
 
     The parent ``CollisionController`` keeps the events list and appends to it
-    directly (so existing tests that read ``controller.events`` and
-    ``controller._events.clear()`` work unchanged). The dispatcher's only
+    directly. The dispatcher's only
     responsibility is creating the per-frame player-hit handler that fans
     damage + clear-bullets hooks out to the supplied callables.
     """

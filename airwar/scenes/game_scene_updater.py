@@ -36,8 +36,7 @@ class GameSceneUpdater:
     writes cross-step state via instance attrs on ``self`` (e.g. ``_docked``).
     """
 
-    # Mirrored from GameScene (class constants) — preserved verbatim so
-    # test and runtime reads of ``scene.BULLET_CLEAR_RADIUS`` keep working.
+    # Mirrored from GameScene so the updater owns the persistence timing values.
     BULLET_CLEAR_RADIUS = GAME_CONSTANTS.PERSISTENCE.BULLET_CLEAR_RADIUS
     BULLET_CLEAR_DEDUP_FRAMES = GAME_CONSTANTS.PERSISTENCE.BULLET_CLEAR_DEDUP_FRAMES
 
@@ -357,9 +356,7 @@ class GameSceneUpdater:
         scene = self._scene
         scene.game_controller.on_player_hit(damage, player)
         self._clear_nearby_enemy_bullets(player)
-        # Juice: screen shake + 4-frame hit-stop. Both are no-ops for tests
-        # that mock the scene (no _juice_controller attribute) — see
-        # STRUCTURE.md §4.5 "the no-dead-state rule" for the parallel pattern.
+        # Juice: screen shake + 4-frame hit-stop.
         juice = getattr(scene, "_juice_controller", None)
         if juice is not None:
             juice.add_trauma(0.4)

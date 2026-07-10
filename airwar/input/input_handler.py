@@ -1,4 +1,4 @@
-"""Input handler — pygame input processing with mock support for testing."""
+"""Input handler — pygame input processing."""
 
 from abc import ABC, abstractmethod
 
@@ -101,65 +101,6 @@ class PygameInputHandler(InputHandler):
         self._precision_just_pressed = precision_pressed and not self._prev_precision_pressed
         self._prev_precision_pressed = precision_pressed
         return precision_pressed
-
-    def is_precision_just_pressed(self) -> bool:
-        just_pressed = self._precision_just_pressed
-        self._precision_just_pressed = False
-        return just_pressed
-
-
-class MockInputHandler(InputHandler):
-    """Mock input handler — programmable input for testing.
-
-    Accepts preset movement directions and button states, allowing
-    tests to simulate player input without pygame events.
-    """
-
-    def __init__(self):
-        self._direction = Vector2(0, 0)
-        self._pause_pressed = False
-        self._boost_pressed = False
-        self._boost_just_pressed = False
-        self._precision_pressed = False
-        self._precision_just_pressed = False
-
-    def set_direction(self, dx: float, dy: float) -> None:
-        self._direction = Vector2(dx, dy)
-
-    def set_pause_pressed(self, pressed: bool) -> None:
-        self._pause_pressed = pressed
-
-    def set_boost_pressed(self, pressed: bool) -> None:
-        self._boost_just_pressed = pressed and not self._boost_pressed
-        self._boost_pressed = pressed
-
-    def tap_boost(self) -> None:
-        self._boost_pressed = True
-        self._boost_just_pressed = True
-
-    def set_precision_pressed(self, pressed: bool) -> None:
-        self._precision_just_pressed = pressed and not self._precision_pressed
-        self._precision_pressed = pressed
-
-    def set_precision_just_pressed(self, pressed: bool) -> None:
-        self._precision_just_pressed = pressed
-
-    def get_movement_direction(self) -> Vector2:
-        return self._direction
-
-    def is_pause_pressed(self) -> bool:
-        return self._pause_pressed
-
-    def is_boost_pressed(self) -> bool:
-        return self._boost_pressed
-
-    def is_boost_just_pressed(self) -> bool:
-        just_pressed = self._boost_just_pressed
-        self._boost_just_pressed = False
-        return just_pressed
-
-    def is_precision_pressed(self) -> bool:
-        return self._precision_pressed
 
     def is_precision_just_pressed(self) -> bool:
         just_pressed = self._precision_just_pressed

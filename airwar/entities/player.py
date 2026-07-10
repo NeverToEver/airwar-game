@@ -15,22 +15,8 @@ refactor) into:
 * :class:`~airwar.entities.player_components.PlayerAim`
 * :class:`~airwar.entities.player_components.PlayerHitbox`
 
-Backward compat:
-* ``Player(x, y, input_handler)`` constructor -- unchanged signature.
-* All 40 public methods -- 1-line forwarders to a component.
-* Public attributes (``health``, ``bullet_damage``, ``is_phase_dash_enabled``,
-  ``is_controls_locked``, ``mothership_cooldown_mult``, ``ctrl_mode``,
-  ``shift_boost_mode``, ``base_speed``, ``speed``, ``max_health``,
-  ``is_boost_active``, ``is_shielded``, ``boost_max``, ``boost_current``,
-  ``boost_recovery_rate``, ``boost_speed_mult``, ``boost_recovery_delay``,
-  ``boost_recovery_ramp``, ``hitbox_width``, ``hitbox_height``,
-  ``fire_cooldown``, ``fire_interval``) -- still readable on Player.
-* Class constants (``Player.PLAYER_HITBOX_W``, ``Player.PHASE_DASH_*``,
-  ``Player.SPREAD_ANGLES``, etc.) -- unchanged.
-* Legacy private attributes accessed by tests
-  (``player._facing_angle_degrees``, ``player._rotated_sprite_cache``,
-  ``player._phase_dash_state``, ``player._phase_dash_timer``,
-  ``player._fire_cooldown``) -- exposed as properties on Player.
+The Player remains the runtime-facing entity API while each component owns
+its own focused state.
 """
 
 # === Third-party ===
@@ -44,7 +30,6 @@ from airwar.protocols import InputSourceProtocol
 from .base import Entity
 from .bullet import Bullet
 from .player_components import (
-    PhaseDashState,
     PlayerAim,
     PlayerBoost,
     PlayerHitbox,
@@ -55,8 +40,7 @@ from .player_components import (
 )
 from .player_state import PlayerStateMachine
 
-# Re-export for tests that import ``PhaseDashState`` from this module.
-__all__ = ["PhaseDashState", "Player"]
+__all__ = ["Player"]
 
 
 class Player(Entity):
@@ -74,7 +58,7 @@ class Player(Entity):
         is_shielded: Whether the player currently has shield active.
     """
 
-    # --- Class constants (used by tests and other modules) ---
+    # --- Class constants shared with gameplay systems ---
     PLAYER_SPRITE_W = 68
     PLAYER_SPRITE_H = 82
     DEFAULT_RECOVERY_RATE = PlayerBoost.DEFAULT_RECOVERY_RATE
@@ -215,21 +199,8 @@ class Player(Entity):
         # component for any future per-difficulty tuning.
         self.boost._boost_speed_mult = value  # type: ignore[attr-defined]
 
-    # --- Private aliases for tests that read these directly ---
-    # Implemented via __getattr__/__setattr__ to keep Player lean.
-    # See _COMPONENT_ATTRS below for the (attribute -> component attr) map.
-
     def apply_settings(self, settings: dict) -> None:
         self.movement.apply_settings(settings)
-
-    def _rotated_ship_sprite(self):
-        """Legacy private accessor for the rotated ship sprite.
-
-        Tests still call ``player._rotated_ship_sprite()``; the actual
-        cache lives on the aim component. This forwarder preserves
-        the call shape.
-        """
-        return self.aim.rotated_ship_sprite()
 
     # 3. Public lifecycle methods
 
@@ -326,8 +297,8 @@ class Player(Entity):
         # ``self._blink_*`` fields are mirrored from GameState.is_player_invincible
         # by ``sync_invincibility_blink`` (called once per frame from
         # GameController.set_invincible / _update_invincibility). The player
-        # entity stays independent of the controller — see STRUCTURE.md §2.1
-        # "Layering rules" (entities never import game/).
+        # entity stays independent of the controller; entities never import
+        # from the game layer.
         if self.phase_dash.is_dashing():
             sprite = sprite.copy()
             sprite.set_alpha(self.phase_dash.alpha())
@@ -351,8 +322,8 @@ class Player(Entity):
         """Mirror GameState.is_player_invincible for the render-time alpha blink.
 
         Called once per frame from :class:`GameController._update_invincibility`.
-        Keeping this on the entity side avoids a controller→entity back-reference
-        (see STRUCTURE.md §2.1 — entities never import from ``game/``).
+        Keeping this on the entity side avoids a controller-to-entity
+        back-reference.
         """
         self._blink_active = bool(active)
         self._blink_timer = int(timer)
@@ -476,46 +447,3 @@ class Player(Entity):
         just_pressed = boost_pressed and not self.movement._boost_pressed_last_frame
         self.movement._boost_pressed_last_frame = boost_pressed
         return just_pressed
-
-    # 6. Component-attribute aliasing for backward compat.
-    # Tests still read a handful of private attributes that used to live
-    # directly on Player. To keep the class lean, we route those reads
-    # and writes through a single map (the same pattern used by tests
-    # that mock ``player.<attr>`` directly). Only attributes in
-    # ``_COMPONENT_ATTRS`` are routed; everything else raises normally.
-    _COMPONENT_ATTRS = {
-        "_facing_angle_degrees": ("aim", "facing_angle_degrees"),
-        "_rotated_sprite_cache": ("aim", "rotated_sprite_cache"),
-        "_phase_dash_state": ("phase_dash", "state"),
-        "_phase_dash_timer": ("phase_dash", "timer"),
-        "_fire_cooldown": ("weapon", "_fire_cooldown"),
-    }
-
-    def __getattr__(self, name: str):
-        alias = self._COMPONENT_ATTRS.get(name)
-        if alias is not None:
-            comp_name, attr_name = alias
-            # ``self`` may not yet have the component (during __init__
-            # bootstrap or pickling); fall through to AttributeError.
-            try:
-                component = object.__getattribute__(self, comp_name)
-            except AttributeError:
-                raise AttributeError(name) from None
-            return getattr(component, attr_name)
-        raise AttributeError(name)
-
-    def __setattr__(self, name: str, value) -> None:
-        alias = self._COMPONENT_ATTRS.get(name)
-        if alias is not None:
-            comp_name, attr_name = alias
-            try:
-                component = object.__getattribute__(self, comp_name)
-            except AttributeError:
-                # During bootstrap (before the component is attached),
-                # fall back to writing a real instance attribute so
-                # __init__ can still set its own state.
-                object.__setattr__(self, name, value)
-                return
-            setattr(component, attr_name, value)
-            return
-        object.__setattr__(self, name, value)

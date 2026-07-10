@@ -70,12 +70,6 @@ class MothershipEventHub:
                 raise RuntimeError(f"MothershipEventHub: unknown handler {handler_name!r} on integrator")
             bus.subscribe(event_const, handler)
 
-    def subscription_count(self) -> int:
-        """Return the number of subscriptions this hub manages.
-
-        Useful for tests verifying the hub is wired up.
-        """
-        return len(HANDLER_BINDINGS)
 
 
 __all__ = ["HANDLER_BINDINGS", "MothershipEventHub"]

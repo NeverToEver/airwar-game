@@ -240,6 +240,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if self._haunting_renderer:
             self._haunting_renderer.dispose()
             self._haunting_renderer = None
+        if self._scene_renderer:
+            self._scene_renderer.dispose()
         _clear_module_caches()
 
     def handle_events(self, event: pygame.event.Event) -> None:
@@ -358,10 +360,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._sync_lock_manager_targets()
         self._lock_manager.release(LockLayer.MOTHERSHIP)
 
-    # ---- Phase 5-ε: 1-line forwarders to GameSceneUpdater ----
-    # These methods moved to GameSceneUpdater; the facade retains them
-    # as thin forwarders for back-compat with test sites and callback
-    # wiring (e.g. ``GiveUpDetector(scene._on_give_up_complete)``).
+    # ---- GameSceneUpdater callbacks ----
     def _sync_player_phase_dash_invincibility(self) -> None:
         self._updater._sync_player_phase_dash_invincibility()
 
@@ -526,11 +525,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if self.game_controller:
             self.game_controller.set_paused(False)
 
-    # ---- Phase 5-ε: state shims for migrated per-frame attrs ----
-    # Read-only views over the updater's state. The renderer reads
-    # ``scene._survival_frames`` (game_scene_renderer.py:164) and tests
-    # observe these for assertions; the updater remains the single
-    # source of truth.
+    # Read-only views over the updater's state used by scene rendering.
     @property
     def _phase_dash_invincibility_active(self) -> bool:
         return self._updater._phase_dash_invincibility_active

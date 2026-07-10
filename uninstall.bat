@@ -13,7 +13,7 @@ echo   ==============================
 echo.
 echo   This will remove local environments, build artifacts, and disposable caches:
 echo     .venv, .venv-build, build\, dist\, target\, airwar_core\target\
-echo     AirWar.spec, airwar.spec, __pycache__, .pytest_cache, .ruff_cache
+echo     __pycache__, .ruff_cache, obsolete tool caches
 echo     airwar\data\generated_assets\
 echo     platform generated-asset cache
 echo.
@@ -39,11 +39,14 @@ call :remove_path "build"
 call :remove_path "dist"
 call :remove_path "target"
 call :remove_path "airwar_core\target"
-call :remove_path "AirWar.spec"
-call :remove_path "airwar.spec"
-call :remove_path ".pytest_cache"
 call :remove_path ".ruff_cache"
+call :remove_path ".pytest_cache"
+call :remove_path "airwar\.pytest_cache"
+call :remove_path "airwar_core\.pytest_cache"
+call :remove_path ".hypothesis"
+call :remove_path ".mypy_cache"
 call :remove_path "airwar\data\generated_assets"
+set "PYTHONDONTWRITEBYTECODE=1"
 for /f "usebackq delims=" %%p in (`python -c "from airwar.utils.platform_paths import generated_asset_cache_dir; print(generated_asset_cache_dir())" 2^>nul`) do (
     echo %%p | findstr /i /r "\\airwar\\generated_assets$ \\airwar\\Cache\\generated_assets$" >nul
     if !errorlevel! equ 0 call :remove_path "%%p"

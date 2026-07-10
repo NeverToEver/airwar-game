@@ -266,7 +266,9 @@ class EnemyConstants:
 
 @dataclass(frozen=True)
 class EnemyTuningConstants:
-    """P1-4: Tuning values previously scattered as class-body constants on
+    """Tuning values shared by enemy-related gameplay systems.
+
+    They were previously scattered as class-body constants on
     :class:`airwar.entities.enemy.Enemy`, :class:`EnemySpawner`, and
     :class:`EliteEnemy`. Consolidated here for single-source-of-truth.
 
@@ -364,14 +366,14 @@ class EnemyTuningConstants:
 
 @dataclass(frozen=True)
 class BossTuningConstants:
-    """P1-4: Boss movement/attack tuning previously scattered as
+    """Boss movement and attack tuning previously scattered as
     module-level constants in :mod:`airwar.entities.enemy.boss.boss_movement`
     and :mod:`.boss_attack`, plus the two hitbox scales on the ``Boss``
     class. Consolidated here for single-source-of-truth.
 
     The 27 enrage-related constants continue to live in
-    :class:`EnrageConstants` (the Boss class re-exports them as
-    ``Boss.ENRAGE_*`` for backward compatibility with the 79+ Boss tests).
+    :class:`EnrageConstants` and are re-exported from ``Boss`` for gameplay
+    systems that use them.
     """
 
     # --- Movement (from boss_movement.py) ---

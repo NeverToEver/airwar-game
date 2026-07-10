@@ -15,13 +15,9 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8,<10",
     "maturin>=1,<2",
     "pyinstaller>=6,<7",
     "ruff>=0.8,<1",
-    "fastapi>=0.115,<1",
-    "uvicorn[standard]>=0.34,<1",
-    "httpx>=0.28,<1",
 ]
 server = [
     "fastapi>=0.115,<1",
@@ -36,7 +32,6 @@ airwar = "airwar.__main__:main"
 
 [tool.setuptools.packages.find]
 include = ["airwar*"]
-exclude = ["tests*", "airwar.tests*"]
 
 [tool.ruff]
 target-version = "py312"
@@ -45,7 +40,6 @@ extend-exclude = [
     "build",
     "dist",
     "airwar_core/target",
-    "vulture_whitelist.py",
     # AirWar.spec is a PyInstaller-injected scope (SPECPATH, Analysis, PYZ,
     # EXE, COLLECT are runtime-provided). Not project Python source.
     "AirWar.spec",
@@ -67,24 +61,8 @@ extend-exclude = [
 select = ["E", "W", "F"]
 ignore = []
 
-# mypy disabled for personal-hobby use. Re-enable per-module when
-# bringing new code into the project if desired.
-[tool.mypy]
-python_version = "3.12"
-ignore_missing_imports = true
-
 [tool.ruff.lint.per-file-ignores]
 "airwar/**/__init__.py" = ["F401"]
 "airwar/config/__init__.py" = ["F401", "F403", "F405"]
 "airwar/core_bindings.py" = ["F401"]
 "airwar/utils/sprites.py" = ["F401"]
-
-# -----------------------------------------------------------------------------
-# Coverage (pytest-cov)
-# -----------------------------------------------------------------------------
-[tool.coverage.run]
-source = ["airwar"]
-omit = ["airwar/tests/*", "tests/*", "airwar/_version.py"]
-
-[tool.coverage.report]
-exclude_lines = ["pragma: no cover", "raise NotImplementedError", "if __name__ == .__main__.:"]

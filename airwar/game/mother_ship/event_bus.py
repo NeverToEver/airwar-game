@@ -156,13 +156,6 @@ class EventBus(IEventBus):
             self._subscribers[event] = [cb for cb in self._subscribers[event] if cb != callback]
         self._failure_counts.pop(self._failure_key(event, callback), None)
 
-    def subscriber_count(self, event: str) -> int:
-        """Return the number of currently subscribed callbacks for ``event``.
-
-        Exposed primarily for diagnostics and tests; production code paths
-        iterate ``_subscribers`` directly.
-        """
-        return len(self._subscribers.get(event, ()))
 
     def publish(self, event: str, **kwargs) -> None:
         if event in self._subscribers:

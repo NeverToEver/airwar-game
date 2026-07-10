@@ -2,7 +2,6 @@
 
 [English](./README.en.md) | 中文
 
-[![CI](https://github.com/NeverToEver/airwar-game/actions/workflows/ci.yml/badge.svg)](https://github.com/NeverToEver/airwar-game/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![Rust](https://img.shields.io/badge/rust-PyO3-orange?logo=rust)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
@@ -18,7 +17,7 @@
 - **状态管理**：玩家与 Boss 使用分层状态机（HSM），复杂行为通过 `LockManager` 优先级仲裁。
 - **国际化**：支持简体中文（zh_CN）与英文（en_US）。
 - **排行榜**：本地 JSON 排行榜 + 可选 FastAPI + SQLite 远程服务器，远程不可用时自动回退。
-- **测试**：970+ 自动化测试，支持 headless SDL 环境，GitHub Actions 持续集成。
+- **开发状态**：处于初始化开发阶段，当前以稳定可玩的主流程为优先。
 
 ## 特性
 
@@ -40,6 +39,15 @@
 | Windows | 双击 `run.bat` |
 | Linux / macOS | `chmod +x run.sh && ./run.sh` |
 
+启动器会复用 `.venv`，仅在依赖或 Rust 源码变化时同步或重建。常用选项：
+
+```bash
+./run.sh --prepare-only             # 仅准备运行环境
+./run.sh --skip-rust                # 使用 Python 回退路径启动
+./run.sh --rebuild-rust             # 强制重建可选 Rust 扩展
+./run.sh -- --debug                 # 将参数转发给游戏
+```
+
 如需同时启动本地排行榜服务器：
 
 | 平台 | 命令 |
@@ -47,6 +55,8 @@
 | Windows | 双击 `run_with_server.bat` |
 | Linux / macOS | `chmod +x run_with_server.sh && ./run_with_server.sh` |
 | macOS（双击） | `run_with_server.command` |
+
+可通过 `./run_with_server.sh --port 8001 --debug` 指定服务端口并以调试模式启动游戏。该入口在服务就绪后使用远程排行榜模式，游戏退出时会停止本地服务。
 
 > 清理本地构建产物与虚拟环境：Windows 运行 `uninstall.bat`，Linux / macOS 运行 `./uninstall.sh`。源码、存档与配置不会被删除。
 
@@ -106,12 +116,6 @@ python -m airwar.leaderboard.server --port 8000 --db-path ./leaderboard.db
 # 安装开发依赖
 pip install -r requirements-dev.txt
 
-# 完整测试
-python3 -m pytest
-
-# 快速烟雾测试
-python3 -m pytest -m smoke
-
 # 代码检查
 python3 -m ruff check .
 
@@ -119,7 +123,7 @@ python3 -m ruff check .
 python3 -m compileall -q airwar main.py
 ```
 
-请在项目根目录运行测试，不要在 `airwar/` 子目录内运行。
+开发期以直接运行游戏、观察当前功能链路和检查启动日志为准。
 
 ## 架构简介
 
@@ -140,8 +144,6 @@ WelcomeScene → TutorialScene → GameScene
 - `airwar/leaderboard/` — 排行榜客户端、服务层、FastAPI 服务器。
 - `airwar_core/` — Rust 原生扩展。
 
-> 这些文档保留在本地工作区，未纳入版本控制。
-
 ## 打包
 
 ```bash
@@ -159,7 +161,7 @@ build_windows.bat
 
 ## 参与贡献
 
-- 提交 PR 前请运行 `python3 -m ruff check .` 与 `python3 -m pytest`。
+- 提交 PR 前请运行 `python3 -m ruff check .` 与 `python3 -m compileall -q airwar main.py`。
 - 详见 [`LICENSE`](./LICENSE)。
 
 ---

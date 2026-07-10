@@ -1,7 +1,5 @@
 """Boss state HSM — top-level lifecycle + facade over the enrage sub-machine.
 
-Phase 5-β (see ADR 0005) splits the state machine into two layers:
-
 * :class:`BossState` and the 8 top-level states (defined here)
 * :class:`BossStateMachine` (defined here) — thin facade. Owns the
   top-level :class:`BossState` enum, delegates enrage timer/location/
@@ -11,17 +9,8 @@ Phase 5-β (see ADR 0005) splits the state machine into two layers:
   enrage timer counters, the 5 location anchors, the attack state, the
   enrage flags, and the health-lock damage policy.
 
-The 5 health-lock setters (``_enraged`` / ``_enrage_health_lock_active``
-/ ``_enrage_health_lock_value`` / ``_enrage_attack_index`` /
-``_enrage_attack_timer``) are exposed on the facade as properties with
-setters so test code that does ``sm._enraged = True`` keeps working
-unchanged.
-
-Backward compatibility:
-    The enrage tuning constants used to live as class attributes on
-    ``Boss`` (e.g. ``Boss.ENRAGE_DURATION``). They are re-exported from
-    this module and aliased on the ``Boss`` class so existing callers
-    that import them as class constants keep working.
+The enrage tuning constants remain available from ``Boss`` for the gameplay
+code that uses them.
 """
 
 from __future__ import annotations
@@ -111,8 +100,7 @@ class BossState(Enum):
 # - ``ENRAGE_RETURN -> ACTIVE`` is the only loop: a successful enrage
 #   cycle returns the boss to ACTIVE.
 # - ``trigger_enrage`` is the enrage entry point and is reachable from
-#   ANY non-DEAD state (matches existing idempotent semantics and
-#   ``test_property_boss_hsm.test_enrage_unreachable_from_non_active_states``).
+#   any non-DEAD state.
 # ---------------------------------------------------------------------------
 
 _BOSS_TRANSITIONS: dict[BossState, frozenset[BossState]] = {
@@ -200,14 +188,7 @@ class BossStateMachine:
     :class:`EnrageSubMachine`. The top-level :class:`BossState` enum
     is owned here; the enrage timer/location/attack state lives in the
     sub-machine. Public methods and properties delegate to the sub-machine
-    so callers and the 79+ boss tests keep working without changes.
-
-    The 5 private backward-compat setters (``_enraged``,
-    ``_enrage_health_lock_active``, ``_enrage_health_lock_value``,
-    ``_enrage_attack_index``, ``_enrage_attack_timer``) are exposed as
-    properties so test code that writes ``sm._enraged = True`` still
-    works. The setters cast to ``bool`` / ``int`` matching the original
-    Boss-level shim semantics (see ``airwar.entities.enemy.Boss``).
+    so the Boss coordinator has one focused source for enrage state.
     """
 
     def __init__(self, boss: Boss) -> None:
@@ -279,51 +260,6 @@ class BossStateMachine:
     @property
     def enrage_attack_index(self) -> int:
         return self._sub._enrage_attack_index
-
-    # ------------------------------------------------------------------
-    # Backward-compat private-attr shims
-    # (tests do ``sm._enraged = True`` / ``sm._enrage_health_lock_value = N``)
-    # ------------------------------------------------------------------
-
-    @property
-    def _enraged(self) -> bool:
-        return self._sub._enraged
-
-    @_enraged.setter
-    def _enraged(self, value: bool) -> None:
-        self._sub._enraged = bool(value)
-
-    @property
-    def _enrage_health_lock_active(self) -> bool:
-        return self._sub._enrage_health_lock_active
-
-    @_enrage_health_lock_active.setter
-    def _enrage_health_lock_active(self, value: bool) -> None:
-        self._sub._enrage_health_lock_active = bool(value)
-
-    @property
-    def _enrage_health_lock_value(self) -> int:
-        return self._sub._enrage_health_lock_value
-
-    @_enrage_health_lock_value.setter
-    def _enrage_health_lock_value(self, value: int) -> None:
-        self._sub._enrage_health_lock_value = int(value)
-
-    @property
-    def _enrage_attack_index(self) -> int:
-        return self._sub._enrage_attack_index
-
-    @_enrage_attack_index.setter
-    def _enrage_attack_index(self, value: int) -> None:
-        self._sub._enrage_attack_index = int(value)
-
-    @property
-    def _enrage_attack_timer(self) -> int:
-        return self._sub._enrage_attack_timer
-
-    @_enrage_attack_timer.setter
-    def _enrage_attack_timer(self, value: int) -> None:
-        self._sub._enrage_attack_timer = int(value)
 
     # ------------------------------------------------------------------
     # Top-level transitions (own the state enum)
@@ -469,7 +405,7 @@ class BossStateMachine:
 
 
 # ---------------------------------------------------------------------------
-# Re-export alias so test code can ``from .boss_state import BossStateMachine``.
+# Fallback module-level access for enrage tuning constants.
 # ---------------------------------------------------------------------------
 
 

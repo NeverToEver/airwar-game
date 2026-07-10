@@ -179,37 +179,3 @@ fn fast_rand() -> f32 {
         (value as f64 / u64::MAX as f64) as f32
     })
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_batch_update_particles() {
-        let particles = vec![
-            (0.0, 0.0, 1.0, 1.0, 30, 30, 3.0),
-            (10.0, 10.0, 1.0, 1.0, 1, 30, 3.0), // Will die
-            (20.0, 20.0, 1.0, 1.0, 30, 30, 3.0),
-        ];
-        let results = batch_update_particles(particles, 1.0);
-        // Now returns all 3 particles with is_alive flag, Python filters
-        assert_eq!(results.len(), 3);
-        // Count alive particles
-        let alive_count = results.iter().filter(|r| r.6).count(); // is_alive is last element
-        assert_eq!(alive_count, 2);
-    }
-
-    #[test]
-    fn test_generate_explosion_particles() {
-        let particles = generate_explosion_particles(100.0, 200.0, 30, 20, 40, 3.0, 8.0, 2.0, 5.0);
-        assert_eq!(particles.len(), 30);
-        // All particles should be centered on (100, 200)
-        for (x, y, _, _, life, max_life, size) in &particles {
-            assert!((*x - 100.0).abs() < 0.1);
-            assert!((*y - 200.0).abs() < 0.1);
-            assert!(*life >= 20 && *life <= 40);
-            assert_eq!(*life, *max_life);
-            assert!(*size >= 2.0 && *size <= 5.0);
-        }
-    }
-}

@@ -34,8 +34,8 @@ def user_data_dir() -> str:
     if sys.platform in _WINDOWS_PLATFORMS:
         # An empty APPDATA ("" or unset) must fall back to the Windows home
         # layout — NOT the Linux XDG path. Using `or` would work for None but
-        # conflates intent; an explicit `if` makes the empty-string contract
-        # obvious in tests.
+        # conflates intent; an explicit `if` keeps the empty-string behavior
+        # clear.
         appdata = os.environ.get("APPDATA")
         root = appdata if appdata else os.path.join(_home(), "AppData", "Roaming")
         return os.path.join(root, APP_DIR_NAME)

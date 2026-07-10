@@ -44,7 +44,13 @@ class SceneDirector:
         _scene_manager: SceneManager for registration and switching.
     """
 
-    def __init__(self, window, scene_manager: SceneManager, user_db=None, viewport: ScaledViewport = None):
+    def __init__(
+        self,
+        window,
+        scene_manager: SceneManager,
+        user_db=None,
+        viewport: ScaledViewport = None,
+    ):
         self._logger = logging.getLogger(self.__class__.__name__)
         self._window = window
         self._scene_manager = scene_manager

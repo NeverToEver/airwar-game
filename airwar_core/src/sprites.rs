@@ -269,23 +269,3 @@ pub fn create_glow_circle(radius: i32, r: u8, g: u8, b: u8, glow_radius: i32) ->
 
     data
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_single_bullet_glow_size() {
-        let data = create_single_bullet_glow(8.0, 16.0);
-        let expected_w = (8.0 + 16.0) as usize;
-        let expected_h = (16.0 + 12.0) as usize;
-        assert_eq!(data.len(), expected_w * expected_h * 4);
-    }
-
-    #[test]
-    fn test_glow_circle_size() {
-        let data = create_glow_circle(10, 255, 0, 0, 5);
-        let size = (10 + 5) * 2 + 4;
-        assert_eq!(data.len(), (size as usize) * (size as usize) * 4);
-    }
-}

@@ -36,7 +36,7 @@ class GameState:
     invincibility_timer: int = 0
     is_silent_invincible: bool = False
     ripple_effects: list[dict] = field(default_factory=list)
-    # Juice-layer state (added 2026-06-09 — see STRUCTURE.md §6.6).
+    # Damage feedback state.
     damage_intensity: float = 0.0
     """0..1, set to 1.0 on player hit, decays at ~0.033/frame. Drives
     chromatic aberration and damage flash overlays."""

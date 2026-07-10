@@ -23,8 +23,8 @@ class MotherShipRenderer:
     Public surface (called by :class:`MotherShip` facade):
 
     - :meth:`render` — z-order orchestrator
-    - :meth:`_render_phantom` — holographic preview (test-reachable)
-    - :meth:`_get_phantom_reveal` — phantom fade math (test-reachable)
+    - :meth:`_render_phantom` — holographic preview
+    - :meth:`_get_phantom_reveal` — phantom fade math
 
     Owned state: ``_phantom_surf``, ``_phantom_surf_size``,
     ``_stripe_cache``, and the 22-entry ``_colors`` dict.

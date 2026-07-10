@@ -83,7 +83,7 @@ class BulletVsEntitiesStrategy:
 
         Args:
             player_bullets: Bullets fired by the player.
-            enemies: Active enemy entities to test against.
+            enemies: Active enemy entities checked for collisions.
             score_multiplier: Multiplier applied to kill scores.
             explosive_level: Talent level for AoE explosions.
             piercing_level: Talent level for bullet piercing.
@@ -115,9 +115,8 @@ class BulletVsEntitiesStrategy:
         explosive_level: int,
         piercing_level: int,
     ) -> tuple[int, int]:
-        # Reference the parent module so test monkeypatches on
-        # ``airwar.game.managers.collision_controller.batch_collide_bullets_vs_entities``
-        # take effect. Attribute access on the module picks up patches at call time.
+        # Resolve through the parent module so the collision backend is read
+        # at call time.
         from airwar.game.managers import collision_controller as _cc_module
 
         batch_collide = _cc_module.batch_collide_bullets_vs_entities
@@ -283,7 +282,7 @@ class BulletVsEntitiesStrategy:
 
         Args:
             player_bullets: Bullets fired by the player.
-            boss: Active boss entity to test against.
+            boss: Active boss entity checked for collisions.
             piercing_level: Talent level for bullet piercing.
 
         Returns:

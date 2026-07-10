@@ -47,7 +47,7 @@ Adding a new subsystem:
     1. Pick the right position in PIPELINE_ORDER
     2. Implement the step as a callable
     3. Register the step in :meth:`UpdatePipeline.add_step`
-    4. Add a test that asserts the step runs at the declared position
+    4. Verify the step preserves the declared ordering during a manual run
 """
 
 from __future__ import annotations
@@ -113,8 +113,6 @@ class UpdatePipeline:
 
     def __init__(self) -> None:
         self._steps: dict[str, Callable[[], bool | None]] = {}
-        # Track call order across the most recent execute() for testing.
-        self.last_executed: list[str] = []
 
     def add_step(self, name: str, fn: Callable[[], bool | None]) -> None:
         """Register a step.
@@ -143,24 +141,14 @@ class UpdatePipeline:
         the remaining steps for this frame. Returning ``True`` or
         ``None`` continues the pipeline.
         """
-        self.last_executed = []
         for name in PIPELINE_ORDER:
             if name not in self._steps:
-                # Steps that aren't wired up (e.g. tests) are skipped silently.
+                # Steps not required by the active scene are skipped.
                 continue
-            self.last_executed.append(name)
             result = self._steps[name]()
             if result is False and name in SHORT_CIRCUIT_STEPS:
                 # The remaining steps are skipped for this frame.
                 return
-
-    def get_unwired_steps(self) -> list[str]:
-        """Return the names of PIPELINE_ORDER steps that haven't been registered.
-
-        Useful for diagnostics and tests.
-        """
-        return [name for name in PIPELINE_ORDER if name not in self._steps]
-
 
 __all__ = [
     "PIPELINE_ORDER",

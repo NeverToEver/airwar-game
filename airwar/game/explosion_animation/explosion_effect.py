@@ -19,7 +19,7 @@ from .explosion_particle import ExplosionParticle
 # Note: the LRU helpers below call ``.move_to_end`` and ``.popitem(last=...)``,
 # which are ``OrderedDict``-only APIs. Using a plain ``{}`` here is a silent
 # regression that only surfaces at runtime (the dummy SDL driver never
-# reaches the explosion render path during tests). See commit cfd0d5c.
+# reaches the explosion render path).
 _MAX_CACHE_SIZE = 64
 _glow_texture_cache: "OrderedDict[tuple, pygame.Surface]" = OrderedDict()
 _spark_core_cache: "OrderedDict[int, pygame.Surface]" = OrderedDict()

@@ -7,18 +7,16 @@ graceful no-op fallback when no audio device is available.
 Design notes
 ------------
 - **Lazy init** — ``pygame.mixer`` is only touched on the first audio
-  call. Importing this module is side-effect free, so unit tests and
-  non-audio code paths stay cheap.
-- **Failure tolerant** — if ``pygame.mixer.init()`` fails (no audio
-  device in headless / CI / sandboxed environments), the manager logs
+  call. Importing this module is side-effect free.
+- **Failure tolerant** — if ``pygame.mixer.init()`` fails because no audio
+  device is available, the manager logs
   a single warning and silently turns every public method into a
   no-op. Game logic must not depend on audio succeeding.
 - **Global singleton** — :func:`get_sound_manager` returns the
-  module-level instance. Tests can call :meth:`reset_sound_manager`
-  to start from a clean slate.
+  module-level instance.
 - **No shipped assets** — BGM and any non-builtin SFX are stubs that
   log at debug level. ``bullet_fire`` is generated procedurally so
-  the wiring is end-to-end testable without a binary blob.
+  the game can run without a binary asset bundle.
 """
 
 from __future__ import annotations
@@ -52,8 +50,6 @@ class SoundManager:
     they degrade to silent no-ops.
     """
 
-    # Track whether the singleton has been reset by tests; lets us
-    # recreate the module-level instance without leaking state.
     _singleton: ClassVar[SoundManager | None] = None
 
     def __init__(self) -> None:
@@ -79,9 +75,7 @@ class SoundManager:
         if self._initialized or self._init_failed:
             return self._initialized
 
-        # SDL_AUDIODRIVER=dummy in tests; in real play it is unset and
-        # the OS picks the default. We respect the env var explicitly
-        # so headless runs are deterministic.
+        # The OS selects the default audio driver unless the user overrides it.
         try:
             if not pygame.mixer.get_init():
                 pygame.mixer.init()
@@ -166,8 +160,7 @@ class SoundManager:
         Uses :mod:`pygame.mixer.music` to loop a stream. Real audio
         files are looked up under ``airwar/assets/audio/``; when none is
         shipped for ``track`` we synthesise a short sine-wave loop into
-        an in-memory WAV buffer and stream that, so the wiring is
-        end-to-end testable without binary assets.
+        an in-memory WAV buffer and stream that.
 
         On init failure, an unknown track that cannot be synthesised, or
         any mixer error, the call degrades to a no-op and ``_bgm_track``
@@ -188,8 +181,8 @@ class SoundManager:
             return
 
         # ``pygame.mixer.music.load`` accepts a path-like or file-like input.
-        # The resolver above returns ``io.IOBase | str``; mypy --strict sees
-        # the union as incompatible with the stub's ``FileArg`` alias (which
+        # The resolver above returns ``io.IOBase | str``; the type stub sees
+        # the union as incompatible with its ``FileArg`` alias (which
         # expects ``IO[bytes] | IO[str]`` for the stream branch), so cast to
         # a ``Union[str, IO[bytes]]`` that matches what the stub actually
         # accepts at runtime.
@@ -265,26 +258,6 @@ class SoundManager:
         """Return whether audio is currently muted."""
         return self._muted
 
-    # ------------------------------------------------------------------
-    # Test / introspection helpers
-    # ------------------------------------------------------------------
-
-    def is_initialized(self) -> bool:
-        """Return whether the mixer is live and usable."""
-        return self._initialized
-
-    def reset(self) -> None:
-        """Clear cached state. Test-only helper."""
-        self._sfx_cache.clear()
-        self._sfx_last_play_ms.clear()
-        self._bgm_track = None
-        self._muted = False
-        self._volume = 0.6
-        self._bgm_volume = 0.5
-        # Do not un-init pygame.mixer; other tests in the same session
-        # may depend on it.
-
-
 # ----------------------------------------------------------------------
 # Module-level singleton
 # ----------------------------------------------------------------------
@@ -294,12 +267,6 @@ def get_sound_manager() -> SoundManager:
     """Return the module-level :class:`SoundManager` singleton."""
     if SoundManager._singleton is None:
         SoundManager._singleton = SoundManager()
-    return SoundManager._singleton
-
-
-def reset_sound_manager() -> SoundManager:
-    """Drop the current singleton and return a fresh one (test helper)."""
-    SoundManager._singleton = SoundManager()
     return SoundManager._singleton
 
 

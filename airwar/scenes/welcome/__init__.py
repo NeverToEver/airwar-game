@@ -3,8 +3,8 @@
 These widgets are private components of the welcome scene -- they are
 intentionally not re-exported through :mod:`airwar.scenes` because the
 public entry point remains ``airwar.scenes.welcome_scene.WelcomeScene``.
-The split exists to keep each panel's responsibility small and testable
-without altering the public API.
+The split keeps each panel's responsibility small without altering the
+welcome-scene entry point.
 """
 
 from . import layout  # re-exported via WelcomeScene class attributes

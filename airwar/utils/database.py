@@ -27,8 +27,7 @@ _LEADERBOARD_KEY = "_leaderboard"
 # Shape aliases. The on-disk JSON is a free-form mapping, so we keep the
 # leaf type loose (``Any``) where the value is genuinely heterogeneous
 # (user records, leaderboard entries). For container slots we still
-# prefer concrete generics over bare ``dict``/``list`` so mypy --strict
-# stops emitting ``type-arg`` errors.
+# prefer concrete generics over bare ``dict``/``list`` for clarity.
 UserRecord = dict[str, Any]
 LeaderboardEntry = dict[str, Any]
 UserData = dict[str, UserRecord]
@@ -112,11 +111,6 @@ class UserDB(SimpleDB):
 
     def __init__(self, db_path: str | None = None):
         super().__init__(db_path)
-
-    @classmethod
-    def reset_instance(cls) -> None:
-        """Clear any cached singleton. Intended for tests only."""
-        cls._instance = None  # type: ignore[attr-defined]
 
     def create_user(self, user_id: str, password: str) -> bool:
         data = self._load()

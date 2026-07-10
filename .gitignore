@@ -55,25 +55,8 @@ conda-meta/
 .Session
 
 # -----------------------------------------------------------------------------
-# Testing / Coverage
-# -----------------------------------------------------------------------------
-.pytest_cache/
-.coverage
-.coverage.*
-coverage.xml
-coverage.json
-htmlcov/
-.tox/
-.hypothesis/
-*.cover
-*.prof
-
-# -----------------------------------------------------------------------------
 # Type Checking / Linting
 # -----------------------------------------------------------------------------
-.mypy_cache/
-.dmypy.json
-dmypy.json
 .ruff_cache/
 
 # -----------------------------------------------------------------------------
@@ -113,13 +96,15 @@ credentials.*
 airwar_core/target/
 /target/
 airwar_core/airwar_core/
-# Cargo.lock IS tracked for binary-producing crates (FFI consumers must
-# reproduce exact toolchain versions). Removed in ROADMAP §4 P1-8 (2026-06-10).
+!airwar_core/airwar_core/
+!airwar_core/airwar_core/__init__.py
+# Cargo.lock is tracked for binary-producing crates so FFI consumers reproduce
+# exact toolchain versions.
 
 # PyInstaller build artifacts
 *.spec
 *.spec.bak
-# Our SSOT PyInstaller spec is intentionally tracked (see ROADMAP §4 P1-7).
+# The PyInstaller spec is intentionally tracked.
 !AirWar.spec
 
 # -----------------------------------------------------------------------------
@@ -158,10 +143,6 @@ sprite_cache/
 texture_cache/
 render_cache/
 
-# Performance
-*.profile
-PERFORMANCE_REPORT.md
-
 # -----------------------------------------------------------------------------
 # Claude Code
 # -----------------------------------------------------------------------------
@@ -170,26 +151,3 @@ plans/
 .playwright-mcp/
 *.generated_assets/
 /.generated_assets/
-
-# -----------------------------------------------------------------------------
-# Internal documentation (kept local-only)
-# -----------------------------------------------------------------------------
-# Design docs, audit reports, development notes, and AI/agent instructions
-# reveal project intent and workflow. They are intentionally excluded from
-# version control and remain local working files.
-CLAUDE.md
-STRUCTURE.md
-SECURITY.md
-cloud.md
-agent.md
-*.agent.md
-*.handoff.md
-*.scan.md
-.agents/
-docs/
-.github/PULL_REQUEST_TEMPLATE.md
-
-# Session-scoped docs (issue scans, handoffs, temporary analyses).
-# Historical entries already in git via `git mv` remain tracked;
-# new files in this directory are ignored.
-docs/.sessions/

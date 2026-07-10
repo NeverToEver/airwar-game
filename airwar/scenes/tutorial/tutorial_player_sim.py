@@ -4,10 +4,8 @@ Phase 4 Wave α: extracted from :mod:`airwar.scenes.tutorial_scene`
 to slim the god class. The simulator owns the simulated player
 rectangle, energy/health state, boost/dash timers, and per-frame
 update logic. The :class:`airwar.scenes.tutorial_scene.TutorialScene`
-keeps a 1-line forwarder to a single :class:`TutorialPlayer` instance
-and exposes its attributes as scene attributes so existing tests
-and the renderer (which read ``scene._player``, ``scene._player_health``,
-etc.) keep working unchanged.
+uses one :class:`TutorialPlayer` instance, while the renderer reads the
+scene-owned player state directly.
 """
 
 from __future__ import annotations

@@ -2,9 +2,7 @@
 
 Phase 5-δ thin coordinator. The per-buff apply strategies are extracted
 to :mod:`airwar.game.systems.buff_apply_handlers` and the reward-pool
-metadata stays at module scope. Public attributes and methods are
-preserved so callers and the reward-system tests continue to work
-without change.
+metadata stays at module scope.
 """
 
 import logging

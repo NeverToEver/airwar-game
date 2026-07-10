@@ -47,10 +47,6 @@ class LeaderboardView:
         self._empty_font = get_cjk_font(tokens.typography.HUD_SIZE)
         self._fonts_initialized = True
 
-    def set_service(self, service: LeaderboardService) -> None:
-        """Inject an alternate service (e.g. one wired to a test database)."""
-        self._service = service
-
     def set_user_db(self, user_db: UserDB) -> None:
         """Backward-compatible helper that wraps a raw UserDB in a service."""
         self._service = LeaderboardService(user_db)

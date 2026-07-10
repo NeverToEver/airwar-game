@@ -40,9 +40,9 @@ remove_path() {
 
 remove_pycache() {
     if [ "$DRY_RUN" -eq 1 ]; then
-        find . -type d -name __pycache__ -print
+        find . \( -path "./.venv" -o -path "./.venv-build" \) -prune -o -type d -name __pycache__ -print
     else
-        find . -type d -name __pycache__ -prune -exec rm -rf {} + 2>/dev/null || true
+        find . \( -path "./.venv" -o -path "./.venv-build" \) -prune -o -type d -name __pycache__ -prune -exec rm -rf {} + 2>/dev/null || true
         echo "removed __pycache__ directories"
     fi
 }
@@ -51,15 +51,14 @@ remove_path "build"
 remove_path "dist"
 remove_path "target"
 remove_path "airwar_core/target"
-remove_path "AirWar.spec"
-remove_path "airwar.spec"
-remove_path ".pytest_cache"
 remove_path ".ruff_cache"
-remove_path ".coverage"
-remove_path "coverage.xml"
-remove_path "htmlcov"
+remove_path ".pytest_cache"
+remove_path "airwar/.pytest_cache"
+remove_path "airwar_core/.pytest_cache"
+remove_path ".hypothesis"
+remove_path ".mypy_cache"
 remove_path "airwar/data/generated_assets"
-generated_asset_cache="$(python3 - <<'PY' 2>/dev/null || true
+generated_asset_cache="$(PYTHONDONTWRITEBYTECODE=1 python3 - <<'PY' 2>/dev/null || true
 from airwar.utils.platform_paths import generated_asset_cache_dir
 print(generated_asset_cache_dir())
 PY

@@ -43,7 +43,7 @@ class PlayerMovement:
         self._boost_pressed_last_frame = False
 
     # ------------------------------------------------------------------
-    # Public API (called by Player or by tests)
+    # Public API called by Player.
     # ------------------------------------------------------------------
 
     @property

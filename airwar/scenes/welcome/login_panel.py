@@ -62,8 +62,7 @@ class LoginPanel:
         """Compute the login panel layout given a top-left origin.
 
         Returns a dict of named pygame.Rect values keyed by element name.
-        Used by both the rendering code and unit tests asserting that
-        labels stay outside their input fields.
+        Used by rendering code to keep labels outside their input fields.
         """
         content_x = px + LOGIN_PAD_X
         content_w = PANEL_W - LOGIN_PAD_X * 2
@@ -126,7 +125,7 @@ class LoginPanel:
         ``panel_h`` overrides the natural :data:`PANEL_H` for the panel
         background only; internal element positions continue to use the
         constant for stability. Falls back to :data:`PANEL_H` when not
-        provided (e.g. by tests that render the panel in isolation).
+        provided.
         """
         SC = SceneColors
         layout = self.get_login_layout(px, py)
@@ -434,7 +433,7 @@ class LoginPanel:
             scene.cycle_focus()
             scene.show_user_dropdown = False
         else:
-            # Defensive: synthetic KEYDOWN events (smoke tests, automation)
+            # Defensive: events without printable text should not alter input.
             # may omit the `unicode` field, so use getattr() to fall back to
             # an empty string instead of crashing on AttributeError.
             unicode = getattr(event, "unicode", "") or ""

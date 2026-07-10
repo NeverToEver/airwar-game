@@ -20,6 +20,7 @@ class AimCrosshair:
     def __init__(self) -> None:
         self._tokens = get_design_tokens()
         self._frame = 0
+        self._glow_cache: dict[tuple[int, tuple[int, int, int], int], pygame.Surface] = {}
 
     def update(self) -> None:
         self._frame += 1
@@ -33,10 +34,8 @@ class AimCrosshair:
         glow_alpha = int(14 + 8 * pulse)
 
         glow_size = self.RADIUS * 4
-        glow = pygame.Surface((glow_size, glow_size), pygame.SRCALPHA)
+        glow = self._get_glow_surface(glow_size, accent, glow_alpha)
         glow_center = (glow_size // 2, glow_size // 2)
-        pygame.draw.circle(glow, (*accent, glow_alpha), glow_center, self.RADIUS + 7, width=2)
-        pygame.draw.circle(glow, (*accent, max(16, glow_alpha // 2)), glow_center, self.INNER_RADIUS + 4)
         surface.blit(glow, (x - glow_center[0], y - glow_center[1]))
 
         ring_rect = pygame.Rect(0, 0, self.RADIUS * 2, self.RADIUS * 2)
@@ -55,3 +54,17 @@ class AimCrosshair:
 
         pygame.draw.circle(surface, accent, (x, y), self.INNER_RADIUS, width=1)
         pygame.draw.circle(surface, (180, 220, 228), (x, y), 2)
+
+    def _get_glow_surface(
+        self, glow_size: int, accent: tuple[int, int, int], glow_alpha: int
+    ) -> pygame.Surface:
+        """Return the cached glow for one of the small number of pulse alpha values."""
+        cache_key = (glow_size, accent, glow_alpha)
+        glow = self._glow_cache.get(cache_key)
+        if glow is None:
+            glow = pygame.Surface((glow_size, glow_size), pygame.SRCALPHA)
+            glow_center = (glow_size // 2, glow_size // 2)
+            pygame.draw.circle(glow, (*accent, glow_alpha), glow_center, self.RADIUS + 7, width=2)
+            pygame.draw.circle(glow, (*accent, max(16, glow_alpha // 2)), glow_center, self.INNER_RADIUS + 4)
+            self._glow_cache[cache_key] = glow
+        return glow

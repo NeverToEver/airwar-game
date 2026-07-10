@@ -2,11 +2,8 @@
 
 The aim assist subsumes the per-frame smoothing of the raw mouse
 position, target resolution (snap / release / direction-cone), and
-distance math. Pure functions taking the scene as the first argument
-so they can read/write scene state directly. The scene keeps thin
-wrapper methods so the existing private test API
-(``scene._update_aim_assist``, ``scene._resolve_aim_assist_target``,
-``scene._aim_assist_candidates``, etc.) is preserved.
+distance math. Pure functions take the scene as the first argument so they
+can read and write scene state directly.
 """
 
 from __future__ import annotations

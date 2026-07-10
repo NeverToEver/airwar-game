@@ -66,25 +66,11 @@ class HauntingRenderer:
     def is_active(self) -> bool:
         return self._strength > 0.025
 
-    def start_flashback(self) -> None:
-        """Force-trigger a flashback at full duration. Public hook for tests/cheats."""
-        self._flashback_timer = self.FLASHBACK_DURATION
-
     def dispose(self) -> None:
         self._static_filter = None
         self._flicker_overlay = None
         self._band_buf = None
         self._noise_tex = None
-
-    @property
-    def static_filter(self) -> pygame.Surface | None:
-        # Test-only accessor: returns the cached static filter surface (or None).
-        return self._static_filter
-
-    @property
-    def band_buffer(self) -> pygame.Surface | None:
-        # Test-only accessor: returns the cached band displacement buffer (or None).
-        return self._band_buf
 
     def update(self, enemy_pressure: int = 0, enabled: bool = True) -> None:
         if not enabled:

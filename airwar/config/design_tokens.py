@@ -761,7 +761,7 @@ class DesignTokens:
         self.system: type[SystemColors] = SystemColors
         self.system_ui: type[SystemUI] = SystemUI
         self.scene: type[SceneColors] = SceneColors
-        # Layout tokens (added 2026-06-09 — see STRUCTURE.md)
+        # Layout tokens used by scene and system UI.
         self.anchors: type[Anchors] = Anchors
         self.system_layout: type[SystemLayout] = SystemLayout
         self.scene_layout: type[SceneLayout] = SceneLayout

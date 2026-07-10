@@ -2,7 +2,6 @@
 
 **English** | [中文](./README.md)
 
-[![CI](https://github.com/NeverToEver/airwar-game/actions/workflows/ci.yml/badge.svg)](https://github.com/NeverToEver/airwar-game/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![Rust](https://img.shields.io/badge/rust-PyO3-orange?logo=rust)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
@@ -18,7 +17,7 @@ A 2D space shooter built with Python + Pygame, with an optional Rust extension f
 - **State management**: Player and Boss are driven by hierarchical state machines (HSM); complex interactions are arbitrated by a priority `LockManager`.
 - **i18n**: Simplified Chinese (zh_CN) and English (en_US).
 - **Leaderboard**: Local JSON leaderboard plus an optional FastAPI + SQLite remote server, with automatic fallback when the server is unreachable.
-- **Tests**: 970+ automated tests, headless SDL support, GitHub Actions CI.
+- **Development status**: initialization-stage development, focused on a stable playable loop.
 
 ## Features
 
@@ -40,6 +39,16 @@ The launcher auto-detects the environment, creates a virtualenv, installs depend
 | Windows | Double-click `run.bat` |
 | Linux / macOS | `chmod +x run.sh && ./run.sh` |
 
+The launcher reuses `.venv` and only syncs dependencies or rebuilds Rust when
+their inputs change. Common options:
+
+```bash
+./run.sh --prepare-only             # Prepare the runtime only
+./run.sh --skip-rust                # Start with the Python fallback
+./run.sh --rebuild-rust             # Force an optional Rust rebuild
+./run.sh -- --debug                 # Forward an argument to the game
+```
+
 To also start the local leaderboard server:
 
 | Platform | Command |
@@ -47,6 +56,10 @@ To also start the local leaderboard server:
 | Windows | Double-click `run_with_server.bat` |
 | Linux / macOS | `chmod +x run_with_server.sh && ./run_with_server.sh` |
 | macOS (double-click) | `run_with_server.command` |
+
+Use `./run_with_server.sh --port 8001 --debug` to choose a port and launch the
+game in debug mode. This entry waits for the local service, uses remote
+leaderboard mode, and stops the service when the game exits.
 
 > To clean local build artifacts and the virtualenv, run `uninstall.bat` on Windows or `./uninstall.sh` on Linux / macOS. Source code, saves, and config files are preserved.
 
@@ -106,12 +119,6 @@ python -m airwar.leaderboard.server --port 8000 --db-path ./leaderboard.db
 # Install dev dependencies
 pip install -r requirements-dev.txt
 
-# Full test suite
-python3 -m pytest
-
-# Quick smoke tests
-python3 -m pytest -m smoke
-
 # Lint
 python3 -m ruff check .
 
@@ -119,7 +126,8 @@ python3 -m ruff check .
 python3 -m compileall -q airwar main.py
 ```
 
-Run tests from the project root, not from inside `airwar/`.
+During active development, run the game directly and inspect the current
+feature flow and startup logs.
 
 ## Architecture
 
@@ -140,8 +148,6 @@ Core modules:
 - `airwar/leaderboard/` — Leaderboard client, service layer, FastAPI server.
 - `airwar_core/` — Rust native extension.
 
-> These documents are kept as local working files and are not under version control.
-
 ## Packaging
 
 ```bash
@@ -159,7 +165,7 @@ Output goes to `dist/AirWar`. Packaging requires Python 3.11+, the Rust toolchai
 
 ## Contributing
 
-- Before opening a PR, please run `python3 -m ruff check .` and `python3 -m pytest`.
+- Before opening a PR, please run `python3 -m ruff check .` and `python3 -m compileall -q airwar main.py`.
 - See [`LICENSE`](./LICENSE) for licensing details.
 
 ---

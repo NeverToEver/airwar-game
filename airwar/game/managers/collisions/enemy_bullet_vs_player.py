@@ -1,6 +1,6 @@
 """Phase 4 god-class split: enemy bullets vs player collision strategy.
 
-Extracted from ``CollisionController``. Owns the logic for testing active
+Extracted from ``CollisionController``. Owns the logic for checking active
 enemy bullets against the player hitbox, choosing between the Rust
 spatial-hash path and a Python linear scan fallback.
 
@@ -48,14 +48,14 @@ class EnemyBulletVsPlayerStrategy:
         calculate_damage_func: Callable,
         on_player_hit_func: Callable,
     ) -> bool:
-        """Test enemy bullets against the player and apply damage on hit.
+        """Check enemy bullets against the player and apply damage on hit.
 
         Uses the Rust spatial hash when available; otherwise performs a
         linear scan. Deactivates the first hit bullet so it cannot
         damage the player again on the next frame.
 
         Args:
-            enemy_bullets: Active enemy bullets to test.
+            enemy_bullets: Active enemy bullets checked for collisions.
             player: Player entity whose hitbox participates.
             calculate_damage_func: Callable converting raw damage to final.
             on_player_hit_func: Callable invoked with final damage and player.
@@ -66,9 +66,8 @@ class EnemyBulletVsPlayerStrategy:
         player_hitbox = player.get_hitbox()
 
         if self._get_use_rust() and enemy_bullets:
-            # Reference the parent module so test monkeypatches on
-            # ``airwar.game.managers.collision_controller.batch_collide_bullets_vs_entities``
-            # take effect. Attribute access on the module picks up patches at call time.
+            # Resolve through the parent module so the collision backend is
+            # read at call time.
             from airwar.game.managers import collision_controller as _cc_module
 
             batch_collide = _cc_module.batch_collide_bullets_vs_entities

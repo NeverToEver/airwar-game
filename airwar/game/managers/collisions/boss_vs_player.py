@@ -1,7 +1,7 @@
 """Phase 4 god-class split: boss body vs player collision strategy.
 
 Extracted from ``CollisionController``. Owns the boss-body vs player
-hitbox test, including the "skip during entering animation" rule.
+hitbox check, including the "skip during entering animation" rule.
 
 This is the simplest of the three collision kinds — no spatial hashing
 or Rust path is involved. Kept as its own module to maintain symmetry
@@ -31,13 +31,13 @@ class BossVsPlayerStrategy:
         calculate_damage_func: Callable,
         on_player_hit_func: Callable,
     ) -> bool:
-        """Test whether the boss body collides with the player.
+        """Check whether the boss body collides with the player.
 
         Skips the check while the boss is in its entering animation to
         avoid applying damage before it has settled into the playfield.
 
         Args:
-            boss: Active boss entity to test against.
+            boss: Active boss entity checked for collisions.
             player: Player entity whose hitbox participates.
             calculate_damage_func: Callable converting raw damage to final.
             on_player_hit_func: Callable invoked with final damage and player.

@@ -1,16 +1,3 @@
-// Allow the 4 pedantic lints that surface in unit tests. These are
-// legitimate: float_cmp asserts deterministic Rust-side computations
-// (vec2_add returns exactly (4.0, 6.0) when fed (1.0, 2.0, 3.0, 4.0)),
-// the format/closure warnings are style-only, and
-// redundant_closure_for_method_calls flags `|x| x.sin()` in starfield.
-// P3-5 ROADMAP §6 — keep `cargo clippy --all-targets -- -D warnings` clean.
-#![allow(
-    clippy::float_cmp,
-    clippy::uninlined_format_args,
-    clippy::redundant_closure,
-    clippy::redundant_closure_for_method_calls
-)]
-
 use pyo3::prelude::*;
 
 pub mod bullets;

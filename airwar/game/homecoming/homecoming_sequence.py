@@ -1,12 +1,8 @@
 """Homecoming sequence -- animated return-to-base state machine.
 
-47 模糊点 D.M.6 (Phase 6 §6.2): all 10 phase frame counts (and the
-orbital-strike impact progress) are sourced from
-``GAME_CONSTANTS.HOMECOMING_PHASES`` via the PEP 562 module-level
-``__getattr__`` below. The class-level integer literals on
-``HomecomingSequence`` are kept as fallback defaults for direct
-attribute access from tests (``HomecomingSequence.FTL_FRAMES``) and
-for early import order edge cases.
+Phase frame counts and orbital-strike impact progress are sourced from
+``GAME_CONSTANTS.HOMECOMING_PHASES`` through the module-level
+``__getattr__`` fallback below.
 """
 
 from collections.abc import Callable

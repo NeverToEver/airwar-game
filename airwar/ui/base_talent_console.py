@@ -95,9 +95,7 @@ class BaseTalentConsole:
     """Renders and handles the base command surface."""
 
     def __init__(self, screen_width: int, screen_height: int):
-        # screen_width/screen_height are intentionally unused — kept in the
-        # signature for backward-compat with existing call sites and tests
-        # that pass them. See STRUCTURE.md.
+        # This command surface does not need screen dimensions directly.
         del screen_width, screen_height
         self._font_title = get_cjk_font(34)
         self._font_section = get_cjk_font(26)

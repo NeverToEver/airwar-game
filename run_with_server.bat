@@ -1,31 +1,64 @@
 @echo off
-setlocal enabledelayedexpansion
+setlocal EnableExtensions EnableDelayedExpansion
 title AirWar with Leaderboard Server
 
 set "ROOT=%~dp0"
 cd /d "%ROOT%"
+set "BOOTSTRAP_ARGS="
+set "SERVER_ARGS="
 
-REM Prefer the project virtualenv, then fall back to any Python 3.11+.
-set "PYTHON=.venv\Scripts\python.exe"
-if exist "%PYTHON%" goto :launch
+:parse_args
+if "%~1"=="" goto :prepare
+if /i "%~1"=="--help" goto :help
+if "%~1"=="-h" goto :help
+if /i "%~1"=="--install-deps" (
+    set "BOOTSTRAP_ARGS=!BOOTSTRAP_ARGS! --install-deps"
+    shift
+    goto :parse_args
+)
+if /i "%~1"=="--rebuild-rust" (
+    set "BOOTSTRAP_ARGS=!BOOTSTRAP_ARGS! --rebuild-rust"
+    shift
+    goto :parse_args
+)
+if /i "%~1"=="--skip-rust" (
+    set "BOOTSTRAP_ARGS=!BOOTSTRAP_ARGS! --skip-rust"
+    shift
+    goto :parse_args
+)
+if "%~1"=="--" (
+    shift
+    goto :collect_server_args
+)
+set "SERVER_ARGS=!SERVER_ARGS! "%~1""
+shift
+goto :parse_args
 
-for %%c in (py python3 python) do (
-    where %%c >nul 2>&1
-    if !errorlevel! equ 0 (
-        %%c -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)" >nul 2>&1
-        if !errorlevel! equ 0 (
-            set "PYTHON=%%c"
-            goto :launch
-        )
-    )
+:collect_server_args
+if "%~1"=="" goto :prepare
+set "SERVER_ARGS=!SERVER_ARGS! "%~1""
+shift
+goto :collect_server_args
+
+:prepare
+call "%ROOT%run.bat" --prepare-only %BOOTSTRAP_ARGS%
+if errorlevel 1 (
+    echo [airwar-server] Environment preparation failed.
+    pause
+    endlocal
+    exit /b 1
 )
 
-echo [airwar-server] ERROR: Python 3.11 or newer not found.
+"%ROOT%.venv\Scripts\python.exe" "%ROOT%run_with_server.py" %SERVER_ARGS%
+set "EXIT_CODE=%ERRORLEVEL%"
 pause
-exit /b 1
-
-:launch
-cd /d "%ROOT%"
-"%PYTHON%" run_with_server.py %*
 endlocal
-exit /b %errorlevel%
+exit /b %EXIT_CODE%
+
+:help
+echo Usage: run_with_server.bat [launcher options] [server options]
+echo.
+echo Launcher options: --install-deps, --rebuild-rust, --skip-rust
+echo Server options:   --host HOST, --port PORT, --debug, --game-arg=ARG
+endlocal
+exit /b 0

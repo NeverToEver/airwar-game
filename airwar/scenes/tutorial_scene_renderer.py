@@ -1,11 +1,7 @@
 """Thin orchestrator that dispatches tutorial rendering to 4 sub-renderers.
 
-Phase 4 Wave α split (see ``docs/logic-clarity/11-phase5b-handoff.md``
-§7.1, the previous 08-deep-godclass-split-plan.md was retired in the
-2026-06-08 docs cleanup). The real drawing work lives in
-:mod:`airwar.scenes.tutorial.renderers`; this module just keeps the
-public + private API of ``TutorialSceneRenderer`` stable (1-line
-forwarders) so callers and tests are untouched.
+Drawing work lives in :mod:`airwar.scenes.tutorial.renderers`; this module
+coordinates those renderers for the tutorial scene.
 """
 
 from __future__ import annotations
@@ -147,7 +143,7 @@ class TutorialSceneRenderer:
     def _render_boss_enrage_warning(self, surface, boss):
         self._effects.render_boss_enrage_warning(surface, boss)
 
-    # -- Internal helpers (kept for any external/test callers) ----------
+    # -- Internal renderer helpers --------------------------------------
 
     def _draw_bar(self, surface, rect, ratio, fill_color):
         self._ui._draw_bar(surface, rect, ratio, fill_color)

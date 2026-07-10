@@ -60,12 +60,6 @@ class SceneSwitcher:
                     return (False, None)
                 self._resume_welcome_scene(welcome)
                 continue
-            if hasattr(welcome, "should_open_benchmark") and welcome.should_open_benchmark():
-                self._consume_welcome_request(welcome, "benchmark")
-                if not self._show_benchmark_menu():
-                    return (False, None)
-                self._resume_welcome_scene(welcome)
-                continue
             if welcome.is_ready():
                 self._director._current_user = welcome.get_username()
                 self._director._selected_difficulty = welcome.get_difficulty()
@@ -87,8 +81,6 @@ class SceneSwitcher:
             welcome.tutorial_requested = False
         if request in (None, "settings") and hasattr(welcome, "settings_requested"):
             welcome.settings_requested = False
-        if request in (None, "benchmark") and hasattr(welcome, "benchmark_requested"):
-            welcome.benchmark_requested = False
 
     def _resume_welcome_scene(self, welcome, consumed_request: str | None = None) -> None:
         """Make the already-registered welcome scene ready for another loop."""
@@ -128,7 +120,6 @@ class SceneSwitcher:
             current_scene.restore_from_save(self._director._pending_save_data)
             self._director._pending_save_data = None
             self._logger.info("Game restored from pending save data")
-
         while self._director._running:
             escape_handled = False
             current_scene = self._scene_manager.get_current_scene()
@@ -194,11 +185,10 @@ class SceneSwitcher:
         # ``self.clear_buttons()`` in ``enter()`` (to reset state from
         # a prior visit) would silently drop the first click because
         # the dispatch happens before the first render. See
-        # ``test_benchmark_button_routing`` for the regression case.
+        # Welcome and sub-scenes register clickable buttons during rendering.
         #
-        # Gated on ``is_running()`` so a scene that has already exited
-        # (e.g. a unit-test stub with ``is_running() -> False``) does
-        # not have its pre-render fired before the loop bails out.
+        # Gated on ``is_running()`` so an exited scene does not have its
+        # pre-render fired before the loop bails out.
         if scene.is_running():
             self._render_scene(scene)
         while self._director._running and scene.is_running():
@@ -207,7 +197,7 @@ class SceneSwitcher:
                 return "quit"
             self._handle_resize_if_needed(events)
             # Dispatch events to the target scene directly. Sub-scene
-            # flows (settings, benchmark, pause, death, exit_confirm)
+            # flows (settings, pause, death, exit_confirm)
             # do not call ``scene_manager.switch`` before ``enter()``,
             # so ``SceneManager._current_scene`` is still the calling
             # scene (typically ``welcome`` or ``game``) and a naive
@@ -255,7 +245,7 @@ class SceneSwitcher:
             skip_escape: If True, swallow ``pygame.K_ESCAPE`` events.
             target_scene: If provided, dispatch to this scene directly.
                 Used by ``_run_scene_loop`` for sub-scenes (settings,
-                benchmark, pause, death, exit_confirm) that do not call
+                pause, death, and exit-confirm) that do not call
                 ``scene_manager.switch`` before ``enter()`` and therefore
                 do not become ``SceneManager._current_scene``. If
                 ``None``, falls back to ``scene_manager.get_current_scene()``.
@@ -263,8 +253,7 @@ class SceneSwitcher:
         if target_scene is None:
             # Fall back to the legacy path: dispatch via the
             # scene_manager (which routes to ``get_current_scene()``).
-            # This preserves the existing test contract and is correct
-            # for the top-level ``welcome`` / ``game`` / ``tutorial``
+            # This is correct for the top-level ``welcome`` / ``game`` / ``tutorial``
             # flows that DO call ``scene_manager.switch`` before
             # ``_run_scene_loop``. The ``target_scene`` parameter is
             # only needed for the sub-scene flows that skip
@@ -292,11 +281,9 @@ class SceneSwitcher:
         set_display_size(width, height)
         # The viewport must keep its logical surface at the actual
         # display size so the mouse-coordinate transform stays a no-op
-        # (see airwar/game/scaled_viewport.py for the full discussion
-        # and ``airwar/tests/test_viewport_mouse_coords.py`` for the
-        # regression coverage). Without this, the first resize would
-        # re-introduce the same coordinate bug the Game constructor
-        # already guards against.
+        # (see airwar/game/scaled_viewport.py for the full discussion).
+        # Without this, the first resize would reintroduce the coordinate
+        # mismatch the Game constructor already guards against.
         self._viewport.logical_size = (width, height)
         self._viewport._logical_surface = pygame.Surface(
             (width, height), pygame.SRCALPHA,
@@ -340,22 +327,6 @@ class SceneSwitcher:
         if game_scene and hasattr(game_scene, "player") and game_scene.player:
             self._director._apply_settings_to_player(game_scene.player)
         return True
-
-    def _show_benchmark_menu(self) -> bool:
-        """Show the benchmark scene; returns False if QUIT was triggered.
-
-        The benchmark scene runs the end-to-end test suite via its
-        own worker thread.  We just present the scene and let the
-        user interact with it; returning to welcome happens when
-        the scene sets ``running = False``.
-        """
-        benchmark_scene = self._scene_manager.get_scene("benchmark")
-        if not benchmark_scene:
-            return True
-        benchmark_scene.enter()
-        result = self._run_scene_loop(benchmark_scene)
-        benchmark_scene.exit()
-        return result != "quit"
 
     def _show_pause_menu(self, game_scene: GameScene) -> PauseAction:
         while True:

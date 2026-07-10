@@ -1,7 +1,7 @@
 """Talent switcher — Offense/Support route selection rendering and clicks.
 
 Owns the loadout (route) panel: per-route view rendering, route-button hit
-testing, and the ``route:<name>`` button registry. Has no business logic
+hit detection, and the ``route:<name>`` button registry. Has no business logic
 of its own — all state lives on the parent ``BaseTalentConsole`` and the
 ``TalentBalanceManager`` passed at render time.
 """

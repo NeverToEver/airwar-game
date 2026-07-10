@@ -501,8 +501,7 @@ class Enemy(Entity):
 
         F07 god-class split: the actual logic lives in
         :mod:`airwar.entities.enemy.enemy_movement_batch`. This method
-        is kept so existing callers (and tests) that call
-        ``_configure_rust_movement()`` directly still work.
+        provides the entity-level entry point used by movement setup.
         """
         from .enemy_movement_batch import configure_rust_movement
 

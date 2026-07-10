@@ -1,20 +1,8 @@
 """Homecoming coordinator — thin orchestrator over detector, sequence,
 and three base-station sub-components (state, talent, resupply).
 
-Phase 5-γ split: extracted ``HomecomingBaseState``,
-:class:`BaseTalentOrchestrator`, and :class:`BaseResupplyService` from
-this module. The coordinator now owns only the sequence-lifecycle
-plumbing (on_requested, on_complete, on_orbital_strike,
-on_departure_complete, leave_base, the lock-manager wiring, and the
-failure-mode gate).
-
-47 模糊点 B.D6 (Phase 6 §6.2): legacy homecoming fallback removed in
-the Phase 5-γ split. Pre-split, this class carried the full state
-machine, talent manager, and resupply logic; the only remaining
-"legacy" surface is the ``_handle_action`` backward-compat forwarder
-on line 286 (preserved for 4 test sites in ``test_homecoming.py``)
-and the ``_base_pending`` / ``_talent_balance_manager`` property
-shims (lines 116-138). No double-path code remains.
+The coordinator owns sequence lifecycle plumbing and delegates base-state,
+talent, and resupply work to focused runtime components.
 """
 
 from enum import Enum
@@ -119,51 +107,6 @@ class HomecomingCoordinator:
             return self._base_talent_console.get_missions()
         return []
 
-    # --- Property shims (Phase 5-γ backward compat) ---
-
-    @property
-    def _base_pending(self) -> bool:
-        """Backward-compat shim: tests write ``coordinator._base_pending = True``.
-
-        See :attr:`HomecomingBaseState.is_pending` for the real
-        state; this property is preserved to avoid touching 5 test
-        sites (see ``test_homecoming.py`` lines 384, 443, 496, 544,
-        684).
-
-        47 模糊点 F.I2 (Phase 6 §6.2): this property setter is
-        **test-only**. Production code must use the public API
-        :meth:`is_base_pending` to read the state and the
-        :class:`HomecomingBaseState` lifecycle (``enter_base`` /
-        ``exit_base``) to mutate it. Direct ``coordinator._base_pending = ...``
-        writes from production code are prohibited because they
-        bypass the failure-mode gate (``_can_request_with_reason``)
-        and the lock-manager handshake.
-        """
-        return self._base_state.is_pending()
-
-    @_base_pending.setter
-    def _base_pending(self, value: bool) -> None:
-        self._base_state.set_pending(bool(value))
-
-    @property
-    def _talent_balance_manager(self):
-        """Backward-compat shim: tests write ``coordinator._talent_balance_manager = ...``.
-
-        47 模糊点 F.I2 (Phase 6 §6.2): this property setter is
-        **test-only**. Production code must use the public API
-        :meth:`get_talent_balance_manager` to read the manager. The
-        manager is created lazily by
-        :meth:`BaseTalentOrchestrator.ensure_talent_balance_manager`
-        during the homecoming on-complete callback; direct
-        ``coordinator._talent_balance_manager = ...`` writes from
-        production code are prohibited because they bypass the
-        reward-system dependency injection.
-        """
-        return self._talent_orchestrator._talent_balance_manager
-
-    @_talent_balance_manager.setter
-    def _talent_balance_manager(self, value) -> None:
-        self._talent_orchestrator._talent_balance_manager = value
 
     # --- Update ---
 
@@ -311,34 +254,6 @@ class HomecomingCoordinator:
         if notification_manager:
             notification_manager.show("基地弹射程序启动")
 
-    def _handle_action(
-        self,
-        action,
-        game_controller,
-        player,
-        lock_manager,
-        spawn_controller,
-        game_loop_manager,
-        notification_manager,
-        reward_system,
-    ):
-        """Backward-compat forwarder (test-only).
-
-        Test code in ``test_homecoming.py`` calls
-        ``coordinator._handle_action(...)`` directly. After Phase 5-γ
-        the real dispatcher lives on
-        :attr:`_talent_orchestrator`.
-        """
-        return self._talent_orchestrator._handle_action(
-            action,
-            game_controller,
-            player,
-            lock_manager,
-            spawn_controller,
-            game_loop_manager,
-            notification_manager,
-            reward_system,
-        )
 
     def set_save_fn(self, fn):
         """Set the save function for base loadout persistence.

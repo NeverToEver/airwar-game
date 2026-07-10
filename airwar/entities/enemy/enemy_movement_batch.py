@@ -26,8 +26,8 @@ if TYPE_CHECKING:
 
 
 # Movement pattern → Rust move_type_code (must match Rust enum in
-# airwar_core/src/movement.rs). Defined here as a module-level
-# constant so it can be tested independently.
+# airwar_core/src/movement.rs). Defined here as a module-level constant
+# shared by the encoder and Rust implementation.
 MOVEMENT_TYPE_MAP: dict[str, int] = {
     "straight": 0,
     "sine": 1,

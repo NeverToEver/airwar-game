@@ -68,8 +68,8 @@ class DifficultyPanel:
         and gates the "Quick Controls" reference list: when the panel
         is too short to fit the controls list (see
         :data:`MIN_PANEL_H_FOR_CONTROLS`), the list is skipped so the
-        benchmark/leaderboard buttons remain on screen at small window
-        sizes. Internal element positions still use the natural
+        leaderboard button remains on screen at small window sizes.
+        Internal element positions still use the natural
         :data:`PANEL_H` for stability — only the panel chrome adapts.
         """
         SC = SceneColors
@@ -110,7 +110,7 @@ class DifficultyPanel:
 
         diff_end_y = diff_start_y + diff_n * DIFF_OPTION_H + (diff_n - 1) * DIFF_GAP
 
-        # -- Benchmark + Leaderboard buttons (row between difficulty and controls) --
+        # -- Leaderboard button (between difficulty and controls) --
         # Natural position sits just below the difficulty options. If the
         # whole window is too short, constrain the row to the screen edge
         # instead of the compressed panel chrome so it does not overlap the
@@ -119,17 +119,13 @@ class DifficultyPanel:
         natural_btn_row_y = diff_end_y + 14
         max_btn_row_y = surface.get_height() - btn_row_h - 12
         btn_row_y = min(natural_btn_row_y, max_btn_row_y)
-        # Width 200 fits "进入自动化测试" (7 CJK chars at SMALL_SIZE).
-        bm_btn_w = 200
-        bm_rect = pygame.Rect(px + 20, btn_row_y, bm_btn_w, btn_row_h)
-        scene._login_panel._draw_ghost_button(surface, bm_rect, t("welcome.benchmark_button"), "benchmark")
-        lb_btn_w = 110
-        lb_rect = pygame.Rect(px + PANEL_W - lb_btn_w - 20, btn_row_y, lb_btn_w, btn_row_h)
+        lb_btn_w = 160
+        lb_rect = pygame.Rect(px + (PANEL_W - lb_btn_w) // 2, btn_row_y, lb_btn_w, btn_row_h)
         scene._login_panel._draw_ghost_button(surface, lb_rect, t("welcome.leaderboard_button"), "leaderboard")
 
         # -- Quick Controls reference --
         # Skip the controls list when the responsive panel_h is too short
-        # to fit it; the benchmark/leaderboard row above stays visible.
+        # to fit it; the leaderboard control above stays visible.
         if actual_h >= MIN_PANEL_H_FOR_CONTROLS:
             tips_title_y = btn_row_y + btn_row_h + 18
             tips_label = scene.hint_font.render(t("welcome.controls_label"), True, SC.TEXT_DIM)

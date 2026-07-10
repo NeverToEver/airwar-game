@@ -52,7 +52,7 @@ class PlayerWeapon:
         self._laser_duration: int = 0
 
     # ------------------------------------------------------------------
-    # Public API (called by Player or tests)
+    # Public API called by Player.
     # ------------------------------------------------------------------
 
     @property
@@ -93,8 +93,8 @@ class PlayerWeapon:
         if self._fire_cooldown <= 0:
             self._fire_cooldown = self._fire_interval
             self._create_bullets_for_shot_mode()
-            # Lazy import: audio subsystem stays out of the player
-            # import graph so headless tests can omit pygame.mixer.
+            # Lazy import keeps the audio subsystem out of the player
+            # import graph until it is needed.
             from airwar.audio import get_sound_manager
 
             get_sound_manager().play_sfx("bullet_fire")

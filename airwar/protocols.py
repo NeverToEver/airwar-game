@@ -35,7 +35,7 @@ class InputSourceProtocol(Protocol):
 
     The :class:`airwar.entities.player.Player` only needs to read input
     state; it should not need to know whether the source is the live
-    Pygame handler, a recording, or a unit-test stub. The real
+    Pygame handler or another input provider. The real
     :class:`airwar.input.input_handler.PygameInputHandler` already
     matches this protocol structurally.
     """

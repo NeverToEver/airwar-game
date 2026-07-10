@@ -215,10 +215,7 @@ class GameLoopManager:
 
         self._game_renderer.update_death_animation()
         self._explosion_manager.update()
-        # F02 D3: single-path — LockManager is always wired in production.
-        # The legacy backup/restore branch was reachable only in unit
-        # tests that constructed GameLoopManager without a lock_manager;
-        # those tests now also wire one (see test_game_loop_manager.py).
+        # LockManager is required for the active gameplay path.
         if self._lock_manager is None:
             raise RuntimeError("GameLoopManager requires a LockManager. Pass lock_manager=... in the constructor.")
         # BOSS_ENRAGE is a transient lock — applied only for the duration
@@ -313,8 +310,8 @@ class GameLoopManager:
         # don't allocate fresh lists every frame. ``_entity_buf`` and
         # ``_batch_indices`` are reset, not re-bound, to keep the
         # underlying list objects stable across calls.
-        # Lazy-init guards the ``__new__``-style test harness (some
-        # perf tests bypass ``__init__`` and call private methods).
+        # Keep this allocation lazy because the buffer is only needed for
+        # movement-capable enemies.
         batch_indices = getattr(self, "_batch_indices", None)
         if batch_indices is None:
             batch_indices = EntityBuffer()

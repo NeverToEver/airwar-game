@@ -4,198 +4,198 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-NC='\033[0m'
+if [[ -t 1 ]]; then
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    CYAN='\033[0;36m'
+    NC='\033[0m'
+else
+    RED='' GREEN='' YELLOW='' CYAN='' NC=''
+fi
 
-log()  { echo -e "${CYAN}[airwar]${NC} $*"; }
-ok()   { echo -e "${GREEN}[  ok  ]${NC} $*"; }
-warn() { echo -e "${YELLOW}[ warn ]${NC} $*"; }
-err()  { echo -e "${RED}[FAILED]${NC} $*"; }
+log()  { printf '%b\n' "${CYAN}[airwar]${NC} $*"; }
+ok()   { printf '%b\n' "${GREEN}[  ok  ]${NC} $*"; }
+warn() { printf '%b\n' "${YELLOW}[ warn ]${NC} $*"; }
+err()  { printf '%b\n' "${RED}[error]${NC} $*" >&2; }
+
+usage() {
+    cat <<'EOF'
+Usage: ./run.sh [launcher options] [-- game options]
+
+Launcher options:
+  --install-deps   Install Rust with rustup when Cargo is unavailable.
+  --rebuild-rust   Rebuild the optional Rust extension.
+  --skip-rust      Do not build or load the optional Rust extension.
+  --prepare-only   Prepare the virtual environment, then exit.
+  -h, --help       Show this help.
+
+Game options are forwarded to AirWar. Use `--` before game options when they
+could be confused with launcher options, for example: ./run.sh -- --debug
+EOF
+}
 
 INSTALL_DEPS="${AIRWAR_INSTALL_DEPS:-0}"
-for arg in "$@"; do
-    case "$arg" in
+PREPARE_ONLY=0
+SKIP_RUST=0
+REBUILD_RUST=0
+APP_ARGS=()
+
+while (($#)); do
+    case "$1" in
         --install-deps)
             INSTALL_DEPS=1
             ;;
-        --help|-h)
-            echo "Usage: ./run.sh [--install-deps]"
-            echo
-            echo "By default this script only creates the project virtualenv and installs"
-            echo "Python packages into it. System packages and Rust are only installed when"
-            echo "--install-deps is passed or AIRWAR_INSTALL_DEPS=1 is set."
+        --rebuild-rust)
+            REBUILD_RUST=1
+            ;;
+        --skip-rust)
+            SKIP_RUST=1
+            ;;
+        --prepare-only)
+            PREPARE_ONLY=1
+            ;;
+        -h|--help)
+            usage
             exit 0
             ;;
+        --)
+            shift
+            APP_ARGS+=("$@")
+            break
+            ;;
         *)
-            err "Unknown option: $arg"
-            echo "Usage: ./run.sh [--install-deps]"
-            exit 2
+            APP_ARGS+=("$1")
             ;;
     esac
+    shift
 done
+
+is_supported_python() {
+    "$1" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' >/dev/null 2>&1
+}
+
+find_python() {
+    local candidate
+    for candidate in python3.13 python3.12 python3.11 python3; do
+        if command -v "$candidate" >/dev/null 2>&1 && is_supported_python "$candidate"; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
 
 can_install_deps() {
     case "$INSTALL_DEPS" in
-        1|true|TRUE|yes|YES|y|Y)
-            return 0
-            ;;
-        *)
-            return 1
-            ;;
+        1|true|TRUE|yes|YES|y|Y) return 0 ;;
+        *) return 1 ;;
     esac
 }
 
-print_install_hint() {
-    local tool="$1"
-    local apt_pkg="$2"
-    local brew_pkg="$3"
-
-    warn "$tool is not available."
-    if command -v apt-get >/dev/null 2>&1; then
-        echo "  Install it with: sudo apt-get install $apt_pkg"
-    elif command -v brew >/dev/null 2>&1; then
-        echo "  Install it with: brew install $brew_pkg"
-    else
-        echo "  Install $tool with your platform package manager."
-    fi
-}
-
-# Python
-PYTHON=""
-for candidate in python3.13 python3.12 python3.11 python3; do
-    if command -v "$candidate" >/dev/null 2>&1; then
-        ver=$("$candidate" --version 2>&1 | grep -oE '[0-9]+\.[0-9]+' | head -1)
-        major=$(echo "$ver" | cut -d. -f1)
-        minor=$(echo "$ver" | cut -d. -f2)
-        if [ "$major" -gt 3 ] || { [ "$major" -eq 3 ] && [ "$minor" -ge 11 ]; }; then
-            PYTHON="$candidate"
-            break
-        fi
-    fi
-done
-
-if [ -z "$PYTHON" ]; then
-    err "Python >= 3.11 not found."
-    if command -v apt-get >/dev/null 2>&1; then
-        echo "  Install it with: sudo apt-get install python3 python3-venv"
-    elif command -v brew >/dev/null 2>&1; then
-        echo "  Install it with: brew install python"
-    else
-        echo "  Install Python from https://www.python.org/downloads/"
-    fi
+PYTHON="$(find_python || true)"
+if [[ -z "$PYTHON" ]]; then
+    err "Python 3.11 or newer was not found."
+    echo "Install Python from https://www.python.org/downloads/"
     exit 1
 fi
 ok "Python: $($PYTHON --version)"
 
-# Optional Rust/Cargo acceleration
-if [ -f "$HOME/.cargo/env" ]; then
-    . "$HOME/.cargo/env"
-fi
-
-if ! command -v cargo >/dev/null 2>&1; then
-    if can_install_deps; then
-        log "Installing Rust toolchain..."
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
-        . "$HOME/.cargo/env"
-    else
-        warn "Cargo not found. AirWar will use the pure-Python fallback."
-        echo "  For Rust acceleration, install Rust from https://rustup.rs/"
-        echo "  To let this script install it, rerun: ./run.sh --install-deps"
-    fi
-fi
-
-if command -v cargo >/dev/null 2>&1; then
-    ok "Cargo: $(cargo --version 2>&1 | head -1)"
-fi
-
-# SDL2 system library
-#
-# pygame wheels bundle SDL2 on macOS/Linux/Windows. `ctypes.util.find_library`
-# only detects a separately installed system SDL2, so treating it as required
-# blocks valid macOS installs where `import pygame` works and reports an SDL
-# runtime. Keep the system package install path for users who explicitly ask
-# for it, but do not block the launcher when only bundled SDL is present.
-SDL2_AVAILABLE=false
-if "$PYTHON" -c "import ctypes.util; raise SystemExit(0 if ctypes.util.find_library('SDL2') else 1)" 2>/dev/null; then
-    SDL2_AVAILABLE=true
-fi
-
-if ! $SDL2_AVAILABLE; then
-    if can_install_deps; then
-        if command -v apt-get >/dev/null 2>&1; then
-            log "Installing SDL2 system library..."
-            sudo apt-get update -qq
-            sudo apt-get install -y -qq libsdl2-dev
-        elif command -v brew >/dev/null 2>&1; then
-            log "Installing SDL2 via Homebrew..."
-            brew install sdl2
-        else
-            print_install_hint "SDL2" "libsdl2-dev" "sdl2"
-            exit 1
-        fi
-    else
-        warn "System SDL2 was not found. Continuing; pygame wheels normally bundle SDL2."
-        echo "  To install a system SDL2 anyway, rerun: ./run.sh --install-deps"
-    fi
-else
-    ok "SDL2: system library available"
-fi
-
-# Virtual environment
 VENV_DIR="$SCRIPT_DIR/.venv"
-if [ ! -f "$VENV_DIR/bin/python" ]; then
+VENV_PYTHON="$VENV_DIR/bin/python"
+if [[ ! -x "$VENV_PYTHON" ]]; then
     log "Creating virtual environment..."
     "$PYTHON" -m venv "$VENV_DIR"
+elif ! is_supported_python "$VENV_PYTHON"; then
+    err "Existing .venv does not use Python 3.11 or newer. Remove .venv and rerun."
+    exit 1
 fi
-. "$VENV_DIR/bin/activate"
 ok "venv: $VENV_DIR"
 
-# Python dependencies
-if ! python -c "import pygame, PIL" 2>/dev/null; then
-    log "Installing Python dependencies..."
-    python -m pip install --quiet --upgrade pip
-    python -m pip install --quiet -r requirements.txt
+DEPENDENCY_MARKER="$VENV_DIR/.airwar-runtime-deps"
+needs_dependency_sync=0
+if [[ ! -f "$DEPENDENCY_MARKER" || requirements.txt -nt "$DEPENDENCY_MARKER" || pyproject.toml -nt "$DEPENDENCY_MARKER" ]]; then
+    needs_dependency_sync=1
+elif ! "$VENV_PYTHON" -c 'import numpy, PIL, pygame' >/dev/null 2>&1; then
+    needs_dependency_sync=1
 fi
-ok "Python dependencies: satisfied"
 
-# Optional Rust extension
-RUST_DIR="$SCRIPT_DIR/airwar_core"
-RUST_MARKER="$VENV_DIR/.rust_built"
-NEED_BUILD=false
+if ((needs_dependency_sync)); then
+    log "Installing runtime dependencies..."
+    "$VENV_PYTHON" -m pip install --quiet --disable-pip-version-check -r requirements.txt
+    touch "$DEPENDENCY_MARKER"
+fi
+ok "Runtime dependencies: satisfied"
 
-if command -v cargo >/dev/null 2>&1; then
-    if [ ! -f "$RUST_MARKER" ]; then
-        NEED_BUILD=true
-    elif [ "$RUST_DIR/Cargo.toml" -nt "$RUST_MARKER" ] 2>/dev/null; then
-        NEED_BUILD=true
-    elif [ -n "$(find "$RUST_DIR/src" -name '*.rs' -newer "$RUST_MARKER" 2>/dev/null || true)" ]; then
-        NEED_BUILD=true
+prepare_rust_extension() {
+    local rust_dir="$SCRIPT_DIR/airwar_core"
+    local marker="$VENV_DIR/.airwar-rust-extension"
+    local needs_build=0
+
+    if ((SKIP_RUST)); then
+        warn "Rust extension: skipped"
+        return 0
     fi
 
-    if $NEED_BUILD; then
-        log "Building Rust extension (airwar_core)..."
-        mkdir -p "$RUST_DIR/airwar_core"
-        cat > "$RUST_DIR/airwar_core/__init__.py" <<'PY'
-"""Editable-install bridge for the PyO3 airwar_core extension."""
+    if [[ -f "$HOME/.cargo/env" ]]; then
+        # shellcheck disable=SC1090
+        source "$HOME/.cargo/env"
+    fi
 
-from .airwar_core import *  # noqa: F403
-PY
-        python -m pip install --quiet 'maturin>=1,<2'
-        if python -m maturin develop --release --manifest-path "$RUST_DIR/Cargo.toml"; then
-            touch "$RUST_MARKER"
-            ok "Rust extension: built"
-        else
-            warn "Rust extension build failed. AirWar will use the pure-Python fallback."
+    if ! command -v cargo >/dev/null 2>&1; then
+        if ! can_install_deps; then
+            warn "Cargo not found; using the Python fallback."
+            echo "  Install Rust from https://rustup.rs/ or rerun with --install-deps."
+            return 0
         fi
-    else
-        ok "Rust extension: already built"
+        if ! command -v curl >/dev/null 2>&1; then
+            err "curl is required to install Rust automatically."
+            return 1
+        fi
+        log "Installing Rust toolchain..."
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+        # shellcheck disable=SC1090
+        source "$HOME/.cargo/env"
     fi
-else
-    warn "Rust extension: skipped"
+
+    if ((REBUILD_RUST)); then
+        rm -f "$marker"
+        needs_build=1
+    elif [[ ! -f "$marker" || "$rust_dir/Cargo.toml" -nt "$marker" || "$rust_dir/Cargo.lock" -nt "$marker" || "$rust_dir/pyproject.toml" -nt "$marker" ]]; then
+        needs_build=1
+    elif [[ -n "$(find "$rust_dir/src" -type f -name '*.rs' -newer "$marker" -print -quit)" ]]; then
+        needs_build=1
+    elif ! "$VENV_PYTHON" -c 'from airwar.core_bindings import RUST_AVAILABLE; raise SystemExit(0 if RUST_AVAILABLE else 1)' >/dev/null 2>&1; then
+        needs_build=1
+    fi
+
+    if (( ! needs_build )); then
+        ok "Rust extension: ready"
+        return 0
+    fi
+
+    log "Building optional Rust extension..."
+    if ! "$VENV_PYTHON" -m pip install --quiet --disable-pip-version-check 'maturin>=1,<2'; then
+        warn "Could not install maturin; using the Python fallback."
+        return 0
+    fi
+    if "$VENV_PYTHON" -m maturin develop --release --manifest-path "$rust_dir/Cargo.toml"; then
+        touch "$marker"
+        ok "Rust extension: built"
+    else
+        warn "Rust extension build failed; using the Python fallback."
+    fi
+}
+
+prepare_rust_extension
+
+if ((PREPARE_ONLY)); then
+    ok "Runtime environment prepared"
+    exit 0
 fi
 
 log "Launching AirWar..."
-exec python main.py
+if ((${#APP_ARGS[@]})); then
+    exec "$VENV_PYTHON" main.py "${APP_ARGS[@]}"
+fi
+exec "$VENV_PYTHON" main.py

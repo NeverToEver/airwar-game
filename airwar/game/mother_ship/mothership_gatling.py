@@ -1,19 +1,9 @@
 """F08 god-class split: Mothership gatling turret subsystem.
 
 This module extracts the gatling-turret specification, fire logic, and sweep
-calculation from ``GameIntegrator``. The class constants ``MOTHERSHIP_GATLING_*``
-and the ``GatlingTurretSpec`` NamedTuple live here; ``GameIntegrator`` keeps
-matching class-level attributes that point at the same values so external
-test code (``integrator.MOTHERSHIP_GATLING_TURRETS``) still works.
-
-Backward compatibility:
-- ``GatlingTurretSpec`` is re-exported from ``game_integrator.py``.
-- All ``MOTHERSHIP_GATLING_*`` class constants remain accessible on the
-  ``GameIntegrator`` class via re-export.
-- The fire / sweep methods remain on ``GameIntegrator`` as 1-line forwarders.
-- The integrator's ``_mothership_gatling_timer`` /
-  ``_mothership_gatling_sweep_frame`` attributes are exposed as property
-  forwarders to this component so existing tests can read/write them.
+calculation from ``GameIntegrator``. The class constants and
+``GatlingTurretSpec`` live here; the integrator exposes the gameplay-facing
+commands that use this component.
 """
 
 from __future__ import annotations
@@ -40,7 +30,7 @@ class GatlingTurretSpec(NamedTuple):
 
 
 # Gatling damage / cadence constants. Moved verbatim from GameIntegrator
-# so the firing logic and tests have a single source of truth.
+# so the firing logic has a single source of truth.
 MOTHERSHIP_GATLING_DAMAGE = 24
 MOTHERSHIP_GATLING_FIRE_RATE = 8
 MOTHERSHIP_GATLING_BULLET_SPEED = 18
@@ -64,18 +54,12 @@ class MothershipGatling:
     """F08 god-class split: gatling turret fire logic, sweep, bullet spawn.
 
     Holds the per-frame gatling sweep state (``sweep_frame``, ``fire_timer``)
-    and owns the ``_fire_gatling_sweep`` / ``_current_gatling_sweep_angle``
-    / ``_get_gatling_turret`` methods. The integrator keeps the
-    ``_mothership_gatling_*`` attribute names as forwarders so existing
-    tests (which read/write them directly) keep working.
+    and owns its firing, sweep, and turret lookup methods.
     """
 
     def __init__(self, integrator: GameIntegrator) -> None:
         self._integrator = integrator
         # Use the legacy attribute names directly on the component. The
-        # integrator exposes matching property forwarders so callers that
-        # reach into ``integrator._mothership_gatling_*`` (e.g. tests) see
-        # the same value.
         self._mothership_gatling_timer = 0
         self._mothership_gatling_sweep_frame = 0
 

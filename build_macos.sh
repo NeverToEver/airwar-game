@@ -43,12 +43,6 @@ python -m pip install -r requirements-dev.txt
 
 # 2. Optional Rust extension (game falls back to pure Python if unavailable)
 if command -v cargo >/dev/null 2>&1; then
-    mkdir -p airwar_core/airwar_core
-    cat > airwar_core/airwar_core/__init__.py <<'PY'
-"""Editable-install bridge for the PyO3 airwar_core extension."""
-
-from .airwar_core import *  # noqa: F403
-PY
     python -m maturin develop --release --manifest-path airwar_core/Cargo.toml \
         || echo "WARNING: Rust build failed; using pure-Python fallback."
 else
