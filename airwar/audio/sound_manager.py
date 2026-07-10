@@ -57,7 +57,7 @@ class SoundManager:
         self._init_failed: bool = False
         self._volume: float = 0.6
         self._muted: bool = False
-        self._sfx_cache: dict[str, pygame.mixer.Sound] = {}
+        self._sfx_cache: dict[str, pygame.mixer.Sound | None] = {}
         self._sfx_last_play_ms: dict[str, int] = {}
         self._bgm_track: str | None = None
         self._bgm_volume: float = 0.5
@@ -112,9 +112,10 @@ class SoundManager:
         if self._muted:
             return
 
-        _UNAVAILABLE = object()  # sentinel for SFX that cannot be generated
-        sound = self._sfx_cache.get(name, _UNAVAILABLE)
-        if sound is _UNAVAILABLE:
+        sound: pygame.mixer.Sound | None
+        if name in self._sfx_cache:
+            sound = self._sfx_cache[name]
+        else:
             sound = self._build_sfx(name)
             self._sfx_cache[name] = sound  # cache even if None to avoid retrying
         if sound is None:
@@ -243,7 +244,8 @@ class SoundManager:
     def _apply_volume(self) -> None:
         """Push current volume to all cached sounds."""
         for sound in self._sfx_cache.values():
-            sound.set_volume(self._volume)
+            if sound is not None:
+                sound.set_volume(self._volume)
 
     def mute_toggle(self) -> bool:
         """Flip the muted flag. Returns the new muted state."""

@@ -96,7 +96,7 @@ class BossMovement:
         screen_h = get_screen_height()
         margin = 50
         x_min = margin + 60
-        x_max = screen_w - boss.rect.width - margin - 60
+        x_max = int(screen_w - boss.rect.width - margin - 60)
         y_min = 60
         y_max = screen_h // 2
 
@@ -193,7 +193,7 @@ class BossMovement:
         if distance <= 0:
             return False
 
-        dash_distance = AIM_DASH_DISTANCE + boss.phase * AIM_DASH_PHASE_BONUS
+        dash_distance: float = AIM_DASH_DISTANCE + boss.phase * AIM_DASH_PHASE_BONUS
         dash_distance = min(dash_distance, distance * AIM_DASH_MAX_DISTANCE_RATIO)
         target_center_x = boss.rect.centerx + dx / distance * dash_distance
         target_center_y = boss.rect.centery + dy / distance * dash_distance

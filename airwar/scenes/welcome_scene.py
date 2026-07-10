@@ -117,7 +117,7 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         self.animation_time = 0
         self.cursor_visible = True
         self.cursor_timer = 0
-        self.known_usernames = []
+        self.known_usernames: list[str] = []
         self.show_user_dropdown = False
         self.show_leaderboard = False
 
@@ -200,16 +200,17 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             self._handle_keydown(event)
         elif event.type == pygame.MOUSEMOTION:
             self.handle_mouse_motion(event.pos)
-        elif event.type == pygame.MOUSEBUTTONDOWN and self._login_panel.handle_user_dropdown_click(event.pos):
-            return
-        elif event.type == pygame.MOUSEBUTTONDOWN and self.show_delete_confirm:
+        elif event.type == pygame.MOUSEBUTTONDOWN and self._login_panel is not None:
+            if self._login_panel.handle_user_dropdown_click(event.pos):
+                return
+        elif event.type == pygame.MOUSEBUTTONDOWN and self.show_delete_confirm and self._modals is not None:
             self._modals.handle_modal_mouse_click(event.pos, {"delete_confirm_yes", "delete_confirm_no"})
         elif event.type == pygame.MOUSEBUTTONDOWN and self.handle_mouse_click(event.pos):
             btn = self.get_hovered_button()
             if btn:
                 self._handle_button_click(btn)
             # Clicking on input areas sets focus (only outside confirm mode)
-            if not self.show_guest_confirm:
+            if not self.show_guest_confirm and self._login_panel is not None:
                 if btn == "username_field":
                     self._login_panel.focus_username_field()
                 elif btn == "password_field":
@@ -266,9 +267,9 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
                 self.guest_confirm_focus = "yes"
                 return
 
-        if self.focus in ("username", "password"):
+        if self.focus in ("username", "password") and self._login_panel is not None:
             self._login_panel.handle_input_key(event)
-        elif self.focus == "difficulty":
+        elif self.focus == "difficulty" and self._difficulty_panel is not None:
             self._difficulty_panel.handle_difficulty_key(event)
 
     def _handle_button_click(self, button_name: str) -> None:
@@ -276,6 +277,8 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         dp = self._difficulty_panel
         mod = self._modals
         lb = self._leaderboard_overlay
+        if lp is None or dp is None or mod is None or lb is None:
+            return
         window = get_window()
         scene = self
         handlers = {
@@ -311,16 +314,20 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
     # -- Internal click handlers --
 
     def _do_delete_user(self) -> None:
-        self._login_panel.do_delete_user()
+        if self._login_panel is not None:
+            self._login_panel.do_delete_user()
 
     def _do_login(self) -> None:
-        self._login_panel.do_login()
+        if self._login_panel is not None:
+            self._login_panel.do_login()
 
     def _load_known_usernames(self) -> None:
-        self._login_panel.load_known_usernames()
+        if self._login_panel is not None:
+            self._login_panel.load_known_usernames()
 
     def _select_known_user(self, index: int) -> None:
-        self._login_panel.select_known_user(index)
+        if self._login_panel is not None:
+            self._login_panel.select_known_user(index)
 
     # -- Update ---------------------------------------------------------
 
@@ -364,6 +371,14 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
         Args:
             surface: Target pygame surface, typically the game window.
         """
+        if (
+            self._login_panel is None
+            or self._difficulty_panel is None
+            or self._modals is None
+            or self._leaderboard_overlay is None
+        ):
+            return
+
         SC = SceneColors
         sw, sh = surface.get_width(), surface.get_height()
 
@@ -586,19 +601,26 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
     # -- Panel forwarders ------------------------------------------------
 
     def _get_login_layout(self, px: int, py: int) -> dict:
+        if self._login_panel is None:
+            return {}
         return self._login_panel.get_login_layout(px, py)
 
     def _handle_user_dropdown_click(self, pos: tuple[int, int]) -> bool:
+        if self._login_panel is None:
+            return False
         return self._login_panel.handle_user_dropdown_click(pos)
 
     def _cycle_focus(self) -> None:
         self.cycle_focus()
 
     def _handle_input_key(self, event: pygame.event.Event) -> None:
-        self._login_panel.handle_input_key(event)
+        if self._login_panel is not None:
+            self._login_panel.handle_input_key(event)
 
     def _handle_difficulty_key(self, event: pygame.event.Event) -> None:
-        self._difficulty_panel.handle_difficulty_key(event)
+        if self._difficulty_panel is not None:
+            self._difficulty_panel.handle_difficulty_key(event)
 
     def _handle_modal_mouse_click(self, pos: tuple[int, int], allowed_buttons: set[str]) -> None:
-        self._modals.handle_modal_mouse_click(pos, allowed_buttons)
+        if self._modals is not None:
+            self._modals.handle_modal_mouse_click(pos, allowed_buttons)

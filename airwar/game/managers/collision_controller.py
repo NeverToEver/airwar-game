@@ -82,8 +82,8 @@ class CollisionController:
         self._events: list[CollisionEvent] = []
         self._explosion_callback: Callable[[float, float, int], None] | None = None
         # Spatial hash grid for collision optimization
-        self._grid_cells = {}
-        self._enemy_grid_cells = {}
+        self._grid_cells: dict[tuple[int, int], list[Any]] = {}
+        self._enemy_grid_cells: dict[tuple[int, int], list[Any]] = {}
         self._grid_cell_size = self.GRID_CELL_SIZE
         self._use_rust = True
         self._previous_enemy_ids: set = set()

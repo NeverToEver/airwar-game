@@ -31,9 +31,9 @@ class AimAssistSystem:
         self._aim_assist_target = None
         self._spawn_controller = None
 
-    def set_raw_aim_position(self, position: tuple[int, int]) -> None:
-        x = max(0, min(float(position[0]), float(get_screen_width())))
-        y = max(0, min(float(position[1]), float(get_screen_height())))
+    def set_raw_aim_position(self, position: tuple[float, float]) -> None:
+        x = max(0.0, min(float(position[0]), float(get_screen_width())))
+        y = max(0.0, min(float(position[1]), float(get_screen_height())))
         if not self._aim_input_initialized:
             self._aim_input_initialized = True
             self._previous_raw_aim_position = (x, y)

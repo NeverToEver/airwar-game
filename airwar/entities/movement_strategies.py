@@ -192,4 +192,4 @@ def get_movement_strategy(move_type: str) -> MovementStrategy:
         MovementStrategy instance for the given type.
     """
     strategy_class = _STRATEGY_MAP.get(move_type, StraightMovement)
-    return strategy_class()
+    return strategy_class()  # type: ignore[abstract]

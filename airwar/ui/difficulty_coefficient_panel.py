@@ -25,8 +25,8 @@ class DifficultyCoefficientPanel:
         (float("inf"), Colors.ACCENT_DANGER, Colors.ACCENT_DANGER),
     ]
 
-    _bg_surface_cache = None
-    _glow_surface_cache = {}
+    _bg_surface_cache: pygame.Surface | None = None
+    _glow_surface_cache: dict[tuple[int, tuple[int, int, int]], pygame.Surface] = {}
 
     def __init__(self, difficulty_manager: DifficultyManagerProtocol):
         self._manager = difficulty_manager
@@ -129,4 +129,4 @@ class DifficultyCoefficientPanel:
         for threshold, normal_color, glow_color in self._COLOR_THRESHOLDS:
             if multiplier < threshold:
                 return glow_color if color_index == 2 else normal_color
-        return self._COLOR_THRESHOLDS[-1][color_index]
+        return self._COLOR_THRESHOLDS[-1][2] if color_index == 2 else self._COLOR_THRESHOLDS[-1][1]

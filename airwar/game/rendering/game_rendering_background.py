@@ -3,10 +3,18 @@
 import contextlib
 import math
 import random
+from typing import TypedDict
 
 import pygame
 
 from airwar.config.design_tokens import get_design_tokens
+
+
+class _LayerConfig(TypedDict):
+    speed_mult: float
+    count_divisor: int
+    size_range: tuple[float, float]
+    color_brightness: int
 
 
 class SpaceBackground:
@@ -18,12 +26,15 @@ class SpaceBackground:
     - Cached star surfaces
     """
 
-    _gradient_cache = {}
-    _star_cache = {}
+    _gradient_cache: dict[tuple[int, int], pygame.Surface] = {}
+    _star_cache: dict[tuple[int, ...], pygame.Surface] = {}
 
-    FAR_LAYER = {"speed_mult": 0.3, "count_divisor": 1, "size_range": (0.5, 1.5), "color_brightness": 80}
-    MID_LAYER = {"speed_mult": 0.6, "count_divisor": 2, "size_range": (1.0, 2.0), "color_brightness": 120}
-    NEAR_LAYER = {"speed_mult": 1.2, "count_divisor": 4, "size_range": (1.5, 3.0), "color_brightness": 160}
+    FAR_LAYER: _LayerConfig = {"speed_mult": 0.3, "count_divisor": 1,
+                               "size_range": (0.5, 1.5), "color_brightness": 80}
+    MID_LAYER: _LayerConfig = {"speed_mult": 0.6, "count_divisor": 2,
+                               "size_range": (1.0, 2.0), "color_brightness": 120}
+    NEAR_LAYER: _LayerConfig = {"speed_mult": 1.2, "count_divisor": 4,
+                                "size_range": (1.5, 3.0), "color_brightness": 160}
 
     def __init__(self, screen_width: int = 800, screen_height: int = 600):
         self.tokens = get_design_tokens()
@@ -31,7 +42,7 @@ class SpaceBackground:
         self.screen_height = screen_height
         self.time = 0.0
 
-        self._cached_gradient = None
+        self._cached_gradient: pygame.Surface | None = None
         self._init_layers(screen_width, screen_height)
         self._generate_gradient()
 

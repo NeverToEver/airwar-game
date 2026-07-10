@@ -61,7 +61,7 @@ class SettingsScene(Scene, MouseInteractiveMixin):
         self.running = False
         self._db = None
         self._username = None
-        self._settings_ref = None
+        self._settings_ref: dict[str, str] = {}
         self._focus_index = 0
         self._focus_count = 4  # ctrl, shift, language, back
         self._animation_time = 0

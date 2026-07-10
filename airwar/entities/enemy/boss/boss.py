@@ -150,6 +150,8 @@ class Boss(Entity):
         self._target_y: float = 180.0
         self.survival_timer = 0
         self.is_escaped = False
+        self._escape_notified = False
+        self._death_consumed = False
         self._show_escape_warning = False
         self.phase = data.phase
         self._bullet_spawner: IBulletSpawner | None = None
@@ -168,8 +170,8 @@ class Boss(Entity):
         self._muzzle_flash_timer = 0
         self._muzzle_flash_positions: list[tuple[float, float]] = []
         self._enrage_trail: list[tuple[float, float]] = []
-        self._enrage_trail_ghost = None
-        self._enrage_trail_ghost_key = None
+        self._enrage_trail_ghost: pygame.Surface | None = None
+        self._enrage_trail_ghost_key: tuple[int, int, int, int] | None = None
         # ---- Components (Phase 1 split) ----
         self._state = boss_state.BossStateMachine(self)
         self._movement = boss_movement.BossMovement(self)
@@ -244,8 +246,9 @@ class Boss(Entity):
                 self._renderer.face_target(target)
                 self._update_enrage_snapshot_attacks(target, progress)
             if self._state.enrage_timer <= 0:
-                self._move_behind_player_after_enrage(target)
-                self._release_enrage_bullets(target)
+                fallback_target = target or (get_screen_width() / 2, get_screen_height() / 2)
+                self._move_behind_player_after_enrage(fallback_target)
+                self._release_enrage_bullets(fallback_target)
             return
 
         if self._state.is_enrage_release_holding():
@@ -417,12 +420,15 @@ class Boss(Entity):
         self.attack_pattern = (self.attack_pattern + 1) % 3
 
     def _enrage_spawned_bullets(self) -> list[Bullet]:
-        if hasattr(self._bullet_spawner, "get_bullets"):
-            return self._bullet_spawner.get_bullets()
-        if hasattr(self._bullet_spawner, "bullets"):
-            return self._bullet_spawner.bullets
-        if hasattr(self._bullet_spawner, "bullet_list"):
-            return self._bullet_spawner.bullet_list
+        spawner = self._bullet_spawner
+        if spawner is None:
+            return []
+        if hasattr(spawner, "get_bullets"):
+            return spawner.get_bullets()
+        if hasattr(spawner, "bullets"):
+            return spawner.bullets
+        if hasattr(spawner, "bullet_list"):
+            return spawner.bullet_list
         return []
 
     # ------------------------------------------------------------------
@@ -447,7 +453,7 @@ class Boss(Entity):
     def _center_player_for_enrage(
         self,
         player=None,
-        player_pos: tuple[int, int] | None = None,
+        player_pos: tuple[float, float] | tuple[int, int] | None = None,
     ) -> tuple[float, float]:
         target = (get_screen_width() / 2, get_screen_height() / 2)
         if player is not None:
@@ -527,7 +533,7 @@ class Boss(Entity):
 
     def _update_enrage_transition(self, player_pos: tuple[int, int] | None = None, player=None) -> None:
         target = self._center_player_for_enrage(player, self._state.enrage_snapshot_target or player_pos)
-        self._state._enrage_snapshot_target = target
+        self._state.enrage_snapshot_target = target
         self._movement.tick_enrage_transition()
         self._renderer.face_target(target)
         self._attack.tick_muzzle_flash()

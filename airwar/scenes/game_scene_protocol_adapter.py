@@ -14,13 +14,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    pass
+    from .game_scene_protocols import GameSceneProtocol
 
 
 class IGameSceneAdapter:
     """Adapter implementing all53 IGameScene methods."""
 
-    def __init__(self, scene: object) -> None:
+    def __init__(self, scene: GameSceneProtocol) -> None:
         self._scene = scene
 
     # IScoreProvider (8 methods)

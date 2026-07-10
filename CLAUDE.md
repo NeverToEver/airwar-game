@@ -21,8 +21,9 @@ with broad rewrites while their gameplay behavior is still being developed.
 - Before handoff, run:
 
 ```bash
+python3 -m pytest tests/
 python3 -m ruff check .
-python3 -m compileall -q airwar main.py
+python3 -m compileall -q airwar main.py tests
 ```
 
 The current development status is maintained in `docs/DEVELOPMENT.md`.

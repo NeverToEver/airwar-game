@@ -7,15 +7,15 @@ class BossEnrageRenderer:
     """Renders boss enrage screen distortion overlay."""
 
     def __init__(self) -> None:
-        self._enrage_overlay_cache = None
-        self._enrage_overlay_cache_key = None
-        self._enrage_distortion_buffer = None
-        self._enrage_ripple_surface = None
-        self._enrage_sin_a = None
-        self._enrage_cos_a = None
-        self._enrage_sin_b = None
-        self._enrage_cos_b = None
-        self._enrage_band_cache_key = None
+        self._enrage_overlay_cache: pygame.Surface | None = None
+        self._enrage_overlay_cache_key: tuple[int, int] | None = None
+        self._enrage_distortion_buffer: pygame.Surface | None = None
+        self._enrage_ripple_surface: pygame.Surface | None = None
+        self._enrage_sin_a: list[float] | None = None
+        self._enrage_cos_a: list[float] | None = None
+        self._enrage_sin_b: list[float] | None = None
+        self._enrage_cos_b: list[float] | None = None
+        self._enrage_band_cache_key: tuple[int, int] | None = None
 
     def render(self, surface: pygame.Surface, boss) -> None:
         self._render_boss_enrage_overlay(surface, boss)
@@ -42,6 +42,9 @@ class BossEnrageRenderer:
             self._enrage_band_cache_key = buf_key
 
         ticks = pygame.time.get_ticks()
+
+        assert self._enrage_ripple_surface is not None
+        assert self._enrage_overlay_cache is not None
 
         # Phase B: ripple circles from the boss center on a pre-allocated surface
         self._enrage_ripple_surface.fill((0, 0, 0, 0))

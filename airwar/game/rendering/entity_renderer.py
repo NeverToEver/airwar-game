@@ -32,10 +32,10 @@ class EntityRenderer:
     ENTRY_FONT_SIZE = 36
     ESCAPE_FONT_SIZE = 28
 
-    _trail_surface_cache: dict = {}
-    _trail_cache_order: deque = deque()
-    _warning_font = None
-    _escape_font = None
+    _trail_surface_cache: dict[tuple[int, int, int, str], pygame.Surface] = {}
+    _trail_cache_order: deque[tuple[int, int, int, str]] = deque()
+    _warning_font: pygame.font.Font | None = None
+    _escape_font: pygame.font.Font | None = None
 
     def __init__(self):
         self.player_docked = False
@@ -62,8 +62,9 @@ class EntityRenderer:
         return surf
 
     def render_enemy(self, surface: pygame.Surface, enemy: "Enemy") -> None:
-        if getattr(enemy, "_sprite", None):
-            surface.blit(enemy._sprite, enemy.get_rect())
+        enemy_sprite = enemy._sprite
+        if enemy_sprite is not None:
+            surface.blit(enemy_sprite, enemy.get_rect())
             return
 
         health_ratio = enemy.health / enemy.max_health if enemy.max_health > 0 else 1.0
@@ -89,8 +90,9 @@ class EntityRenderer:
         )
 
     def render_bullet(self, surface: pygame.Surface, bullet: "Bullet") -> None:
-        if getattr(bullet, "_sprite", None):
-            surface.blit(bullet._sprite, bullet.get_rect())
+        bullet_sprite = bullet._sprite
+        if bullet_sprite is not None:
+            surface.blit(bullet_sprite, bullet.get_rect())
         elif bullet.data.is_explosive:
             draw_explosive_missile(surface, bullet.rect.x, bullet.rect.y, bullet.rect.width, bullet.rect.height)
         else:
@@ -293,6 +295,7 @@ class EntityRenderer:
         scaled_width = max(1, int(final_width * boss.ENRAGE_TRAIL_SCALE))
         scaled_height = max(1, int(final_height * boss.ENRAGE_TRAIL_SCALE))
         cache_key = (scaled_width, scaled_height, health_bucket, boss.ENRAGE_TRAIL_BLUR_PASSES)
+        cached_ghost = boss._enrage_trail_ghost
         if boss._enrage_trail_ghost_key != cache_key:
             source = pygame.Surface((final_width, final_height), pygame.SRCALPHA)
             draw_boss_ship(
@@ -305,9 +308,11 @@ class EntityRenderer:
             )
             source.fill((*boss.ENRAGE_TRAIL_TINT, 255), special_flags=pygame.BLEND_RGBA_MULT)
             ghost = pygame.transform.smoothscale(source, (scaled_width, scaled_height))
-            boss._enrage_trail_ghost = self._blur_enrage_trail_ghost(ghost, boss.ENRAGE_TRAIL_BLUR_PASSES)
+            cached_ghost = self._blur_enrage_trail_ghost(ghost, boss.ENRAGE_TRAIL_BLUR_PASSES)
+            boss._enrage_trail_ghost = cached_ghost
             boss._enrage_trail_ghost_key = cache_key
-        return boss._enrage_trail_ghost
+        assert cached_ghost is not None
+        return cached_ghost
 
     @staticmethod
     def _enrage_trail_render_size(boss: "Boss") -> tuple[int, int]:

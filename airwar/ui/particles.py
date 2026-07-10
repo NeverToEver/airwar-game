@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 import math
 import random
 
@@ -73,7 +74,7 @@ class ParticleSystem:
                 p["x"] = random.random()
                 p["alpha"] = random.randint(80, 180)
 
-    def render(self, surface: pygame.Surface, color: tuple[int, int, int]) -> None:
+    def render(self, surface: pygame.Surface, color: Sequence[int] | str) -> None:
         """Render all active particles to the given surface."""
         width, height = surface.get_size()
 

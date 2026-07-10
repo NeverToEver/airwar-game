@@ -60,6 +60,14 @@
 
 > 清理本地构建产物与虚拟环境：Windows 运行 `uninstall.bat`，Linux / macOS 运行 `./uninstall.sh`。源码、存档与配置不会被删除。
 
+### 运行测试
+
+```bash
+python3 -m pytest tests/
+```
+
+测试仅覆盖核心架构组件（帧时间、锁仲裁、场景管理、存档持久化、视口坐标），不测试渲染与游戏玩法细节。
+
 ### 手动启动
 
 ```bash

@@ -1,6 +1,7 @@
 """Difficulty progression — scales enemy stats and spawn rates over time."""
 
 import logging
+from typing import Any
 
 from ...config.difficulty_config import BASE_ENEMY_PARAMS
 from .difficulty_strategies import (
@@ -110,14 +111,14 @@ class DifficultyManager:
     def get_movement_complexity(self) -> int:
         return min(self.MAX_COMPLEXITY, 1 + self._boss_kill_count // 2)
 
-    def get_current_params(self) -> dict:
+    def get_current_params(self) -> dict[str, Any]:
         if self._cache_dirty or self._cached_params is None:
             self._cached_params = self._calculate_params()
             self._cache_dirty = False
 
         return self._cached_params.copy()
 
-    def _calculate_params(self) -> dict:
+    def _calculate_params(self) -> dict[str, Any]:
         self._logger.debug(
             f"Calculating difficulty params: "
             f"boss_kills={self._boss_kill_count}, "

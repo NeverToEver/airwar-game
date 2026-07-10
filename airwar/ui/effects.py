@@ -154,7 +154,12 @@ class EffectsRenderer:
         text_rect = main_text.get_rect(center=(x, y))
         surface.blit(main_text, text_rect)
 
-    def render_scanline_overlay(self, surface: pygame.Surface, rect: pygame.Rect = None, alpha: int | None = None):
+    def render_scanline_overlay(
+        self,
+        surface: pygame.Surface,
+        rect: pygame.Rect | None = None,
+        alpha: int | None = None,
+    ):
         """Render a scanline overlay effect.
 
         Args:

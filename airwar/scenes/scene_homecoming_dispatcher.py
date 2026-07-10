@@ -30,6 +30,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from airwar.game.systems.homecoming_coordinator import HomecomingCoordinator
+    from .game_scene_protocols import GameSceneProtocol
 
 
 class SceneHomecomingDispatcher:
@@ -51,7 +52,7 @@ class SceneHomecomingDispatcher:
     def __init__(
         self,
         coordinator: HomecomingCoordinator | None,
-        scene: object,
+        scene: GameSceneProtocol,
     ) -> None:
         self._coordinator = coordinator
         self._scene = scene

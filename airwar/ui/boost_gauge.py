@@ -2,6 +2,7 @@
 
 import contextlib
 import math
+from typing import Any
 
 import pygame
 
@@ -120,7 +121,7 @@ class BoostGauge:
         self._fonts: dict = {}
         self._bg_cache = None
         self._arc_cache = None
-        self._arc_cache_key = (0, 0)
+        self._arc_cache_key: tuple[Any, ...] = (0, 0)
         self._ticks = self._build_ticks()
 
     def _build_ticks(self):

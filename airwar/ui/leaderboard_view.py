@@ -33,9 +33,9 @@ class LeaderboardView:
         self._service = service if service is not None else LeaderboardService(UserDB())
         self._tokens = get_design_tokens()
         self._fonts_initialized = False
-        self._title_font = None
-        self._row_font = None
-        self._empty_font = None
+        self._title_font: pygame.font.Font | None = None
+        self._row_font: pygame.font.Font | None = None
+        self._empty_font: pygame.font.Font | None = None
 
     def _ensure_fonts(self) -> None:
         if self._fonts_initialized:
@@ -68,6 +68,10 @@ class LeaderboardView:
     def render(self, surface: pygame.Surface, screen_w: int, screen_h: int) -> None:
         """Render the leaderboard panel centered on the given surface."""
         self._ensure_fonts()
+        title_font = self._title_font
+        row_font = self._row_font
+        empty_font = self._empty_font
+        assert title_font is not None and row_font is not None and empty_font is not None
         SC = SceneColors
 
         entries = self.fetch_entries()
@@ -88,7 +92,7 @@ class LeaderboardView:
             self.CHAMFER,
         )
 
-        title = self._title_font.render(t("leaderboard.title"), True, SC.GOLD_PRIMARY)
+        title = title_font.render(t("leaderboard.title"), True, SC.GOLD_PRIMARY)
         surface.blit(title, title.get_rect(center=(screen_w // 2, panel_y + 50)))
 
         separator_y = panel_y + 96
@@ -101,13 +105,13 @@ class LeaderboardView:
         )
 
         if not entries:
-            empty = self._empty_font.render(t("leaderboard.empty"), True, SC.TEXT_DIM)
+            empty = empty_font.render(t("leaderboard.empty"), True, SC.TEXT_DIM)
             surface.blit(empty, empty.get_rect(center=(screen_w // 2, panel_y + panel_h // 2)))
         else:
-            self._render_rows(surface, entries, panel_x, separator_y + self.HEADER_GAP, panel_w)
+            self._render_rows(surface, entries, panel_x, separator_y + self.HEADER_GAP, panel_w, row_font)
 
         footer_y = panel_y + panel_h - 30
-        footer = self._empty_font.render(self._footer_text(), True, SC.TEXT_DIM)
+        footer = empty_font.render(self._footer_text(), True, SC.TEXT_DIM)
         surface.blit(footer, footer.get_rect(center=(screen_w // 2, footer_y)))
 
     def _render_rows(
@@ -117,6 +121,7 @@ class LeaderboardView:
         panel_x: int,
         start_y: int,
         panel_w: int,
+        row_font: pygame.font.Font,
     ) -> None:
         SC = SceneColors
         for index, entry in enumerate(entries[:LEADERBOARD_CAP]):
@@ -124,17 +129,17 @@ class LeaderboardView:
             row_y = start_y + index * self.ROW_H
             rank_color = self._rank_color(rank)
 
-            rank_surf = self._row_font.render(f"#{rank:02d}", True, rank_color)
+            rank_surf = row_font.render(f"#{rank:02d}", True, rank_color)
             rank_x = panel_x + self.ROW_INDENT
             surface.blit(rank_surf, rank_surf.get_rect(midleft=(rank_x, row_y + self.ROW_H // 2)))
 
             name = str(entry.get("player_name", ""))
-            name_surf = self._row_font.render(name, True, SC.TEXT_PRIMARY)
+            name_surf = row_font.render(name, True, SC.TEXT_PRIMARY)
             name_x = panel_x + self.ROW_INDENT + self.RANK_COL_W
             surface.blit(name_surf, name_surf.get_rect(midleft=(name_x, row_y + self.ROW_H // 2)))
 
             score = int(entry.get("score", 0))
-            score_surf = self._row_font.render(f"{score:>8}", True, SC.GOLD_PRIMARY)
+            score_surf = row_font.render(f"{score:>8}", True, SC.GOLD_PRIMARY)
             score_x = panel_x + panel_w - self.ROW_INDENT - self.SCORE_COL_W
             surface.blit(score_surf, score_surf.get_rect(midleft=(score_x, row_y + self.ROW_H // 2)))
 

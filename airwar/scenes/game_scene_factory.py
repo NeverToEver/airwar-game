@@ -96,7 +96,11 @@ class GameSceneFactory:
         reward_system.capture_player_baselines(player)
 
         reward_selector = scene.reward_selector
-        reward_selector.hide = lambda: setattr(reward_selector, "visible", False)
+        setattr(
+            reward_selector,
+            "hide",
+            lambda: setattr(reward_selector, "visible", False),
+        )
         reward_selector.visible = False
         boost_gauge = BoostGauge()
         ammo_magazine = AmmoMagazine()

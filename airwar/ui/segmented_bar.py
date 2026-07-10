@@ -1,5 +1,7 @@
 """Segmented progress bar component — military HUD style."""
 
+from typing import Any
+
 import pygame
 
 from airwar.config.design_tokens import SystemColors, SystemUI
@@ -23,7 +25,8 @@ class SegmentedProgressBar:
         self.segments = segments
         self.segment_gap = segment_gap or SystemUI.SEGMENT_GAP
         self.segment_width = (width - (segments - 1) * self.segment_gap) // segments
-        self._rendered_cache = {}
+        self._rendered_cache: dict[tuple[Any, ...], pygame.Surface] = {}
+        self._pulse_surf: pygame.Surface | None = None
 
     def render(
         self,
@@ -170,7 +173,7 @@ class SegmentedProgressBar:
 
         # 添加脉冲闪烁
         if pulse_alpha > 0:
-            if not hasattr(self, "_pulse_surf") or self._pulse_surf.get_size() != (self.width, self.height):
+            if self._pulse_surf is None or self._pulse_surf.get_size() != (self.width, self.height):
                 self._pulse_surf = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
             self._pulse_surf.fill((0, 0, 0, 0))
             pygame.draw.rect(self._pulse_surf, (*danger_color, pulse_alpha), self._pulse_surf.get_rect())
@@ -208,7 +211,7 @@ class BossHealthBar:
         boss_name: str = "",
         current_phase: int = 1,
         total_phases: int = 3,
-        font: pygame.font.Font = None,
+        font: pygame.font.Font | None = None,
     ) -> None:
         """Render the Boss health bar.
 

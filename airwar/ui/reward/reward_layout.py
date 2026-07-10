@@ -88,7 +88,7 @@ class RewardLayout:
         width, height = surface.get_size()
         panel_width = NON_THEMED_BOX_WIDTH
         panel_x = width // 2 - panel_width // 2
-        panel_y = height // 2 - PANEL_HEIGHT // 2 + glow_offset * 0.3
+        panel_y = int(height // 2 - PANEL_HEIGHT // 2 + glow_offset * 0.3)
         return panel_x, panel_y, panel_width, PANEL_HEIGHT
 
     @staticmethod
@@ -105,8 +105,8 @@ class RewardLayout:
         """
         width, height = surface.get_size()
         center_x = width // 2
-        panel_y = height // 2 - PANEL_HEIGHT // 2 + glow_offset * 0.3
-        start_y = panel_y + (PANEL_HEIGHT - OPTION_SECTION_HEIGHT) // 2 + 10
+        panel_y = int(height // 2 - PANEL_HEIGHT // 2 + glow_offset * 0.3)
+        start_y = int(panel_y + (PANEL_HEIGHT - OPTION_SECTION_HEIGHT) // 2 + 10)
         return center_x, panel_y, start_y
 
     @staticmethod

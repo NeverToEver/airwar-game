@@ -28,7 +28,7 @@ class PauseScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
 
     def enter(self, **kwargs) -> None:
         self.running = True
-        self.result: PauseAction = None
+        self.result: PauseAction | str | None = None
         self.options = [
             t("pause.option.resume"),
             t("pause.option.main_menu"),
@@ -138,7 +138,7 @@ class PauseScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
         width, height = surface.get_size()
         scale = ResponsiveHelper.get_scale_factor(width, height)
 
-        title_y = height // 3 + self.glow_offset * 0.3
+        title_y = int(height // 3 + self.glow_offset * 0.3)
         if self.use_themed_style:
             self._draw_themed_title(surface, t("pause.title"), self.title_font, (width // 2, title_y))
         else:
@@ -210,5 +210,5 @@ class PauseScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
         esc_offset = ResponsiveHelper.scale(SceneLayout.PAUSE_ESC_OFFSET, scale)
         surface.blit(esc_hint, esc_hint.get_rect(center=(width // 2, height - esc_offset)))
 
-    def get_result(self) -> PauseAction:
+    def get_result(self) -> PauseAction | str | None:
         return self.result

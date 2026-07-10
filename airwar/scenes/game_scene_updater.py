@@ -19,6 +19,8 @@ the early homecoming / aim blocks to run before the pause check at the
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from airwar.game.constants import GAME_CONSTANTS
 from airwar.game.frame_context import FrameContext, SimulationStep
 from airwar.game.managers.game_controller import GameplayState
@@ -27,20 +29,23 @@ from airwar.game.systems.lock_manager import LockLayer, LockRequest
 
 from .update_pipeline import UpdatePipeline
 
+if TYPE_CHECKING:
+    from .game_scene_protocols import GameSceneProtocol
+
 
 class GameSceneUpdater:
     """Per-frame update body extracted from GameScene (Phase 5-ε).
 
     Owns the 15 PIPELINE_ORDER steps + 7 migrated helpers + 4 state attrs.
-    Reads scene state via ``self._scene.<attr>`` (typed as ``object``);
-    writes cross-step state via instance attrs on ``self`` (e.g. ``_docked``).
+    Reads scene state via ``self._scene.<attr>``; writes cross-step state
+    via instance attrs on ``self`` (e.g. ``_docked``).
     """
 
     # Mirrored from GameScene so the updater owns the persistence timing values.
     BULLET_CLEAR_RADIUS = GAME_CONSTANTS.PERSISTENCE.BULLET_CLEAR_RADIUS
     BULLET_CLEAR_DEDUP_FRAMES = GAME_CONSTANTS.PERSISTENCE.BULLET_CLEAR_DEDUP_FRAMES
 
-    def __init__(self, scene: object) -> None:
+    def __init__(self, scene: GameSceneProtocol) -> None:
         self._scene = scene
         # Cross-step handoff: ``mothership_integrator`` step writes this;
         # ``core_logic`` step reads it for the docking position lock.
@@ -190,7 +195,10 @@ class GameSceneUpdater:
     def _step_dying_animation(self) -> bool | None:
         """Step 6: short-circuit during dying animation (L303-307)."""
         scene = self._scene
-        is_dying = scene.game_controller.state.gameplay_state == GameplayState.DYING
+        gc = scene.game_controller
+        if gc is None:
+            return None
+        is_dying = gc.state.gameplay_state == GameplayState.DYING
         if is_dying:
             scene._game_loop_manager.update_game(scene.player)
             return False
@@ -205,10 +213,13 @@ class GameSceneUpdater:
         the canonical "Smash Bros"-style hit-pause length.
         """
         scene = self._scene
-        if scene.game_controller.state.is_paused or scene.reward_selector.visible:
+        gc = scene.game_controller
+        if gc is None:
+            return None
+        if gc.state.is_paused or scene.reward_selector.visible:
             return False
         # Hit-stop: freeze gameplay ticks (but UI and render still run).
-        hit_stop = getattr(scene.game_controller.state, "hit_stop_timer", 0)
+        hit_stop = getattr(gc.state, "hit_stop_timer", 0)
         if hit_stop > 0:
             return False
         return None
@@ -360,7 +371,10 @@ class GameSceneUpdater:
     def _on_player_damaged(self, damage: int, player) -> None:
         """Handle player hit: apply damage, clear nearby enemy bullets, trigger juice."""
         scene = self._scene
-        scene.game_controller.on_player_hit(damage, player)
+        gc = scene.game_controller
+        if gc is None:
+            return
+        gc.on_player_hit(damage, player)
         self._clear_nearby_enemy_bullets(player)
         # Juice: screen shake + 4-frame hit-stop.
         juice = getattr(scene, "_juice_controller", None)
@@ -391,7 +405,10 @@ class GameSceneUpdater:
                 bullet.active = False
 
     def _on_give_up_complete(self) -> None:
-        self._scene.game_controller.on_player_hit(
+        gc = self._scene.game_controller
+        if gc is None:
+            return
+        gc.on_player_hit(
             GAME_CONSTANTS.DAMAGE.INSTANT_KILL, self._scene.player
         )
 

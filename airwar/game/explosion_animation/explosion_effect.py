@@ -136,8 +136,8 @@ class ExplosionEffect:
         self._radius = 0
         self._glow_surf_cache = None
         self._glow_surf_size = 0
-        self._shockwave_radius = 0
-        self._shockwave_max_radius = 0
+        self._shockwave_radius = 0.0
+        self._shockwave_max_radius = 0.0
         self._core_flash = 1.0
         self._central_glow = 1.0
 
@@ -158,7 +158,7 @@ class ExplosionEffect:
         self._debris.clear()
         self._glow_surf_cache = None
         self._glow_surf_size = 0
-        self._shockwave_radius = 0
+        self._shockwave_radius = 0.0
         self._shockwave_max_radius = radius * 2.5
         self._core_flash = 1.0
         self._central_glow = 1.0

@@ -237,6 +237,10 @@ class BossStateMachine:
     def enrage_snapshot_target(self) -> tuple[float, float] | None:
         return self._sub._enrage_snapshot_target
 
+    @enrage_snapshot_target.setter
+    def enrage_snapshot_target(self, value: tuple[float, float] | None) -> None:
+        self._sub._enrage_snapshot_target = value
+
     @property
     def enrage_transition_origin(self) -> tuple[float, float] | None:
         return self._sub._enrage_transition_origin

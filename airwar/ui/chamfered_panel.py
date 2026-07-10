@@ -5,10 +5,10 @@ import pygame
 from airwar.config.design_tokens import SystemUI
 
 # Cache for rendered panels
-_panel_surface_cache = {}
-_bg_cache = {}
-_border_cache = {}
-_glow_cache = {}
+_panel_surface_cache: dict[tuple[int, int, int], pygame.Surface] = {}
+_bg_cache: dict[tuple[int, int, int, tuple[int, ...]], pygame.Surface] = {}
+_border_cache: dict[tuple[int, int, int, tuple[int, ...]], pygame.Surface] = {}
+_glow_cache: dict[tuple[int, int, int, tuple[int, ...]], pygame.Surface] = {}
 
 
 def create_chamfered_points(width: int, height: int, chamfer_depth: int) -> list[tuple[int, int]]:
@@ -54,9 +54,9 @@ def draw_chamfered_panel(
     y: int,
     width: int,
     height: int,
-    bg_color: tuple[int, int, int],
-    border_color: tuple[int, int, int, int] | None = None,
-    glow_color: tuple[int, int, int, int] | None = None,
+    bg_color: tuple[int, ...],
+    border_color: tuple[int, ...] | None = None,
+    glow_color: tuple[int, ...] | None = None,
     chamfer_depth: int | None = None,
 ) -> None:
     """Draw a chamfered (cut-corner) panel with optional glow border.

@@ -17,7 +17,12 @@ existing mixin + helper methods that stay on the facade
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pygame
+
+if TYPE_CHECKING:
+    from .game_scene_protocols import GameSceneProtocol
 
 
 class GameSceneEventDispatcher:
@@ -28,7 +33,7 @@ class GameSceneEventDispatcher:
     the persistent state (pause request, hover, button registry, etc.).
     """
 
-    def __init__(self, scene: object) -> None:
+    def __init__(self, scene: GameSceneProtocol) -> None:
         self._scene = scene
 
     def dispatch(self, event: pygame.event.Event) -> None:

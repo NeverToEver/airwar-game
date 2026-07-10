@@ -1,6 +1,7 @@
 """Death screen — score summary and continue/quit options."""
 
 import math
+from typing import Any
 
 import pygame
 
@@ -30,14 +31,14 @@ class DeathScene(Scene, MouseSelectableMixin):
 
     def enter(self, **kwargs) -> None:
         self.running = True
-        self.result = None
+        self.result: str | None = None
         self.score = kwargs.get("score", 0)
         self.kills = kwargs.get("kills", 0)
         self.boss_kills = kwargs.get("boss_kills", 0)
         self.username = kwargs.get("username", "Player")
         self.animation_time = 0
-        self.glow_offset = 0
-        self.ripples = []
+        self.glow_offset: float = 0
+        self.ripples: list[dict[str, Any]] = []
 
         self._tokens = get_design_tokens()
 
@@ -146,7 +147,7 @@ class DeathScene(Scene, MouseSelectableMixin):
             surface,
             t("death.title"),
             self.title_font,
-            (width // 2, title_y),
+            (width // 2, int(title_y)),
             self.colors["title"],
             self.colors["title_glow"],
             glow_radius=5,

@@ -53,18 +53,18 @@ class MothershipAnimations:
 
         # Docking
         self._docking_animation_active = False
-        self._docking_animation_start = None
-        self._docking_animation_target = None
+        self._docking_animation_start: tuple[float, float] | None = None
+        self._docking_animation_target: tuple[float, float] | None = None
         self._docking_animation_frame = 0
-        self._docking_start_position = None
+        self._docking_start_position: tuple[float, float] | None = None
 
         # Undocking
         self._undocking_animation_active = False
-        self._undocking_animation_start = None
-        self._undocking_animation_target = None
+        self._undocking_animation_start: tuple[float, float] | None = None
+        self._undocking_animation_target: tuple[float, float] | None = None
         self._undocking_animation_frame = 0
-        self._undocking_start_position = None
-        self._undocking_eject_target = None
+        self._undocking_start_position: tuple[float, float] | None = None
+        self._undocking_eject_target: tuple[float, float] | None = None
         self._undocking_phase = 1
 
     # ── Duration accessors used by the original `_update_*_animation` ────
@@ -110,16 +110,19 @@ class MothershipAnimations:
 
     def start_docking(self) -> None:
         """Start the docking animation (called via event handler)."""
+        scene = self._integrator._game_scene
+        if scene is None or scene.player is None:
+            return
         self._docking_animation_active = True
         self._docking_animation_frame = 0
         self._docking_start_position = (
-            self._integrator._game_scene.player.rect.x,
-            self._integrator._game_scene.player.rect.y,
+            scene.player.rect.x,
+            scene.player.rect.y,
         )
         # Convert docking bay center to topleft for set_player_position_topleft
         dock_center = self._integrator._mother_ship.get_docking_position()
-        pw = self._integrator._game_scene.player.rect.width
-        ph = self._integrator._game_scene.player.rect.height
+        pw = scene.player.rect.width
+        ph = scene.player.rect.height
         self._docking_animation_target = (
             dock_center[0] - pw // 2,
             dock_center[1] - ph // 2,
@@ -129,6 +132,9 @@ class MothershipAnimations:
 
     def start_undocking(self) -> None:
         """Start the undocking animation (called via event handler)."""
+        scene = self._integrator._game_scene
+        if scene is None or scene.player is None:
+            return
         self._undocking_animation_active = True
         self._undocking_animation_frame = 0
         self._undocking_phase = 1
@@ -137,8 +143,8 @@ class MothershipAnimations:
 
         dock_pos = self._integrator._mother_ship.get_docking_position()
         # Convert docking position (center) to topleft for player rect
-        pw = self._integrator._game_scene.player.rect.width
-        ph = self._integrator._game_scene.player.rect.height
+        pw = scene.player.rect.width
+        ph = scene.player.rect.height
         start_x = dock_pos[0] - pw // 2
         start_y = dock_pos[1] - ph // 2
 

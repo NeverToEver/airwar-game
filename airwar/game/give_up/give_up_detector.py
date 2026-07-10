@@ -50,7 +50,7 @@ class GiveUpDetector:
 
         if self._progress >= 1.0 and not self._is_complete:
             self._is_complete = True
-            if self._on_complete_callback:
+            if self._on_complete_callback is not None:
                 self._on_complete_callback()
 
     def get_progress(self) -> float:

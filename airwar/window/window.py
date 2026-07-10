@@ -108,9 +108,11 @@ class Window:
         return self.get_size()[1]
 
     def get_surface(self) -> pygame.Surface:
+        assert self._screen is not None
         return self._screen
 
     def get_clock(self) -> pygame.time.Clock:
+        assert self._clock is not None
         return self._clock
 
     def set_title(self, title: str) -> None:

@@ -43,6 +43,7 @@ class SceneSwitcher:
         # one-shot navigation request.
         self._scene_manager.switch("welcome", viewport=self._viewport)
         welcome = self._scene_manager.get_current_scene()
+        assert welcome is not None
         while self._director._running:
             result = self._run_scene_loop(welcome)
             if result == "quit":
@@ -343,8 +344,8 @@ class SceneSwitcher:
                 return PauseAction.QUIT
             pause_scene.enter()
 
-            result = self._run_scene_loop(pause_scene)
-            if result == "quit":
+            loop_result = self._run_scene_loop(pause_scene)
+            if loop_result == "quit":
                 return PauseAction.QUIT
 
             result = pause_scene.get_result()
@@ -355,7 +356,9 @@ class SceneSwitcher:
                     return PauseAction.QUIT
                 continue
 
-            return result if result else PauseAction.RESUME
+            if isinstance(result, PauseAction):
+                return result
+            return PauseAction.RESUME
 
     def _show_exit_confirm(self, saved: bool) -> str:
         """Show exit confirmation menu.

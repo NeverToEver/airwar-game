@@ -26,7 +26,7 @@ import the full ``airwar.game`` namespace.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Protocol, runtime_checkable
+from typing import ClassVar, Protocol, runtime_checkable
 
 
 @runtime_checkable
@@ -48,14 +48,26 @@ class InputSourceProtocol(Protocol):
     def is_precision_just_pressed(self) -> bool: ...
 
 
+class _BuffLike(Protocol):
+    """Minimal buff surface used by UI panels."""
+
+    def get_color(self) -> tuple[int, int, int]: ...
+
+
 # Convenience callable alias for buff-creation.
-BuffFactory = Callable[[str], object]
+BuffFactory = Callable[[str], _BuffLike]
 
 
 @runtime_checkable
 class DifficultyManagerProtocol(Protocol):
     """Subset of ``DifficultyManager`` accessed by the UI panel."""
 
+    MAX_MULTIPLIER_GLOBAL: ClassVar[float]
+
+    @property
+    def initial_multiplier(self) -> float: ...
+
+    def get_current_multiplier(self) -> float: ...
     def get_current_difficulty(self) -> object: ...
 
 

@@ -53,7 +53,7 @@ class MotherShipMotion:
         self._initial_x = screen_width // 2
         self._initial_y = int(screen_height * 0.35)
         self._position = (self._initial_x, self._initial_y)
-        self._animation_time = 0
+        self._animation_time = 0.0
 
         self._velocity = [0.0, 0.0]
         self._player_input = [0, 0]
@@ -131,7 +131,7 @@ class MotherShipMotion:
 
         if self._flyaway_mode:
             self._flyaway_velocity_y -= self._flyaway_accel
-            new_x = self._position[0]
+            new_x = float(self._position[0])
             new_y = self._position[1] + self._flyaway_velocity_y
             self._position = (int(new_x), int(new_y))
             # Auto-hide when fully off the top of the screen

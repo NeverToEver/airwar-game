@@ -7,6 +7,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
+from typing import Any
 
 import pygame
 
@@ -117,6 +118,15 @@ class Enemy(Entity):
     DEFAULT_NOISE_AMPLITUDE_Y = _ENEMY_TUNING.DEFAULT_NOISE_AMPLITUDE_Y
     DEFAULT_AGGRESSIVE_AMPLITUDE_X = _ENEMY_TUNING.DEFAULT_AGGRESSIVE_AMPLITUDE_X
     DEFAULT_AGGRESSIVE_AMPLITUDE_Y = _ENEMY_TUNING.DEFAULT_AGGRESSIVE_AMPLITUDE_Y
+
+    # Runtime-populated movement attributes (declared for type checking).
+    move_type: str
+    _movement_strategy: Any
+    _movement_enhancements: dict[str, Any]
+    _rust_move_type_code: int
+    _rust_params: dict[str, Any]
+    _timer_attr: str
+    _batch_result: tuple[float, float, float] | None
 
     # 1. Special methods
 
@@ -463,7 +473,7 @@ class Enemy(Entity):
 
     def _init_hover_movement(self) -> None:
         self.move_type = "hover"
-        self.hover_timer = 0
+        self.hover_timer = 0.0
         self.hover_speed = random.uniform(*self.HOVER_SPEED_RANGE)
         self.hover_amplitude = random.uniform(*self.HOVER_AMP_RANGE)
         self.start_x = self.rect.x
@@ -510,8 +520,8 @@ class Enemy(Entity):
     # 6. Private behavior methods
 
     def sync_rects(self) -> None:
-        self._collision_rect.x = self.rect.x - (self._collision_rect.width - self.rect.width) // 2
-        self._collision_rect.y = self.rect.y - (self._collision_rect.height - self.rect.height) // 2
+        self._collision_rect.x = int(self.rect.x - (self._collision_rect.width - self.rect.width) // 2)
+        self._collision_rect.y = int(self.rect.y - (self._collision_rect.height - self.rect.height) // 2)
 
     def _resize_collision_rect(self, scale: float) -> None:
         size = int(max(self.rect.width, self.rect.height) * scale)
@@ -752,6 +762,7 @@ class EnemySpawner:
     def _spawn_one(self, enemies: list[Enemy], data: tuple) -> None:
         """Create a single enemy from precomputed spawn tuple and add to list."""
         px, py, bullet_type, enemy_type, is_elite = data
+        enemy: Enemy
         if is_elite:
             elite_data = EliteEnemyData(
                 health=int(self.health * 2.5),

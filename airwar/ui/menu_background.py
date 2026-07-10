@@ -42,10 +42,10 @@ class MenuBackground:
     - All animations use math calculations, no surface rebuilding
     """
 
-    _gradient_cache = {}
-    _leaf_surface_cache = {}
-    _light_surface_cache = {}
-    _scan_glow_cache = {}
+    _gradient_cache: dict[tuple[int, int, tuple[int, ...], tuple[int, ...]], pygame.Surface] = {}
+    _leaf_surface_cache: dict[int, pygame.Surface] = {}
+    _light_surface_cache: dict[tuple[int, int], pygame.Surface] = {}
+    _scan_glow_cache: dict[tuple[str, int, int, int], pygame.Surface] = {}
 
     def __init__(self):
         self._animation_time = 0

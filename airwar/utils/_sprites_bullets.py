@@ -49,8 +49,8 @@ def draw_single_bullet(
         ew, eh = int(width * 1.2), int(height * 1.15)
     else:
         bullet_color = (255, 220, 50)
-        core_color = None
-        ew, eh = width, height
+        core_color = bullet_color
+        ew, eh = int(width), int(height)
 
     cache_key = (int(ew), int(eh), owner)
     if cache_key not in _single_bullet_glow_cache:

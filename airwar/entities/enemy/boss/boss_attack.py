@@ -64,7 +64,7 @@ class BossAttackPatterns:
     # Direction helpers
     # ------------------------------------------------------------------
 
-    def get_direction_offsets(self) -> dict[str, tuple[int, int]]:
+    def get_direction_offsets(self) -> dict[str, tuple[int, float]]:
         boss = self._boss
         return {
             "down": (-90, boss.rect.bottom),
@@ -73,7 +73,7 @@ class BossAttackPatterns:
             "up": (90, boss.rect.y),
         }
 
-    def get_direction_sources(self) -> dict[str, tuple[int, int]]:
+    def get_direction_sources(self) -> dict[str, tuple[float, float]]:
         boss = self._boss
         return {
             "down": (boss.rect.centerx, boss.rect.bottom),
@@ -82,7 +82,7 @@ class BossAttackPatterns:
             "up": (boss.rect.centerx, boss.rect.y),
         }
 
-    def get_target_offsets(self) -> dict[str, tuple[int, int]]:
+    def get_target_offsets(self) -> dict[str, tuple[float, float]]:
         d = get_game_constants().BOSS.ATTACK_DISTANCE
         return {"down": (0, d), "left": (-d, 0), "right": (d, 0), "up": (0, -d)}
 

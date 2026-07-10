@@ -152,6 +152,35 @@ class Scene(ABC):
         """
         return True
 
+    def is_ready(self) -> bool:
+        """Return whether the scene has produced a result to advance.
+
+        Subclasses such as ``WelcomeScene`` override this to signal that the
+        player has finished interacting with the scene.
+        """
+        return False
+
+    def get_username(self) -> str:
+        """Return the username produced by this scene, if any.
+
+        Override in subclasses that collect player identity.
+        """
+        return ""
+
+    def get_difficulty(self) -> str:
+        """Return the difficulty selected in this scene, if any.
+
+        Override in subclasses that offer difficulty selection.
+        """
+        return "medium"
+
+    def get_result(self) -> object | None:
+        """Return the scene-specific result object, if any.
+
+        Override in subclasses that produce a result payload.
+        """
+        return None
+
 
 class SceneManager:
     """Manages scene registration and switching.
@@ -167,7 +196,7 @@ class SceneManager:
 
     def __init__(self):
         self._scenes: dict[str, Scene] = {}
-        self._current_scene: Scene = None
+        self._current_scene: Scene | None = None
         self._current_scene_name: str = ""
 
     def register(self, name: str, scene: Scene) -> None:
@@ -199,7 +228,7 @@ class SceneManager:
         self._current_scene_name = name
         self._current_scene.enter(**kwargs)
 
-    def get_current_scene(self) -> Scene:
+    def get_current_scene(self) -> Scene | None:
         """Get the currently active scene instance.
 
         Returns:
@@ -249,7 +278,7 @@ class SceneManager:
             raise SceneUnknownError("handle_events")
         self._current_scene.handle_events(event)
 
-    def get_scene(self, name: str) -> Scene:
+    def get_scene(self, name: str) -> Scene | None:
         """Get a registered scene by name.
 
         Args:

@@ -1,5 +1,7 @@
 """Pause button layout and rendering component."""
 
+from typing import Any
+
 import pygame
 
 
@@ -13,8 +15,8 @@ class PauseButtonComponent:
     PAUSE_BAR_GAP = 5
 
     def __init__(self) -> None:
-        self._pause_btn_layout = None
-        self._pause_btn_cache = {}
+        self._pause_btn_layout: dict[str, Any] | None = None
+        self._pause_btn_cache: dict[str, tuple[pygame.Surface, pygame.Surface]] = {}
 
     def init_layout(self, register_button_callback) -> None:
         size = self.PAUSE_BUTTON_SIZE

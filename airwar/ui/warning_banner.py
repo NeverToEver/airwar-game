@@ -91,10 +91,10 @@ class WarningBanner:
         self._on_complete = None
         self._banner_cache = None
         self._banner_cache_key = (0,)
-        self._main_font: pygame.font.Font = None
-        self._sub_font: pygame.font.Font = None
-        self._main_text: pygame.Surface = None
-        self._sub_text: pygame.Surface = None
+        self._main_font: pygame.font.Font | None = None
+        self._sub_font: pygame.font.Font | None = None
+        self._main_text: pygame.Surface | None = None
+        self._sub_text: pygame.Surface | None = None
         self._pulse_phase = 0.0
         self._y_offset = 0.0  # current vertical offset from target position
         self._last_tick: int = 0
@@ -121,6 +121,7 @@ class WarningBanner:
         if self._main_font is None:
             self._main_font = get_cjk_font(28)
             self._sub_font = get_cjk_font(20)
+        assert self._main_font is not None and self._sub_font is not None
         self._main_text = self._main_font.render(t(self.WARNING_TEXT_KEY), True, self.WARNING_TEXT_COLOR)
         self._sub_text = self._sub_font.render(t(self.SUB_TEXT_KEY), True, self.SUB_TEXT_COLOR)
         return True

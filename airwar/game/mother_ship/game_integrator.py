@@ -184,6 +184,8 @@ class GameIntegrator:
         self._mother_ship.set_player_input(x_input, y_input)
 
     def update(self, delta_seconds: float, elapsed_seconds: float) -> None:
+        if self._game_scene is None:
+            return
         self._current_time = elapsed_seconds
         self._update_mothership_input()
 

@@ -109,7 +109,7 @@ class PersistenceManager(IPersistenceManager):
     def _validate_save_dict(self, data: dict) -> None:
         data = normalize_save_data(data)
         required_keys = {"version", "score", "username"}
-        type_checks = {
+        type_checks: dict[str, type | tuple[type, ...]] = {
             "version": int,
             "score": int,
             "cycle_count": int,
@@ -130,7 +130,15 @@ class PersistenceManager(IPersistenceManager):
             if key not in data:
                 raise SaveDataCorruptedError(f"Missing required field: {key}")
         for key, expected_type in type_checks.items():
-            if key in data and not isinstance(data[key], expected_type):
+            if key not in data:
+                continue
+            if isinstance(expected_type, tuple):
+                if not isinstance(data[key], expected_type):
+                    type_names = " | ".join(t.__name__ for t in expected_type)
+                    raise SaveDataCorruptedError(
+                        f"Field '{key}' has wrong type: expected {type_names}, got {type(data[key]).__name__}"
+                    )
+            elif not isinstance(data[key], expected_type):
                 raise SaveDataCorruptedError(
                     f"Field '{key}' has wrong type: expected {expected_type.__name__}, got {type(data[key]).__name__}"
                 )

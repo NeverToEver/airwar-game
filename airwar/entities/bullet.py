@@ -41,6 +41,14 @@ class Bullet(Entity):
         self._trail: deque = deque(maxlen=8)
         self._hit_enemies: list[int] = []
 
+        # Boss enrage held-shot state
+        self.held: bool = False
+        self.clear_immune: bool = False
+        self.release_direction: Vector2 | None = None
+        self.enrage_release_speed: float = 0.0
+        self.enrage_release_pending: bool = False
+        self.enrage_release_delay: int = 0
+
         if data.angle_offset != 0:
             angle_rad = math.radians(data.angle_offset)
             self.velocity = Vector2(data.speed * math.sin(angle_rad), -data.speed * math.cos(angle_rad))

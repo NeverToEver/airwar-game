@@ -99,7 +99,7 @@ class TalentBalanceManager:
         return levels
 
     def locked_buffs(self) -> set[str]:
-        locked = set()
+        locked: set[str] = set()
         for route, options in LOADOUT_ROUTES.items():
             selected = self._loadout.get(route)
             if not selected:

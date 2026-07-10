@@ -33,6 +33,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pygame
+
 if TYPE_CHECKING:
     from .game_scene import GameScene
 
@@ -49,8 +51,8 @@ class GameSceneRenderer:
         # Low-health effects are only occasional, but allocating full-screen
         # alpha surfaces when they do fire causes visible frame-time spikes.
         self._damage_overlay_size: tuple[int, int] | None = None
-        self._damage_aberration = None
-        self._damage_flash = None
+        self._damage_aberration: pygame.Surface | None = None
+        self._damage_flash: pygame.Surface | None = None
         self._damage_aberration_frame = 0
 
     def dispose(self) -> None:
@@ -206,7 +208,7 @@ class GameSceneRenderer:
             flash.fill((220, 60, 50, alpha))
             surface.blit(flash, (0, 0))
 
-    def _get_damage_overlays(self, size: tuple[int, int], pygame):
+    def _get_damage_overlays(self, size: tuple[int, int], pygame) -> tuple[pygame.Surface, pygame.Surface]:
         """Return reusable full-screen surfaces for transient damage effects."""
         if self._damage_overlay_size != size:
             self._damage_overlay_size = size
@@ -214,6 +216,8 @@ class GameSceneRenderer:
             self._damage_flash = pygame.Surface(size, pygame.SRCALPHA)
             self._damage_flash.fill((220, 60, 50))
             self._damage_aberration_frame = 0
+        assert self._damage_aberration is not None
+        assert self._damage_flash is not None
         return self._damage_aberration, self._damage_flash
 
     def _render_haunting_corruption(self, surface) -> None:

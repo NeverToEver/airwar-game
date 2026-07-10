@@ -61,5 +61,5 @@ class HomecomingDetector:
         self._progress = min(1.0, self._progress + delta_time / self.HOLD_DURATION)
         if self._progress >= 1.0 and not self._is_complete:
             self._is_complete = True
-            if self._on_complete_callback:
+            if self._on_complete_callback is not None:
                 self._on_complete_callback()

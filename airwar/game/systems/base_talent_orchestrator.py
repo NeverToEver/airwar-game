@@ -30,7 +30,7 @@ class BaseTalentOrchestrator:
     def __init__(self, coordinator, base_talent_console) -> None:
         self._coordinator = coordinator
         self._base_talent_console = base_talent_console
-        self._talent_balance_manager = None
+        self._talent_balance_manager: TalentBalanceManager | None = None
         self._save_fn = None
 
     # --- Accessors ---

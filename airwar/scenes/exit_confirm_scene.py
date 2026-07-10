@@ -27,7 +27,7 @@ class ExitConfirmScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
 
     def enter(self, **kwargs) -> None:
         self.running = True
-        self.result: ExitConfirmAction = None
+        self.result: ExitConfirmAction | None = None
         self.options = [
             t("exit_confirm.option.main_menu"),
             t("exit_confirm.option.new_game"),
@@ -145,7 +145,7 @@ class ExitConfirmScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
         scale = ResponsiveHelper.get_scale_factor(width, height)
         center_x = width // 2
 
-        title_y = height // 3 + self.glow_offset * 0.3
+        title_y = int(height // 3 + self.glow_offset * 0.3)
         title_text = t("exit_confirm.title_saved") if self.saved else t("exit_confirm.title_quit")
 
         if self.use_themed_style:
@@ -176,10 +176,10 @@ class ExitConfirmScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
         if self.saved:
             indicator_dy = ResponsiveHelper.scale(SceneLayout.EXIT_INDICATOR_OFFSET, scale)
             if self.use_themed_style:
-                indicator_y = title_y + indicator_dy
+                indicator_y = int(title_y + indicator_dy)
                 self._draw_themed_success_indicator(surface, center_x, indicator_y, scale)
             else:
-                self._draw_success_indicator(surface, center_x, title_y + indicator_dy, scale)
+                self._draw_success_indicator(surface, center_x, int(title_y + indicator_dy), scale)
 
         option_spacing = ResponsiveHelper.scale(self.base_option_spacing, scale)
         start_y = height // 2 + ResponsiveHelper.scale(SceneLayout.EXIT_OPTIONS_OFFSET, scale)
@@ -239,7 +239,7 @@ class ExitConfirmScene(Scene, MouseSelectableMixin, ThemedSceneMixin):
             check_surface.set_alpha(alpha)
             surface.blit(check_surface, check_rect)
 
-    def get_result(self) -> ExitConfirmAction:
+    def get_result(self) -> ExitConfirmAction | None:
         return self.result
 
     def is_running(self) -> bool:

@@ -92,9 +92,9 @@ class AmmoMagazine:
         self._cell_warning = self.CELL_WARNING_COLOR
         self._cell_warning_glow = self.CELL_WARNING_GLOW_COLOR
         self._text_color = SystemColors.TEXT_DIM
-        self._label_font: pygame.font.Font = None
-        self._count_font: pygame.font.Font = None
-        self._detail_font: pygame.font.Font = None
+        self._label_font: pygame.font.Font | None = None
+        self._count_font: pygame.font.Font | None = None
+        self._detail_font: pygame.font.Font | None = None
         self._frame_cache = None
         self._frame_cache_key = (0, 0)
         self._pulse_phase = 0.0
@@ -112,7 +112,7 @@ class AmmoMagazine:
             + self.FRAME_PAD_BOTTOM
         )
 
-    def _ensure_fonts(self):
+    def _ensure_fonts(self) -> None:
         if self._label_font is None:
             self._label_font = get_cjk_font(self.LABEL_FONT_SIZE)
         if self._count_font is None:
@@ -243,6 +243,11 @@ class AmmoMagazine:
         cooldown_remaining: float,
         cooldown_reduction: float,
     ) -> None:
+        self._ensure_fonts()
+        label_font = self._label_font
+        count_font = self._count_font
+        detail_font = self._detail_font
+        assert label_font is not None and count_font is not None and detail_font is not None
 
         # Cache frame background
         cache_key = (fw, fh)
@@ -252,7 +257,7 @@ class AmmoMagazine:
         surface.blit(self._frame_cache, (fx, fy))
 
         # Header label
-        label = self._label_font.render("母舰", True, self._text_color)
+        label = label_font.render("母舰", True, self._text_color)
         label_rect = label.get_rect(center=(fx + fw // 2, fy + self.LABEL_CENTER_Y))
         surface.blit(label, label_rect)
 
@@ -295,7 +300,7 @@ class AmmoMagazine:
         else:
             count_text = f"{int(ammo_count)}/{int(ammo_max)}"
         count_color = self.COUNT_WARNING_COLOR if is_warning else self._text_color
-        count_surf = self._count_font.render(count_text, True, count_color)
+        count_surf = count_font.render(count_text, True, count_color)
         has_reduction = is_cooldown and cooldown_reduction > 0.005
         count_y = cells_end_y + (8 if has_reduction else self.FRAME_PAD_BOTTOM // 2)
         count_rect = count_surf.get_rect(center=(fx + fw // 2, count_y))
@@ -304,7 +309,7 @@ class AmmoMagazine:
         if has_reduction:
             reduction_pct = min(99, round(cooldown_reduction * 100))
             reduction_text = f"返场 -{reduction_pct}%"
-            reduction_surf = self._detail_font.render(reduction_text, True, self._cell_filled)
+            reduction_surf = detail_font.render(reduction_text, True, self._cell_filled)
             reduction_rect = reduction_surf.get_rect(center=(fx + fw // 2, cells_end_y + 22))
             surface.blit(reduction_surf, reduction_rect)
 

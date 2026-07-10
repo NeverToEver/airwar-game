@@ -59,8 +59,8 @@ class DeathAnimation:
     SPARK_GLOW_ALPHA_RATIO = 0.18
 
     # Cache for flicker surfaces
-    _flicker_cache = {}
-    _spark_glow_cache = {}
+    _flicker_cache: dict[tuple[int, tuple[int, int, int]], pygame.Surface] = {}
+    _spark_glow_cache: dict[tuple[int, int], pygame.Surface] = {}
 
     def __init__(self) -> None:
         self._active = False

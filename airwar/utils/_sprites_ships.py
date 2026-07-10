@@ -10,10 +10,10 @@ from ._sprites_common import draw_glow_circle
 from .generated_asset_cache import load_or_build_generated_surface
 
 # Sprite surface caches
-_player_sprite_cache = {}
-_enemy_sprite_cache = {}
-_boss_sprite_cache = {}
-_elite_sprite_cache = {}
+_player_sprite_cache: dict[tuple[int, int, int, str], pygame.Surface] = {}
+_enemy_sprite_cache: dict[tuple[int, int, int, int, str], pygame.Surface] = {}
+_boss_sprite_cache: dict[tuple[int, int, int, int, str], pygame.Surface] = {}
+_elite_sprite_cache: dict[tuple[int, int, int, int, str], pygame.Surface] = {}
 _ship_sprite_caches_prewarmed = False
 
 PLAYER_SPRITE_STYLE_VERSION = 5

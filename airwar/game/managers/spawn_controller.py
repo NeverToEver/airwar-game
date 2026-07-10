@@ -1,7 +1,7 @@
 """Enemy and boss spawning controller with wave management."""
 
 import random
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from airwar.config import BASE_ENEMY_PARAMS, DIFFICULTY_SETTINGS, get_screen_width
 from airwar.config.constants_access import get_game_constants
@@ -80,7 +80,7 @@ class SpawnController:
 
     def set_difficulty(self, difficulty: str) -> None:
         """Re-initialize spawn params from difficulty settings on restore."""
-        settings = DIFFICULTY_SETTINGS.get(difficulty, DIFFICULTY_SETTINGS["medium"])
+        settings: dict[str, Any] = DIFFICULTY_SETTINGS.get(difficulty, DIFFICULTY_SETTINGS["medium"])
         self._base_enemy_health = settings["enemy_health"]
         self.enemy_spawner.set_params(
             health=settings["enemy_health"], speed=settings["enemy_speed"], spawn_rate=settings["spawn_rate"]
@@ -96,7 +96,7 @@ class SpawnController:
         """
         self._difficulty_manager = manager
 
-    def get_current_params(self) -> dict:
+    def get_current_params(self) -> dict[str, Any]:
         """Return the current spawn parameters used for enemy waves.
 
         Delegates to the difficulty manager when available; otherwise
@@ -273,7 +273,7 @@ class SpawnController:
             self.reset_boss_timer(penalty=self.boss.is_escaped)
             self.boss = None
 
-    def clear_boss(self) -> None:
+    def clear_boss(self) -> bool:
         """F7: encapsulate direct ``self.boss = None`` writes from scene layer.
 
         Returns:

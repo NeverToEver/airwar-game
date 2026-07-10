@@ -9,6 +9,7 @@ from __future__ import annotations
 import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import Protocol
 
 import pygame
 
@@ -130,6 +131,19 @@ class Vector2:
         return (self.x, self.y)
 
 
+class _RectLike(Protocol):
+    """Structural type for anything exposing rectangle attributes."""
+
+    @property
+    def x(self) -> float | int: ...
+    @property
+    def y(self) -> float | int: ...
+    @property
+    def width(self) -> float | int: ...
+    @property
+    def height(self) -> float | int: ...
+
+
 @dataclass
 class Rect:
     """Axis-aligned rectangle for collision detection and positioning."""
@@ -167,7 +181,7 @@ class Rect:
     def top(self) -> float:
         return self.y
 
-    def colliderect(self, other: Rect) -> bool:
+    def colliderect(self, other: _RectLike) -> bool:
         return (
             self.x < other.x + other.width
             and self.x + self.width > other.x

@@ -47,7 +47,7 @@ class SceneDirector:
         window,
         scene_manager: SceneManager,
         user_db=None,
-        viewport: ScaledViewport = None,
+        viewport: ScaledViewport | None = None,
     ):
         self._logger = logging.getLogger(self.__class__.__name__)
         self._window = window

@@ -97,7 +97,7 @@ class IMotherShipStateMachine(ABC):
         pass
 
     @abstractmethod
-    def update(self) -> None:
+    def update(self, current_time: float) -> None:
         pass
 
 

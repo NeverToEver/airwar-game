@@ -40,9 +40,9 @@ class MotherShipRenderer:
         self._mother_ship = mother_ship
 
         # Cached surfaces (Phase 5-γ: re-allocated on size change or first use)
-        self._phantom_surf = None
-        self._phantom_surf_size = (0, 0)
-        self._stripe_cache = None
+        self._phantom_surf: pygame.Surface | None = None
+        self._phantom_surf_size: tuple[int, int] = (0, 0)
+        self._stripe_cache: pygame.Surface | None = None
 
         self._colors = {
             "hull_dark": (18, 22, 32),

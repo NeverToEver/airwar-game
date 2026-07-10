@@ -39,8 +39,8 @@ class IntegratedHUD:
         self._fonts: dict = {}
         self._arrow_cache = None
         self._hint_cache = None
-        self._battery_collapsed: DiscreteBatteryIndicator = None
-        self._battery_expanded: DiscreteBatteryIndicator = None
+        self._battery_collapsed: DiscreteBatteryIndicator | None = None
+        self._battery_expanded: DiscreteBatteryIndicator | None = None
         self._text_cache: dict = {}
 
     def _render_value(self, font, text, color, cache_key: str):

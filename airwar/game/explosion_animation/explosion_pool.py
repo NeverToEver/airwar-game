@@ -20,7 +20,7 @@ class ExplosionPool:
         for _ in range(count):
             self._available.append(ExplosionEffect())
 
-    def acquire(self) -> ExplosionEffect:
+    def acquire(self) -> ExplosionEffect | None:
         """Acquire explosion effect instance
 
         Returns:

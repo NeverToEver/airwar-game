@@ -55,9 +55,9 @@ def draw_hexagon(
     center: tuple[float, float],
     size: float,
     fill_color: tuple[int, int, int],
-    border_color: tuple[int, int, int, int] | None = None,
+    border_color: tuple[int, int, int] | tuple[int, int, int, int] | None = None,
     border_width: int = 2,
-    glow_color: tuple[int, int, int, int] | None = None,
+    glow_color: tuple[int, int, int] | tuple[int, int, int, int] | None = None,
     pointy_top: bool = True,
 ) -> None:
     """Draw a hexagon.
@@ -79,7 +79,8 @@ def draw_hexagon(
         for layer in range(3, 0, -1):
             layer_size = size + layer * 2
             layer_points = _get_hexagon_points(center, layer_size, pointy_top)
-            alpha = int(glow_color[3] / layer)
+            base_alpha = glow_color[3] if len(glow_color) == 4 else 255
+            alpha = int(base_alpha / layer)
             layer_color = (*glow_color[:3], alpha)
             pygame.draw.polygon(surface, layer_color, layer_points)
 
@@ -133,7 +134,7 @@ def _draw_icon_shape(
     icon_type: str,
     center: tuple[float, float],
     size: float,
-    color: tuple[int, int, int],
+    color: tuple[int, int, int] | tuple[int, int, int, int],
     line_width: int,
 ) -> None:
     """Draw the icon shape."""
@@ -250,8 +251,8 @@ class HexIcon:
         icon_type: str = ICON_POWER,
         size: float = SystemUI.HEXAGON_SIZE,
         fill_color: tuple[int, int, int] | None = None,
-        border_color: tuple[int, int, int, int] | None = None,
-        glow_color: tuple[int, int, int, int] | None = None,
+        border_color: tuple[int, int, int] | tuple[int, int, int, int] | None = None,
+        glow_color: tuple[int, int, int] | tuple[int, int, int, int] | None = None,
         is_active: bool = True,
         is_max_level: bool = False,
     ):
@@ -269,8 +270,8 @@ class HexIcon:
         self.icon_type = icon_type
         self.size = size
         self.fill_color = fill_color or SystemColors.BG_PANEL_LIGHT
-        self.border_color = border_color or SystemColors.BORDER_GLOW
-        self.glow_color = glow_color or SystemColors.AMBER_GLOW
+        self.border_color: tuple[int, int, int] | tuple[int, int, int, int] = border_color or SystemColors.BORDER_GLOW
+        self.glow_color: tuple[int, int, int] | tuple[int, int, int, int] = glow_color or SystemColors.AMBER_GLOW
         self.is_active = is_active
         self.is_max_level = is_max_level
 
@@ -287,6 +288,8 @@ class HexIcon:
         if icon_color is None:
             icon_color = ICON_COLORS.get(self.icon_type, SystemColors.AMBER_PRIMARY)
 
+        border_color: tuple[int, int, int] | tuple[int, int, int, int] | None
+        glow_color: tuple[int, int, int] | tuple[int, int, int, int] | None
         # 满级时使用金色边框
         if self.is_max_level:
             border_color = SystemColors.AMBER_BRIGHT

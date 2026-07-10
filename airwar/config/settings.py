@@ -1,5 +1,7 @@
 """Settings — global constants for dimensions, speeds, and rendering."""
 
+from typing import Any
+
 SCREEN_WIDTH = 1920
 SCREEN_HEIGHT = 1080
 FPS = 60
@@ -10,7 +12,7 @@ HEALTH_REGEN = {
     "hard": {"delay": 300, "rate": 1, "interval": 90},
 }
 
-BOOST_CONFIG = {
+BOOST_CONFIG: dict[str, dict[str, Any]] = {
     "easy": {"max_boost": 300, "recovery_rate": 1.2, "speed_mult": 1.7, "recovery_delay": 90, "recovery_ramp": 120},
     "medium": {"max_boost": 200, "recovery_rate": 1.0, "speed_mult": 1.7, "recovery_delay": 90, "recovery_ramp": 120},
     "hard": {"max_boost": 120, "recovery_rate": 0.8, "speed_mult": 1.7, "recovery_delay": 90, "recovery_ramp": 120},
@@ -29,7 +31,7 @@ HITBOX_INDICATOR_ALPHA_MAX = 255
 
 RIPPLE_FADE_SPEED = 6
 
-DIFFICULTY_SETTINGS = {
+DIFFICULTY_SETTINGS: dict[str, dict[str, Any]] = {
     "easy": {
         "enemy_health": 300,
         "bullet_damage": 100,

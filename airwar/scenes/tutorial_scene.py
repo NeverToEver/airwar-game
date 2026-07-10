@@ -116,6 +116,62 @@ class TutorialScene(Scene, MouseInteractiveMixin):
     BOSS_ENRAGE_THRESHOLD = 0.30
     WARNING_CELL_THRESHOLD = AmmoMagazine.WARNING_CELL_THRESHOLD
 
+    # Runtime state populated by ``enter()`` / the player simulator.
+    # Declared here so split renderers and helpers can type-check.
+    _player: pygame.Rect
+    _player_health: int
+    _player_max_health: int
+    _player_energy: float
+    _player_hit_cooldown: int
+    _dash_frames: int
+    _dash_velocity: pygame.Vector2
+    _fire_timer: int
+    _bullets: list[TutorialBullet]
+    _enemy_bullets: list[TutorialBullet]
+    _enemies: list[TutorialEnemy]
+    _boss: TutorialBoss | None
+    _tutorial_explosions: list[TutorialExplosion]
+    _score: int
+    _kills: int
+    _stage_progress: int
+    _stage_spawned: int
+    _hold_h_frames: int
+    _hold_b_frames: int
+    _mothership_ammo: float
+    _ammo_warning_triggered: bool
+    _escape_timer: int
+    _boost_feedback_timer: int
+    _player_enter_start_center: pygame.Vector2
+    _dock_eject_position: pygame.Vector2
+    _pending_base_sub_phase: str | None
+    _dock_undock_phase: str
+    _dock_sub_phase: str
+    _base_sub_phase: str
+    _mothership_fire_timer: int
+    _base_ready: bool
+    _docked: bool
+    _player_enter_timer: int
+    _dock_undock_timer: int
+    _dock_undock_player_frames: int
+    _depart_timer: int
+    _stage_card_timer: int
+    _stage_completed: bool
+    _completion_delay: int
+    _fade_phase: str
+    _fade_alpha: int
+    _pending_stage_index: int | None
+    _cleared_stage_ids: list[str]
+    _animation_time: int
+    _stage_index: int
+    _keys_down: set[int]
+    _raw_aim_position: tuple[float, float]
+    _previous_raw_aim_position: tuple[float, float]
+    _smoothed_raw_aim_position: tuple[float, float]
+    _aim_pos: tuple[float, float]
+    _aim_assist_target: TutorialEnemy | TutorialBoss | None
+    _aim_input_initialized: bool
+    _aim_assist_release_timer: int
+
     def __init__(self) -> None:
         Scene.__init__(self)
         MouseInteractiveMixin.__init__(self)
@@ -561,7 +617,7 @@ class TutorialScene(Scene, MouseInteractiveMixin):
             return self._base_sub_phase in ("base", "depart")
         return False
 
-    def _set_raw_aim_position(self, position: tuple[int, int]) -> None:
+    def _set_raw_aim_position(self, position: tuple[float, float]) -> None:
         x = max(0.0, min(float(position[0]), float(get_screen_width())))
         y = max(0.0, min(float(position[1]), float(get_screen_height())))
         if not self._aim_input_initialized:

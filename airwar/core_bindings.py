@@ -5,6 +5,44 @@ from __future__ import annotations
 import logging
 import math
 import random
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    # Mypy cannot inspect the compiled ``airwar_core`` extension, so we
+    # re-declare the exported surface here. At runtime the functions are
+    # imported from the native module (or replaced by the pure-Python
+    # fallbacks below).
+    from airwar_core import (
+        batch_collide_bullets_vs_entities,
+        batch_hallucinated_enemy_centers,
+        batch_render_particles,
+        batch_update_bullets,
+        batch_update_bullets_buf,
+        batch_update_movements,
+        batch_update_movements_buf,
+        batch_update_particles,
+        compute_starfield_positions,
+        create_explosive_missile_glow,
+        create_glow_circle,
+        create_laser_bullet_glow,
+        create_single_bullet_glow,
+        create_spread_bullet_glow,
+        find_nearest_target,
+        find_target_in_direction,
+        generate_explosion_particles,
+        update_movement,
+        vec2_add,
+        vec2_angle,
+        vec2_clamp_length,
+        vec2_distance,
+        vec2_dot,
+        vec2_from_angle,
+        vec2_length,
+        vec2_lerp,
+        vec2_normalize,
+        vec2_scale,
+        vec2_sub,
+    )
 
 _logger = logging.getLogger(__name__)
 

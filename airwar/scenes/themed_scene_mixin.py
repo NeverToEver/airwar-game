@@ -1,6 +1,7 @@
 """Mixin for scenes with themed military-style rendering."""
 
 import math
+from typing import Any
 
 import pygame
 
@@ -9,6 +10,17 @@ from airwar.ui.scene_rendering_utils import draw_themed_decorations, draw_themed
 
 class ThemedSceneMixin:
     """Shared themed rendering methods for menu scenes."""
+
+    # Attributes provided by concrete subclasses (declared for type checking).
+    option_font: pygame.font.Font
+    _option_rects: list[pygame.Rect]
+    base_box_width: int
+    base_box_height: int
+    animation_time: int
+    glow_offset: float
+    _tokens: Any
+    _background_renderer: Any
+    _particle_system: Any
 
     def _draw_themed_title(self, surface: pygame.Surface, text: str, font: pygame.font.Font, pos: tuple) -> None:
         """Draw title in military style with amber glow."""

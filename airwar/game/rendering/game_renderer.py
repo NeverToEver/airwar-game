@@ -35,16 +35,17 @@ class GameRenderer:
         _death_animation: DeathAnimation instance during player death.
     """
 
-    def __init__(self, hud_renderer: HUDRenderer = None, use_integrated_hud: bool = True):
+    def __init__(self, hud_renderer: HUDRenderer | None = None, use_integrated_hud: bool = True):
         self.hud_renderer = hud_renderer or HUDRenderer()
         self.integrated_hud = IntegratedHUD() if use_integrated_hud else None
         self.entity_renderer = EntityRenderer()
-        self.background_renderer: SpaceBackground = None
-        self._death_animation = None
+        self.background_renderer: SpaceBackground | None = None
+        self._death_animation: DeathAnimation | None = None
         self._screen_diagonal = 0
         self._was_in_dying_state = False
-        self._invincibility_aura_cache = None
-        self._invincibility_aura_key = None
+        self._entrance_fade: pygame.Surface | None = None
+        self._invincibility_aura_cache: pygame.Surface | None = None
+        self._invincibility_aura_key: tuple[int, int] | None = None
 
     def init_background(self, screen_width: int, screen_height: int) -> None:
         self.background_renderer = SpaceBackground(screen_width, screen_height)
@@ -84,7 +85,7 @@ class GameRenderer:
 
         fade_alpha = int(160 * (1 - progress))
         if fade_alpha > 0:
-            if not hasattr(self, "_entrance_fade") or self._entrance_fade.get_size() != surface.get_size():
+            if self._entrance_fade is None or self._entrance_fade.get_size() != surface.get_size():
                 self._entrance_fade = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
                 self._entrance_fade.fill((0, 0, 0))
             self._entrance_fade.set_alpha(fade_alpha)
@@ -136,7 +137,9 @@ class GameRenderer:
             pygame.draw.ellipse(aura, (140, 232, 238, 24), inner, 1)
             self._invincibility_aura_cache = aura
             self._invincibility_aura_key = cache_key
-        surface.blit(self._invincibility_aura_cache, self._invincibility_aura_cache.get_rect(center=player.rect.center))
+        aura_cache = self._invincibility_aura_cache
+        assert aura_cache is not None
+        surface.blit(aura_cache, aura_cache.get_rect(center=player.rect.center))
 
     def render_hud(
         self,

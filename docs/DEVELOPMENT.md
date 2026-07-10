@@ -26,8 +26,8 @@ an optional acceleration layer with their existing Python fallback.
 - Keep new behavior local to its owning scene, entity, or game system.
 - Use a manual game run after changes that affect input, scene transitions,
   combat, rendering, save data, or UI layout.
-- Run `python3 -m ruff check .` and
-  `python3 -m compileall -q airwar main.py` before handing off a change.
+- Run `python3 -m pytest tests/`, `python3 -m ruff check .`, and
+  `python3 -m compileall -q airwar main.py tests` before handing off a change.
 
 Avoid broad refactors whose benefit cannot be observed in the current playable
 loop. Update this document only when the active development scope changes.

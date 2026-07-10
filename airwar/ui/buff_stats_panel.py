@@ -4,10 +4,12 @@ import logging
 import math
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 import pygame
 
 from airwar.config.design_tokens import Colors, SystemColors, SystemLayout, SystemUI, get_design_tokens
+from airwar.game.buffs.buff_registry import create_buff
 from airwar.protocols import BuffFactory
 from airwar.utils.fonts import get_cjk_font
 
@@ -37,9 +39,9 @@ class BuffStatsAggregator:
     def __init__(self, buff_factory: BuffFactory):
         self._stat_formatters = self._init_stat_formatters()
         self._category_order = ["offense", "defense", "health", "utility"]
-        self._buff_factory: Callable[[str], object] = buff_factory
+        self._buff_factory: BuffFactory = buff_factory
 
-    def _init_stat_formatters(self) -> dict[str, callable]:
+    def _init_stat_formatters(self) -> dict[str, Callable[..., Any]]:
         return {
             "Power Shot": lambda rs, p: f"+{int((p.bullet_damage / rs.base_bullet_damage - 1) * 100)}%",
             "Rapid Fire": lambda rs, p: self._calculate_rapid_fire_value(rs),
@@ -235,7 +237,7 @@ class BuffStatsPanel:
         self._title_color = colors.TEXT_SECONDARY
         self._summary_bg_color = (*colors.BACKGROUND_PANEL, 30)
 
-        self._aggregator = BuffStatsAggregator(buff_factory=buff_factory)
+        self._aggregator = BuffStatsAggregator(buff_factory=buff_factory or create_buff)
         self._cached_surface: pygame.Surface | None = None
         self._cache_valid = False
 

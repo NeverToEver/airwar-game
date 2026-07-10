@@ -1,6 +1,7 @@
 """Shared sprite utilities — caches, glow effects, gradients, and ripples."""
 
 import math
+from typing import Any
 
 import pygame
 
@@ -17,16 +18,16 @@ from airwar.core_bindings import (
 _MAX_CACHE_SIZE = 128
 
 # Glow caches shared across modules
-_glow_circle_cache = {}
-_single_bullet_glow_cache = {}
-_spread_bullet_glow_cache = {}
-_laser_bullet_glow_cache = {}
-_ripple_surface_cache = {}
-_explosive_missile_cache = {}
+_glow_circle_cache: dict[tuple[int, tuple[int, int, int], int], pygame.Surface] = {}
+_single_bullet_glow_cache: dict[tuple[int, int, str], pygame.Surface] = {}
+_spread_bullet_glow_cache: dict[tuple[int, str], pygame.Surface] = {}
+_laser_bullet_glow_cache: dict[tuple[int, str], pygame.Surface] = {}
+_ripple_surface_cache: dict[tuple[int, int, int, int], pygame.Surface] = {}
+_explosive_missile_cache: dict[tuple[int, int], pygame.Surface] = {}
 _glow_caches_prewarmed = False
 
 
-def _evict_cache_if_needed(cache: dict) -> None:
+def _evict_cache_if_needed(cache: dict[Any, pygame.Surface]) -> None:
     """Evict oldest entry from cache if it exceeds maximum size."""
     if len(cache) >= _MAX_CACHE_SIZE:
         cache.pop(next(iter(cache)))
@@ -47,45 +48,46 @@ def prewarm_glow_caches(force: bool = False) -> None:
     if _glow_caches_prewarmed and not force:
         return
 
+    cache_key: tuple[Any, ...]
     for width, height in [(8, 16), (6, 12), (10, 20), (4, 8)]:
         # Match draw_single_bullet scaling: ew = int(w*1.4), eh = int(h*1.3)
         ew, eh = int(width * 1.4), int(height * 1.3)
-        key = (ew, eh, "player")
-        if key not in _single_bullet_glow_cache:
+        cache_key = (ew, eh, "player")
+        if cache_key not in _single_bullet_glow_cache:
             data = create_single_bullet_glow(float(ew), float(eh))
             surf_w = ew + 16
             surf_h = eh + 12
-            _single_bullet_glow_cache[key] = _bytes_to_surface(data, surf_w, surf_h)
+            _single_bullet_glow_cache[cache_key] = _bytes_to_surface(data, surf_w, surf_h)
 
     for width in [8, 10, 12, 14, 16]:
         radius = width // 2
-        key = (radius, "player")
-        if key not in _spread_bullet_glow_cache:
+        cache_key = (radius, "player")
+        if cache_key not in _spread_bullet_glow_cache:
             data = create_spread_bullet_glow(float(radius))
             surf_size = radius * 4 + 8
-            _spread_bullet_glow_cache[key] = _bytes_to_surface(data, surf_size, surf_size)
+            _spread_bullet_glow_cache[cache_key] = _bytes_to_surface(data, surf_size, surf_size)
 
     for height in [16, 20, 24, 28, 32]:
-        key = (height, "player")
-        if key not in _laser_bullet_glow_cache:
+        cache_key = (height, "player")
+        if cache_key not in _laser_bullet_glow_cache:
             data = create_laser_bullet_glow(float(height))
-            _laser_bullet_glow_cache[key] = _bytes_to_surface(data, 24, height + 12)
+            _laser_bullet_glow_cache[cache_key] = _bytes_to_surface(data, 24, height + 12)
 
     for width, height in [(10, 20), (8, 16), (12, 24)]:
         bw = int(width * 0.8)
-        key = (bw, height)
-        if key not in _explosive_missile_cache:
+        cache_key = (bw, height)
+        if cache_key not in _explosive_missile_cache:
             data = create_explosive_missile_glow(float(width), float(height))
             surf_w = int(width * 0.8 * 3 + 12)
             surf_h = height + 10
-            _explosive_missile_cache[key] = _bytes_to_surface(data, surf_w, surf_h)
+            _explosive_missile_cache[cache_key] = _bytes_to_surface(data, surf_w, surf_h)
 
     for radius, glow_radius in [(8, 8), (10, 10), (12, 12), (15, 15), (20, 15)]:
-        key = (radius, Colors.ACCENT_EXPLOSIVE, glow_radius)
-        if key not in _glow_circle_cache:
+        cache_key = (radius, Colors.ACCENT_EXPLOSIVE, glow_radius)
+        if cache_key not in _glow_circle_cache:
             data = create_glow_circle(radius, *Colors.ACCENT_EXPLOSIVE, glow_radius)
             surf_size = (radius + glow_radius) * 2 + 4
-            _glow_circle_cache[key] = _bytes_to_surface(data, surf_size, surf_size)
+            _glow_circle_cache[cache_key] = _bytes_to_surface(data, surf_size, surf_size)
 
     _glow_caches_prewarmed = True
 

@@ -270,6 +270,24 @@ class SystemColors:
     PANEL_OVERLAY_DARK = (20, 25, 45)
     PANEL_OVERLAY_LIGHT = (14, 17, 32)
 
+    # Legacy amber aliases (previously added outside the class)
+    AMBER_PRIMARY = ACCENT_PRIMARY
+    AMBER_DIM = ACCENT_DIM
+    AMBER_BRIGHT = ACCENT_BRIGHT
+    AMBER_GLOW = ACCENT_GLOW
+
+    # Legacy military-green aliases
+    MILITARY_GREEN = ACCENT_TEAL
+    MILITARY_GREEN_DIM = ACCENT_TEAL_DIM
+
+    WARNING_AMBER = WARNING_ACCENT
+
+    # Legacy font-size aliases on SystemColors (used by older UI code)
+    MILITARY_LABEL_SIZE = 18
+    MILITARY_VALUE_SIZE = 24
+    MILITARY_TITLE_SIZE = 36
+    MILITARY_SMALL_SIZE = 14
+
 
 class SystemUI:
     """System UI component sizing and styling constants."""
@@ -304,6 +322,12 @@ class SystemUI:
     HUD_VALUE_SIZE = 24
     HUD_TITLE_SIZE = 36
     HUD_SMALL_SIZE = 14
+
+    # Legacy military font-size aliases (used by older UI code)
+    MILITARY_LABEL_SIZE = HUD_LABEL_SIZE
+    MILITARY_VALUE_SIZE = HUD_VALUE_SIZE
+    MILITARY_TITLE_SIZE = HUD_TITLE_SIZE
+    MILITARY_SMALL_SIZE = HUD_SMALL_SIZE
 
 
 # ─── Scene (menu / pause / login) theme ──────────────────────────────────
@@ -398,43 +422,26 @@ class SceneColors:
     COEFFICIENT_BAR_BG = (30, 35, 55)
     COEFFICIENT_BAR_FILL = (16, 18, 32)
 
+    # Legacy gold aliases (previously added outside the class)
+    GOLD_PRIMARY = ACCENT_PRIMARY
+    GOLD_DIM = ACCENT_DIM
+    GOLD_BRIGHT = ACCENT_BRIGHT
+    GOLD_GLOW = ACCENT_GLOW
+
+    # Legacy forest-green aliases
+    FOREST_GREEN = ACCENT_TEAL
+    FOREST_GREEN_DIM = ACCENT_TEAL_DIM
+    FOREST_GREEN_BRIGHT = ACCENT_TEAL_BRIGHT
+    BORDER_FOREST = BORDER_TEAL
+
+    WARNING_AMBER = WARNING_ACCENT
+
 
 # ─── Backward-compatible aliases ──────────────────────────────────────────
 
 MilitaryColors = SystemColors
 MilitaryUI = SystemUI
 ForestColors = SceneColors
-
-# Legacy constant aliases on SystemColors
-SystemColors.AMBER_PRIMARY = SystemColors.ACCENT_PRIMARY  # type: ignore[attr-defined]
-SystemColors.AMBER_DIM = SystemColors.ACCENT_DIM  # type: ignore[attr-defined]
-SystemColors.AMBER_BRIGHT = SystemColors.ACCENT_BRIGHT  # type: ignore[attr-defined]
-SystemColors.AMBER_GLOW = SystemColors.ACCENT_GLOW  # type: ignore[attr-defined]
-SystemColors.MILITARY_GREEN = SystemColors.ACCENT_TEAL  # type: ignore[attr-defined]
-SystemColors.MILITARY_GREEN_DIM = SystemColors.ACCENT_TEAL_DIM  # type: ignore[attr-defined]
-SystemColors.WARNING_AMBER = SystemColors.WARNING_ACCENT  # type: ignore[attr-defined]
-SystemColors.MILITARY_LABEL_SIZE = SystemUI.HUD_LABEL_SIZE  # type: ignore[attr-defined]
-SystemColors.MILITARY_VALUE_SIZE = SystemUI.HUD_VALUE_SIZE  # type: ignore[attr-defined]
-SystemColors.MILITARY_TITLE_SIZE = SystemUI.HUD_TITLE_SIZE  # type: ignore[attr-defined]
-SystemColors.MILITARY_SMALL_SIZE = SystemUI.HUD_SMALL_SIZE  # type: ignore[attr-defined]
-
-# Legacy constant aliases on SceneColors
-SceneColors.GOLD_PRIMARY = SceneColors.ACCENT_PRIMARY  # type: ignore[attr-defined]
-SceneColors.GOLD_DIM = SceneColors.ACCENT_DIM  # type: ignore[attr-defined]
-SceneColors.GOLD_BRIGHT = SceneColors.ACCENT_BRIGHT  # type: ignore[attr-defined]
-SceneColors.GOLD_GLOW = SceneColors.ACCENT_GLOW  # type: ignore[attr-defined]
-SceneColors.FOREST_GREEN = SceneColors.ACCENT_TEAL  # type: ignore[attr-defined]
-SceneColors.FOREST_GREEN_DIM = SceneColors.ACCENT_TEAL_DIM  # type: ignore[attr-defined]
-SceneColors.FOREST_GREEN_BRIGHT = SceneColors.ACCENT_TEAL_BRIGHT  # type: ignore[attr-defined]
-SceneColors.BORDER_FOREST = SceneColors.BORDER_TEAL  # type: ignore[attr-defined]
-SceneColors.WARNING_AMBER = SceneColors.WARNING_ACCENT  # type: ignore[attr-defined]
-
-# Legacy constant aliases on SystemUI
-SystemUI.MILITARY_LABEL_SIZE = SystemUI.HUD_LABEL_SIZE  # type: ignore[attr-defined]
-SystemUI.MILITARY_VALUE_SIZE = SystemUI.HUD_VALUE_SIZE  # type: ignore[attr-defined]
-SystemUI.MILITARY_TITLE_SIZE = SystemUI.HUD_TITLE_SIZE  # type: ignore[attr-defined]
-SystemUI.MILITARY_SMALL_SIZE = SystemUI.HUD_SMALL_SIZE  # type: ignore[attr-defined]
-
 
 # ─── Layout: Anchors & standard position tokens ──────────────────────────
 # These tokens replace hardcoded screen arithmetic such as
