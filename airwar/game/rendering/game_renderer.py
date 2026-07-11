@@ -41,7 +41,7 @@ class GameRenderer:
         self.entity_renderer = EntityRenderer()
         self.background_renderer: SpaceBackground | None = None
         self._death_animation: DeathAnimation | None = None
-        self._screen_diagonal = 0
+        self._screen_diagonal = 1
         self._was_in_dying_state = False
         self._entrance_fade: pygame.Surface | None = None
         self._invincibility_aura_cache: pygame.Surface | None = None
@@ -73,7 +73,7 @@ class GameRenderer:
             self._render_game(surface, state, entities)
 
     def _render_entrance(self, surface, state, entities):
-        progress = state.entrance_timer / state.entrance_duration
+        progress = 1.0 if state.entrance_duration <= 0 else min(1.0, state.entrance_timer / state.entrance_duration)
 
         self._render_player(surface, state, entities.player)
 

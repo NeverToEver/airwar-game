@@ -1,6 +1,7 @@
 """Layered lock arbitration for gameplay state flags."""
 
 import logging
+import time
 from dataclasses import dataclass
 from enum import IntEnum
 
@@ -17,6 +18,7 @@ class LockLayer(IntEnum):
     PLAYER_HIT = 30
     GIVE_UP = 20
     GAME_PAUSE = 10
+    TRANSIENT = 5
 
 
 @dataclass
@@ -26,6 +28,7 @@ class LockRequest:
     is_paused: bool = False
     is_silent_invincible: bool = False
     invincibility_duration: int = 0
+    expires_at: float = 0.0
 
 
 class LockLayerConflict(RuntimeError):
@@ -36,6 +39,8 @@ class LockLayerConflict(RuntimeError):
 
 class LockManager:
     """Centralized arbitration for player invincibility, control locks, and pause blocking."""
+
+    PERMANENT_INVINCIBILITY_FRAMES: int = 999_999
 
     def __init__(self, game_state, player=None):
         self._game_state = game_state
@@ -49,9 +54,20 @@ class LockManager:
             self._recompute()
 
     def set_player(self, player):
+        if self._player is not None and self._player is not player:
+            self._player.is_controls_locked = False
         self._player = player
         if self._locks:
             self._recompute()
+
+    def _validate(self, layer: LockLayer, request: LockRequest) -> None:
+        if not isinstance(layer, LockLayer):
+            raise ValueError(f"Invalid lock layer: {layer!r}")
+        if request.invincibility_duration < 0:
+            raise ValueError("invincibility_duration must be non-negative")
+        for field in ("invincible", "lock_controls", "is_paused", "is_silent_invincible"):
+            if not isinstance(getattr(request, field), bool):
+                raise ValueError(f"{field} must be a bool, got {type(getattr(request, field)).__name__}")
 
     def acquire(self, layer: LockLayer, request: LockRequest):
         """Acquire ``request`` on ``layer``.
@@ -61,6 +77,9 @@ class LockManager:
         conflict, or :meth:`acquire_or_update` to merge the new request
         with the existing one (max duration, OR of booleans).
         """
+        self._validate(layer, request)
+        if request.expires_at <= 0 and request.invincibility_duration > 0:
+            request.expires_at = time.monotonic() + request.invincibility_duration
         if layer in self._locks:
             prior = self._locks[layer]
             if prior != request:
@@ -78,10 +97,26 @@ class LockManager:
         invincibility timer takes the max of the two; the silent /
         non-silent distinction follows the more-recent call.
         """
+        self._validate(layer, request)
+        if request.expires_at <= 0 and request.invincibility_duration > 0:
+            request.expires_at = time.monotonic() + request.invincibility_duration
         existing = self._locks.get(layer)
         if existing is None:
             self._locks[layer] = request
         else:
+            if existing.expires_at <= 0 and existing.invincibility_duration > 0:
+                existing.expires_at = time.monotonic() + existing.invincibility_duration
+            merged_expires_at = 0.0
+            if existing.invincible and request.invincible:
+                merged_expires_at = (
+                    existing.expires_at
+                    if request.expires_at <= existing.expires_at
+                    else request.expires_at
+                )
+            elif request.invincible:
+                merged_expires_at = request.expires_at
+            elif existing.invincible:
+                merged_expires_at = existing.expires_at
             merged = LockRequest(
                 invincible=existing.invincible or request.invincible,
                 lock_controls=existing.lock_controls or request.lock_controls,
@@ -94,6 +129,7 @@ class LockManager:
                 invincibility_duration=max(
                     existing.invincibility_duration, request.invincibility_duration
                 ),
+                expires_at=merged_expires_at,
             )
             if merged != existing:
                 logger.debug(
@@ -110,6 +146,9 @@ class LockManager:
         call sites that want a hard failure (rather than a silent
         overwrite) when two systems race for the same layer.
         """
+        self._validate(layer, request)
+        if request.expires_at <= 0 and request.invincibility_duration > 0:
+            request.expires_at = time.monotonic() + request.invincibility_duration
         existing = self._locks.get(layer)
         if existing is not None and existing != request:
             raise LockLayerConflict(
@@ -148,15 +187,28 @@ class LockManager:
         invincibility_duration: int | None = None,
         silent_invincible: bool | None = None,
     ) -> None:
-        if not self._game_state:
-            return
-        if paused is not None:
-            self._game_state.is_paused = paused
-        if invincible is not None:
-            self._game_state.is_player_invincible = invincible
-        if invincibility_duration is not None:
-            self._game_state.invincibility_timer = invincibility_duration
-        if silent_invincible is not None:
+        has_active_request = (
+            paused is True or invincible is True or invincibility_duration is not None
+        )
+        has_release_request = paused is False or invincible is False
+
+        if has_active_request:
+            request_kwargs = {}
+            if paused is True:
+                request_kwargs["is_paused"] = True
+            if invincibility_duration is not None:
+                request_kwargs["invincible"] = True
+                request_kwargs["invincibility_duration"] = invincibility_duration
+            elif invincible is not None:
+                request_kwargs["invincible"] = invincible
+            if silent_invincible is not None:
+                request_kwargs["is_silent_invincible"] = silent_invincible
+            self.acquire(LockLayer.TRANSIENT, LockRequest(**request_kwargs))
+        elif has_release_request:
+            self.release(LockLayer.TRANSIENT)
+        elif silent_invincible is not None and self._game_state:
+            # Preserve the legacy direct-flag behavior when only the silent
+            # bit is toggled without an accompanying invincibility request.
             self._game_state.is_silent_invincible = silent_invincible
 
     def _recompute(self):
@@ -171,7 +223,10 @@ class LockManager:
             if req.invincible and not invincibility_applied:
                 invincible = True
                 silent = req.is_silent_invincible
-                timer = req.invincibility_duration
+                if req.expires_at > 0:
+                    timer = round(max(0, req.expires_at - time.monotonic()))
+                else:
+                    timer = req.invincibility_duration
                 invincibility_applied = True
             if req.lock_controls:
                 lock_controls = True
@@ -183,10 +238,14 @@ class LockManager:
             # Only update timer from lock duration when:
             # 1. A new lock was just acquired (_force_timer_update)
             # 2. Invincibility is newly activated (wasn't active before)
-            # 3. Lock defines permanent invincibility (timer >= 999999)
+            # 3. Lock defines permanent invincibility
             # Otherwise preserve the current countdown so _update_invincibility
             # can decrement it each frame.
-            if self._force_timer_update or not (invincible and was_invincible) or timer >= 999999:
+            if (
+                self._force_timer_update
+                or not (invincible and was_invincible)
+                or timer >= self.PERMANENT_INVINCIBILITY_FRAMES
+            ):
                 self._game_state.invincibility_timer = timer
             self._force_timer_update = False
             self._game_state.is_silent_invincible = silent

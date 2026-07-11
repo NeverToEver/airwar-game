@@ -53,6 +53,11 @@ AIM_DASH_MAX_DISTANCE_RATIO: float = _BOSS_TUNING.AIM_DASH_MAX_DISTANCE_RATIO
 AIM_DASH_DURATION: int = _BOSS_TUNING.AIM_DASH_DURATION
 
 
+def _safe_randint(a: int, b: int) -> int:
+    """Return a random int in [min(a,b), max(a,b)] regardless of argument order."""
+    return random.randint(min(a, b), max(a, b))
+
+
 class BossMovement:
     """Movement controller for the boss.
 
@@ -109,29 +114,29 @@ class BossMovement:
                 boss._target_x = x_max
             else:
                 boss._target_x = x_min
-            boss._target_y = random.randint(y_min, y_max)
+            boss._target_y = _safe_randint(y_min, y_max)
         elif phase == 1:
             # SWEEP: diagonal to a random zone
-            boss._target_x = random.randint(x_min, x_max)
-            boss._target_y = random.randint(y_min, y_max)
+            boss._target_x = _safe_randint(x_min, x_max)
+            boss._target_y = _safe_randint(y_min, y_max)
         elif phase == 2:
             # HOVER: local repositioning with gentle drift
-            boss._target_x = random.randint(
+            boss._target_x = _safe_randint(
                 int(max(margin, boss.rect.x - 130)),
                 int(min(screen_w - boss.rect.width - margin, boss.rect.x + 130)),
             )
-            boss._target_y = random.randint(
+            boss._target_y = _safe_randint(
                 int(max(y_min, boss.rect.y - 80)),
                 int(min(y_max, boss.rect.y + 80)),
             )
         else:
             # CHASE: drift toward player area with random offset
             if player_pos:
-                boss._target_x = max(x_min, min(player_pos[0] + random.randint(-60, 60), x_max))
-                boss._target_y = max(y_min, min(player_pos[1] - random.randint(80, 160), y_max))
+                boss._target_x = max(x_min, min(player_pos[0] + _safe_randint(-60, 60), x_max))
+                boss._target_y = max(y_min, min(player_pos[1] - _safe_randint(80, 160), y_max))
             else:
-                boss._target_x = random.randint(x_min, x_max)
-                boss._target_y = random.randint(y_min, y_max)
+                boss._target_x = _safe_randint(x_min, x_max)
+                boss._target_y = _safe_randint(y_min, y_max)
 
     def tick_active(
         self,
@@ -143,7 +148,7 @@ class BossMovement:
         boss._move_phase_timer += 1
         if boss._move_phase_timer >= boss._move_phase_duration:
             boss._move_phase_timer = 0
-            boss._move_phase_duration = random.randint(90, 200)
+            boss._move_phase_duration = _safe_randint(90, 200)
             self.select_next_target(player_pos)
 
         lerp_speed = LERP_FACTOR * boss.data.speed * slow_factor

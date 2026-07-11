@@ -48,6 +48,10 @@ pub fn compute_starfield_positions(
     glow_alpha_divisor: i32,
     glow_alpha_cap: i32,
 ) -> Vec<StarOutput> {
+    if sin_table.is_empty() || glow_alpha_divisor == 0 {
+        return Vec::new();
+    }
+    let _ = sin_table_mask;
     let scale = sin_table_size as f32 / std::f32::consts::TAU;
     let mut out = Vec::with_capacity(stars.len());
 
@@ -61,7 +65,7 @@ pub fn compute_starfield_positions(
 
         // Sin-table twinkle lookup (matches `twinkle_phase = (time * speed + offset) * (size / TAU)`).
         let phase = (time * twinkle_speed + twinkle_offset) * scale;
-        let idx = (phase as i32 as usize) & sin_table_mask;
+        let idx = (phase as i32 as usize) % sin_table.len();
         let twinkle = sin_table[idx];
 
         // Brightness: `brightness * (0.5 + 0.5 * sin) * 255`, clamped to 0..255.

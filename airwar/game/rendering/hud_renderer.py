@@ -308,8 +308,14 @@ class HUDRenderer:
 
     def render_ripples(self, surface: pygame.Surface, ripples: list[dict]) -> None:
         for ripple in ripples:
+            x = ripple.get("x")
+            y = ripple.get("y")
+            radius = ripple.get("radius")
+            alpha = ripple.get("alpha")
             pulse = ripple.get("pulse", 0)
-            draw_ripple(surface, ripple["x"], ripple["y"], ripple["radius"], ripple["alpha"], pulse)
+            if x is None or y is None or radius is None or alpha is None:
+                continue
+            draw_ripple(surface, x, y, radius, alpha, pulse)
 
     def render_buff_stats_panel(self, surface: pygame.Surface, reward_system, player) -> None:
         if not reward_system or not player:
@@ -319,8 +325,6 @@ class HUDRenderer:
             self._buff_stats_panel.render(surface, reward_system, player, surface.get_width(), surface.get_height())
         except (AttributeError, TypeError):
             logger.warning("Failed to render buff stats panel", exc_info=True)
-        except Exception as e:
-            logger.warning(f"Failed to render buff stats panel: {e}", exc_info=True)
 
     def render_attack_mode_panel(self, surface: pygame.Surface, reward_system) -> None:
         if not reward_system:
@@ -330,5 +334,3 @@ class HUDRenderer:
             self._attack_mode_panel.render(surface, reward_system, surface.get_width(), surface.get_height())
         except (AttributeError, TypeError):
             logger.warning("Failed to render attack mode panel", exc_info=True)
-        except Exception as e:
-            logger.warning(f"Failed to render attack mode panel: {e}", exc_info=True)

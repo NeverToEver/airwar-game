@@ -91,9 +91,18 @@ class LeaderboardService:
             local rank on remote failure. In local-only mode only the
             local rank is returned.
         """
+        try:
+            score_value = int(score)
+        except (TypeError, ValueError):
+            logger.warning("Invalid score submitted for %r: %r", name, score)
+            return 0
+        if score_value < 0:
+            logger.warning("Negative score submitted for %r: %s", name, score_value)
+            return 0
+
         if self._config.is_remote_mode:
             try:
-                return self._remote.submit_score(name, int(score))
+                return self._remote.submit_score(name, score_value)
             except RemoteLeaderboardError:
                 logger.warning(
                     "Failed to submit score to remote leaderboard "
@@ -101,7 +110,7 @@ class LeaderboardService:
                     self._config.mode,
                     self._config.url,
                     name,
-                    score,
+                    score_value,
                     exc_info=True,
                 )
                 self._remote_available = False
@@ -111,7 +120,7 @@ class LeaderboardService:
         remote_succeeded = False
         if not self._config.is_local_mode and self._is_remote_enabled():
             try:
-                remote_rank = self._remote.submit_score(name, int(score))
+                remote_rank = self._remote.submit_score(name, score_value)
                 remote_succeeded = True
             except RemoteLeaderboardError:
                 logger.warning(
@@ -120,20 +129,20 @@ class LeaderboardService:
                     self._config.mode,
                     self._config.url,
                     name,
-                    score,
+                    score_value,
                     exc_info=True,
                 )
                 self._remote_available = False
 
         try:
-            local_rank = self._local_db.submit_score(name, score)
+            local_rank = self._local_db.submit_score(name, score_value)
         except DatabaseError:
             logger.warning(
                 "Failed to submit score to local leaderboard "
                 "(db_path=%s, player=%s, score=%s)",
                 self._local_db.db_path,
                 name,
-                score,
+                score_value,
                 exc_info=True,
             )
             local_rank = 0

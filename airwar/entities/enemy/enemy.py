@@ -36,6 +36,13 @@ class EnemyState(Enum):
     EXITING = "exiting"
 
 
+# Enemy-specific bullet damage per bullet type (do not reuse Boss tuning)
+_ENEMY_BULLET_DAMAGE: dict[str, int] = {
+    "single": 12,
+    "spread": 10,
+    "laser": 20,
+}
+
 # Movement type string to Rust enum mapping
 MOVEMENT_TYPE_MAP = {
     "straight": 0,
@@ -204,6 +211,9 @@ class Enemy(Entity):
         if not self.active:
             return
 
+        self._slow_factor = kwargs.get("slow_factor", 1.0)
+        self._player_pos = kwargs.get("player_pos")
+
         if self._state == EnemyState.ENTERING:
             self._update_entry_state()
             return
@@ -276,7 +286,7 @@ class Enemy(Entity):
         if self._can_use_rust_movement():
             self._update_rust_movement()
         else:
-            self._movement_strategy.update(self)
+            self._movement_strategy.update(self, self._slow_factor, self._player_pos)
 
     def _can_use_rust_movement(self) -> bool:
         return self.move_type in MOVEMENT_TYPE_MAP
@@ -292,7 +302,8 @@ class Enemy(Entity):
         if self.move_type == "hover":
             timer /= self.HOVER_TIMER_RUST_SCALE
 
-        params = self._rust_params
+        params = self._rust_params.copy()
+        params["speed"] *= self._difficulty_multiplier
         new_x, new_y, new_timer = rust_update_movement(
             self._rust_move_type_code,
             timer,
@@ -540,12 +551,12 @@ class Enemy(Entity):
         center_x = self.rect.centerx
 
         if self.data.bullet_type == "spread":
-            for angle in self.SPREAD_FIRE_OFFSETS:
+            for x_offset in self.SPREAD_FIRE_OFFSETS:
                 bullet_data = BulletData(
                     damage=self._get_damage(), speed=self.ENEMY_BULLET_SPEED, owner="enemy", bullet_type="spread"
                 )
-                bullet = Bullet(center_x + angle, self.rect.bottom, bullet_data)
-                bullet.velocity = Vector2(angle * 0.15, 5)
+                bullet = Bullet(center_x + x_offset, self.rect.bottom, bullet_data)
+                bullet.velocity = Vector2(x_offset * 0.15, 5)
                 bullets.append(bullet)
         elif self.data.bullet_type == "laser":
             bullet_data = BulletData(
@@ -565,7 +576,7 @@ class Enemy(Entity):
         return bullets
 
     def _get_damage(self) -> int:
-        return get_game_constants().BOSS.BULLET_DAMAGE_MAP.get(self.data.bullet_type, 15)
+        return _ENEMY_BULLET_DAMAGE.get(self.data.bullet_type, 12)
 
 
 class EnemySpawner:
@@ -857,4 +868,6 @@ class EliteEnemy(Enemy):
         **kwargs,
     ) -> None:
         self._shield_pulse += 0.08
-        super().update(enemies, slow_factor, player_pos, *args, **kwargs)
+        kwargs["slow_factor"] = slow_factor
+        kwargs["player_pos"] = player_pos
+        super().update(enemies, *args, **kwargs)

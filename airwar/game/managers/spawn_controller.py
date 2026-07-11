@@ -1,5 +1,6 @@
 """Enemy and boss spawning controller with wave management."""
 
+import math
 import random
 from typing import TYPE_CHECKING, Any
 
@@ -150,7 +151,7 @@ class SpawnController:
             self.enemy_spawner.update(self.enemies, slow_factor, player_pos)
 
         self.boss_spawn_timer += 1
-        if self.boss is None and self.boss_spawn_timer >= self.boss_spawn_interval / slow_factor:
+        if self.boss is None and self.boss_spawn_timer >= self.boss_spawn_interval / max(0.001, slow_factor):
             self.boss_spawn_timer = 0
             return True
         return False
@@ -203,7 +204,7 @@ class SpawnController:
             score=self.BOSS_BASE_SCORE + boss_kill_count * self.BOSS_SCORE_INCREMENT,
             width=self.BOSS_SPRITE_WIDTH,
             height=self.BOSS_SPRITE_HEIGHT,
-            fire_rate=self.BOSS_BASE_FIRE_RATE - boss_kill_count * self.BOSS_FIRE_RATE_DECREMENT,
+            fire_rate=max(1, self.BOSS_BASE_FIRE_RATE - boss_kill_count * self.BOSS_FIRE_RATE_DECREMENT),
             phase=1,
             escape_time=escape_time,
         )
@@ -225,11 +226,10 @@ class SpawnController:
             boss_health = 1
         if bullet_damage <= 0:
             bullet_damage = 1
-        damage_per_frame = (
-            max(1.0, abs(float(player_dps))) / 60
-            if player_dps is not None
-            else max(1, bullet_damage) * self.PLAYER_BULLETS_PER_SHOT / self.PLAYER_FIRE_INTERVAL
-        )
+        if player_dps is None or math.isnan(player_dps):
+            damage_per_frame = max(1, bullet_damage) * self.PLAYER_BULLETS_PER_SHOT / self.PLAYER_FIRE_INTERVAL
+        else:
+            damage_per_frame = max(1.0, abs(float(player_dps))) / 60
         kill_frames = boss_health / damage_per_frame
         return round(kill_frames * self.ESCAPE_TIME_SAFETY_MULTIPLIER + get_game_constants().BOSS_ENRAGE.DURATION)
 

@@ -29,7 +29,11 @@ impl Particle {
     }
 
     pub fn get_alpha(&self) -> f32 {
-        self.life as f32 / self.max_life as f32
+        if self.max_life <= 0 {
+            0.0
+        } else {
+            self.life as f32 / self.max_life as f32
+        }
     }
 }
 
@@ -72,13 +76,17 @@ pub fn generate_explosion_particles(
     size_min: f32,
     size_max: f32,
 ) -> Vec<(f32, f32, f32, f32, i32, i32, f32)> {
+    if particle_count <= 0 {
+        return Vec::new();
+    }
     let mut particles = Vec::with_capacity(particle_count as usize);
     let pi2 = std::f32::consts::PI * 2.0;
 
     for _ in 0..particle_count {
         let angle = fast_rand() * pi2;
         let speed = speed_min + fast_rand() * (speed_max - speed_min);
-        let life = life_min + ((fast_rand() * (life_max - life_min) as f32) as i32);
+        let life_range = (life_max - life_min).max(0);
+        let life = life_min + (fast_rand() * life_range as f32) as i32;
         let size = size_min + fast_rand() * (size_max - size_min);
 
         let vx = angle.cos() * speed;
@@ -99,6 +107,9 @@ type ParticleRenderData = (f32, f32, f32, f32, f32, u8, u8, u8);
 /// Returns raw RGBA pixel buffer of `screen_width * screen_height * 4` bytes.
 #[pyfunction]
 pub fn batch_render_particles(py: Python<'_>, particles: Vec<ParticleRenderData>, screen_width: i32, screen_height: i32) -> Bound<'_, PyBytes> {
+    if screen_width <= 0 || screen_height <= 0 {
+        return PyBytes::new_bound(py, &[]);
+    }
     let width = screen_width as usize;
     let height = screen_height as usize;
     let mut buf = vec![0u8; width * height * 4];
@@ -163,7 +174,7 @@ thread_local! {
 fn initial_rng_seed() -> u64 {
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .expect("system clock must be after UNIX_EPOCH for particle RNG seed")
+        .unwrap_or_default()
         .as_nanos() as u64;
     nanos ^ 0x9E37_79B9_7F4A_7C15
 }

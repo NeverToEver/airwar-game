@@ -92,7 +92,8 @@ def draw_single_bullet(
         pygame.draw.polygon(surface, bullet_color, points)
         pygame.draw.line(surface, core_color, (center_x, top_y + 2), (center_x, top_y + eh - 2), 2)
     else:
-        surface.blit(glow, (int(x - 8), int(top_y - 4)))
+        gw, gh = glow.get_size()
+        surface.blit(glow, (int(center_x - gw / 2), int(top_y + height / 2 - gh / 2)))
         points = [
             (center_x, top_y),
             (x + width, y + height * 0.3),
@@ -168,7 +169,7 @@ def draw_explosive_missile(surface: pygame.Surface, x: float, y: float, width: f
 
     cache_key = (bw, int(height))
     if cache_key not in _explosive_missile_cache:
-        data = create_explosive_missile_glow(width, height)
+        data = create_explosive_missile_glow(float(bw), height)
         surf_w = bw * 3 + 12
         surf_h = int(height) + 10
         glow_surf = _bytes_to_surface(data, surf_w, surf_h)

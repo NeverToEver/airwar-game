@@ -86,15 +86,15 @@ class ParticleSystem:
             size = round(p["size"] * (0.7 + 0.3 * pulse))
             size = max(1, min(size, 20))
 
-            # Use cached texture with set_alpha() — the .copy() was removed
-            # to avoid per-frame allocation. The visual glitch from shared
-            # alpha is acceptable for background particles.
+            # Use cached texture with set_alpha() — copy first so a single
+            # render call cannot leak its alpha into the shared cache.
             base_size = self._texture_size_for_particle(size)
             cache_key = (base_size, p.get("color_key", "particle"))
             if cache_key in self._texture_cache:
                 particle_surf = self._texture_cache[cache_key]
-                particle_surf.set_alpha(alpha)
-                surface.blit(particle_surf, (x - base_size * 2, y - base_size * 2))
+                surf = particle_surf.copy()
+                surf.set_alpha(alpha)
+                surface.blit(surf, (x - base_size * 2, y - base_size * 2))
 
     def reset(self, count: int = 40, color_key: str = "particle") -> None:
         """Reset particle system with fresh particle data."""

@@ -67,6 +67,19 @@ class MotherShipStateMachine(IMotherShipStateMachine):
         self._event_bus.subscribe(EVENT_EXIT_PROGRESS_UPDATE, self._on_exit_progress_update)
         self._event_bus.subscribe(EVENT_EXIT_CANCELLED, self._on_exit_cancelled)
 
+    def _unregister_handlers(self) -> None:
+        self._event_bus.unsubscribe(EVENT_H_PRESSED, self._on_h_pressed)
+        self._event_bus.unsubscribe(EVENT_H_RELEASED, self._on_h_released)
+        self._event_bus.unsubscribe(EVENT_PROGRESS_COMPLETE, self._on_progress_complete)
+        self._event_bus.unsubscribe(EVENT_DOCKING_ANIMATION_COMPLETE, self._on_docking_animation_complete)
+        self._event_bus.unsubscribe(EVENT_UNDOCKING_ANIMATION_COMPLETE, self._on_undocking_animation_complete)
+        self._event_bus.unsubscribe(EVENT_STAY_EXPIRED, self._on_stay_expired)
+        self._event_bus.unsubscribe(EVENT_ENTERING_COMPLETE, self._on_entering_complete)
+        self._event_bus.unsubscribe(EVENT_UNDOCK_REQUESTED, self._on_undock_requested)
+        self._event_bus.unsubscribe(EVENT_EXIT_COMPLETE, self._on_exit_complete)
+        self._event_bus.unsubscribe(EVENT_EXIT_PROGRESS_UPDATE, self._on_exit_progress_update)
+        self._event_bus.unsubscribe(EVENT_EXIT_CANCELLED, self._on_exit_cancelled)
+
     @property
     def current_state(self) -> MotherShipState:
         return self._current_state

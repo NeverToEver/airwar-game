@@ -70,6 +70,7 @@ pub fn vec2_lerp(x1: f32, y1: f32, x2: f32, y2: f32, t: f32) -> (f32, f32) {
 /// 向量限制（裁剪长度）
 #[pyfunction]
 pub fn vec2_clamp_length(x: f32, y: f32, max_length: f32) -> (f32, f32) {
+    let max_length = max_length.abs();
     let len_sq = x * x + y * y;
     if len_sq > max_length * max_length {
         let len = len_sq.sqrt();

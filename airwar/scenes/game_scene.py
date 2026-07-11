@@ -116,19 +116,19 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._factory = GameSceneFactory()
         self._session: GameSession | None = None
         self.game_controller: GameController | None = None
-        self.game_renderer: GameRenderer = None  # type: ignore[assignment]
+        self.game_renderer: GameRenderer | None = None
         self.health_system: Any = None
-        self.reward_system: RewardSystem = None  # type: ignore[assignment]
-        self.hud_renderer: HUDRenderer = None  # type: ignore[assignment]
-        self.notification_manager: NotificationManager = None  # type: ignore[assignment]
-        self.spawn_controller: SpawnController = None  # type: ignore[assignment]
-        self.collision_controller: CollisionController = None  # type: ignore[assignment]
-        self.player: Player = None  # type: ignore[assignment]
+        self.reward_system: RewardSystem | None = None
+        self.hud_renderer: HUDRenderer | None = None
+        self.notification_manager: NotificationManager | None = None
+        self.spawn_controller: SpawnController | None = None
+        self.collision_controller: CollisionController | None = None
+        self.player: Player | None = None
         self.reward_selector: RewardSelector = RewardSelector()
         self._mother_ship_integrator = None
-        self._ammo_magazine: AmmoMagazine = None  # type: ignore[assignment]
-        self._warning_banner: WarningBanner = None  # type: ignore[assignment]
-        self._boost_gauge: BoostGauge = None  # type: ignore[assignment]
+        self._ammo_magazine: AmmoMagazine | None = None
+        self._warning_banner: WarningBanner | None = None
+        self._boost_gauge: BoostGauge | None = None
         self._aim_crosshair = AimCrosshair()
         self._give_up_detector = None
         self._give_up_ui = None
@@ -140,15 +140,16 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._homecoming_base_pending = False
         self._base_talent_console = None
         self._talent_balance_manager = None
-        self._bullet_manager: BulletManager = None  # type: ignore[assignment]
-        self._boss_manager: BossManager = None  # type: ignore[assignment]
-        self._milestone_manager: MilestoneManager = None  # type: ignore[assignment]
-        self._input_coordinator: InputCoordinator = None  # type: ignore[assignment]
-        self._ui_manager: UIManager = None  # type: ignore[assignment]
-        self._game_loop_manager: GameLoopManager = None  # type: ignore[assignment]
-        self._scene_renderer: GameSceneRenderer = None  # type: ignore[assignment]
+        self._bullet_manager: BulletManager | None = None
+        self._boss_manager: BossManager | None = None
+        self._milestone_manager: MilestoneManager | None = None
+        self._input_coordinator: InputCoordinator | None = None
+        self._ui_manager: UIManager | None = None
+        self._game_loop_manager: GameLoopManager | None = None
+        self._scene_renderer: GameSceneRenderer | None = None
         self._save_service: GameSaveService | None = None
         self._viewport = None
+        self._entered = False
         # Per-frame state migrated to GameSceneUpdater (Phase 5-ε):
         # _phase_dash_invincibility_active / _survival_frames /
         # _last_bullet_clear_frame / _auto_save_elapsed. Read via the
@@ -173,6 +174,10 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._haunting_renderer = HauntingRenderer()
         self._viewport = kwargs.get("viewport")
         self._save_service = kwargs.get("save_service")
+        if self._viewport is None:
+            raise ValueError("GameScene.enter requires 'viewport'")
+        if self._save_service is None:
+            raise ValueError("GameScene.enter requires 'save_service'")
 
         # Prewarm glow caches before gameplay starts
         self._loading_progress = 20
@@ -188,6 +193,12 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
         self._attach_session(self._factory.build(self, screen_width, screen_height, kwargs))
         self._updater.reset_state()
+        self._entered = True
+
+    def _ensure_entered(self) -> None:
+        """Guard against public method calls before enter() completes."""
+        if not self._entered:
+            raise RuntimeError("GameScene operation before enter()")
 
     def _attach_session(self, session: GameSession) -> None:
         """Install legacy facade attributes from the typed session boundary."""
@@ -224,11 +235,14 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         self._scene_renderer = session.scene_renderer
 
     def exit(self) -> None:
+        self._entered = False
         if self._haunting_renderer:
             self._haunting_renderer.dispose()
             self._haunting_renderer = None
         if self._scene_renderer:
             self._scene_renderer.dispose()
+        if self._mother_ship_integrator is not None and hasattr(self._mother_ship_integrator, "detach_game_scene"):
+            self._mother_ship_integrator.detach_game_scene()
         _clear_module_caches()
 
     def handle_events(self, event: pygame.event.Event) -> None:
@@ -238,6 +252,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         dispatcher is stateless; the scene owns the persistent state
         (pause request, hover, button registry, etc.).
         """
+        self._ensure_entered()
         self._dispatcher.dispatch(event)
 
     def _handle_button_click(self, button_name: str | None) -> None:
@@ -284,6 +299,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         14. milestone_check
         15. auto_save
         """
+        self._ensure_entered()
         self._updater.run(frame)
 
     def _should_suppress_haunting(self) -> bool:
@@ -373,12 +389,11 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             ),
         )
 
-    def __setattr__(self, name: str, value: object) -> None:
-        """F07 F09: keep dispatcher in sync with direct coordinator writes."""
-        if name == "_homecoming_coordinator":
-            self._set_homecoming_coordinator(value)
-            return
-        object.__setattr__(self, name, value)
+    def set_homecoming_coordinator(self, value) -> None:
+        """Set the homecoming coordinator and synchronize the dispatcher."""
+        object.__setattr__(self, "_homecoming_coordinator", value)
+        # synchronize dispatcher if needed, mirroring the old __setattr__ behavior
+        self._set_homecoming_coordinator(value)
 
     def _update_homecoming(self, delta_seconds: float) -> None:
         """Backward-compat forwarder to SceneHomecomingDispatcher."""
@@ -462,6 +477,7 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
     def render(self, surface: pygame.Surface) -> None:
         """Render via GameSceneRenderer."""
+        self._ensure_entered()
         self._scene_renderer.render(surface)
 
     def _sync_player_aim_target(self) -> None:
@@ -691,31 +707,41 @@ def _clear_module_caches() -> None:
     objects. Clearing them on scene exit prevents memory growth during
     long play sessions.
     """
+
+    def _clear_attrs(obj, attrs: tuple[str, ...]) -> None:
+        for attr in attrs:
+            try:
+                getattr(obj, attr).clear()
+            except AttributeError:
+                pass
+
     # chamfered_panel caches
     try:
         from airwar.ui import chamfered_panel
-        chamfered_panel._panel_surface_cache.clear()
-        chamfered_panel._bg_cache.clear()
-        chamfered_panel._border_cache.clear()
-        chamfered_panel._glow_cache.clear()
-    except (ImportError, AttributeError):
+    except ImportError:
         pass
+    else:
+        _clear_attrs(
+            chamfered_panel,
+            ("_panel_surface_cache", "_bg_cache", "_border_cache", "_glow_cache"),
+        )
 
     # menu_background caches
     try:
         from airwar.ui.menu_background import MenuBackground
-        MenuBackground._gradient_cache.clear()
-        MenuBackground._scan_glow_cache.clear()
-    except (ImportError, AttributeError):
+    except ImportError:
         pass
+    else:
+        _clear_attrs(MenuBackground, ("_gradient_cache", "_scan_glow_cache"))
 
     # explosion effect caches
     try:
         from airwar.game.explosion_animation.explosion_effect import (
             _glow_texture_cache, _spark_core_cache, _flash_cache,
         )
+    except ImportError:
+        pass
+    else:
         _glow_texture_cache.clear()
         _spark_core_cache.clear()
         _flash_cache.clear()
-    except (ImportError, AttributeError):
-        pass

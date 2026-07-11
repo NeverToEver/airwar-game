@@ -1,5 +1,7 @@
 """Leaderboard view — renders the top 10 high scores (local or remote)."""
 
+import time
+
 import pygame
 
 from airwar.config.design_tokens import SceneColors, get_design_tokens
@@ -29,6 +31,8 @@ class LeaderboardView:
     SCORE_COL_W = 140
     ROW_INDENT = 24
 
+    _FETCH_TTL = 10.0
+
     def __init__(self, service: LeaderboardService | None = None):
         self._service = service if service is not None else LeaderboardService(UserDB())
         self._tokens = get_design_tokens()
@@ -36,6 +40,8 @@ class LeaderboardView:
         self._title_font: pygame.font.Font | None = None
         self._row_font: pygame.font.Font | None = None
         self._empty_font: pygame.font.Font | None = None
+        self._cached_entries: list[dict] | None = None
+        self._last_fetch_at: float = -999.0
 
     def _ensure_fonts(self) -> None:
         if self._fonts_initialized:
@@ -52,8 +58,16 @@ class LeaderboardView:
         self._service = LeaderboardService(user_db)
 
     def fetch_entries(self) -> list[dict]:
-        """Return the current top-10 leaderboard entries."""
-        return self._service.get_leaderboard()
+        """Return the current top-10 leaderboard entries, caching for ``_FETCH_TTL`` seconds."""
+        now = time.monotonic()
+        if self._cached_entries is None or now - self._last_fetch_at > self._FETCH_TTL:
+            self._cached_entries = self._service.get_leaderboard()
+            self._last_fetch_at = now
+        return self._cached_entries
+
+    def invalidate_cache(self) -> None:
+        """Force a fresh fetch on the next render."""
+        self._cached_entries = None
 
     def _footer_text(self) -> str:
         """Compose the footer label based on the active backend."""

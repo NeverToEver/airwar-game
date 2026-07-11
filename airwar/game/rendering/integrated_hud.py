@@ -9,6 +9,12 @@ from airwar.ui.scene_rendering_utils import fit_text_to_width, render_cached_tex
 from airwar.utils.fonts import get_cjk_font
 
 
+def _rgb(color):
+    if isinstance(color, (tuple, list)) and len(color) >= 3:
+        return (int(color[0]), int(color[1]), int(color[2]))
+    return (255, 255, 255)
+
+
 class IntegratedHUD:
     """Integrated HUD — unified heads-up display combining all HUD elements."""
 
@@ -63,8 +69,8 @@ class IntegratedHUD:
         self.more_font_size = components.HUD_MORE_FONT_SIZE
         self.progress_bar_height = components.HUD_PROGRESS_BAR_HEIGHT
 
-        self.bg_color = (*colors.BACKGROUND_PANEL, self.PANEL_BG_ALPHA)
-        self.border_color = (*colors.PANEL_BORDER, self.PANEL_BORDER_ALPHA)
+        self.bg_color = (*_rgb(colors.BACKGROUND_PANEL), self.PANEL_BG_ALPHA)
+        self.border_color = (*_rgb(colors.PANEL_BORDER), self.PANEL_BORDER_ALPHA)
 
     def _get_font(self, size):
         """Return a cached font object for the given size."""
@@ -187,12 +193,12 @@ class IntegratedHUD:
         if cache_key not in self._panel_bg_cache:
             overlay = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
             pygame.draw.rect(
-                overlay, (*colors.BACKGROUND_PANEL, 235), overlay.get_rect(), border_radius=self.corner_radius
+                overlay, (*_rgb(colors.BACKGROUND_PANEL), 235), overlay.get_rect(), border_radius=self.corner_radius
             )
             border_surf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
             pygame.draw.rect(
                 border_surf,
-                (*colors.PANEL_BORDER, 200),
+                (*_rgb(colors.PANEL_BORDER), 200),
                 border_surf.get_rect(),
                 width=2,
                 border_radius=self.corner_radius,
@@ -206,7 +212,7 @@ class IntegratedHUD:
         cw = self._current_width
         inner_h = panel_height - self.padding * 2
         if self._battery_collapsed is None:
-            bw = min(self.BATTERY_WIDTH_CAP, cw - 10)
+            bw = max(1, min(self.BATTERY_WIDTH_CAP, cw - 10))
             bh = inner_h // 3
             self._battery_collapsed = DiscreteBatteryIndicator(
                 width=bw, height=bh, num_segments=self.BATTERY_SEGMENTS, orientation="vertical"
@@ -219,7 +225,7 @@ class IntegratedHUD:
         battery.render(surface, tx, ty)
 
         border_rect = pygame.Rect(tx, ty, bw, battery._h)
-        pygame.draw.rect(surface, (*colors.PANEL_BORDER, 140), border_rect, width=1, border_radius=4)
+        pygame.draw.rect(surface, (*_rgb(colors.PANEL_BORDER), 140), border_rect, width=1, border_radius=4)
 
     def _render_expand_indicator(self, surface, panel_x, panel_y, panel_height, colors):
         components = self._tokens.components
@@ -245,12 +251,12 @@ class IntegratedHUD:
         if cache_key not in self._bar_bg_cache:
             overlay = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
             pygame.draw.rect(
-                overlay, (*colors.BACKGROUND_PANEL, 230), overlay.get_rect(), border_radius=self.corner_radius
+                overlay, (*_rgb(colors.BACKGROUND_PANEL), 230), overlay.get_rect(), border_radius=self.corner_radius
             )
             border_surf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
             pygame.draw.rect(
                 border_surf,
-                (*colors.PANEL_BORDER, 200),
+                (*_rgb(colors.PANEL_BORDER), 200),
                 border_surf.get_rect(),
                 width=2,
                 border_radius=self.corner_radius,
@@ -258,7 +264,7 @@ class IntegratedHUD:
             line_surf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
             pygame.draw.line(
                 line_surf,
-                (*colors.PANEL_BORDER, 120),
+                (*_rgb(colors.PANEL_BORDER), 120),
                 (30, rect.height - 10),
                 (rect.width - 30, rect.height - 10),
                 width=2,
@@ -308,7 +314,7 @@ class IntegratedHUD:
 
         max_mult = components.COEFFICIENT_MAX_MULTIPLIER
         pygame.draw.rect(
-            surface, (*colors.BACKGROUND_SECONDARY, 180), (bar_x, bar_y, bar_width, bar_height), border_radius=6
+            surface, (*_rgb(colors.BACKGROUND_SECONDARY), 180), (bar_x, bar_y, bar_width, bar_height), border_radius=6
         )
 
         fill_ratio = min(current / max_mult, 1.0)
@@ -349,10 +355,11 @@ class IntegratedHUD:
         bar_y = y + self.BAR_Y_OFFSET
 
         pygame.draw.rect(
-            surface, (*colors.BACKGROUND_SECONDARY, 180), (bar_x, bar_y, bar_width, bar_height), border_radius=6
+            surface, (*_rgb(colors.BACKGROUND_SECONDARY), 180), (bar_x, bar_y, bar_width, bar_height), border_radius=6
         )
 
-        fill_width = int(bar_width * progress / 100)
+        fill_ratio = max(0.0, min(progress / 100, 1.0))
+        fill_width = int(bar_width * fill_ratio)
         if fill_width > 0:
             pygame.draw.rect(surface, colors.PROGRESS_COLOR, (bar_x, bar_y, fill_width, bar_height), border_radius=6)
 
@@ -378,17 +385,18 @@ class IntegratedHUD:
 
         # 深色圆角背景条 — 与 progress bar 风格一致
         pygame.draw.rect(
-            surface, (*colors.BACKGROUND_SECONDARY, 180), (bar_x, bar_y, bar_width, bar_height), border_radius=7
+            surface, (*_rgb(colors.BACKGROUND_SECONDARY), 180), (bar_x, bar_y, bar_width, bar_height), border_radius=7
         )
         # 细边框 — 暗示总血量范围
         pygame.draw.rect(
-            surface, (*colors.PANEL_BORDER, 150), (bar_x, bar_y, bar_width, bar_height), width=1, border_radius=7
+            surface, (*_rgb(colors.PANEL_BORDER), 150), (bar_x, bar_y, bar_width, bar_height), width=1, border_radius=7
         )
 
         if self._battery_expanded is None:
             self._battery_expanded = DiscreteBatteryIndicator(
                 width=bar_width - 2, height=bar_height, num_segments=self.BATTERY_SEGMENTS, orientation="horizontal"
             )
+        self._battery_expanded.set_health(health, max_health)
         self._battery_expanded.render(surface, bar_x + 1, bar_y)
 
         return y + self.module_height + self.gap + 10
@@ -433,7 +441,10 @@ class IntegratedHUD:
         visible_buffs = buffs[: self._buff_visible_count] if not should_scroll else self._get_visible_buffs(buffs)
 
         for _idx, buff in enumerate(visible_buffs):
-            buff_color = get_buff_color(buff)
+            raw_color = get_buff_color(buff)
+            if not isinstance(raw_color, (tuple, list)) or len(raw_color) < 3:
+                raw_color = (200, 200, 200)
+            buff_color = tuple(raw_color[:3])
 
             brightness = (buff_color[0] * 299 + buff_color[1] * 587 + buff_color[2] * 114) / 1000
             if brightness > components.BUFF_CONTRAST_THRESHOLD_HIGH:
@@ -478,6 +489,8 @@ class IntegratedHUD:
             return buffs[: self._buff_visible_count]
 
         total_buffs = len(buffs)
+        if total_buffs == 0:
+            return []
         start_idx = int(self._buff_scroll_offset) % total_buffs
 
         visible = []

@@ -171,6 +171,7 @@ class SceneDirector:
         if action == PauseAction.QUIT_WITHOUT_SAVING:
             return "quit_without_saving"
         if action == PauseAction.QUIT:
+            # 保存并退出（映射到 save_and_quit）
             return "save_and_quit"
         return "none"
 

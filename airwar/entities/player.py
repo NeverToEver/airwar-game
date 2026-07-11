@@ -38,7 +38,7 @@ from .player_components import (
     PlayerShield,
     PlayerWeapon,
 )
-from .player_state import PlayerStateMachine
+from .player_state import IllegalPlayerTransition, PlayerStateMachine
 
 __all__ = ["Player"]
 
@@ -101,8 +101,7 @@ class Player(Entity):
         self._constants = constants  # Cache for hot path access
         self._input_handler = input_handler
 
-        # --- Component assembly (init order matters: components read
-        # --- owner attributes that we set just below) ---
+        # --- Component assembly (constants and input handler are already set above) ---
         self.movement: PlayerMovement = PlayerMovement(self, input_handler)
         self.boost: PlayerBoost = PlayerBoost(self)
         self.weapon: PlayerWeapon = PlayerWeapon(self)
@@ -167,7 +166,7 @@ class Player(Entity):
             setattr(target, self.attr, value)
 
     fire_cooldown = _Comp("weapon", "_fire_cooldown")
-    fire_interval = _Comp("weapon", "_fire_interval", set_transform=lambda v: max(1, int(v)))
+    fire_interval = _Comp("weapon", "_fire_interval", set_transform=lambda v: max(1, int(v or 0)))
     precision_active = _Comp("movement", "precision_active")
     boost_max = _Comp("boost", "boost_max")
     boost_current = _Comp("boost", "boost_current")
@@ -210,17 +209,22 @@ class Player(Entity):
         Per-frame dispatch order (chosen to preserve the original
         game's per-frame invariants):
 
-        1. shield timer (decrements ``_shield_duration``)
-        2. phase dash cooldown (decrements dash cooldown)
-        3. if is_controls_locked: increment pulse timer, return
-        4. if phase dashing: tick dash motion + recovery, weapon, aim, pulse
-        5. read boost key state + edge detection
-        6. phase dash attempt (preempts boost)
-        7. boost mode (hold vs toggle) -> sets ``is_boost_active``
-        8. precision mode (hold vs toggle) -> sets ``is_boost_active=False``
-        9. movement: position update with current speed
-        10. weapon cooldown / aim turn / pulse
+        1. tick input handler edge detection
+        2. shield timer (decrements ``_shield_duration``)
+        3. phase dash cooldown (decrements dash cooldown)
+        4. if is_controls_locked: increment pulse timer, return
+        5. if phase dashing: tick dash motion + recovery, weapon, aim, pulse
+        6. read boost key state + edge detection
+        7. phase dash attempt (preempts boost)
+        8. boost mode (hold vs toggle) -> sets ``is_boost_active``
+        9. precision mode (hold vs toggle) -> sets ``is_boost_active=False``
+        10. movement: position update with current speed
+        11. weapon cooldown / aim turn / pulse
         """
+        if not self.active or not self._state.is_alive():
+            return
+        if hasattr(self._input_handler, "tick"):
+            self._input_handler.tick()
         self.shield.update()
 
         if self.is_controls_locked:
@@ -261,6 +265,17 @@ class Player(Entity):
         else:
             self.boost.is_boost_active = boost_pressed and self.boost.boost_current > 0
 
+        # Sync alive substate with boost active state.
+        if self.boost.is_boost_active and not self._state.is_boosting():
+            if hasattr(self._state, "enter_boost"):
+                try:
+                    self._state.enter_boost()
+                except IllegalPlayerTransition:
+                    pass
+        elif not self.boost.is_boost_active and self._state.is_boosting():
+            if hasattr(self._state, "exit_boost"):
+                self._state.exit_boost()
+
         # Precision mode (hold vs toggle)
         precision = self.movement.update_precision_state()
 
@@ -289,6 +304,8 @@ class Player(Entity):
             surface: Pygame surface to render onto.
         """
         sprite = self.aim.rotated_ship_sprite()
+        if sprite is None:
+            return
         # Juice: alpha-blink during post-hit invincibility. 6-frame on / 6-frame
         # off pattern at 60fps = ~5Hz strobe, fast enough to read as "i-frames
         # active" but slow enough to not look glitchy. Phase-dash still wins
@@ -423,6 +440,9 @@ class Player(Entity):
 
     def add_listener(self, listener) -> None:
         self.weapon.add_listener(listener)
+
+    def remove_listener(self, listener) -> None:
+        self.weapon.remove_listener(listener)
 
     def set_aim_target(self, x: float, y: float) -> None:
         self.aim.set_aim_target(x, y)

@@ -21,6 +21,7 @@ strategies need them.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
@@ -141,7 +142,7 @@ class CollisionController:
 
     def _get_cell_key(self, x: int, y: int) -> tuple[int, int]:
         """Get grid cell key for a position."""
-        return (x // self._grid_cell_size, y // self._grid_cell_size)
+        return (math.floor(x / self._grid_cell_size), math.floor(y / self._grid_cell_size))
 
     def _add_to_grid(self, entity, rect) -> None:
         """Add entity to spatial hash grid based on its rect."""
@@ -153,10 +154,10 @@ class CollisionController:
 
     def _add_entity_to_cells(self, cells: dict, entity, rect) -> None:
         left, right, top, bottom = self._get_rect_bounds(rect)
-        min_x = int(left // self._grid_cell_size)
-        max_x = int(right // self._grid_cell_size)
-        min_y = int(top // self._grid_cell_size)
-        max_y = int(bottom // self._grid_cell_size)
+        min_x = math.floor(left / self._grid_cell_size)
+        max_x = math.floor(right / self._grid_cell_size)
+        min_y = math.floor(top / self._grid_cell_size)
+        max_y = math.floor(bottom / self._grid_cell_size)
 
         for gx in range(min_x, max_x + 1):
             for gy in range(min_y, max_y + 1):
@@ -187,10 +188,10 @@ class CollisionController:
 
     def _get_entities_in_cells(self, cells: dict, rect) -> list:
         left, right, top, bottom = self._get_rect_bounds(rect)
-        min_x = int(left // self._grid_cell_size)
-        max_x = int(right // self._grid_cell_size)
-        min_y = int(top // self._grid_cell_size)
-        max_y = int(bottom // self._grid_cell_size)
+        min_x = math.floor(left / self._grid_cell_size)
+        max_x = math.floor(right / self._grid_cell_size)
+        min_y = math.floor(top / self._grid_cell_size)
+        max_y = math.floor(bottom / self._grid_cell_size)
 
         potential = []
         seen_ids = set()

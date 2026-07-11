@@ -11,7 +11,7 @@ class ExplosionPool:
     def __init__(self, max_size: int = DEFAULT_MAX_SIZE) -> None:
         self._max_size = max_size
         self._available: list[ExplosionEffect] = []
-        self._in_use: list[ExplosionEffect] = []
+        self._in_use: set[ExplosionEffect] = set()
 
         self._prewarm(min(5, max_size))
 
@@ -31,11 +31,11 @@ class ExplosionPool:
         """
         if self._available:
             effect = self._available.pop()
-            self._in_use.append(effect)
+            self._in_use.add(effect)
             return effect
         elif len(self._in_use) < self._max_size:
             effect = ExplosionEffect()
-            self._in_use.append(effect)
+            self._in_use.add(effect)
             return effect
         else:
             return None
@@ -47,7 +47,7 @@ class ExplosionPool:
             effect: Instance to release
         """
         if effect in self._in_use:
-            self._in_use.remove(effect)
+            self._in_use.discard(effect)
             effect.reset()
             self._available.append(effect)
 
@@ -60,12 +60,8 @@ class ExplosionPool:
         if not self._in_use:
             return 0
 
-        i = 0
-        while i < len(self._in_use):
-            effect = self._in_use[i]
-            if effect.is_active() and effect.update():
-                i += 1
-            else:
+        for effect in list(self._in_use):
+            if not effect.is_active() or not effect.update():
                 self.release(effect)
 
         return len(self._in_use)

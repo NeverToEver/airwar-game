@@ -179,6 +179,12 @@ class PersistenceManager(IPersistenceManager):
 
         except SaveDataCorruptedError as e:
             logger.error(f"Save data corrupted: {e}")
+            backup_path = f"{self._save_path}.corrupted.{int(time.time())}.bak"
+            try:
+                os.replace(self._save_path, backup_path)
+                logger.warning("Corrupted save backed up to %s", backup_path)
+            except OSError:
+                pass
             self.delete_save()
             return None
         except PermissionError:
@@ -186,6 +192,12 @@ class PersistenceManager(IPersistenceManager):
             return None
         except json.JSONDecodeError as e:
             logger.error(f"Invalid JSON in save file: {e}")
+            backup_path = f"{self._save_path}.corrupted.{int(time.time())}.bak"
+            try:
+                os.replace(self._save_path, backup_path)
+                logger.warning("Corrupted save backed up to %s", backup_path)
+            except OSError:
+                pass
             self.delete_save()
             return None
         except OSError as e:
@@ -193,6 +205,12 @@ class PersistenceManager(IPersistenceManager):
             return None
         except (TypeError, KeyError, AttributeError, ValueError) as e:
             logger.critical(f"Save data structure corrupted: {e}")
+            backup_path = f"{self._save_path}.corrupted.{int(time.time())}.bak"
+            try:
+                os.replace(self._save_path, backup_path)
+                logger.warning("Corrupted save backed up to %s", backup_path)
+            except OSError:
+                pass
             self.delete_save()
             return None
         except Exception as e:

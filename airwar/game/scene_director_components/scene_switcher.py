@@ -69,7 +69,7 @@ class SceneSwitcher:
                 self._director._load_user_settings()
                 save_data = self._director._check_and_get_saved_game(self._director._current_user)
                 return (True, save_data)
-            return (True, None)
+            return (False, None)
         return (False, None)
 
     def _consume_welcome_request(self, welcome, request: str | None = None) -> None:
@@ -105,21 +105,33 @@ class SceneSwitcher:
         self._logger.info(
             f"Starting game flow: difficulty={self._director._selected_difficulty}, user={self._director._current_user}"
         )
-        self._scene_manager.switch(
-            "game",
-            difficulty=self._director._selected_difficulty,
-            username=self._director._current_user or "Guest",
-            settings_ref=self._director._settings_ref,
-            save_service=self._director._persistence.save_service,
-            viewport=self._viewport,
-        )
+        try:
+            self._scene_manager.switch(
+                "game",
+                difficulty=self._director._selected_difficulty,
+                username=self._director._current_user or "Guest",
+                settings_ref=self._director._settings_ref,
+                save_service=self._director._persistence.save_service,
+                viewport=self._viewport,
+            )
+        except Exception:
+            self._logger.exception("Failed to build game scene")
+            self._director._pending_save_data = None
+            return "main_menu"
         self._reset_game_timing()
 
         current_scene = self._scene_manager.get_current_scene()
-        if self._director._pending_save_data and isinstance(current_scene, GameScene):
-            current_scene.restore_from_save(self._director._pending_save_data)
+        if not isinstance(current_scene, GameScene):
             self._director._pending_save_data = None
-            self._logger.info("Game restored from pending save data")
+            return "main_menu"
+
+        if self._director._pending_save_data:
+            try:
+                current_scene.restore_from_save(self._director._pending_save_data)
+                self._logger.info("Game restored from pending save data")
+            except Exception:
+                self._logger.exception("Save restore failed")
+            self._director._pending_save_data = None
         while self._director._running:
             frame = self._next_frame(simulate=True)
             escape_handled = False
@@ -140,7 +152,7 @@ class SceneSwitcher:
                     return dispatched
                 escape_handled = result == "resume"
 
-            self._handle_scene_events(events, escape_handled)
+            self._handle_scene_events(events, escape_handled, target_scene=current_scene)
 
             # Check for pause requests triggered by mouse click
             if isinstance(current_scene, GameScene) and not escape_handled:
@@ -245,33 +257,19 @@ class SceneSwitcher:
         events: list[pygame.event.Event],
         skip_escape: bool = False,
         *,
-        target_scene: Scene | None = None,
+        target_scene: Scene,
     ) -> None:
         """Dispatch pygame events to the appropriate scene.
 
         Args:
             events: Pygame events to dispatch.
             skip_escape: If True, swallow ``pygame.K_ESCAPE`` events.
-            target_scene: If provided, dispatch to this scene directly.
-                Used by ``_run_scene_loop`` for sub-scenes (settings,
-                pause, death, and exit-confirm) that do not call
-                ``scene_manager.switch`` before ``enter()`` and therefore
-                do not become ``SceneManager._current_scene``. If
-                ``None``, falls back to ``scene_manager.get_current_scene()``.
+            target_scene: The scene to dispatch events to directly. Used by
+                ``_run_scene_loop`` for sub-scenes (settings, pause, death,
+                and exit-confirm) that do not call ``scene_manager.switch``
+                before ``enter()`` and therefore do not become
+                ``SceneManager._current_scene``.
         """
-        if target_scene is None:
-            # Fall back to the legacy path: dispatch via the
-            # scene_manager (which routes to ``get_current_scene()``).
-            # This is correct for the top-level ``welcome`` / ``game`` / ``tutorial``
-            # flows that DO call ``scene_manager.switch`` before
-            # ``_run_scene_loop``. The ``target_scene`` parameter is
-            # only needed for the sub-scene flows that skip
-            # ``scene_manager.switch``.
-            for event in events:
-                if skip_escape and hasattr(event, "key") and event.key == pygame.K_ESCAPE:
-                    continue
-                self._scene_manager.handle_events(event)
-            return
         for event in events:
             if skip_escape and hasattr(event, "key") and event.key == pygame.K_ESCAPE:
                 continue
@@ -391,7 +389,12 @@ class SceneSwitcher:
         elif result == ExitConfirmAction.START_NEW_GAME:
             self._director._clear_saved_game()
             return "restart"
+        elif result == ExitConfirmAction.QUIT_GAME:
+            if not saved:
+                self._director._clear_saved_game()
+            return "quit"
         else:
+            self._director._logger.warning("Unexpected exit confirm result: %r", result)
             if not saved:
                 self._director._clear_saved_game()
             return "quit"
@@ -414,7 +417,10 @@ class SceneSwitcher:
             username=self._director._current_user,
         )
 
-        self._run_scene_loop(death_scene)
+        loop_result = self._run_scene_loop(death_scene)
+        if loop_result == "quit":
+            death_scene.exit()
+            return False
 
         result = death_scene.get_result()
         death_scene.exit()

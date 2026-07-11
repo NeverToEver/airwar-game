@@ -116,6 +116,9 @@ fn fill_glow_ellipse(
 /// Returns RGBA bytes
 #[pyfunction]
 pub fn create_single_bullet_glow(width: f32, height: f32) -> Vec<u8> {
+    if width <= 0.0 || height <= 0.0 {
+        return Vec::new();
+    }
     let surf_w = (width + 16.0) as usize;
     let surf_h = (height + 12.0) as usize;
     let cx = (surf_w as f32) / 2.0;
@@ -138,6 +141,9 @@ pub fn create_single_bullet_glow(width: f32, height: f32) -> Vec<u8> {
 /// Create glow surface for a spread bullet
 #[pyfunction]
 pub fn create_spread_bullet_glow(radius: f32) -> Vec<u8> {
+    if radius <= 0.0 {
+        return Vec::new();
+    }
     let surf_size = (radius * 4.0 + 8.0) as usize;
     let cx = (surf_size as f32) / 2.0;
     let cy = (surf_size as f32) / 2.0;
@@ -163,8 +169,8 @@ pub fn create_spread_bullet_glow(radius: f32) -> Vec<u8> {
         let max_x = (cx + r + 2.0) as isize;
         let min_y = (cy - r - 2.0) as isize;
         let max_y = (cy + r + 2.0) as isize;
-        for y in min_x.max(0)..max_x.min(surf_size as isize) {
-            for x in min_y.max(0)..max_y.min(surf_size as isize) {
+        for y in min_y.max(0)..max_y.min(surf_size as isize) {
+            for x in min_x.max(0)..max_x.min(surf_size as isize) {
                 let dx = x as f32 - cx;
                 let dy = y as f32 - cy;
                 let dist = (dx * dx + dy * dy).sqrt();
@@ -182,6 +188,9 @@ pub fn create_spread_bullet_glow(radius: f32) -> Vec<u8> {
 /// Create glow surface for a laser bullet
 #[pyfunction]
 pub fn create_laser_bullet_glow(height: f32) -> Vec<u8> {
+    if height <= 0.0 {
+        return Vec::new();
+    }
     let surf_w = 24usize;
     let surf_h = (height + 12.0) as usize;
     let cx = 12.0f32;
@@ -217,6 +226,9 @@ pub fn create_laser_bullet_glow(height: f32) -> Vec<u8> {
 /// Create glow surface for an explosive missile
 #[pyfunction]
 pub fn create_explosive_missile_glow(width: f32, height: f32) -> Vec<u8> {
+    if width <= 0.0 || height <= 0.0 {
+        return Vec::new();
+    }
     let bw = width * 0.8;
     let surf_w = (bw * 3.0 + 12.0) as usize;
     let surf_h = (height + 10.0) as usize;
@@ -248,6 +260,9 @@ pub fn create_explosive_missile_glow(width: f32, height: f32) -> Vec<u8> {
 /// Create glow circle surface
 #[pyfunction]
 pub fn create_glow_circle(radius: i32, r: u8, g: u8, b: u8, glow_radius: i32) -> Vec<u8> {
+    if radius <= 0 || glow_radius < 0 {
+        return Vec::new();
+    }
     let surf_size = (radius + glow_radius) * 2 + 4;
     let surf_size = surf_size as usize;
     let cx = (surf_size as f32) / 2.0;

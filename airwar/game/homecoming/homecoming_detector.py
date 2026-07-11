@@ -11,12 +11,17 @@ class HomecomingDetector:
     B_KEY = pygame.K_b
     HOLD_DURATION = 2.4
 
-    def __init__(self, on_complete_callback: Callable[[], None]):
+    def __init__(
+        self,
+        on_complete_callback: Callable[[], None],
+        key_state_provider: Callable[[int], bool] | None = None,
+    ):
         self._progress = 0.0
         self._b_was_pressed = False
         self._on_complete_callback = on_complete_callback
         self._is_complete = False
         self._enabled = True
+        self._key_state_provider = key_state_provider or (lambda key: pygame.key.get_pressed()[key])
 
     def update(self, delta_time: float, enabled: bool = True) -> None:
         self._enabled = enabled
@@ -24,7 +29,7 @@ class HomecomingDetector:
             self.reset()
             return
 
-        is_b_pressed = pygame.key.get_pressed()[self.B_KEY]
+        is_b_pressed = self._key_state_provider(self.B_KEY)
 
         if is_b_pressed and not self._b_was_pressed:
             self._on_b_pressed()
@@ -62,4 +67,8 @@ class HomecomingDetector:
         if self._progress >= 1.0 and not self._is_complete:
             self._is_complete = True
             if self._on_complete_callback is not None:
-                self._on_complete_callback()
+                try:
+                    self._on_complete_callback()
+                except Exception:
+                    self.reset()
+                    raise

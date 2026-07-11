@@ -1,6 +1,7 @@
 """Difficulty progression — scales enemy stats and spawn rates over time."""
 
 import logging
+from abc import ABC, abstractmethod
 from typing import Any
 
 from ...config.difficulty_config import BASE_ENEMY_PARAMS
@@ -9,11 +10,12 @@ from .difficulty_strategies import (
 )
 
 
-class DifficultyListener:
+class DifficultyListener(ABC):
     """Listener interface for difficulty change notifications."""
 
+    @abstractmethod
     def on_difficulty_changed(self, params: dict) -> None:
-        raise NotImplementedError
+        ...
 
 
 class DifficultyManager:
@@ -53,6 +55,7 @@ class DifficultyManager:
         self._strategy = DifficultyStrategyFactory.create(difficulty)
         self._current_multiplier = self._strategy.base_multiplier
         self._cache_dirty = True
+        self._notify_listeners()
 
     def set_boss_kill_count(self, count: int) -> None:
         if count < 0:
@@ -64,6 +67,7 @@ class DifficultyManager:
             self._logger.debug(
                 f"Boss kill count updated: {self._boss_kill_count}, multiplier: {self._current_multiplier:.2f}"
             )
+            self._notify_listeners()
 
     def get_boss_kill_count(self) -> int:
         return self._boss_kill_count
@@ -159,7 +163,8 @@ class DifficultyManager:
 
     def _notify_listeners(self) -> None:
         params = self.get_current_params()
-        for listener in self._listeners:
+        failed: list[DifficultyListener] = []
+        for listener in self._listeners[:]:
             try:
                 listener.on_difficulty_changed(params)
             except (KeyboardInterrupt, SystemExit):
@@ -168,4 +173,6 @@ class DifficultyManager:
                 self._logger.error(
                     f"Difficulty listener {listener.__class__.__name__} failed and will be removed: {e}", exc_info=True
                 )
-                self.remove_listener(listener)
+                failed.append(listener)
+        for listener in failed:
+            self.remove_listener(listener)

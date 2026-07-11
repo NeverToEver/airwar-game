@@ -172,6 +172,7 @@ class Boss(Entity):
         self._enrage_trail: list[tuple[float, float]] = []
         self._enrage_trail_ghost: pygame.Surface | None = None
         self._enrage_trail_ghost_key: tuple[int, int, int, int] | None = None
+        self._enrage_bullets: list[Bullet] = []
         # ---- Components (Phase 1 split) ----
         self._state = boss_state.BossStateMachine(self)
         self._movement = boss_movement.BossMovement(self)
@@ -211,6 +212,8 @@ class Boss(Entity):
         preserved by consulting :class:`BossStateMachine` first and only
         running movement/attack when appropriate.
         """
+        if not self.active:
+            return
         # 1. Entrance animation
         if self.is_entering:
             if self._movement.tick_entry(slow_factor):
@@ -274,6 +277,7 @@ class Boss(Entity):
             self._state.tick_enrage_return_timer()
             if self._state.enrage_return_timer <= 0:
                 self._state.finish_enrage_return()
+                self.fire_timer = 0
             return
 
         # 4. Active (non-enrage) frame
@@ -315,6 +319,12 @@ class Boss(Entity):
             self._state.mark_dead()
         return score_delta
 
+    def is_death_consumed(self) -> bool:
+        return getattr(self, "_death_consumed", False)
+
+    def consume_death(self) -> None:
+        self._death_consumed = True
+
     # ------------------------------------------------------------------
     # Public enrage predicates (delegate to state machine)
     # ------------------------------------------------------------------
@@ -336,6 +346,50 @@ class Boss(Entity):
 
     def enrage_visual_intensity(self) -> float:
         return self._state.enrage_visual_intensity()
+
+    # ------------------------------------------------------------------
+    # Read-only public properties for rendering / external observers
+    # ------------------------------------------------------------------
+
+    @property
+    def enrage_timer(self) -> int:
+        return self._state.enrage_timer
+
+    @property
+    def show_escape_warning(self) -> bool:
+        return getattr(self, "_show_escape_warning", False)
+
+    @property
+    def facing_angle(self) -> float:
+        return getattr(self, "_facing_angle", 90.0)
+
+    @property
+    def enrage_snapshot_target(self) -> tuple[float, float] | None:
+        return self._state.enrage_snapshot_target
+
+    @property
+    def muzzle_flash_timer(self) -> int:
+        return getattr(self, "_muzzle_flash_timer", 0)
+
+    @property
+    def muzzle_flash_positions(self) -> list[tuple[float, float]]:
+        return getattr(self, "_muzzle_flash_positions", [])
+
+    @property
+    def enrage_trail(self) -> list[tuple[float, float]]:
+        return getattr(self, "_enrage_trail", [])
+
+    @property
+    def enrage_trail_ghost(self) -> pygame.Surface | None:
+        return getattr(self, "_enrage_trail_ghost", None)
+
+    @property
+    def enrage_trail_ghost_key(self) -> tuple[int, int, int, int] | None:
+        return getattr(self, "_enrage_trail_ghost_key", None)
+
+    @property
+    def enrage_transition_timer(self) -> int:
+        return self._state.enrage_transition_timer
 
     # ------------------------------------------------------------------
     # Renderer-bug-fix shims (Phase 5-β)
@@ -374,6 +428,7 @@ class Boss(Entity):
         elif self.attack_pattern == 1:
             if player_pos and self._movement.start_aim_dash(player_pos):
                 self._aim_fire_target = (float(player_pos[0]), float(player_pos[1]))
+                self.fire_timer = 0
                 return
             bullets = self._attack.aim_attack(player_pos)
         else:
@@ -419,18 +474,6 @@ class Boss(Entity):
         self._spawn_bullets(bullets)
         self.attack_pattern = (self.attack_pattern + 1) % 3
 
-    def _enrage_spawned_bullets(self) -> list[Bullet]:
-        spawner = self._bullet_spawner
-        if spawner is None:
-            return []
-        if hasattr(spawner, "get_bullets"):
-            return spawner.get_bullets()
-        if hasattr(spawner, "bullets"):
-            return spawner.bullets
-        if hasattr(spawner, "bullet_list"):
-            return spawner.bullet_list
-        return []
-
     # ------------------------------------------------------------------
     # Enrage orchestration
     # ------------------------------------------------------------------
@@ -457,8 +500,12 @@ class Boss(Entity):
     ) -> tuple[float, float]:
         target = (get_screen_width() / 2, get_screen_height() / 2)
         if player is not None:
-            player.rect.x = target[0] - player.rect.width / 2
-            player.rect.y = target[1] - player.rect.height / 2
+            rect = player.rect
+            new_x = max(0, min(target[0] - rect.width / 2, get_screen_width() - rect.width))
+            new_y = max(0, min(target[1] - rect.height / 2, get_screen_height() - rect.height))
+            rect.x, rect.y = new_x, new_y
+            if hasattr(player, "sync_hitbox"):
+                player.sync_hitbox()
             return target
         if player_pos:
             return (float(player_pos[0]), float(player_pos[1]))
@@ -474,14 +521,16 @@ class Boss(Entity):
         self._state.tick_enrage_attack_timer()
         if self._state.enrage_attack_timer > 0:
             return
-        self._spawn_bullets(self._attack.create_enrage_snapshot_attack(target, progress))
+        bullets = self._attack.create_enrage_snapshot_attack(target, progress)
+        self._enrage_bullets.extend(bullets)
+        self._spawn_bullets(bullets)
         self._state.reset_enrage_attack_timer()
 
     def _create_enrage_snapshot_attack(self, target: tuple[float, float], progress: float) -> list[Bullet]:
         return self._attack.create_enrage_snapshot_attack(target, progress)
 
     def _release_enrage_bullets(self, target: tuple[float, float]) -> None:
-        for bullet in self._enrage_spawned_bullets():
+        for bullet in self._enrage_bullets:
             if not getattr(bullet, "clear_immune", False) or not getattr(bullet, "held", False):
                 continue
             direction = getattr(bullet, "release_direction", None)
@@ -491,6 +540,7 @@ class Boss(Entity):
             bullet.release_direction = direction
             bullet.enrage_release_pending = True
             bullet.enrage_release_delay = max(0, getattr(bullet, "enrage_release_delay", 0))
+        self._enrage_bullets.clear()
         # Compute the release anchor by walking the path all the way to 1.0.
         behind_center_x, behind_center_y = self._movement.enrage_path_center(target, 1.0)
         self._state.begin_enrage_release_hold((behind_center_x, behind_center_y))
@@ -566,6 +616,7 @@ class Boss(Entity):
         self._state.tick_enrage_return_timer()
         if self._state.enrage_return_timer <= 0:
             self._state.finish_enrage_return()
+            self.fire_timer = 0
 
     def _enrage_progress(self) -> float:
         return self._state.enrage_progress()

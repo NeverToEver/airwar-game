@@ -183,7 +183,7 @@ class GameLoopManager:
     def update_entrance(self, player: PlayerProtocol) -> bool:
         state = self._game_controller.state
         state.entrance_timer += 1
-        progress = state.entrance_timer / state.entrance_duration
+        progress = 1.0 if state.entrance_duration <= 0 else min(1.0, state.entrance_timer / state.entrance_duration)
 
         if progress >= 1.0:
             state.is_entrance_playing = False
@@ -204,20 +204,20 @@ class GameLoopManager:
         self._update_core(player)
 
     def _update_core(self, player: PlayerProtocol) -> None:
+        # LockManager is required for the active gameplay path.
+        if self._lock_manager is None:
+            raise RuntimeError("GameLoopManager requires a LockManager. Pass lock_manager=... in the constructor.")
+
         has_regen = "Regeneration" in self._reward_system.unlocked_buffs
         self._game_controller.update(player, has_regen)
         self._refresh_locks()
 
-        if self._game_controller.state.gameplay_state == GameplayState.DYING:
-            self._game_renderer.update_death_animation()
-            self._explosion_manager.update()
-            return
-
         self._game_renderer.update_death_animation()
         self._explosion_manager.update()
-        # LockManager is required for the active gameplay path.
-        if self._lock_manager is None:
-            raise RuntimeError("GameLoopManager requires a LockManager. Pass lock_manager=... in the constructor.")
+
+        if self._game_controller.state.gameplay_state == GameplayState.DYING:
+            return
+
         # BOSS_ENRAGE is a transient lock — applied only for the duration
         # of player.update() and released immediately after, matching the
         # legacy "lock only during update" contract.
@@ -389,6 +389,10 @@ class GameLoopManager:
                 base_buf = b"".join(base_buf_parts)
                 extra_buf = b"".join(extra_buf_parts)
                 results = batch_update_movements_buf(base_buf, extra_buf)
+                if len(results) != len(batch_indices):
+                    raise MovementParamError(
+                        f"Rust movement batch returned {len(results)} results for {len(batch_indices)} enemies"
+                    )
                 for j, (new_x, new_y, new_timer) in enumerate(results):
                     idx = batch_indices[j]
                     enemies[idx].apply_batch_movement_result((new_x, new_y, new_timer))

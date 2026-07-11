@@ -7,10 +7,13 @@ Priority chain:
 4. pygame default font (freesansbold — basic CJK support)
 """
 
+import logging
 import os
 from functools import lru_cache
 
 import pygame
+
+logger = logging.getLogger(__name__)
 
 # Possible paths for a bundled CJK font, relative to this file's package
 _BUNDLED_CANDIDATES = [
@@ -95,7 +98,10 @@ def get_cjk_font(size: int) -> pygame.font.Font:
     """
     path = _get_cjk_font_path()
     if path:
-        return pygame.font.Font(path, size)
+        try:
+            return pygame.font.Font(path, size)
+        except (OSError, pygame.error):
+            logger.warning("CJK font %s unavailable, falling back", path)
     return pygame.font.Font(None, size)
 
 

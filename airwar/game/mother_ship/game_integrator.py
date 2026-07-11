@@ -162,6 +162,18 @@ class GameIntegrator:
 
         MothershipEventHub(self).register_all()
 
+    def detach_game_scene(self) -> None:
+        """Detach the integrator from the current game scene.
+
+        Unregisters all mothership event handlers and clears the
+        game scene reference so the integrator can be safely discarded.
+        """
+        from .event_hub import MothershipEventHub
+
+        MothershipEventHub(self).unregister_all()
+        self._state_machine._unregister_handlers()
+        self._game_scene = None
+
     def _update_mothership_input(self) -> None:
         # Mothership movement is only allowed while docked
         if not self._mother_ship.is_visible() or not self._state_machine.is_docked():
@@ -433,7 +445,7 @@ class GameIntegrator:
             if hasattr(self._game_scene, "set_player_invincible"):
                 self._game_scene.set_player_invincible(
                     True,
-                    GAME_CONSTANTS.PERSISTENCE.DOCKING_INVINCIBILITY_FRAMES,
+                    GAME_CONSTANTS.PERSISTENCE.PERMANENT_INVINCIBILITY_FRAMES,
                     silent=True,
                 )
             if getattr(self._game_scene, "player", None):
@@ -510,29 +522,29 @@ class GameIntegrator:
         cooldown_progress = sm.cooldown.cooldown_progress if sm.current_state == MotherShipState.COOLDOWN else 0.0
         stay_progress = sm.stay_progress.stay_progress if is_docked else 0.0
 
-        player = self._game_scene.player
+        player = getattr(self._game_scene, "player", None)
+        game_controller = getattr(self._game_scene, "game_controller", None)
+        game_controller_state = getattr(game_controller, "state", None)
         return GameSaveData(
-            score=self._game_scene.get_score(),
-            cycle_count=self._game_scene.get_cycle_count(),
-            kill_count=self._game_scene.get_kill_count(),
-            boss_kill_count=self._game_scene.get_boss_kill_count(),
-            unlocked_buffs=self._game_scene.get_unlocked_buffs(),
+            score=getattr(self._game_scene, "get_score", lambda: 0)(),
+            cycle_count=getattr(self._game_scene, "get_cycle_count", lambda: 0)(),
+            kill_count=getattr(self._game_scene, "get_kill_count", lambda: 0)(),
+            boss_kill_count=getattr(self._game_scene, "get_boss_kill_count", lambda: 0)(),
+            unlocked_buffs=getattr(self._game_scene, "get_unlocked_buffs", lambda: [])(),
             buff_levels=self._get_buff_levels(),
             earned_buff_levels=self._get_earned_buff_levels(),
             talent_loadout=self._get_talent_loadout(),
-            player_health=self._game_scene.get_player_health(),
-            player_max_health=self._game_scene.get_player_max_health(),
-            difficulty=self._game_scene.get_difficulty(),
+            player_health=getattr(self._game_scene, "get_player_health", lambda: 0)(),
+            player_max_health=getattr(self._game_scene, "get_player_max_health", lambda: 0)(),
+            difficulty=getattr(self._game_scene, "get_difficulty", lambda: "medium")(),
             player_x=player.rect.x if player else 0,
             player_y=player.rect.y if player else 0,
             is_in_mothership=is_docked,
             mothership_state=mothership_state,
             mothership_cooldown_progress=cooldown_progress,
             mothership_stay_progress=stay_progress,
-            username=self._game_scene.get_username(),
-            requisition_points=(
-                self._game_scene.game_controller.state.requisition_points if self._game_scene.game_controller else 0
-            ),
+            username=getattr(self._game_scene, "get_username", lambda: "")(),
+            requisition_points=getattr(game_controller_state, "requisition_points", 0),
         )
 
     def _on_game_resume(self, **kwargs) -> None:

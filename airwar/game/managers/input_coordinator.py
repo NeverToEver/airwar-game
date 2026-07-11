@@ -40,6 +40,16 @@ class InputCoordinator:
         give_up_detector: GiveUpDetectorProtocol,
         give_up_ui: GiveUpUIProtocol,
     ):
+        if player is None:
+            raise ValueError("player is required")
+        if game_controller is None:
+            raise ValueError("game_controller is required")
+        if reward_selector is None:
+            raise ValueError("reward_selector is required")
+        if give_up_detector is None:
+            raise ValueError("give_up_detector is required")
+        if give_up_ui is None:
+            raise ValueError("give_up_ui is required")
         self._player = player
         self._game_controller = game_controller
         self._reward_selector = reward_selector
@@ -49,11 +59,9 @@ class InputCoordinator:
     def handle_events(self, event: pygame.event.Event) -> None:
         self._reward_selector.handle_input(event)
 
-    def _can_fire(self) -> bool:
-        return not self._game_controller.state.is_paused and not self._reward_selector.visible
-
     def update_give_up(self, delta_seconds: float) -> None:
         if not self._can_use_give_up():
+            self._give_up_detector.reset()
             self._give_up_ui.hide()
             return
 
@@ -73,5 +81,7 @@ class InputCoordinator:
         )
 
     def render_give_up(self, surface: pygame.Surface) -> None:
+        if self._give_up_ui is None:
+            return
         if self._give_up_detector.is_active():
             self._give_up_ui.render(surface)

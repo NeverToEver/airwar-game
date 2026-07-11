@@ -56,12 +56,12 @@ class HomecomingBaseState:
             return
         base_talent_console.update()
         for mission in base_talent_console.get_missions():
-            if mission["done"] and not mission["claimed"]:
+            if mission.get("done", False) and not mission.get("claimed", False):
                 game_controller.state.requisition_points += GAME_CONSTANTS.REQUISITION.MISSION_REWARD
                 mission["claimed"] = True
                 if notification_manager:
                     reward = GAME_CONSTANTS.REQUISITION.MISSION_REWARD
-                    notification_manager.show(f"任务完成: {mission['name']} (+{reward}RP)")
+                    notification_manager.show(f"任务完成: {mission.get('name', '')} (+{reward}RP)")
 
     def sync_mission_progress(self, game_controller, base_talent_console, survival_frames) -> None:
         """Project game state into the base-console mission progress.
@@ -73,13 +73,14 @@ class HomecomingBaseState:
         if not base_talent_console or not game_controller:
             return
         for mission in base_talent_console.get_missions():
-            if mission["target"] == "kills":
+            target = mission.get("target", "")
+            if target == "kills":
                 mission["progress"] = game_controller.state.kill_count
-            elif mission["target"] == "survival_time":
+            elif target == "survival_time":
                 mission["progress"] = survival_frames // 60
-            elif mission["target"] == "boss_kills":
+            elif target == "boss_kills":
                 mission["progress"] = game_controller.state.boss_kill_count
-            mission["done"] = mission["progress"] >= mission["goal"]
+            mission["done"] = mission.get("progress", 0) >= mission.get("goal", 0)
 
 
 __all__ = ["HomecomingBaseState"]

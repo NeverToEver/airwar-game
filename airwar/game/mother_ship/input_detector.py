@@ -3,7 +3,6 @@
 import pygame
 
 from .event_bus import (
-    EVENT_DOCKING_COMPLETE,
     EVENT_EXIT_CANCELLED,
     EVENT_EXIT_COMPLETE,
     EVENT_EXIT_PROGRESS_UPDATE,
@@ -63,9 +62,7 @@ class InputDetector(IInputDetector):
             was_complete = self._progress.current_progress >= 1.0
             self._progress.reset()
 
-            if was_complete:
-                self._event_bus.publish(EVENT_DOCKING_COMPLETE)
-            else:
+            if not was_complete:
                 self._event_bus.publish(EVENT_H_RELEASED)
 
     def _on_h_held(self, current_time: float) -> None:

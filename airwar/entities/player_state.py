@@ -171,8 +171,8 @@ class PlayerStateMachine:
     # ------------------------------------------------------------------
 
     def mark_dying(self) -> None:
-        if self._state == PlayerState.DEAD:
-            raise IllegalPlayerTransition("Cannot mark DYING after DEAD: state is already terminal")
+        if self._state in (PlayerState.DYING, PlayerState.DEAD):
+            return
         self._state = PlayerState.DYING
 
     def mark_dead(self) -> None:
@@ -180,6 +180,9 @@ class PlayerStateMachine:
 
     def respawn(self) -> None:
         """Return to ALIVE / NORMAL after death (called by GameController)."""
+        self._dock_active = False
+        self._respawn_invincible = False
+        self._shield_duration = 0
         self._state = PlayerState.ALIVE
         self.transition_substate(PlayerAliveState.RESPAWN_INVINCIBLE)
 
@@ -229,11 +232,15 @@ class PlayerStateMachine:
     def enter_dock(self) -> None:
         self._dock_active = True
         self.transition_substate(PlayerAliveState.DOCKED)
+        if hasattr(self._player, "is_controls_locked"):
+            self._player.is_controls_locked = True
 
     def exit_dock(self) -> None:
         self._dock_active = False
         if self._alive_substate == PlayerAliveState.DOCKED:
             self.transition_substate(PlayerAliveState.NORMAL)
+        if hasattr(self._player, "is_controls_locked"):
+            self._player.is_controls_locked = False
 
     def enter_boost(self) -> None:
         # Boosting is only legal when not already in another locked state.

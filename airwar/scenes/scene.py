@@ -14,7 +14,7 @@ class PauseAction(Enum):
         MAIN_MENU: Return to main menu.
         SAVE_AND_QUIT: Save progress and quit.
         QUIT_WITHOUT_SAVING: Quit without saving.
-        QUIT: Quit the application.
+        QUIT: 保存并退出（映射到 save_and_quit）。
     """
 
     RESUME = "resume"

@@ -1,7 +1,7 @@
 use pyo3::prelude::*;
 
-type BulletUpdateInput = (u64, f32, f32, f32, f32, i32, bool, f32);
-type BulletUpdateOutput = (u64, f32, f32, bool);
+type BulletUpdateInput = (i64, f32, f32, f32, f32, i32, bool, f32);
+type BulletUpdateOutput = (i64, f32, f32, bool);
 
 /// Bullet update data: (id, x, y, vx, vy, `bullet_type`, `is_laser`, `screen_height`)
 /// id is u64 to handle Python's arbitrary precision integers
@@ -42,7 +42,10 @@ pub fn batch_update_bullets(bullets: Vec<BulletUpdateInput>) -> Vec<BulletUpdate
 const BULLET_BUF_STRIDE: usize = 32;
 
 #[pyfunction]
-pub fn batch_update_bullets_buf(buf: &[u8]) -> Vec<BulletUpdateOutput> {
+pub fn batch_update_bullets_buf(buf: &[u8]) -> PyResult<Vec<BulletUpdateOutput>> {
+    if buf.len() % BULLET_BUF_STRIDE != 0 {
+        return Err(pyo3::exceptions::PyValueError::new_err("bullet buffer length must be multiple of 32"));
+    }
     let count = buf.len() / BULLET_BUF_STRIDE;
     let mut results = Vec::with_capacity(count);
 
@@ -50,7 +53,7 @@ pub fn batch_update_bullets_buf(buf: &[u8]) -> Vec<BulletUpdateOutput> {
         let offset = i * BULLET_BUF_STRIDE;
         let chunk = &buf[offset..offset + BULLET_BUF_STRIDE];
 
-        let id = u64::from_le_bytes(chunk[0..8].try_into().unwrap());
+        let id = i64::from_le_bytes(chunk[0..8].try_into().unwrap());
         let x = f32::from_le_bytes(chunk[8..12].try_into().unwrap());
         let y = f32::from_le_bytes(chunk[12..16].try_into().unwrap());
         let vx = f32::from_le_bytes(chunk[16..20].try_into().unwrap());
@@ -70,5 +73,5 @@ pub fn batch_update_bullets_buf(buf: &[u8]) -> Vec<BulletUpdateOutput> {
         results.push((id, new_x, new_y, is_active));
     }
 
-    results
+    Ok(results)
 }

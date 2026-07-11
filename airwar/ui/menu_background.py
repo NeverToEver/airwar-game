@@ -58,10 +58,8 @@ class MenuBackground:
         self._init_leaves_far()
         # 近景微粒层
         self._particles = []
-        self._init_particles()
         # 光斑位置
         self._light_spots = []
-        self._init_light_spots()
 
     def set_animation_time(self, time: int) -> None:
         """Set the animation time counter for external synchronization."""
@@ -107,14 +105,6 @@ class MenuBackground:
                     "alpha": random.randint(15, 30),
                 }
             )
-
-    def _init_particles(self):
-        """Initialize floating particles."""
-        self._particles = []
-
-    def _init_light_spots(self):
-        """Initialize light spots."""
-        self._light_spots = []
 
     def _ensure_scan_beams(self, width: int, height: int) -> None:
         """Ensure scan beams are initialized for the screen size."""
@@ -173,8 +163,10 @@ class MenuBackground:
     def render(self, surface: pygame.Surface, colors: dict):
         """Render the background."""
         # 先清除屏幕
-        surface.fill(colors["bg"])
-        gradient = self._get_cached_gradient(surface, colors["bg"], colors.get("bg_gradient", colors["bg"]))
+        bg_color = colors.get("bg", (0, 0, 0))
+        bg_gradient = colors.get("bg_gradient", bg_color)
+        surface.fill(bg_color)
+        gradient = self._get_cached_gradient(surface, bg_color, bg_gradient)
         surface.blit(gradient, (0, 0))
 
         # 渲染星星/微粒

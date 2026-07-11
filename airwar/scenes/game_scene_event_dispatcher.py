@@ -45,6 +45,8 @@ class GameSceneEventDispatcher:
             + scene mouse click + registered button click
         """
         scene = self._scene
+        if scene._input_coordinator is None or scene.game_renderer is None:
+            return
         scene._input_coordinator.handle_events(event)
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_l:

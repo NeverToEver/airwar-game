@@ -1,5 +1,6 @@
 """Explosion effect — individual explosion particle and rendering."""
 
+import logging
 import math
 import random
 from collections import OrderedDict
@@ -24,6 +25,8 @@ _MAX_CACHE_SIZE = 64
 _glow_texture_cache: "OrderedDict[tuple, pygame.Surface]" = OrderedDict()
 _spark_core_cache: "OrderedDict[int, pygame.Surface]" = OrderedDict()
 _flash_cache: "OrderedDict[int, pygame.Surface]" = OrderedDict()
+
+logger = logging.getLogger(__name__)
 
 
 def _get_glow_texture(radius: int, base_color=(255, 120, 20), alpha_mult=0.15) -> pygame.Surface:
@@ -246,12 +249,20 @@ class ExplosionEffect:
         results = batch_update_particles(particle_data, dt)
         original_particles = self._particles
         self._particles = []
-        for i, (result, original_max_life) in enumerate(zip(results, max_lives, strict=False)):
-            x, y, vx, vy, life, size, is_alive = result
-            if is_alive:
-                self._particles.append(self._acquire_particle(x, y, vx, vy, life, original_max_life, size))
-            else:
-                self._particle_pool.append(original_particles[i])
+        if len(results) != len(original_particles):
+            logger.error(
+                "Particle batch size mismatch: %d vs %d", len(results), len(original_particles)
+            )
+            self._particle_pool.extend(original_particles)
+        else:
+            for i, (result, original_max_life) in enumerate(zip(results, max_lives)):
+                x, y, vx, vy, life, size, is_alive = result
+                if is_alive:
+                    self._particles.append(
+                        self._acquire_particle(x, y, vx, vy, life, original_max_life, size)
+                    )
+                else:
+                    self._particle_pool.append(original_particles[i])
 
         # Sparks and debris still use Python update (different damping per type).
         for i in range(len(self._sparks) - 1, -1, -1):
@@ -338,6 +349,8 @@ class ExplosionEffect:
     def _render_shockwave(self, surface: pygame.Surface) -> None:
         """Render expanding shockwave ring"""
         if self._shockwave_radius <= 0:
+            return
+        if self._shockwave_max_radius <= 0:
             return
 
         progress = self._shockwave_radius / self._shockwave_max_radius

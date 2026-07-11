@@ -27,7 +27,6 @@ class SpaceBackground:
     """
 
     _gradient_cache: dict[tuple[int, int], pygame.Surface] = {}
-    _star_cache: dict[tuple[int, ...], pygame.Surface] = {}
 
     FAR_LAYER: _LayerConfig = {"speed_mult": 0.3, "count_divisor": 1,
                                "size_range": (0.5, 1.5), "color_brightness": 80}
@@ -130,6 +129,8 @@ class SpaceBackground:
         self._dust_layer.render(surface, self.time)
 
     def resize(self, screen_width: int, screen_height: int) -> None:
+        if screen_width <= 0 or screen_height <= 0:
+            return
         self.screen_width = screen_width
         self.screen_height = screen_height
         self._init_layers(screen_width, screen_height)

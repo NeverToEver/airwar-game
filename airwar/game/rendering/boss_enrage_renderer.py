@@ -9,7 +9,6 @@ class BossEnrageRenderer:
     def __init__(self) -> None:
         self._enrage_overlay_cache: pygame.Surface | None = None
         self._enrage_overlay_cache_key: tuple[int, int] | None = None
-        self._enrage_distortion_buffer: pygame.Surface | None = None
         self._enrage_ripple_surface: pygame.Surface | None = None
         self._enrage_sin_a: list[float] | None = None
         self._enrage_cos_a: list[float] | None = None
@@ -32,7 +31,6 @@ class BossEnrageRenderer:
         # Ensure persistent buffers are allocated (re-create on resize)
         buf_key = (sw, sh)
         if self._enrage_band_cache_key != buf_key:
-            self._enrage_distortion_buffer = pygame.Surface((sw, sh))
             self._enrage_ripple_surface = pygame.Surface((sw, sh), pygame.SRCALPHA)
             self._enrage_overlay_cache = pygame.Surface((sw, sh), pygame.SRCALPHA)
             self._enrage_sin_a = None
@@ -48,8 +46,9 @@ class BossEnrageRenderer:
 
         # Phase B: ripple circles from the boss center on a pre-allocated surface
         self._enrage_ripple_surface.fill((0, 0, 0, 0))
-        center_x = getattr(boss.rect, "centerx", sw // 2)
-        center_y = getattr(boss.rect, "centery", sh // 2)
+        rect = getattr(boss, "rect", None)
+        center_x = getattr(rect, "centerx", sw // 2) if rect else sw // 2
+        center_y = getattr(rect, "centery", sh // 2) if rect else sh // 2
         ring_phase = ticks * 0.0018
         max_dim = max(sw, sh)
         for index in range(3):

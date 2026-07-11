@@ -154,3 +154,10 @@ class TestLockManagerSetGameState:
         )
         manager.set_game_state(new_state)
         assert new_state.is_player_invincible is True
+
+
+class TestLockManagerTransient:
+    def test_transient_layer_is_lowest_priority(self):
+        assert hasattr(LockLayer, "TRANSIENT")
+        assert LockLayer.TRANSIENT == 5
+        assert min(LockLayer) == LockLayer.TRANSIENT

@@ -75,6 +75,10 @@ class PlayerWeapon:
         if hasattr(listener, "on_bullet_fired"):
             self._bullet_listeners.append(listener)
 
+    def remove_listener(self, listener) -> None:
+        if listener in self._bullet_listeners:
+            self._bullet_listeners.remove(listener)
+
     def fire(self) -> Bullet | None:
         """Single-shot fire; returns first bullet (or None on cooldown)."""
         if self._fire_cooldown <= 0:

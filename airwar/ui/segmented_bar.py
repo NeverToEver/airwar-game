@@ -60,7 +60,7 @@ class SegmentedProgressBar:
         if border_color is None:
             border_color = SystemColors.SEGMENT_BORDER
 
-        ratio = min(max(value / max_value, 0.0), 1.0)
+        ratio = 0.0 if max_value <= 0 else min(max(value / max_value, 0.0), 1.0)
         filled_count = int(ratio * self.segments)
 
         # 绘制每个段

@@ -109,9 +109,11 @@ class HauntingRenderer:
         if not self.is_active():
             return
         width, height = surface.get_size()
+        if height < 4:
+            return
         y = self._rng.randint(0, max(1, height - 1))
         band_h = self._rng.randint(4, 10)
-        band_h = min(band_h, height - y)
+        band_h = max(1, min(band_h, height - y))
         shift = self._rng.randint(-10, 10)
         if -1 <= shift <= 1:
             return
@@ -172,6 +174,8 @@ class HauntingRenderer:
             self._flashback_timer = self.FLASHBACK_DURATION
 
     def get_static_filter(self, width: int, height: int) -> pygame.Surface:
+        width = max(1, width)
+        height = max(1, height)
         if self._static_filter is not None and self._static_filter.get_size() == (width, height):
             return self._static_filter
 
@@ -191,6 +195,8 @@ class HauntingRenderer:
         return sf
 
     def get_noise_tex(self, width: int, height: int) -> pygame.Surface:
+        width = max(1, width)
+        height = max(1, height)
         if self._noise_tex is not None and self._noise_tex.get_size() == (width, height):
             return self._noise_tex
 

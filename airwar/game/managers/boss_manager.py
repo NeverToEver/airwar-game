@@ -126,8 +126,8 @@ class BossManager:
         self._game_controller.state.score = normalize_score(self._game_controller.state.score + score)
         if boss is None:
             return
-        if not boss.active and not getattr(boss, "_death_consumed", False):
-            boss._death_consumed = True
+        if not boss.active and not boss.is_death_consumed():
+            boss.consume_death()
             self.on_boss_killed()
 
     def on_boss_killed(self) -> None:

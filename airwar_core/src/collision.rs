@@ -6,8 +6,8 @@ use std::collections::HashMap;
 #[derive(Debug, Clone)]
 pub struct SpatialHashGrid {
     cell_size: i32,
-    cells: HashMap<i64, Vec<i32>>,
-    entity_positions: HashMap<i32, AABB>,
+    cells: HashMap<i64, Vec<i64>>,
+    entity_positions: HashMap<i64, AABB>,
 }
 
 impl SpatialHashGrid {
@@ -28,16 +28,16 @@ impl SpatialHashGrid {
         (i64::from(x) << 32) | (i64::from(y) & 0xFFFF_FFFF)
     }
 
-    pub fn insert(&mut self, id: i32, x: f32, y: f32, width: f32, height: f32) {
+    pub fn insert(&mut self, id: i64, x: f32, y: f32, width: f32, height: f32) {
         let bounds = AABB::from_xy_size(x, y, width, height);
         self.insert_aabb(id, bounds);
     }
 
-    fn insert_aabb(&mut self, id: i32, bounds: AABB) {
-        let min_x = bounds.min_x as i32 / self.cell_size;
-        let max_x = bounds.max_x as i32 / self.cell_size;
-        let min_y = bounds.min_y as i32 / self.cell_size;
-        let max_y = bounds.max_y as i32 / self.cell_size;
+    fn insert_aabb(&mut self, id: i64, bounds: AABB) {
+        let min_x = (bounds.min_x / self.cell_size as f32).floor() as i32;
+        let max_x = (bounds.max_x / self.cell_size as f32).floor() as i32;
+        let min_y = (bounds.min_y / self.cell_size as f32).floor() as i32;
+        let max_y = (bounds.max_y / self.cell_size as f32).floor() as i32;
 
         for gx in min_x..=max_x {
             for gy in min_y..=max_y {
@@ -49,16 +49,16 @@ impl SpatialHashGrid {
         self.entity_positions.insert(id, bounds);
     }
 
-    pub fn get_potential_collisions(&self, x: f32, y: f32, width: f32, height: f32) -> Vec<i32> {
+    pub fn get_potential_collisions(&self, x: f32, y: f32, width: f32, height: f32) -> Vec<i64> {
         let bounds = AABB::from_xy_size(x, y, width, height);
         self.get_potential_collisions_for_aabb(bounds)
     }
 
-    fn get_potential_collisions_for_aabb(&self, bounds: AABB) -> Vec<i32> {
-        let min_x = bounds.min_x as i32 / self.cell_size;
-        let max_x = bounds.max_x as i32 / self.cell_size;
-        let min_y = bounds.min_y as i32 / self.cell_size;
-        let max_y = bounds.max_y as i32 / self.cell_size;
+    fn get_potential_collisions_for_aabb(&self, bounds: AABB) -> Vec<i64> {
+        let min_x = (bounds.min_x / self.cell_size as f32).floor() as i32;
+        let max_x = (bounds.max_x / self.cell_size as f32).floor() as i32;
+        let min_y = (bounds.min_y / self.cell_size as f32).floor() as i32;
+        let max_y = (bounds.max_y / self.cell_size as f32).floor() as i32;
 
         let mut seen = std::collections::HashSet::new();
         let mut result = Vec::new();
@@ -79,7 +79,7 @@ impl SpatialHashGrid {
         result
     }
 
-    pub fn get_position(&self, id: i32) -> Option<AABB> {
+    pub fn get_position(&self, id: i64) -> Option<AABB> {
         self.entity_positions.get(&id).copied()
     }
 }
@@ -120,7 +120,6 @@ impl AABB {
 /// SIMD-enabled collision check using SSE2
 /// Falls back to scalar if SIMD is not available
 #[cfg(target_feature = "sse2")]
-#[target_feature(enable = "sse2")]
 unsafe fn simd_collide_rects_sse(a: &AABB, b: &AABB) -> bool {
     use std::arch::x86_64::*;
 
@@ -165,14 +164,14 @@ pub fn check_entity_collision(ax: f32, ay: f32, a_half: f32, bx: f32, by: f32, b
 /// Returns (`bullet_id`, `enemy_id`) pairs for every bullet-enemy collision.
 ///
 /// bullets: Vec<(i64 `bullet_id`, f32 x, f32 y, f32 width, f32 height)>
-/// enemies: Vec<(i32 `enemy_id`, f32 x, f32 y, f32 width, f32 height)>
+/// enemies: Vec<(i64 `enemy_id`, f32 x, f32 y, f32 width, f32 height)>
 #[pyfunction]
 pub fn batch_collide_bullets_vs_entities(
     bullets: Vec<(i64, f32, f32, f32, f32)>,
-    enemies: Vec<(i32, f32, f32, f32, f32)>,
+    enemies: Vec<(i64, f32, f32, f32, f32)>,
     cell_size: i32,
-) -> Vec<(i64, i32)> {
-    if bullets.is_empty() || enemies.is_empty() {
+) -> Vec<(i64, i64)> {
+    if bullets.is_empty() || enemies.is_empty() || cell_size <= 0 {
         return Vec::new();
     }
 

@@ -119,7 +119,6 @@ class GameSceneProtocol(Protocol):
 
     def _is_homecoming_active(self) -> bool: ...
     reward_selector: RewardSelector
-    state: Any
     event_bus: EventBus | None
 
     # Mouse interaction mixin surface used by the event dispatcher

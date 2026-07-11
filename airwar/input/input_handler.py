@@ -56,8 +56,17 @@ class PygameInputHandler(InputHandler):
     based on current pygame key presses.
     """
 
+    _REQUIRED_BINDINGS: set[str] = {
+        "left", "left_alt", "right", "right_alt",
+        "up", "up_alt", "down", "down_alt",
+        "pause", "boost", "precision",
+    }
+
     def __init__(self, key_bindings: dict[str, int] | None = None):
         self._bindings = key_bindings or self.DEFAULT_BINDINGS
+        missing = self._REQUIRED_BINDINGS - self._bindings.keys()
+        if missing:
+            raise ValueError(f"Missing key bindings: {sorted(missing)}")
         self._prev_boost_pressed = False
         self._boost_just_pressed = False
         self._prev_precision_pressed = False
@@ -77,18 +86,26 @@ class PygameInputHandler(InputHandler):
         if keys[self._bindings["down"]] or keys[self._bindings["down_alt"]]:
             dy = 1
 
-        return Vector2(dx, dy)
+        vec = Vector2(dx, dy)
+        return vec.normalize() if vec.length() > 0 else vec
 
     def is_pause_pressed(self) -> bool:
         keys = pygame.key.get_pressed()
         return keys[self._bindings["pause"]]
 
+    def tick(self) -> None:
+        """Read current key states and update edge-detection state."""
+        keys = pygame.key.get_pressed()
+        boost = keys[self._bindings["boost"]]
+        self._boost_just_pressed = boost and not self._prev_boost_pressed
+        self._prev_boost_pressed = boost
+        precision = keys[self._bindings["precision"]]
+        self._precision_just_pressed = precision and not self._prev_precision_pressed
+        self._prev_precision_pressed = precision
+
     def is_boost_pressed(self) -> bool:
         keys = pygame.key.get_pressed()
-        boost_pressed = keys[self._bindings["boost"]]
-        self._boost_just_pressed = boost_pressed and not self._prev_boost_pressed
-        self._prev_boost_pressed = boost_pressed
-        return boost_pressed
+        return keys[self._bindings["boost"]]
 
     def is_boost_just_pressed(self) -> bool:
         just_pressed = self._boost_just_pressed
@@ -97,10 +114,7 @@ class PygameInputHandler(InputHandler):
 
     def is_precision_pressed(self) -> bool:
         keys = pygame.key.get_pressed()
-        precision_pressed = keys[self._bindings["precision"]]
-        self._precision_just_pressed = precision_pressed and not self._prev_precision_pressed
-        self._prev_precision_pressed = precision_pressed
-        return precision_pressed
+        return keys[self._bindings["precision"]]
 
     def is_precision_just_pressed(self) -> bool:
         just_pressed = self._precision_just_pressed

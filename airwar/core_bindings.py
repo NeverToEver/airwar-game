@@ -156,6 +156,7 @@ except (ImportError, OSError):
         return x1 + (x2 - x1) * t, y1 + (y2 - y1) * t
 
     def vec2_clamp_length(x: float, y: float, max_length: float) -> tuple[float, float]:
+        max_length = abs(max_length)
         length_sq = x * x + y * y
         max_sq = max_length * max_length
         if length_sq > max_sq and length_sq > 0:
@@ -193,8 +194,7 @@ except (ImportError, OSError):
         enemies: list[tuple[int, float, float, float, float]],
         cell_size: int,
     ) -> list[tuple[int, int]]:
-        del cell_size
-        if not bullets or not enemies:
+        if not bullets or not enemies or cell_size <= 0:
             return []
 
         enemy_bounds = [
@@ -241,6 +241,8 @@ except (ImportError, OSError):
         Mirrors the Rust implementation exactly so visual output is
         identical regardless of which path runs.
         """
+        if not sin_table or glow_alpha_divisor == 0:
+            return []
         scale = sin_table_size / math.tau
         results: list[tuple[int, int, int, int, bool, int]] = []
         for x_frac, y_frac, size, brightness, twinkle_speed, twinkle_offset in stars:
@@ -248,7 +250,7 @@ except (ImportError, OSError):
             x = int(x_frac * screen_w)
             y_pos = int(y_norm * screen_h)
             phase = (time * twinkle_speed + twinkle_offset) * scale
-            idx = int(phase) & sin_table_mask
+            idx = int(phase) % len(sin_table)
             twinkle = sin_table[idx]
             b = int(brightness * (0.5 + 0.5 * twinkle) * 255.0)
             core_b = max(0, min(255, b))
@@ -283,6 +285,13 @@ except (ImportError, OSError):
         noise_seed: int,
     ) -> tuple[float, float, float]:
         del amplitude, spiral_radius
+        if (
+            not math.isfinite(active_x)
+            or not math.isfinite(active_y)
+            or not math.isfinite(current_x)
+            or not math.isfinite(current_y)
+        ):
+            return (current_x, current_y, timer)
         if move_type == 1:
             new_timer = timer + 1.0
             return (
@@ -348,6 +357,8 @@ except (ImportError, OSError):
         base_params: list[tuple[int, float, float, float, float, float, float, float, float, float, float, float]],
         extra_params: list[tuple[float, float, float, float, float, float, float, int]],
     ) -> list[tuple[float, float, float]]:
+        if len(base_params) != len(extra_params):
+            raise ValueError("base_params and extra_params must have same length")
         return [
             update_movement(
                 move_type,
@@ -402,6 +413,8 @@ except (ImportError, OSError):
     def batch_update_movements_buf(base_buf: bytes, extra_buf: bytes) -> list[tuple[float, float, float]]:
         import struct
 
+        if len(base_buf) % 48 != 0 or len(extra_buf) < (len(base_buf) // 48) * 32:
+            raise ValueError("movement buffers length mismatch")
         count = len(base_buf) // 48
         base_fmt = "<Bxxxfffffffffff"  # u8 + pad3 + 11*f32 = 48 bytes
         extra_fmt = "<fffffffI"  # 7*f32 + i32 = 32 bytes
@@ -469,9 +482,9 @@ except (ImportError, OSError):
                         continue
                     sa = int(a * 255)
                     idx = (y * w + x) * 4
-                    data[idx] = min(255, data[idx] + r * sa // 255)
-                    data[idx + 1] = min(255, data[idx + 1] + g * sa // 255)
-                    data[idx + 2] = min(255, data[idx + 2] + b * sa // 255)
+                    data[idx] = min(255, data[idx] + int(r) * sa // 255)
+                    data[idx + 1] = min(255, data[idx + 1] + int(g) * sa // 255)
+                    data[idx + 2] = min(255, data[idx + 2] + int(b) * sa // 255)
                     data[idx + 3] = min(255, data[idx + 3] + sa)
         return bytes(data)
 
@@ -622,6 +635,8 @@ except (ImportError, OSError):
     def batch_update_bullets_buf(buf: bytes) -> list[tuple[int, float, float, bool]]:
         import struct
 
+        if len(buf) % 32 != 0:
+            raise ValueError("bullet buffer length must be multiple of 32")
         count = len(buf) // 32
         fmt = "<QffffBxxxf"
         results = []
@@ -711,7 +726,9 @@ __all__ = [
     "batch_hallucinated_enemy_centers",
     # Bullet functions
     "batch_update_bullets",
+    "batch_update_bullets_buf",
     "batch_update_movements",
+    "batch_update_movements_buf",
     # Particle functions
     "batch_update_particles",
     "compute_starfield_positions",

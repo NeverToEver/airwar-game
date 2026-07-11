@@ -341,7 +341,8 @@ class HomecomingCoordinator:
     def _clear_hostiles(self, spawn_controller, game_loop_manager, player):
         if not spawn_controller:
             return
-        for enemy in spawn_controller.enemies:
+        enemies = getattr(spawn_controller, "enemies", [])
+        for enemy in enemies:
             if getattr(enemy, "active", False) and game_loop_manager:
                 game_loop_manager.trigger_boss_death_explosion(
                     enemy.rect.centerx,
@@ -350,9 +351,10 @@ class HomecomingCoordinator:
                     max(28, int(enemy.rect.height * 0.7)),
                 )
             enemy.active = False
-        spawn_controller.enemies.clear()
+        if hasattr(spawn_controller, "enemies"):
+            spawn_controller.enemies.clear()
 
-        boss = spawn_controller.boss
+        boss = getattr(spawn_controller, "boss", None)
         if boss:
             if game_loop_manager:
                 game_loop_manager.trigger_boss_death_explosion(

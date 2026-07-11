@@ -34,6 +34,17 @@ class SaveRestoreManager:
         self._spawn_controller = spawn_controller
         self._mother_ship_integrator = mother_ship_integrator
 
+        if spawn_controller is not None:
+            spawn_controller.enemies.clear()
+            if hasattr(spawn_controller, "enemy_bullets"):
+                spawn_controller.enemy_bullets.clear()
+            if hasattr(spawn_controller, "clear_boss"):
+                spawn_controller.clear_boss()
+            else:
+                spawn_controller.boss = None
+                if hasattr(spawn_controller, "reset_boss_timer"):
+                    spawn_controller.reset_boss_timer()
+
         game_controller.state.score = normalize_score(save_data.score)
         game_controller.state.kill_count = max(0, save_data.kill_count)
         game_controller.state.boss_kill_count = max(0, save_data.boss_kill_count)
@@ -48,30 +59,39 @@ class SaveRestoreManager:
         game_controller.state.score_multiplier = GAME_CONSTANTS.get_difficulty_multiplier(saved_diff)
 
         # Re-sync difficulty-dependent subsystems to match restored difficulty
-        game_controller.difficulty_manager.set_difficulty(saved_diff)
-        game_controller.reward_system.set_difficulty(saved_diff)
-        game_controller.health_system.set_difficulty(saved_diff)
-        spawn_controller.set_difficulty(saved_diff)
+        if getattr(game_controller, "difficulty_manager", None):
+            game_controller.difficulty_manager.set_difficulty(saved_diff)
+        if reward_system is not None:
+            reward_system.set_difficulty(saved_diff)
+        if getattr(game_controller, "health_system", None):
+            game_controller.health_system.set_difficulty(saved_diff)
+        if spawn_controller is not None:
+            spawn_controller.set_difficulty(saved_diff)
 
         # Sync player boost config to the restored difficulty
         boost_cfg = BOOST_CONFIG[saved_diff]
-        player.boost_max = boost_cfg["max_boost"]
-        player.boost_current = boost_cfg["max_boost"]
-        player.boost_recovery_rate = boost_cfg["recovery_rate"]
-        player.boost_speed_mult = boost_cfg["speed_mult"]
-        player.boost_recovery_delay = boost_cfg["recovery_delay"]
-        player.boost_recovery_ramp = boost_cfg["recovery_ramp"]
+        for attr, key in (
+            ("boost_max", "max_boost"),
+            ("boost_current", "max_boost"),
+            ("boost_recovery_rate", "recovery_rate"),
+            ("boost_speed_mult", "speed_mult"),
+            ("boost_recovery_delay", "recovery_delay"),
+            ("boost_recovery_ramp", "recovery_ramp"),
+        ):
+            if hasattr(player, attr):
+                setattr(player, attr, boost_cfg[key])
 
         # Restore difficulty scaling so enemy stats scale correctly after load
         if game_controller.difficulty_manager:
             game_controller.difficulty_manager.set_boss_kill_count(save_data.boss_kill_count)
 
-        reward_system.unlocked_buffs = save_data.unlocked_buffs
-        self._restore_buff_levels(save_data.buff_levels)
-        self._restore_earned_buff_levels(getattr(save_data, "earned_buff_levels", {}))
-        if getattr(save_data, "talent_loadout", None):
-            reward_system.talent_loadout = dict(save_data.talent_loadout)
-        reward_system.capture_player_baselines(player)
+        if reward_system is not None:
+            reward_system.unlocked_buffs = save_data.unlocked_buffs
+            self._restore_buff_levels(save_data.buff_levels)
+            self._restore_earned_buff_levels(getattr(save_data, "earned_buff_levels", {}))
+            if getattr(save_data, "talent_loadout", None):
+                reward_system.talent_loadout = dict(save_data.talent_loadout)
+            reward_system.capture_player_baselines(player)
         self._restore_talent_loadout_effects()
         player.health = min(max(1, save_data.player_health), player.max_health)
 

@@ -133,8 +133,13 @@ pub fn update_movement(
 pub fn batch_update_movements(
     base_params: Vec<MovementBaseParams>,
     extra_params: Vec<MovementExtraParams>,
-) -> Vec<MovementResult> {
-    base_params
+) -> PyResult<Vec<MovementResult>> {
+    if base_params.len() != extra_params.len() {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "base_params and extra_params must have same length",
+        ));
+    }
+    Ok(base_params
         .into_iter()
         .zip(extra_params)
         .map(
@@ -188,7 +193,7 @@ pub fn batch_update_movements(
                 )
             },
         )
-        .collect()
+        .collect())
 }
 
 /// Binary buffer variant of `batch_update_movements` for reduced FFI overhead.
@@ -221,8 +226,14 @@ const BASE_BUF_STRIDE: usize = 48;
 const EXTRA_BUF_STRIDE: usize = 32;
 
 #[pyfunction]
-pub fn batch_update_movements_buf(base_buf: &[u8], extra_buf: &[u8]) -> Vec<MovementResult> {
+pub fn batch_update_movements_buf(
+    base_buf: &[u8],
+    extra_buf: &[u8],
+) -> PyResult<Vec<MovementResult>> {
     let count = base_buf.len() / BASE_BUF_STRIDE;
+    if base_buf.len() % BASE_BUF_STRIDE != 0 || extra_buf.len() < count * EXTRA_BUF_STRIDE {
+        return Err(pyo3::exceptions::PyValueError::new_err("movement buffers length mismatch"));
+    }
     let mut results = Vec::with_capacity(count);
 
     for i in 0..count {
@@ -279,7 +290,7 @@ pub fn batch_update_movements_buf(base_buf: &[u8], extra_buf: &[u8]) -> Vec<Move
         results.push(result);
     }
 
-    results
+    Ok(results)
 }
 
 /// Inner implementation shared by single and batch variants.
@@ -307,6 +318,9 @@ fn update_movement_inner(
     noise_seed: i32,
 ) -> (f32, f32, f32) {
     let mtype = MovementType::from_u8(move_type);
+    if !active_x.is_finite() || !active_y.is_finite() || !current_x.is_finite() || !current_y.is_finite() {
+        return (current_x, current_y, timer);
+    }
     match mtype {
         MovementType::Straight => {
             let t = timer + 1.0;
@@ -322,7 +336,8 @@ fn update_movement_inner(
         }
         MovementType::Zigzag => {
             let t = timer + 1.0;
-            let current_interval = t as i32 % zigzag_interval as i32;
+            let interval = (zigzag_interval as i32).max(1);
+            let current_interval = t as i32 % interval;
             let actual_direction = if current_interval == 0 && t > 0.0 {
                 -direction
             } else {
@@ -408,7 +423,7 @@ fn update_movement_inner(
 #[pyfunction]
 #[pyo3(signature = (enemies, player_center, frame, strength, lunge_scale))]
 pub fn batch_hallucinated_enemy_centers(
-    enemies: Vec<(f32, f32, u64)>,
+    enemies: Vec<(f32, f32, i64)>,
     player_center: Option<(f32, f32)>,
     frame: i64,
     strength: f32,
@@ -418,9 +433,10 @@ pub fn batch_hallucinated_enemy_centers(
     enemies
         .into_iter()
         .map(|(cx, cy, entity_id)| {
-            let pulse = (f * 0.13 + (entity_id % 31) as f32).sin().max(0.0);
-            let jitter_x = (f * 0.21 + (entity_id % 17) as f32).sin() * 8.0 * strength;
-            let jitter_y = (f * 0.18 + (entity_id % 23) as f32).cos() * 6.0 * strength;
+            let eid = entity_id as f32;
+            let pulse = (f * 0.13 + eid % 31.0).sin().max(0.0);
+            let jitter_x = (f * 0.21 + eid % 17.0).sin() * 8.0 * strength;
+            let jitter_y = (f * 0.18 + eid % 23.0).cos() * 6.0 * strength;
 
             let (lx, ly) = match player_center {
                 Some((px, py)) => {
@@ -445,7 +461,7 @@ pub fn batch_hallucinated_enemy_centers(
 /// Find the candidate nearest to (`query_x`, `query_y`) by squared Euclidean distance.
 #[pyfunction]
 #[pyo3(signature = (candidates, query_x, query_y))]
-pub fn find_nearest_target(candidates: Vec<(u64, f32, f32)>, query_x: f32, query_y: f32) -> Option<u64> {
+pub fn find_nearest_target(candidates: Vec<(i64, f32, f32)>, query_x: f32, query_y: f32) -> Option<i64> {
     candidates
         .into_iter()
         .min_by(|(_, x1, y1), (_, x2, y2)| {
@@ -461,14 +477,14 @@ pub fn find_nearest_target(candidates: Vec<(u64, f32, f32)>, query_x: f32, query
 #[pyfunction]
 #[pyo3(signature = (candidates, origin_x, origin_y, move_x, move_y, direction_cone_dot, exclude_id))]
 pub fn find_target_in_direction(
-    candidates: Vec<(u64, f32, f32)>,
+    candidates: Vec<(i64, f32, f32)>,
     origin_x: f32,
     origin_y: f32,
     move_x: f32,
     move_y: f32,
     direction_cone_dot: f32,
-    exclude_id: Option<u64>,
-) -> Option<u64> {
+    exclude_id: Option<i64>,
+) -> Option<i64> {
     let movement_len = move_x.hypot(move_y);
     if movement_len <= 0.0 {
         return None;

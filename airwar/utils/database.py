@@ -38,11 +38,20 @@ class DatabaseError(RuntimeError):
     """Raised when account data cannot be safely loaded or saved."""
 
 
+def _safe_score(entry: dict[str, Any]) -> int:
+    try:
+        return int(entry.get("score", 0))
+    except (TypeError, ValueError):
+        return 0
+
+
 class SimpleDB:
     """Simple key-value database backed by a JSON file."""
 
     def __init__(self, db_path: str | None = None):
         self.db_path = db_path if db_path is not None else _DEFAULT_DB_PATH
+        if os.path.exists(self.db_path) and os.path.isdir(self.db_path):
+            raise DatabaseError(f"Database path is a directory: {self.db_path}")
         self._ensure_dir()
 
     def _ensure_dir(self) -> None:
@@ -113,6 +122,8 @@ class UserDB(SimpleDB):
         super().__init__(db_path)
 
     def create_user(self, user_id: str, password: str) -> bool:
+        if not isinstance(password, str) or len(password) < 1:
+            return False
         data = self._load()
         if user_id in data:
             return False
@@ -228,7 +239,7 @@ class UserDB(SimpleDB):
             return []
         return sorted(
             (entry for entry in entries if isinstance(entry, dict)),
-            key=lambda entry: (-int(entry.get("score", 0)), entry.get("timestamp", "")),
+            key=lambda entry: (-_safe_score(entry), entry.get("timestamp", "")),
         )[:LEADERBOARD_CAP]
 
     def submit_score(self, name: str, score: int) -> int:
@@ -261,8 +272,8 @@ class UserDB(SimpleDB):
         }
         entries.append(entry)
         data[_LEADERBOARD_KEY] = sorted(
-            entries,
-            key=lambda item: (-int(item.get("score", 0)), item.get("timestamp", "")),
+            (item for item in entries if isinstance(item, dict)),
+            key=lambda item: (-_safe_score(item), item.get("timestamp", "")),
         )[:LEADERBOARD_CAP]
         self._save(data)
 

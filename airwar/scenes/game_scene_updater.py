@@ -60,6 +60,9 @@ class GameSceneUpdater:
 
     def run(self, frame: FrameContext | None = None) -> None:
         """Execute the 15 PIPELINE_ORDER steps in canonical order with short-circuit."""
+        scene = self._scene
+        if not getattr(scene, "_entered", False) or scene.game_controller is None or scene.player is None:
+            return
         context = frame or FrameContext(
             FrameContext.FIXED_DELTA_SECONDS,
             FrameContext.FIXED_DELTA_SECONDS,
@@ -380,10 +383,6 @@ class GameSceneUpdater:
         juice = getattr(scene, "_juice_controller", None)
         if juice is not None:
             juice.add_trauma(0.4)
-        if hasattr(scene, "state") and scene.state is not None:
-            scene.state.hit_stop_timer = max(
-                getattr(scene.state, "hit_stop_timer", 0), 4
-            )
 
     def _clear_nearby_enemy_bullets(self, player) -> None:
         """Clear enemy bullets within BULLET_CLEAR_RADIUS of the player after being hit."""

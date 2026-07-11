@@ -174,7 +174,10 @@ class BulletManager:
         count = len(active_bullets)
         buf = bytearray(count * self._BULLET_BUF_SIZE)
         for i, bullet in enumerate(active_bullets):
-            is_laser = bullet.data.bullet_type == "laser" or bullet.data.is_laser
+            data = getattr(bullet, "data", None)
+            if data is None:
+                continue
+            is_laser = getattr(data, "bullet_type", "") == "laser" or getattr(data, "is_laser", False)
             struct.pack_into(
                 self._BULLET_BUF_FMT,
                 buf,
@@ -202,7 +205,10 @@ class BulletManager:
             bullet.rect.y = new_y
 
             # Handle laser trail (still needs Python for pygame operations)
-            if bullet.data.bullet_type == "laser" or bullet.data.is_laser:
+            data = getattr(bullet, "data", None)
+            if data is None:
+                continue
+            if getattr(data, "bullet_type", "") == "laser" or getattr(data, "is_laser", False):
                 bullet._trail.append(
                     (
                         bullet.rect.x,
@@ -230,8 +236,10 @@ class BulletManager:
         direction = getattr(bullet, "release_direction", None)
         if direction is None or direction.length() <= 0:
             direction = bullet.velocity.normalize() if bullet.velocity.length() > 0 else None
-        if direction is not None:
-            bullet.velocity = direction * getattr(bullet, "enrage_release_speed", bullet.data.speed)
+        if direction is None:
+            # Keep the bullet held until a valid release direction is available.
+            return
+        bullet.velocity = direction * getattr(bullet, "enrage_release_speed", bullet.data.speed)
         bullet.held = False
         bullet.enrage_release_pending = False
 

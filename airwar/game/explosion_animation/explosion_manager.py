@@ -6,7 +6,6 @@ from typing import Any
 
 import pygame
 
-from ..constants import GAME_CONSTANTS
 from .explosion_pool import ExplosionPool
 
 
@@ -102,7 +101,7 @@ class ExplosionManager:
         self._update_queued_explosions(dt)
         self._time_accumulator += dt
 
-        if self._time_accumulator >= GAME_CONSTANTS.ANIMATION.ENTRANCE_DURATION:
+        if self._time_accumulator >= 1.0:
             self._explosions_this_second = 0
             self._time_accumulator = 0.0
 

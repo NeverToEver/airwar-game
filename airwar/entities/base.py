@@ -42,6 +42,8 @@ class Vector2:
     y: float = 0
 
     def __add__(self, other: Vector2) -> Vector2:
+        if not isinstance(other, Vector2):
+            return NotImplemented
         if RUST_AVAILABLE:
             nx, ny = vec2_add(self.x, self.y, other.x, other.y)
             return Vector2(nx, ny)
@@ -54,6 +56,8 @@ class Vector2:
         return self.__add__(other)
 
     def __sub__(self, other: Vector2) -> Vector2:
+        if not isinstance(other, Vector2):
+            return NotImplemented
         if RUST_AVAILABLE:
             nx, ny = vec2_sub(self.x, self.y, other.x, other.y)
             return Vector2(nx, ny)
@@ -182,6 +186,8 @@ class Rect:
         return self.y
 
     def colliderect(self, other: _RectLike) -> bool:
+        if not all(hasattr(other, attr) for attr in ("x", "y", "width", "height")):
+            return NotImplemented
         return (
             self.x < other.x + other.width
             and self.x + self.width > other.x

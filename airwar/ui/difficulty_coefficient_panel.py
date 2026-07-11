@@ -30,7 +30,11 @@ class DifficultyCoefficientPanel:
 
     def __init__(self, difficulty_manager: DifficultyManagerProtocol):
         self._manager = difficulty_manager
-        self._initial_multiplier = difficulty_manager.initial_multiplier
+        self._initial_multiplier = getattr(
+            difficulty_manager,
+            "get_initial_multiplier",
+            lambda: getattr(difficulty_manager, "initial_multiplier", 1.0),
+        )()
         self._last_multiplier = difficulty_manager.get_current_multiplier()
         self._pulse_timer = 0
         self._glow_intensity = 0.0

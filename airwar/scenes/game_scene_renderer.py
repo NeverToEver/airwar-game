@@ -64,11 +64,13 @@ class GameSceneRenderer:
 
     def render(self, surface) -> None:
         scene = self._scene
+        if not scene._entered or scene._ui_manager is None or scene.game_renderer is None:
+            return
+        if scene.player is None or scene.spawn_controller is None:
+            return
         is_docked = bool(scene._mother_ship_integrator and scene._mother_ship_integrator.is_docked())
-        if scene.game_renderer:
-            scene.game_renderer.entity_renderer.player_docked = is_docked
-        if scene._ui_manager:
-            scene._ui_manager.set_player_docked(is_docked)
+        scene.game_renderer.entity_renderer.player_docked = is_docked
+        scene._ui_manager.set_player_docked(is_docked)
 
         scene._ui_manager.render_game(
             surface, scene.player, scene.spawn_controller.enemies, scene.spawn_controller.boss
@@ -105,7 +107,7 @@ class GameSceneRenderer:
 
     def _render_boost_gauge(self, surface) -> None:
         scene = self._scene
-        if scene._boost_gauge is None:
+        if scene._boost_gauge is None or scene.player is None:
             return
         status = scene.player.get_boost_status()
         scene._boost_gauge.render(surface, status["current"], status["max"], status["active"], status)
@@ -232,7 +234,7 @@ class GameSceneRenderer:
 
     def _render_homecoming_sequence(self, surface) -> None:
         scene = self._scene
-        if scene._homecoming_ui and scene._homecoming_sequence:
+        if scene._homecoming_ui and scene._homecoming_sequence and scene.player is not None:
             scene._homecoming_ui.render_sequence(surface, scene._homecoming_sequence, scene.player)
 
     def _render_base_talent_console(self, surface) -> None:
@@ -248,7 +250,7 @@ class GameSceneRenderer:
             game_controller=scene.game_controller,
             mothership_status=mothership_status,
             requisition_points=(scene.game_controller.state.requisition_points if scene.game_controller else 0),
-            missions=scene._base_talent_console.get_missions() if scene._base_talent_console else None,
+            missions=scene._base_talent_console.get_missions(),
         )
         if scene._homecoming_coordinator:
             scene._homecoming_coordinator.sync_mission_progress(scene.game_controller, scene._survival_frames)

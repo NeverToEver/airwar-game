@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 import os
 
 from airwar.utils.platform_paths import user_data_dir
 
+logger = logging.getLogger(__name__)
 
 _DEFAULT_URL = "http://localhost:8000"
 _DEFAULT_MODE = "auto"
@@ -18,8 +20,21 @@ class LeaderboardConfig:
 
     def __init__(self) -> None:
         self.url = os.environ.get("AIRWAR_LEADERBOARD_URL", _DEFAULT_URL).rstrip("/")
+
+        try:
+            self.timeout = float(os.environ.get("AIRWAR_LEADERBOARD_TIMEOUT", _DEFAULT_TIMEOUT))
+        except ValueError:
+            logger.warning(
+                "Invalid AIRWAR_LEADERBOARD_TIMEOUT, using default %s",
+                _DEFAULT_TIMEOUT,
+            )
+            self.timeout = float(_DEFAULT_TIMEOUT)
+
         self.mode = os.environ.get("AIRWAR_LEADERBOARD_MODE", _DEFAULT_MODE).lower()
-        self.timeout = float(os.environ.get("AIRWAR_LEADERBOARD_TIMEOUT", _DEFAULT_TIMEOUT))
+        if self.mode not in {"auto", "local", "remote"}:
+            logger.warning("Unknown leaderboard mode %r, defaulting to auto", self.mode)
+            self.mode = "auto"
+
         self.db_path = os.environ.get("AIRWAR_LEADERBOARD_DB_PATH", _DEFAULT_DB_PATH)
 
     @property

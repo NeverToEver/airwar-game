@@ -47,6 +47,8 @@ class SceneStatePersistence:
             self._director._logger.warning("Failed to save game during quit")
 
     def clear_saved_game(self) -> None:
+        if not self._director._current_user:
+            return
         self._save_service.clear(self._director._current_user)
 
     def save_and_quit(self, game_scene: GameScene) -> bool:

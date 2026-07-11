@@ -5,10 +5,17 @@ import pygame
 from airwar.config.design_tokens import SystemUI
 
 # Cache for rendered panels
+_MAX_CACHE_ENTRIES = 128
 _panel_surface_cache: dict[tuple[int, int, int], pygame.Surface] = {}
 _bg_cache: dict[tuple[int, int, int, tuple[int, ...]], pygame.Surface] = {}
 _border_cache: dict[tuple[int, int, int, tuple[int, ...]], pygame.Surface] = {}
 _glow_cache: dict[tuple[int, int, int, tuple[int, ...]], pygame.Surface] = {}
+
+
+def _evict_if_needed(cache: dict[tuple, pygame.Surface]) -> None:
+    """Evict the oldest entry if the cache has reached its size limit."""
+    if len(cache) >= _MAX_CACHE_ENTRIES:
+        cache.pop(next(iter(cache)))
 
 
 def create_chamfered_points(width: int, height: int, chamfer_depth: int) -> list[tuple[int, int]]:
@@ -29,6 +36,7 @@ def _get_chamfered_surface(width: int, height: int, chamfer_depth: int) -> pygam
     """Get or create a cached chamfered panel surface."""
     cache_key = (width, height, chamfer_depth)
     if cache_key not in _panel_surface_cache:
+        _evict_if_needed(_panel_surface_cache)
         surf = _create_chamfered_surface(width, height, chamfer_depth)
         _panel_surface_cache[cache_key] = surf
     return _panel_surface_cache[cache_key]
@@ -90,6 +98,7 @@ def draw_chamfered_panel(
     if glow_color is not None:
         glow_key = (width, height, chamfer_depth, glow_color)
         if glow_key not in _glow_cache:
+            _evict_if_needed(_glow_cache)
             glow_result = pygame.Surface((width + 4, height + 4), pygame.SRCALPHA)
             glow_result.fill((0, 0, 0, 0))
             glow_points = create_chamfered_points(width + 4, height + 4, chamfer_depth + 2)
@@ -104,6 +113,7 @@ def draw_chamfered_panel(
     # Draw background (from cache)
     bg_key = (width, height, chamfer_depth, bg_color)
     if bg_key not in _bg_cache:
+        _evict_if_needed(_bg_cache)
         bg_result = pygame.Surface((width, height), pygame.SRCALPHA)
         bg_result.fill((0, 0, 0, 0))
         chamfer_shape = _get_chamfered_surface(width, height, chamfer_depth).copy()
@@ -122,6 +132,7 @@ def draw_chamfered_panel(
     if border_color is not None:
         border_key = (width, height, chamfer_depth, border_color)
         if border_key not in _border_cache:
+            _evict_if_needed(_border_cache)
             border_result = pygame.Surface((width, height), pygame.SRCALPHA)
             border_result.fill((0, 0, 0, 0))
             points = create_chamfered_points(width, height, chamfer_depth)

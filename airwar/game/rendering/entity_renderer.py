@@ -90,6 +90,9 @@ class EntityRenderer:
         )
 
     def render_bullet(self, surface: pygame.Surface, bullet: "Bullet") -> None:
+        if bullet.data is None:
+            return
+
         bullet_sprite = bullet._sprite
         if bullet_sprite is not None:
             surface.blit(bullet_sprite, bullet.get_rect())
@@ -143,7 +146,7 @@ class EntityRenderer:
             warning_surf.set_alpha(int(150 + 35 * pulse))
             surface.blit(warning_surf, warning_surf.get_rect(center=(surface.get_width() // 2, 20)))
 
-        if boss._enrage_timer > 0 and not self.player_docked:
+        if boss.enrage_timer > 0 and not self.player_docked:
             intensity = boss.enrage_visual_intensity()
             pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() * 0.0022)
             warning_surf = self._get_cached_warning_text(self._get_escape_font(), "核心过载", (178, 226, 255))
@@ -151,7 +154,7 @@ class EntityRenderer:
             surface.blit(warning_surf, warning_surf.get_rect(center=(surface.get_width() // 2, 86)))
             self._render_enrage_transition_charge(surface, boss, intensity)
 
-        if boss._show_escape_warning and not boss.is_entering:
+        if getattr(boss, "show_escape_warning", False) and not boss.is_entering:
             pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() * 0.002)
             warning_surf = self._get_cached_warning_text(self._get_escape_font(), "逃跑中...", (255, 200, 50))
             warning_surf.set_alpha(int(145 + 36 * pulse))
@@ -166,7 +169,7 @@ class EntityRenderer:
 
         self._render_enrage_body_aura(surface, boss)
         sprite = get_boss_sprite(boss.rect.width, boss.rect.height, health_ratio)
-        rotation = 90.0 - boss._facing_angle
+        rotation = 90.0 - boss.facing_angle
         rotated = pygame.transform.rotozoom(sprite, rotation, 1.0)
         surface.blit(rotated, rotated.get_rect(center=(round(boss.rect.centerx), round(boss.rect.centery))))
         self._render_enrage_core_lines(surface, boss)
@@ -199,11 +202,12 @@ class EntityRenderer:
         pygame.draw.ellipse(ring, (*core_color, int(64 * intensity)), ring_rect, max(2, int(4 + 2 * pulse)))
         inner = ring_rect.inflate(-max(4, ring_size[0] // 7), -max(4, ring_size[1] // 7))
         pygame.draw.ellipse(ring, (*danger_color, int(42 * intensity)), inner, 2)
-        rotated_ring = pygame.transform.rotozoom(ring, 90.0 - boss._facing_angle, 1.0)
+        rotated_ring = pygame.transform.rotozoom(ring, 90.0 - boss.facing_angle, 1.0)
         surface.blit(rotated_ring, rotated_ring.get_rect(center=(round(boss.rect.centerx), round(boss.rect.centery))))
 
-        if boss._enrage_snapshot_target:
-            target_x, target_y = boss._enrage_snapshot_target
+        target = boss.enrage_snapshot_target
+        if target:
+            target_x, target_y = target
             pygame.draw.line(
                 surface,
                 (48, 92, 122),
@@ -244,16 +248,16 @@ class EntityRenderer:
             )
 
     def _render_muzzle_flash(self, surface: pygame.Surface, boss: "Boss") -> None:
-        if boss._muzzle_flash_timer <= 0 or not boss._muzzle_flash_positions:
+        if boss.muzzle_flash_timer <= 0 or not boss.muzzle_flash_positions:
             return
-        remaining = boss._muzzle_flash_timer / max(1, boss.ENRAGE_MUZZLE_FLASH_DURATION)
+        remaining = boss.muzzle_flash_timer / max(1, boss.ENRAGE_MUZZLE_FLASH_DURATION)
         elapsed = 1.0 - remaining
         pulse = 0.5 + 0.5 * math.sin(elapsed * math.tau * boss.ENRAGE_MUZZLE_FLASH_PULSES)
         strobe = (0.38 + 0.16 * pulse) * remaining
         radius = max(2, int(boss.rect.width * 0.03 + 8 * strobe))
         glow_radius = max(radius + 5, int(radius * (1.75 + 0.35 * pulse)))
         forward = boss._facing_vector().normalize()
-        for muzzle_x, muzzle_y in boss._muzzle_flash_positions:
+        for muzzle_x, muzzle_y in boss.muzzle_flash_positions:
             center = (int(muzzle_x), int(muzzle_y))
             draw_glow_circle(surface, center, radius, boss.ENRAGE_CORE_COLOR, glow_radius)
             pygame.draw.line(
@@ -268,7 +272,7 @@ class EntityRenderer:
             )
 
     def _render_enrage_trail(self, surface: pygame.Surface, boss: "Boss") -> None:
-        if not boss._enrage_trail:
+        if not boss.enrage_trail:
             return
         trail = self._sample_enrage_trail_for_render(boss)
         trail_len = len(trail)
@@ -283,11 +287,12 @@ class EntityRenderer:
 
     @staticmethod
     def _sample_enrage_trail_for_render(boss: "Boss"):
-        trail_len = len(boss._enrage_trail)
+        trail = boss.enrage_trail
+        trail_len = len(trail)
         if trail_len <= boss.ENRAGE_TRAIL_RENDER_MAX:
-            return boss._enrage_trail
+            return trail
         step = (trail_len - 1) / (boss.ENRAGE_TRAIL_RENDER_MAX - 1)
-        return [boss._enrage_trail[round(index * step)] for index in range(boss.ENRAGE_TRAIL_RENDER_MAX)]
+        return [trail[round(index * step)] for index in range(boss.ENRAGE_TRAIL_RENDER_MAX)]
 
     def _get_enrage_trail_ghost(self, boss: "Boss", health_ratio: float) -> pygame.Surface:
         health_bucket = int(health_ratio * 10)
@@ -295,8 +300,8 @@ class EntityRenderer:
         scaled_width = max(1, int(final_width * boss.ENRAGE_TRAIL_SCALE))
         scaled_height = max(1, int(final_height * boss.ENRAGE_TRAIL_SCALE))
         cache_key = (scaled_width, scaled_height, health_bucket, boss.ENRAGE_TRAIL_BLUR_PASSES)
-        cached_ghost = boss._enrage_trail_ghost
-        if boss._enrage_trail_ghost_key != cache_key:
+        cached_ghost = boss.enrage_trail_ghost
+        if boss.enrage_trail_ghost_key != cache_key:
             source = pygame.Surface((final_width, final_height), pygame.SRCALPHA)
             draw_boss_ship(
                 source,
@@ -336,9 +341,9 @@ class EntityRenderer:
         boss: "Boss",
         intensity: float,
     ) -> None:
-        if boss._enrage_transition_timer <= 0:
+        if boss.enrage_transition_timer <= 0:
             return
-        transition = 1.0 - boss._enrage_transition_timer / max(1, boss.ENRAGE_TRANSITION_DURATION)
+        transition = 1.0 - boss.enrage_transition_timer / max(1, boss.ENRAGE_TRANSITION_DURATION)
         charge = transition * transition * (3 - 2 * transition)
         pulse = 0.5 + 0.5 * math.sin(transition * math.tau * 2.0)
         alpha = int(74 * (1.0 - charge) + 38 * intensity + 16 * pulse * (1.0 - transition))

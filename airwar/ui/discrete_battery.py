@@ -62,7 +62,7 @@ class DiscreteBatteryIndicator:
         n = self._num_segments
 
         seg_space = h - (n - 1) * gap
-        base_h = seg_space // n
+        base_h = max(1, seg_space // n)
         rem = seg_space % n
 
         health_ratio = self._health / self._max_health if self._max_health > 0 else 0
@@ -90,7 +90,7 @@ class DiscreteBatteryIndicator:
         n = self._num_segments
 
         seg_space = w - (n - 1) * gap
-        base_w = seg_space // n
+        base_w = max(1, seg_space // n)
         rem = seg_space % n
 
         health_ratio = self._health / self._max_health if self._max_health > 0 else 0

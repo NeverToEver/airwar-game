@@ -32,6 +32,8 @@ class PlayerShield:
     def activate(self, duration: int) -> None:
         self.is_shielded = True
         self._shield_duration = max(1, duration)
+        if hasattr(self._owner, "_state") and hasattr(self._owner._state, "activate_shield"):
+            self._owner._state.activate_shield(duration)
 
     def is_active(self) -> bool:
         return self.is_shielded
@@ -41,3 +43,5 @@ class PlayerShield:
             self._shield_duration -= 1
             if self._shield_duration <= 0:
                 self.is_shielded = False
+                if hasattr(self._owner, "_state") and hasattr(self._owner._state, "deactivate_shield"):
+                    self._owner._state.deactivate_shield()

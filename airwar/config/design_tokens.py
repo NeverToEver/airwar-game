@@ -74,7 +74,11 @@ class Colors:
 
     @staticmethod
     def star_color(brightness: int) -> tuple[int, int, int]:
-        return (brightness + 50, brightness + 50, brightness + 70)
+        return (
+            min(255, max(0, brightness + 50)),
+            min(255, max(0, brightness + 50)),
+            min(255, max(0, brightness + 70)),
+        )
 
 
 class Typography:
