@@ -9,7 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 ![Tests](https://img.shields.io/badge/tests-61%20passed-brightgreen)
 
-![空战游戏画面](./.github/screenshots/gameplay.png)
+![空战游戏画面](https://raw.githubusercontent.com/NeverToEver/airwar-game/master/.github/screenshots/gameplay.png)
 
 > 一款 2D 太空射击游戏，使用 Python + Pygame 构建，并通过可选的 Rust 扩展加速性能热点。
 
@@ -47,11 +47,11 @@
 
 | 主菜单 | 游戏画面 | 暂停菜单 |
 |--------|----------|----------|
-| ![主菜单](./.github/screenshots/welcome.png) | ![游戏画面](./.github/screenshots/gameplay.png) | ![暂停菜单](./.github/screenshots/pause.png) |
+| ![主菜单](https://raw.githubusercontent.com/NeverToEver/airwar-game/master/.github/screenshots/welcome.png) | ![游戏画面](https://raw.githubusercontent.com/NeverToEver/airwar-game/master/.github/screenshots/gameplay.png) | ![暂停菜单](https://raw.githubusercontent.com/NeverToEver/airwar-game/master/.github/screenshots/pause.png) |
 
 | 设置 | 结算画面 |
 |------|----------|
-| ![设置](./.github/screenshots/settings.png) | ![结算画面](./.github/screenshots/death.png) |
+| ![设置](https://raw.githubusercontent.com/NeverToEver/airwar-game/master/.github/screenshots/settings.png) | ![结算画面](https://raw.githubusercontent.com/NeverToEver/airwar-game/master/.github/screenshots/death.png) |
 
 ## 🎮 操作
 

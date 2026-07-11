@@ -9,7 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 ![Tests](https://img.shields.io/badge/tests-61%20passed-brightgreen)
 
-![Air War gameplay](./.github/screenshots/gameplay.png)
+![Air War gameplay](https://raw.githubusercontent.com/NeverToEver/airwar-game/master/.github/screenshots/gameplay.png)
 
 > A 2D space shooter built with Python + Pygame, with an optional Rust extension for performance-critical paths.
 
@@ -47,11 +47,11 @@ All screenshots are rendered from real game scenes in a headless environment by 
 
 | Main Menu | Gameplay | Pause Menu |
 |-----------|----------|------------|
-| ![Main Menu](./.github/screenshots/welcome.png) | ![Gameplay](./.github/screenshots/gameplay.png) | ![Pause Menu](./.github/screenshots/pause.png) |
+| ![Main Menu](https://raw.githubusercontent.com/NeverToEver/airwar-game/master/.github/screenshots/welcome.png) | ![Gameplay](https://raw.githubusercontent.com/NeverToEver/airwar-game/master/.github/screenshots/gameplay.png) | ![Pause Menu](https://raw.githubusercontent.com/NeverToEver/airwar-game/master/.github/screenshots/pause.png) |
 
 | Settings | Game Over |
 |----------|-----------|
-| ![Settings](./.github/screenshots/settings.png) | ![Game Over](./.github/screenshots/death.png) |
+| ![Settings](https://raw.githubusercontent.com/NeverToEver/airwar-game/master/.github/screenshots/settings.png) | ![Game Over](https://raw.githubusercontent.com/NeverToEver/airwar-game/master/.github/screenshots/death.png) |
 
 ## 🎮 Controls
 
