@@ -8,7 +8,7 @@ import os
 from contextlib import asynccontextmanager
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from airwar.leaderboard.config import LeaderboardConfig
@@ -45,9 +45,9 @@ def create_app(store: SQLiteLeaderboardStore | None = None) -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=config.cors_origins,
         allow_credentials=False,
-        allow_methods=["*"],
+        allow_methods=["GET", "POST"],
         allow_headers=["*"],
     )
 
@@ -57,7 +57,7 @@ def create_app(store: SQLiteLeaderboardStore | None = None) -> FastAPI:
         return {"status": "ok"}
 
     @app.get("/leaderboard", response_model=LeaderboardResponse)
-    def get_leaderboard(limit: int = 10) -> LeaderboardResponse:
+    def get_leaderboard(limit: int = Query(10, ge=1, le=100)) -> LeaderboardResponse:
         """Return the top ``limit`` leaderboard entries."""
         entries = leaderboard_store.get_leaderboard(limit=limit)
         return LeaderboardResponse(entries=entries, total=leaderboard_store.count())

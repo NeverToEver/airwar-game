@@ -1,6 +1,7 @@
 """Tests for the single-path persistence boundary."""
 
 import os
+from multiprocessing import Pool
 
 import pytest
 
@@ -106,6 +107,35 @@ class TestPersistenceManager:
             f.write("not json")
         assert pm.load_game() is None
         assert pm.has_saved_game() is False
+
+    def test_save_uses_unique_temp_files(self, save_dir, sample_data):
+        pm = PersistenceManager(save_dir=save_dir, username=sample_data.username)
+        assert pm.save_game(sample_data) is True
+        assert not any(os.path.join(save_dir, name).endswith(".tmp") for name in os.listdir(save_dir))
+
+
+def _concurrent_save(args):
+    save_dir, username = args
+    pm = PersistenceManager(save_dir=save_dir, username=username)
+    data = GameSaveData(username=username, score=100)
+    return pm.save_game(data)
+
+
+class TestPersistenceManagerConcurrency:
+    def test_concurrent_writes_keep_valid_json(self, save_dir):
+        usernames = [f"user_{i}" for i in range(8)]
+        args = [(save_dir, name) for name in usernames]
+
+        with Pool(processes=4) as pool:
+            results = pool.map(_concurrent_save, args)
+
+        assert all(results)
+
+        # All saves should result in distinct files; verify at least one loads.
+        pm = PersistenceManager(save_dir=save_dir, username=usernames[0])
+        loaded = pm.load_game()
+        assert loaded is not None
+        assert loaded.username == usernames[0]
 
 
 class TestGameSaveService:

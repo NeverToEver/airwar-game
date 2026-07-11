@@ -6,6 +6,7 @@ import logging
 import os
 import re
 import shutil
+import tempfile
 import time
 
 from airwar.utils.platform_paths import user_data_dir
@@ -77,18 +78,21 @@ class PersistenceManager(IPersistenceManager):
 
             self._validate_save_dict(save_dict)
 
-            tmp_path = self._save_path + ".tmp"
-            if os.path.exists(tmp_path):
-                logger.warning(f"Found stale temp file {tmp_path}, cleaning up")
+            save_dir = os.path.dirname(self._save_path) or "."
+            fd, tmp_path = tempfile.mkstemp(dir=save_dir, suffix=".tmp")
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as f:
+                    json.dump(save_dict, f, indent=2, ensure_ascii=False)
+                    f.flush()
+                    os.fsync(f.fileno())
+                os.replace(tmp_path, self._save_path)
+            except Exception:
                 try:
-                    os.remove(tmp_path)
-                except OSError as e:
-                    logger.error(f"Failed to remove stale temp file {tmp_path}: {e}")
-            with open(tmp_path, "w", encoding="utf-8") as f:
-                json.dump(save_dict, f, indent=2, ensure_ascii=False)
-                f.flush()
-                os.fsync(f.fileno())
-            os.replace(tmp_path, self._save_path)
+                    if os.path.exists(tmp_path):
+                        os.remove(tmp_path)
+                except OSError as cleanup_err:
+                    logger.warning("Failed to remove temporary save file %s: %s", tmp_path, cleanup_err)
+                raise
 
             logger.info(f"Game saved successfully to {self._save_path}")
             return True

@@ -255,10 +255,11 @@ HOMECOMING > MOTHERSHIP > BOSS_ENRAGE > PHASE_DASH > PLAYER_HIT > GIVE_UP > GAME
 
 | 环境变量 | 默认值 | 说明 |
 |----------|--------|------|
-| `AIRWAR_LEADERBOARD_URL` | `http://localhost:8000` | 远程服务器地址 |
+| `AIRWAR_LEADERBOARD_URL` | `http://localhost:8000` | 远程服务器地址；非法 URL 回退到默认值 |
 | `AIRWAR_LEADERBOARD_MODE` | `auto` | `auto` / `remote` / `local` |
-| `AIRWAR_LEADERBOARD_TIMEOUT` | `3.0` | HTTP 超时（秒） |
+| `AIRWAR_LEADERBOARD_TIMEOUT` | `3.0` | HTTP 超时（秒）；超出 `0 < t <= 30` 回退到默认值 |
 | `AIRWAR_LEADERBOARD_DB_PATH` | 平台数据目录 | 服务端 SQLite 路径 |
+| `AIRWAR_LEADERBOARD_CORS_ORIGINS` | `http://localhost,http://127.0.0.1` | 服务端 CORS 来源，逗号分隔；`*` 或空字符串为开发模式 |
 
 手动启动服务器：
 
