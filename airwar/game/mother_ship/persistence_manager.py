@@ -9,7 +9,7 @@ import shutil
 import tempfile
 import time
 
-from airwar.utils.platform_paths import user_data_dir
+from airwar.utils.platform_paths import redact_home_path, user_data_dir
 
 from .interfaces import IPersistenceManager
 from .mother_ship_state import GameSaveData, SaveDataCorruptedError, normalize_save_data
@@ -94,11 +94,11 @@ class PersistenceManager(IPersistenceManager):
                     logger.warning("Failed to remove temporary save file %s: %s", tmp_path, cleanup_err)
                 raise
 
-            logger.info(f"Game saved successfully to {self._save_path}")
+            logger.info(f"Game saved successfully to {redact_home_path(self._save_path)}")
             return True
 
         except PermissionError:
-            logger.error(f"Permission denied to save file: {self._save_path}")
+            logger.error(f"Permission denied to save file: {redact_home_path(self._save_path)}")
             return False
         except OSError as e:
             logger.error(f"IO error while saving game: {e}")
@@ -171,7 +171,7 @@ class PersistenceManager(IPersistenceManager):
             logger.debug("No saved game found")
             return None
 
-        logger.info(f"Loading game from {self._save_path}")
+        logger.info(f"Loading game from {redact_home_path(self._save_path)}")
 
         try:
             with open(self._save_path, encoding="utf-8") as f:
@@ -192,7 +192,7 @@ class PersistenceManager(IPersistenceManager):
             self.delete_save()
             return None
         except PermissionError:
-            logger.error(f"Permission denied to load file: {self._save_path}")
+            logger.error(f"Permission denied to load file: {redact_home_path(self._save_path)}")
             return None
         except json.JSONDecodeError as e:
             logger.error(f"Invalid JSON in save file: {e}")
@@ -225,7 +225,7 @@ class PersistenceManager(IPersistenceManager):
         return os.path.exists(self._save_path)
 
     def delete_save(self) -> bool:
-        logger.info(f"Deleting saved game at {self._save_path}")
+        logger.info(f"Deleting saved game at {redact_home_path(self._save_path)}")
 
         try:
             if os.path.exists(self._save_path):
@@ -233,7 +233,7 @@ class PersistenceManager(IPersistenceManager):
                 logger.info("Saved game deleted successfully")
             return True
         except PermissionError:
-            logger.error(f"Permission denied to delete save: {self._save_path}")
+            logger.error(f"Permission denied to delete save: {redact_home_path(self._save_path)}")
             return False
         except OSError as e:
             logger.error(f"IO error while deleting save: {e}")

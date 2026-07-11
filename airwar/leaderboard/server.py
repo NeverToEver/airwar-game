@@ -18,6 +18,7 @@ from airwar.leaderboard.models import (
     LeaderboardSubmitRequest,
 )
 from airwar.leaderboard.store import SQLiteLeaderboardStore
+from airwar.utils.platform_paths import redact_home_path
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,7 @@ def create_app(store: SQLiteLeaderboardStore | None = None) -> FastAPI:
     @asynccontextmanager
     async def _lifespan(_app: FastAPI):
         """Log startup info and yield control to the application."""
-        logger.info("Leaderboard server ready (DB: %s)", config.db_path)
+        logger.info("Leaderboard server ready (DB: %s)", redact_home_path(config.db_path))
         yield
 
     app = FastAPI(title="AirWar Leaderboard", lifespan=_lifespan)

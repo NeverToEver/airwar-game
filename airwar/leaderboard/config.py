@@ -43,7 +43,7 @@ class LeaderboardConfig:
     def _validated_url(url: str) -> str:
         parsed = urlparse(url)
         if not url or parsed.scheme not in ("http", "https") or not parsed.hostname:
-            logger.warning("Invalid AIRWAR_LEADERBOARD_URL %r, using default %s", url, _DEFAULT_URL)
+            logger.warning("Invalid AIRWAR_LEADERBOARD_URL, using default %s", _DEFAULT_URL)
             return _DEFAULT_URL
         return url
 

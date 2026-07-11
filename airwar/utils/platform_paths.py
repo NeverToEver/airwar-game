@@ -71,3 +71,22 @@ def generated_asset_cache_dir() -> str:
     if override:
         return os.path.abspath(os.path.expanduser(override))
     return os.path.join(_PACKAGE_DATA_DIR, "generated_assets")
+
+
+def redact_home_path(path: str) -> str:
+    """Return ``path`` with the user's home directory replaced by ``~``.
+
+    This keeps logs useful while avoiding accidental leakage of the system
+    username in shared crash reports or build logs.
+    """
+    home = os.path.expanduser("~")
+    if not home or home == "~":
+        return path
+    # Normalise separators so Windows paths are also redacted.
+    normalised = path.replace("\\", "/")
+    home_normalised = home.replace("\\", "/")
+    if not home_normalised.endswith("/"):
+        home_normalised += "/"
+    if normalised.startswith(home_normalised) or normalised == home_normalised.rstrip("/"):
+        return "~" + normalised[len(home_normalised.rstrip("/")) :]
+    return path

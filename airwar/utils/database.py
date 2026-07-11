@@ -15,7 +15,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import Any, Generator
 
-from airwar.utils.platform_paths import user_data_dir
+from airwar.utils.platform_paths import redact_home_path, user_data_dir
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +138,7 @@ class SimpleDB:
                         os.remove(self.db_path)
                     except OSError:
                         pass
-            logger.error("Account database corrupted; resetting to empty: %s", self.db_path)
+            logger.error("Account database corrupted; resetting to empty: %s", redact_home_path(self.db_path))
             self._save({})
             return {}
         except OSError as e:
