@@ -1,6 +1,6 @@
 # 空战 · Air War
 
-[English](./README.en.md) | 中文
+[English](./README.en.md) | **中文**
 
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![Rust](https://img.shields.io/badge/rust-PyO3-orange?logo=rust)
@@ -10,14 +10,30 @@
 
 ---
 
+## 目录
+
+- [概览](#概览)
+- [特性](#特性)
+- [快速开始](#快速开始)
+  - [一键启动（推荐）](#一键启动推荐)
+  - [手动启动](#手动启动)
+  - [运行测试](#运行测试)
+- [操作方式](#操作方式)
+- [排行榜](#排行榜)
+- [开发](#开发)
+- [架构简介](#架构简介)
+- [打包](#打包)
+- [参与贡献](#参与贡献)
+- [许可证](#许可证)
+
 ## 概览
 
 - **技术栈**：Python 3.11+、Pygame、Pillow；可选 Rust + PyO3 扩展（`airwar_core/`）。
-- **架构**：场景驱动（Scene-based），包含 Welcome、Tutorial、Game、Pause、Death、Settings 等场景。
+- **架构**：场景驱动（Scene-based），包含 Welcome、Tutorial、Game、Pause、Death、Settings、ExitConfirm 等场景。
 - **状态管理**：玩家与 Boss 使用分层状态机（HSM），复杂行为通过 `LockManager` 优先级仲裁。
 - **国际化**：支持简体中文（zh_CN）与英文（en_US）。
 - **排行榜**：本地 JSON 排行榜 + 可选 FastAPI + SQLite 远程服务器，远程不可用时自动回退。
-- **开发状态**：处于初始化开发阶段，当前以稳定可玩的主流程为优先。
+- **开发状态**：处于早期开发阶段，当前以稳定可玩的主流程为优先。
 
 ## 特性
 
@@ -60,14 +76,6 @@
 
 > 清理本地构建产物与虚拟环境：Windows 运行 `uninstall.bat`，Linux / macOS 运行 `./uninstall.sh`。源码、存档与配置不会被删除。
 
-### 运行测试
-
-```bash
-python3 -m pytest tests/
-```
-
-测试仅覆盖核心架构组件（帧时间、锁仲裁、场景管理、存档持久化、视口坐标），不测试渲染与游戏玩法细节。
-
 ### 手动启动
 
 ```bash
@@ -81,6 +89,14 @@ python3 main.py
 ```
 
 > Windows 编译 Rust 需要 Visual C++ Build Tools；脚本失败时会提示下载链接。
+
+### 运行测试
+
+```bash
+python3 -m pytest tests/
+```
+
+测试仅覆盖核心架构组件（帧时间、锁仲裁、场景管理、存档持久化、视口坐标），不测试渲染与游戏玩法细节。
 
 ## 操作方式
 
@@ -171,6 +187,10 @@ build_windows.bat
 
 - 提交 PR 前请运行 `python3 -m ruff check .` 与 `python3 -m compileall -q airwar main.py`。
 - 详见 [`LICENSE`](./LICENSE)。
+
+## 许可证
+
+本项目采用 [MIT 许可证](./LICENSE)。
 
 ---
 

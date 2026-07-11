@@ -10,14 +10,30 @@ A 2D space shooter built with Python + Pygame, with an optional Rust extension f
 
 ---
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Quick Start](#quick-start)
+  - [One-click launcher (recommended)](#one-click-launcher-recommended)
+  - [Manual launch](#manual-launch)
+  - [Run tests](#run-tests)
+- [Controls](#controls)
+- [Leaderboard](#leaderboard)
+- [Development](#development)
+- [Architecture](#architecture)
+- [Packaging](#packaging)
+- [Contributing](#contributing)
+- [License](#license)
+
 ## Overview
 
 - **Stack**: Python 3.11+, Pygame, Pillow; optional Rust + PyO3 extension (`airwar_core/`).
-- **Architecture**: Scene-based, covering Welcome, Tutorial, Game, Pause, Death, Settings, and Exit scenes.
+- **Architecture**: Scene-based, covering Welcome, Tutorial, Game, Pause, Death, Settings, and ExitConfirm scenes.
 - **State management**: Player and Boss are driven by hierarchical state machines (HSM); complex interactions are arbitrated by a priority `LockManager`.
 - **i18n**: Simplified Chinese (zh_CN) and English (en_US).
 - **Leaderboard**: Local JSON leaderboard plus an optional FastAPI + SQLite remote server, with automatic fallback when the server is unreachable.
-- **Development status**: initialization-stage development, focused on a stable playable loop.
+- **Development status**: Early-stage development, focused on a stable playable loop.
 
 ## Features
 
@@ -39,8 +55,7 @@ The launcher auto-detects the environment, creates a virtualenv, installs depend
 | Windows | Double-click `run.bat` |
 | Linux / macOS | `chmod +x run.sh && ./run.sh` |
 
-The launcher reuses `.venv` and only syncs dependencies or rebuilds Rust when
-their inputs change. Common options:
+The launcher reuses `.venv` and only syncs dependencies or rebuilds Rust when their inputs change. Common options:
 
 ```bash
 ./run.sh --prepare-only             # Prepare the runtime only
@@ -57,9 +72,7 @@ To also start the local leaderboard server:
 | Linux / macOS | `chmod +x run_with_server.sh && ./run_with_server.sh` |
 | macOS (double-click) | `run_with_server.command` |
 
-Use `./run_with_server.sh --port 8001 --debug` to choose a port and launch the
-game in debug mode. This entry waits for the local service, uses remote
-leaderboard mode, and stops the service when the game exits.
+Use `./run_with_server.sh --port 8001 --debug` to choose a port and launch the game in debug mode. This entry waits for the local service, uses remote leaderboard mode, and stops the service when the game exits.
 
 > To clean local build artifacts and the virtualenv, run `uninstall.bat` on Windows or `./uninstall.sh` on Linux / macOS. Source code, saves, and config files are preserved.
 
@@ -76,6 +89,14 @@ python3 main.py
 ```
 
 > Building Rust on Windows requires Visual C++ Build Tools; the launcher prints a download link if the build fails.
+
+### Run tests
+
+```bash
+python3 -m pytest tests/
+```
+
+Tests cover core architectural components only (frame timing, lock arbitration, scene management, save persistence, viewport coordinates). Rendering and gameplay logic are not tested.
 
 ## Controls
 
@@ -126,8 +147,7 @@ python3 -m ruff check .
 python3 -m compileall -q airwar main.py
 ```
 
-During active development, run the game directly and inspect the current
-feature flow and startup logs.
+During active development, run the game directly and inspect the current feature flow and startup logs.
 
 ## Architecture
 
@@ -167,6 +187,10 @@ Output goes to `dist/AirWar`. Packaging requires Python 3.11+, the Rust toolchai
 
 - Before opening a PR, please run `python3 -m ruff check .` and `python3 -m compileall -q airwar main.py`.
 - See [`LICENSE`](./LICENSE) for licensing details.
+
+## License
+
+This project is licensed under the [MIT License](./LICENSE).
 
 ---
 
