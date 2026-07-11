@@ -3,50 +3,75 @@
 **English** | [中文](./README.md)
 
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
+![Pygame](https://img.shields.io/badge/pygame-2.6%2B-2e8b57)
 ![Rust](https://img.shields.io/badge/rust-PyO3-orange?logo=rust)
+[![Release](https://img.shields.io/github/v/release/NeverToEver/airwar-game)](https://github.com/NeverToEver/airwar-game/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
+![Tests](https://img.shields.io/badge/tests-61%20passed-brightgreen)
 
-A 2D space shooter built with Python + Pygame, with an optional Rust extension for performance-critical paths.
+![Air War gameplay](./.github/screenshots/gameplay.png)
+
+> A 2D space shooter built with Python + Pygame, with an optional Rust extension for performance-critical paths.
 
 ---
 
 ## Table of Contents
 
-- [Overview](#overview)
-- [Features](#features)
-- [Quick Start](#quick-start)
-  - [One-click launcher (recommended)](#one-click-launcher-recommended)
+- [✨ Highlights](#-highlights)
+- [🖼️ Screenshots](#-screenshots)
+- [🎮 Controls](#-controls)
+- [🚀 Quick Start](#-quick-start)
+  - [One-click launcher](#one-click-launcher)
   - [Manual launch](#manual-launch)
   - [Run tests](#run-tests)
-- [Controls](#controls)
-- [Leaderboard](#leaderboard)
-- [Development](#development)
-- [Architecture](#architecture)
-- [Packaging](#packaging)
-- [Contributing](#contributing)
-- [License](#license)
+- [🏆 Leaderboard](#-leaderboard)
+- [🛠️ Tech Stack](#-tech-stack)
+- [🏗️ Architecture](#-architecture)
+- [📦 Packaging](#-packaging)
+- [🗺️ Roadmap](#-roadmap)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
 
-## Overview
-
-- **Stack**: Python 3.11+, Pygame, Pillow; optional Rust + PyO3 extension (`airwar_core/`).
-- **Architecture**: Scene-based, covering Welcome, Tutorial, Game, Pause, Death, Settings, and ExitConfirm scenes.
-- **State management**: Player and Boss are driven by hierarchical state machines (HSM); complex interactions are arbitrated by a priority `LockManager`.
-- **i18n**: Simplified Chinese (zh_CN) and English (en_US).
-- **Leaderboard**: Local JSON leaderboard plus an optional FastAPI + SQLite remote server, with automatic fallback when the server is unreachable.
-- **Development status**: Early-stage development, focused on a stable playable loop.
-
-## Features
+## ✨ Highlights
 
 - **Optional Rust acceleration**: hot paths such as collision detection, vector math, batch movement, particles, and bullet updates can run in Rust; falls back to pure Python when the extension is unavailable.
 - **Scene-based lifecycle**: every scene owns `enter/exit/update/render`, making state transitions explicit.
+- **Hierarchical state machines**: player and Boss behaviors are driven by HSMs.
 - **Priority lock system**: `HOMECOMING > MOTHERSHIP > BOSS_ENRAGE > PHASE_DASH > GIVE_UP > GAME_PAUSE` unifies invincibility, control locks, and pause handling.
-- **Update pipeline**: `GameScene.update()` runs hit-stop, input, animation, pause gate, collision, cleanup, and milestone checks in a fixed order to avoid state races.
 - **Tutorial**: 7-stage tutorial reusing the real game UI and systems.
 - **Runtime asset cache**: fonts, glow surfaces, and similar assets are generated once and cached for faster subsequent launches.
 
-## Quick Start
+## 🖼️ Screenshots
 
-### One-click launcher (recommended)
+All screenshots are rendered from real game scenes in a headless environment by `scripts/capture_screenshots.py`.
+
+| Main Menu | Gameplay | Pause Menu |
+|-----------|----------|------------|
+| ![Main Menu](./.github/screenshots/welcome.png) | ![Gameplay](./.github/screenshots/gameplay.png) | ![Pause Menu](./.github/screenshots/pause.png) |
+
+| Settings | Game Over |
+|----------|-----------|
+| ![Settings](./.github/screenshots/settings.png) | ![Game Over](./.github/screenshots/death.png) |
+
+## 🎮 Controls
+
+| Key / Input | Action |
+|-------------|--------|
+| Arrow keys / WASD | Move the ship |
+| Ctrl (hold) | Precision mode — speed drops to 35% |
+| Mouse | Aim — with auto-aim assist |
+| Shift (hold) | Boost — 1.7× speed, consumes fuel |
+| Shift (press-release) | Phase Dash (requires talent unlock) — invincible dash |
+| Auto | Ship fires continuously |
+| ESC | Pause |
+| B (hold 2.4 s) | Homecoming — return to base for resupply |
+| H (hold 3 s) | Dock with the mothership and save progress |
+| K (hold 3 s) | Surrender the current sortie |
+| L | Toggle HUD expanded / collapsed |
+
+## 🚀 Quick Start
+
+### One-click launcher
 
 The launcher auto-detects the environment, creates a virtualenv, installs dependencies, builds the Rust extension, and starts the game.
 
@@ -55,7 +80,7 @@ The launcher auto-detects the environment, creates a virtualenv, installs depend
 | Windows | Double-click `run.bat` |
 | Linux / macOS | `chmod +x run.sh && ./run.sh` |
 
-The launcher reuses `.venv` and only syncs dependencies or rebuilds Rust when their inputs change. Common options:
+Common options:
 
 ```bash
 ./run.sh --prepare-only             # Prepare the runtime only
@@ -72,7 +97,7 @@ To also start the local leaderboard server:
 | Linux / macOS | `chmod +x run_with_server.sh && ./run_with_server.sh` |
 | macOS (double-click) | `run_with_server.command` |
 
-Use `./run_with_server.sh --port 8001 --debug` to choose a port and launch the game in debug mode. This entry waits for the local service, uses remote leaderboard mode, and stops the service when the game exits.
+Use `./run_with_server.sh --port 8001 --debug` to choose a port and launch the game in debug mode.
 
 > To clean local build artifacts and the virtualenv, run `uninstall.bat` on Windows or `./uninstall.sh` on Linux / macOS. Source code, saves, and config files are preserved.
 
@@ -98,23 +123,7 @@ python3 -m pytest tests/
 
 Tests cover core architectural components only (frame timing, lock arbitration, scene management, save persistence, viewport coordinates). Rendering and gameplay logic are not tested.
 
-## Controls
-
-| Key / Input | Action |
-|-------------|--------|
-| Arrow keys / WASD | Move the ship |
-| Ctrl (hold) | Precision mode — speed drops to 35% |
-| Mouse | Aim — with auto-aim assist |
-| Shift (hold) | Boost — 1.7× speed, consumes fuel |
-| Shift (press-release) | Phase Dash (requires talent unlock) — invincible dash |
-| Auto | Ship fires continuously |
-| ESC | Pause |
-| B (hold 2.4 s) | Homecoming — return to base for resupply |
-| H (hold 3 s) | Dock with the mothership and save progress |
-| K (hold 3 s) | Surrender the current sortie |
-| L | Toggle HUD expanded / collapsed |
-
-## Leaderboard
+## 🏆 Leaderboard
 
 The leaderboard subsystem is optional and runs locally by default. The remote server simulates a client-server architecture.
 
@@ -134,22 +143,17 @@ python -m airwar.leaderboard.server --port 8000 --db-path ./leaderboard.db
 | `AIRWAR_LEADERBOARD_TIMEOUT` | `3.0` | HTTP timeout (seconds) |
 | `AIRWAR_LEADERBOARD_DB_PATH` | Platform data directory | Server SQLite path |
 
-## Development
+## 🛠️ Tech Stack
 
-```bash
-# Install dev dependencies
-pip install -r requirements-dev.txt
+| Layer | Technology |
+|-------|------------|
+| Game engine | Python 3.11+, Pygame 2.6+, Pillow 12.2+ |
+| Native extension | Rust 2021 + PyO3 0.22 (optional) |
+| Backend service | FastAPI 0.115+, uvicorn 0.34+, SQLite |
+| Build tools | PyInstaller 6+, maturin |
+| Code quality | ruff, mypy, pytest |
 
-# Lint
-python3 -m ruff check .
-
-# Bytecode check
-python3 -m compileall -q airwar main.py
-```
-
-During active development, run the game directly and inspect the current feature flow and startup logs.
-
-## Architecture
+## 🏗️ Architecture
 
 ```text
 WelcomeScene → TutorialScene → GameScene
@@ -168,7 +172,7 @@ Core modules:
 - `airwar/leaderboard/` — Leaderboard client, service layer, FastAPI server.
 - `airwar_core/` — Rust native extension.
 
-## Packaging
+## 📦 Packaging
 
 ```bash
 # Linux
@@ -183,12 +187,31 @@ build_windows.bat
 
 Output goes to `dist/AirWar`. Packaging requires Python 3.11+, the Rust toolchain, and a platform compiler; end users of the packaged binary do not need Python or Rust installed.
 
-## Contributing
+## 🗺️ Roadmap
 
-- Before opening a PR, please run `python3 -m ruff check .` and `python3 -m compileall -q airwar main.py`.
-- See [`LICENSE`](./LICENSE) for licensing details.
+- [x] Scene-driven game loop
+- [x] Player and Boss hierarchical state machines
+- [x] Priority locks and pause arbitration
+- [x] Local JSON user database and leaderboard
+- [x] Optional Rust native extension
+- [ ] More Boss and enemy types
+- [ ] Enhanced online leaderboard (accounts, seasons)
+- [ ] Steam / itch.io page
+- [ ] Mod and custom level support
 
-## License
+## 🤝 Contributing
+
+PRs, issues, and feedback are welcome! Please read [CONTRIBUTING.md](./CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) first.
+
+Before submitting:
+
+```bash
+python3 -m ruff check .
+python3 -m compileall -q airwar main.py
+python3 -m pytest tests/
+```
+
+## 📄 License
 
 This project is licensed under the [MIT License](./LICENSE).
 
