@@ -12,8 +12,9 @@ GameSceneRenderer. The scene keeps:
  - State queries: is_* predicates
  - IGameScene Protocol conformance (26 forwarder methods)
  - Property accessors with setters
- - The __setattr__ hook that keeps the F07 dispatcher in sync
 """
+
+import logging
 
 import pygame
 
@@ -374,7 +375,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         """Set the homecoming coordinator and (re)create the dispatcher."""
         from .scene_homecoming_dispatcher import SceneHomecomingDispatcher
 
-        # F07 F09: bypass __setattr__ hook by writing through base class.
+        # Assign through object.__setattr__ to avoid triggering any custom
+        # attribute logic that subclasses or mixins may define.
         object.__setattr__(self, "_homecoming_coordinator", coordinator)
         object.__setattr__(
             self,
@@ -391,8 +393,6 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
 
     def set_homecoming_coordinator(self, value) -> None:
         """Set the homecoming coordinator and synchronize the dispatcher."""
-        object.__setattr__(self, "_homecoming_coordinator", value)
-        # synchronize dispatcher if needed, mirroring the old __setattr__ behavior
         self._set_homecoming_coordinator(value)
 
     def _update_homecoming(self, delta_seconds: float) -> None:
@@ -707,19 +707,23 @@ def _clear_module_caches() -> None:
     objects. Clearing them on scene exit prevents memory growth during
     long play sessions.
     """
+    logger = logging.getLogger(__name__)
 
     def _clear_attrs(obj, attrs: tuple[str, ...]) -> None:
         for attr in attrs:
             try:
-                getattr(obj, attr).clear()
+                cache = getattr(obj, attr)
+                cache.clear()
             except AttributeError:
-                pass
+                logger.debug("Cache attribute %s.%s not found, skipping", obj.__name__, attr)
+            except Exception as exc:
+                logger.debug("Unexpected error clearing %s.%s: %s", obj.__name__, attr, exc)
 
     # chamfered_panel caches
     try:
         from airwar.ui import chamfered_panel
-    except ImportError:
-        pass
+    except ImportError as exc:
+        logger.debug("chamfered_panel module not available: %s", exc)
     else:
         _clear_attrs(
             chamfered_panel,
@@ -729,8 +733,8 @@ def _clear_module_caches() -> None:
     # menu_background caches
     try:
         from airwar.ui.menu_background import MenuBackground
-    except ImportError:
-        pass
+    except ImportError as exc:
+        logger.debug("MenuBackground module not available: %s", exc)
     else:
         _clear_attrs(MenuBackground, ("_gradient_cache", "_scan_glow_cache"))
 
@@ -739,9 +743,17 @@ def _clear_module_caches() -> None:
         from airwar.game.explosion_animation.explosion_effect import (
             _glow_texture_cache, _spark_core_cache, _flash_cache,
         )
-    except ImportError:
-        pass
+    except ImportError as exc:
+        logger.debug("explosion_effect module not available: %s", exc)
     else:
-        _glow_texture_cache.clear()
-        _spark_core_cache.clear()
-        _flash_cache.clear()
+        for cache_name, cache in (
+            ("_glow_texture_cache", _glow_texture_cache),
+            ("_spark_core_cache", _spark_core_cache),
+            ("_flash_cache", _flash_cache),
+        ):
+            try:
+                cache.clear()
+            except AttributeError:
+                logger.debug("Cache %s not found, skipping", cache_name)
+            except Exception as exc:
+                logger.debug("Unexpected error clearing %s: %s", cache_name, exc)

@@ -62,6 +62,16 @@ class TestSceneManagerRegistration:
         manager.register("a", scene_a)
         assert manager.get_scene("a") is scene_a
 
+    def test_register_rejects_non_scene(self, manager):
+        with pytest.raises(TypeError):
+            manager.register("bad", object())
+
+    def test_register_no_overwrite(self, manager, scene_a, scene_b):
+        manager.register("a", scene_a)
+        with pytest.raises(ValueError):
+            manager.register("a", scene_b, overwrite=False)
+        assert manager.get_scene("a") is scene_a
+
     def test_get_current_scene_before_switch_is_none(self, manager):
         assert manager.get_current_scene() is None
         assert manager.get_current_scene_name() == ""
@@ -93,6 +103,27 @@ class TestSceneManagerSwitching:
     def test_switch_to_unregistered_scene_raises(self, manager):
         with pytest.raises(SceneNotRegisteredError):
             manager.switch("missing")
+
+    def test_switch_enter_exception_restores_previous_scene(self, manager, scene_a):
+        class BrokenEnterScene(FakeScene):
+            def enter(self, **kwargs):
+                raise RuntimeError("enter failed")
+
+        broken = BrokenEnterScene("broken")
+        manager.register("a", scene_a)
+        manager.register("broken", broken)
+        manager.switch("a")
+        assert manager.get_current_scene() is scene_a
+
+        with pytest.raises(RuntimeError):
+            manager.switch("broken")
+
+        assert manager.get_current_scene() is scene_a
+        assert manager.get_current_scene_name() == "a"
+        # Old scene should have been exited once by the failed switch and
+        # re-entered during rollback.
+        assert scene_a.exit_calls == 1
+        assert scene_a.enter_calls == [{}, {}]
 
 
 class TestSceneManagerDispatch:

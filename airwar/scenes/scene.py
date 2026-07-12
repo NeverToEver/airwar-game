@@ -199,7 +199,22 @@ class SceneManager:
         self._current_scene: Scene | None = None
         self._current_scene_name: str = ""
 
-    def register(self, name: str, scene: Scene) -> None:
+    def register(self, name: str, scene: Scene, *, overwrite: bool = True) -> None:
+        """Register a scene under a name.
+
+        Args:
+            name: Name used to later switch to the scene.
+            scene: A concrete ``Scene`` instance.
+            overwrite: If False, raise when ``name`` is already registered.
+
+        Raises:
+            TypeError: If ``scene`` is not a ``Scene`` instance.
+            ValueError: If ``overwrite`` is False and ``name`` already exists.
+        """
+        if not isinstance(scene, Scene):
+            raise TypeError(f"Expected Scene instance, got {type(scene).__name__}")
+        if not overwrite and name in self._scenes:
+            raise ValueError(f"Scene '{name}' is already registered")
         self._scenes[name] = scene
 
     def switch(self, name: str, **kwargs) -> None:
@@ -217,16 +232,38 @@ class SceneManager:
                 current active scene.
             SceneNotRegisteredError: If the named scene was never
                 ``register()``-ed.
+            RuntimeError: If entering the new scene fails and the previous
+                scene cannot be restored.
         """
         if name == self._current_scene_name and self._current_scene is not None:
             raise SceneAlreadyActiveError(name)
         if name not in self._scenes:
             raise SceneNotRegisteredError(name)
-        if self._current_scene:
-            self._current_scene.exit()
-        self._current_scene = self._scenes[name]
+
+        old_scene = self._current_scene
+        old_name = self._current_scene_name
+        new_scene = self._scenes[name]
+
+        if old_scene:
+            old_scene.exit()
+
+        self._current_scene = new_scene
         self._current_scene_name = name
-        self._current_scene.enter(**kwargs)
+        try:
+            new_scene.enter(**kwargs)
+        except Exception:
+            self._current_scene = old_scene
+            self._current_scene_name = old_name
+            if old_scene is not None:
+                try:
+                    old_scene.enter()
+                except Exception:
+                    # If re-entering the old scene also fails, the framework
+                    # is in an undefined state; surface it loudly.
+                    raise RuntimeError(
+                        f"Failed to enter scene '{name}' and could not restore scene '{old_name}'"
+                    ) from None
+            raise
 
     def get_current_scene(self) -> Scene | None:
         """Get the currently active scene instance.

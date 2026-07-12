@@ -363,10 +363,11 @@ class GameSceneUpdater:
 
         def trigger_undock() -> None:
             bus = scene.event_bus
-            assert bus is not None, (
-                "F02 D5: warning_banner.on_complete requires the EventBus "
-                "to be wired (publishes EVENT_UNDOCK_REQUESTED)."
-            )
+            if bus is None:
+                raise RuntimeError(
+                    "F02 D5: warning_banner.on_complete requires the EventBus "
+                    "to be wired (publishes EVENT_UNDOCK_REQUESTED)."
+                )
             bus.publish(EVENT_UNDOCK_REQUESTED)
 
         scene._warning_banner.activate(on_complete=trigger_undock)

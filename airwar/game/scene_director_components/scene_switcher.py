@@ -26,12 +26,16 @@ class SceneSwitcher:
     ``SceneSwitcher`` instance and forwards each public method to it.
     """
 
+    # Number of consecutive frames that may raise before the director gives up.
+    _MAX_CONSECUTIVE_FRAME_ERRORS = 5
+
     def __init__(self, director, scene_manager: SceneManager, viewport: ScaledViewport) -> None:
         self._director = director
         self._logger = logging.getLogger(director.__class__.__name__)
         self._scene_manager = scene_manager
         self._viewport = viewport
         self._frame_clock = FrameClock()
+        self._consecutive_frame_errors = 0
 
     # -- Scene-flow entry points -------------------------------------------------
 
@@ -43,7 +47,8 @@ class SceneSwitcher:
         # one-shot navigation request.
         self._scene_manager.switch("welcome", viewport=self._viewport)
         welcome = self._scene_manager.get_current_scene()
-        assert welcome is not None
+        if welcome is None:
+            raise RuntimeError("Welcome scene was not set after switch")
         while self._director._running:
             result = self._run_scene_loop(welcome)
             if result == "quit":
@@ -218,11 +223,59 @@ class SceneSwitcher:
             # the click to the wrong scene. Routing through
             # ``target_scene`` here makes the dispatch explicit and
             # immune to that mismatch.
-            self._handle_scene_events(events, skip_escape=escape_handled, target_scene=scene)
-            scene.update(frame)
-            self._render_scene(scene)
-            self._director._window.flip()
+            try:
+                self._handle_scene_events(events, skip_escape=escape_handled, target_scene=scene)
+            except Exception:
+                if self._handle_frame_error(scene, "handle_events"):
+                    return "quit"
+                continue
+
+            try:
+                scene.update(frame)
+            except Exception:
+                if self._handle_frame_error(scene, "update"):
+                    return "quit"
+                continue
+
+            try:
+                self._render_scene(scene)
+            except Exception:
+                if self._handle_frame_error(scene, "render"):
+                    return "quit"
+                continue
+
+            try:
+                self._director._window.flip()
+            except Exception:
+                if self._handle_frame_error(scene, "flip"):
+                    return "quit"
+                continue
+
+            # Successful frame: reset the error counter.
+            self._consecutive_frame_errors = 0
         return "quit" if not self._director._running else "ended"
+
+    def _handle_frame_error(self, scene, operation: str) -> bool:
+        """Log and swallow a single-frame exception, re-raising after too many.
+
+        Returns:
+            True if the error limit was exceeded and the loop should abort.
+        """
+        self._logger.exception("Frame error in %s.%s", scene.__class__.__name__, operation)
+        self._consecutive_frame_errors += 1
+        hook = getattr(scene, "on_frame_error", None)
+        if hook is not None:
+            try:
+                hook(operation)
+            except Exception:
+                self._logger.exception("on_frame_error hook failed for %s", scene.__class__.__name__)
+        if self._consecutive_frame_errors >= self._MAX_CONSECUTIVE_FRAME_ERRORS:
+            self._logger.error(
+                "Too many consecutive frame errors (%s), aborting scene loop",
+                self._consecutive_frame_errors,
+            )
+            return True
+        return False
 
     # -- Event polling and dispatch ---------------------------------------------
 
@@ -327,8 +380,10 @@ class SceneSwitcher:
             username=self._director._current_user,
             settings_ref=self._director._settings_ref,
         )
-        result = self._run_scene_loop(settings_scene)
-        settings_scene.exit()
+        try:
+            result = self._run_scene_loop(settings_scene)
+        finally:
+            settings_scene.exit()
         if result == "quit":
             return False
         if game_scene and hasattr(game_scene, "player") and game_scene.player:
@@ -342,12 +397,13 @@ class SceneSwitcher:
                 return PauseAction.QUIT
             pause_scene.enter()
 
-            loop_result = self._run_scene_loop(pause_scene)
-            if loop_result == "quit":
-                return PauseAction.QUIT
-
-            result = pause_scene.get_result()
-            pause_scene.exit()
+            try:
+                loop_result = self._run_scene_loop(pause_scene)
+                if loop_result == "quit":
+                    return PauseAction.QUIT
+                result = pause_scene.get_result()
+            finally:
+                pause_scene.exit()
 
             if result == "settings":
                 if not self._show_settings_menu(game_scene=game_scene):
@@ -376,12 +432,13 @@ class SceneSwitcher:
 
         exit_scene.enter(saved=saved, difficulty=self._director._selected_difficulty)
 
-        loop_result = self._run_scene_loop(exit_scene)
-        if loop_result == "quit":
-            return "quit"
-
-        result = exit_scene.get_result()
-        exit_scene.exit()
+        try:
+            loop_result = self._run_scene_loop(exit_scene)
+            if loop_result == "quit":
+                return "quit"
+            result = exit_scene.get_result()
+        finally:
+            exit_scene.exit()
         if result == ExitConfirmAction.RETURN_TO_MENU:
             if not saved:
                 self._director._clear_saved_game()
@@ -417,11 +474,11 @@ class SceneSwitcher:
             username=self._director._current_user,
         )
 
-        loop_result = self._run_scene_loop(death_scene)
-        if loop_result == "quit":
+        try:
+            loop_result = self._run_scene_loop(death_scene)
+            if loop_result == "quit":
+                return False
+            result = death_scene.get_result()
+        finally:
             death_scene.exit()
-            return False
-
-        result = death_scene.get_result()
-        death_scene.exit()
         return result == "return_to_menu"
