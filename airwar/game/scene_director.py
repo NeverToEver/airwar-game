@@ -60,6 +60,9 @@ class SceneDirector:
         self._pending_save_data = None
         self._save_dir = None
         self._settings_ref = {"ctrl_mode": "hold", "shift_boost_mode": "hold"}
+        self._leaderboard_service = (
+            LeaderboardService(user_db) if user_db is not None else None
+        )
 
         # Phase 4 components
         self._switcher = SceneSwitcher(self, self._scene_manager, self._viewport)
@@ -246,11 +249,11 @@ class SceneDirector:
             return None
 
     def _submit_leaderboard_score(self, score: int) -> int:
-        if not self._user_db:
+        if not self._user_db or self._leaderboard_service is None:
             return 0
         name = self._current_user or "Guest"
         try:
-            return LeaderboardService(self._user_db).submit_score(name, score)
+            return self._leaderboard_service.submit_score(name, score)
         except DatabaseError:
             self._logger.warning("Failed to submit leaderboard score", exc_info=True)
             return 0

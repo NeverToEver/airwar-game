@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from threading import RLock
 from typing import Any
 
@@ -75,12 +76,20 @@ class Translator:
                 return value
         return value
 
+    _LOCALE_RE = re.compile(r"^[A-Za-z0-9_]+$")
+
     def set_locale(self, locale: str) -> None:
         """Switch the active locale, loading its catalog on demand.
 
         Unknown locales log a warning; the active locale is left unchanged
         so the UI keeps rendering existing translations.
+
+        Raises:
+            ValueError: If ``locale`` contains characters other than
+                letters, digits, or underscores (path-traversal guard).
         """
+        if not isinstance(locale, str) or not self._LOCALE_RE.fullmatch(locale):
+            raise ValueError(f"Invalid locale: {locale!r}")
         with self._lock:
             if locale == self._locale:
                 return

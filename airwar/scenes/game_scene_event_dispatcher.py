@@ -17,12 +17,15 @@ existing mixin + helper methods that stay on the facade
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import pygame
 
 if TYPE_CHECKING:
     from .game_scene_protocols import GameSceneProtocol
+
+_logger = logging.getLogger(__name__)
 
 
 class GameSceneEventDispatcher:
@@ -31,6 +34,10 @@ class GameSceneEventDispatcher:
     Translates pygame events into scene state changes. Owns no state of
     its own — the dispatcher is stateless across frames; the scene owns
     the persistent state (pause request, hover, button registry, etc.).
+
+    Exceptions raised by a single event handler are caught and logged so
+    that one bad branch does not prevent the rest of the frame's events
+    from being processed.
     """
 
     def __init__(self, scene: GameSceneProtocol) -> None:
@@ -47,24 +54,27 @@ class GameSceneEventDispatcher:
         scene = self._scene
         if scene._input_coordinator is None or scene.game_renderer is None:
             return
-        scene._input_coordinator.handle_events(event)
+        try:
+            scene._input_coordinator.handle_events(event)
 
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_l:
-            if scene.game_renderer.integrated_hud:
-                scene.game_renderer.integrated_hud.toggle()
-        elif event.type == pygame.MOUSEMOTION:
-            scene._aim_assist.set_raw_aim_position(event.pos)
-            scene._sync_player_aim_target()
-            if scene._homecoming_base_pending and scene._base_talent_console:
-                scene._base_talent_console.handle_mouse_motion(event.pos)
-            scene.handle_mouse_motion(event.pos)
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            scene._aim_assist.set_raw_aim_position(event.pos)
-            scene._sync_player_aim_target()
-            if event.button == 1 and scene._homecoming_base_pending and scene._handle_base_console_click(event.pos):
-                return
-            if event.button == 1 and scene.handle_mouse_click(event.pos):
-                scene._handle_button_click(scene.get_hovered_button())
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_l:
+                if scene.game_renderer.integrated_hud:
+                    scene.game_renderer.integrated_hud.toggle()
+            elif event.type == pygame.MOUSEMOTION:
+                scene._aim_assist.set_raw_aim_position(event.pos)
+                scene._sync_player_aim_target()
+                if scene._homecoming_base_pending and scene._base_talent_console:
+                    scene._base_talent_console.handle_mouse_motion(event.pos)
+                scene.handle_mouse_motion(event.pos)
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                scene._aim_assist.set_raw_aim_position(event.pos)
+                scene._sync_player_aim_target()
+                if event.button == 1 and scene._homecoming_base_pending and scene._handle_base_console_click(event.pos):
+                    return
+                if event.button == 1 and scene.handle_mouse_click(event.pos):
+                    scene._handle_button_click(scene.get_hovered_button())
+        except Exception:
+            _logger.exception("Unhandled exception dispatching event %s", event)
 
 
 __all__ = ["GameSceneEventDispatcher"]
