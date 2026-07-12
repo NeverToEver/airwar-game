@@ -139,56 +139,18 @@ class PlayerStateMachine:
         self._player = player
         self._state: PlayerState = PlayerState.ALIVE
         self._alive_substate: PlayerAliveState = PlayerAliveState.NORMAL
-        # Substate timing
-        self._shield_duration: int = 0
-        self._respawn_invincibility_duration: int = 0
-        # Marked for external use (docking / respawn).
-        self._dock_active: bool = False
-        self._respawn_invincible: bool = False
 
     # ------------------------------------------------------------------
     # Public accessors
     # ------------------------------------------------------------------
 
     @property
-    def state(self) -> PlayerState:
-        return self._state
-
-    @property
     def alive_substate(self) -> PlayerAliveState:
         return self._alive_substate
-
-    @property
-    def shield_duration(self) -> int:
-        return self._shield_duration
-
-    @property
-    def dock_active(self) -> bool:
-        return self._dock_active
-
-    @property
-    def respawn_invincible(self) -> bool:
-        return self._respawn_invincible
 
     # ------------------------------------------------------------------
     # Top-level lifecycle
     # ------------------------------------------------------------------
-
-    def mark_dying(self) -> None:
-        if self._state in (PlayerState.DYING, PlayerState.DEAD):
-            return
-        self._state = PlayerState.DYING
-
-    def mark_dead(self) -> None:
-        self._state = PlayerState.DEAD
-
-    def respawn(self) -> None:
-        """Return to ALIVE / NORMAL after death (called by GameController)."""
-        self._dock_active = False
-        self._respawn_invincible = False
-        self._shield_duration = 0
-        self._state = PlayerState.ALIVE
-        self.transition_substate(PlayerAliveState.RESPAWN_INVINCIBLE)
 
     # ------------------------------------------------------------------
     # Substate transitions
@@ -239,32 +201,12 @@ class PlayerStateMachine:
     # ------------------------------------------------------------------
 
     def activate_shield(self, duration: int) -> None:
+        """Transition to SHIELDED (duration managed by PlayerShield)."""
         self.transition_substate(PlayerAliveState.SHIELDED)
-        self._shield_duration = max(1, duration)
 
     def deactivate_shield(self) -> None:
         if self._alive_substate == PlayerAliveState.SHIELDED:
             self.transition_substate(PlayerAliveState.NORMAL)
-        self._shield_duration = 0
-
-    def tick_shield(self) -> None:
-        if self._shield_duration > 0:
-            self._shield_duration -= 1
-            if self._shield_duration == 0 and self._alive_substate == PlayerAliveState.SHIELDED:
-                self.transition_substate(PlayerAliveState.NORMAL)
-
-    def enter_dock(self) -> None:
-        self._dock_active = True
-        self.transition_substate(PlayerAliveState.DOCKED)
-        if hasattr(self._player, "is_controls_locked"):
-            self._player.is_controls_locked = True
-
-    def exit_dock(self) -> None:
-        self._dock_active = False
-        if self._alive_substate == PlayerAliveState.DOCKED:
-            self.transition_substate(PlayerAliveState.NORMAL)
-        if hasattr(self._player, "is_controls_locked"):
-            self._player.is_controls_locked = False
 
     def enter_boost(self) -> None:
         # Boosting is only legal when not already in another locked state.
@@ -282,21 +224,6 @@ class PlayerStateMachine:
         if self._alive_substate == PlayerAliveState.BOOSTING:
             self.transition_substate(PlayerAliveState.NORMAL)
 
-    def enter_respawn_invincibility(self, duration: int) -> None:
-        self._respawn_invincible = True
-        self._respawn_invincibility_duration = max(1, duration)
-        self.transition_substate(PlayerAliveState.RESPAWN_INVINCIBLE)
-
-    def tick_respawn_invincibility(self) -> None:
-        if self._respawn_invincibility_duration > 0:
-            self._respawn_invincibility_duration -= 1
-            if (
-                self._respawn_invincibility_duration == 0
-                and self._alive_substate == PlayerAliveState.RESPAWN_INVINCIBLE
-            ):
-                self._respawn_invincible = False
-                self.transition_substate(PlayerAliveState.NORMAL)
-
     # ------------------------------------------------------------------
     # Predicates
     # ------------------------------------------------------------------
@@ -310,21 +237,8 @@ class PlayerStateMachine:
     def is_dead(self) -> bool:
         return self._state == PlayerState.DEAD
 
-    def is_shielded(self) -> bool:
-        return self._alive_substate == PlayerAliveState.SHIELDED
-
-    def is_docked(self) -> bool:
-        return self._alive_substate == PlayerAliveState.DOCKED
-
     def is_boosting(self) -> bool:
         return self._alive_substate == PlayerAliveState.BOOSTING
-
-    def is_respawn_invincible(self) -> bool:
-        return self._alive_substate == PlayerAliveState.RESPAWN_INVINCIBLE
-
-    def should_lock_controls(self) -> bool:
-        """Top-level predicate: should input be ignored this frame?"""
-        return self._alive_substate == PlayerAliveState.DOCKED
 
 
 __all__ = [

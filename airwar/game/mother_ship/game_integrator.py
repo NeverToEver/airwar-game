@@ -20,28 +20,9 @@ from airwar.game.frame_context import FrameContext
 
 from ..rendering.entity_renderer import EntityRenderer
 from ..systems.lock_manager import LockLayer, LockRequest
-from .event_bus import (
-    EVENT_STATE_CHANGED,
-    EVENT_UNDOCK_REQUESTED,
-)
 from .mother_ship_state import GameSaveData, MotherShipState
 from .mothership_animations import MothershipAnimations
-from .mothership_gatling import (
-    MOTHERSHIP_GATLING_BARREL_X_OFFSETS,
-    MOTHERSHIP_GATLING_BULLET_SPEED,
-    MOTHERSHIP_GATLING_BULLET_TYPE,
-    MOTHERSHIP_GATLING_DAMAGE,
-    MOTHERSHIP_GATLING_FIRE_RATE,
-    MOTHERSHIP_GATLING_MUZZLE_Y_OFFSET,
-    MOTHERSHIP_GATLING_OVERLAP_DEGREES,
-    MOTHERSHIP_GATLING_RIGHT_SWEEP_PERIOD,
-    MOTHERSHIP_GATLING_SWEEP_ARC_DEGREES,
-    MOTHERSHIP_GATLING_SWEEP_PERIOD,
-    MOTHERSHIP_GATLING_TOTAL_SWEEP_DEGREES,
-    MOTHERSHIP_GATLING_TURRETS,
-    GatlingTurretSpec,
-    MothershipGatling,
-)
+from .mothership_gatling import MothershipGatling
 from .progress_bar_ui import ProgressBarUI
 
 if TYPE_CHECKING:
@@ -51,8 +32,7 @@ if TYPE_CHECKING:
     from .state_machine import MotherShipStateMachine
 
 
-# Gatling specification shared by the integrator and turret component.
-__all__ = ["GameIntegrator", "GatlingTurretSpec"]
+__all__ = ["GameIntegrator"]
 
 
 class GameIntegrator:
@@ -75,20 +55,6 @@ class GameIntegrator:
     MOTHERSHIP_TARGET_COUNT = 5  # fire at up to 5 closest enemies per volley
     MOTHERSHIP_EXPLOSION_RADIUS = 80
     MOTHERSHIP_EXPLOSION_DAMAGE = 60
-
-    # Gatling constants used by the mothership combat flow.
-    MOTHERSHIP_GATLING_DAMAGE = MOTHERSHIP_GATLING_DAMAGE
-    MOTHERSHIP_GATLING_FIRE_RATE = MOTHERSHIP_GATLING_FIRE_RATE
-    MOTHERSHIP_GATLING_BULLET_SPEED = MOTHERSHIP_GATLING_BULLET_SPEED
-    MOTHERSHIP_GATLING_TOTAL_SWEEP_DEGREES = MOTHERSHIP_GATLING_TOTAL_SWEEP_DEGREES
-    MOTHERSHIP_GATLING_SWEEP_ARC_DEGREES = MOTHERSHIP_GATLING_SWEEP_ARC_DEGREES
-    MOTHERSHIP_GATLING_OVERLAP_DEGREES = MOTHERSHIP_GATLING_OVERLAP_DEGREES
-    MOTHERSHIP_GATLING_SWEEP_PERIOD = MOTHERSHIP_GATLING_SWEEP_PERIOD
-    MOTHERSHIP_GATLING_RIGHT_SWEEP_PERIOD = MOTHERSHIP_GATLING_RIGHT_SWEEP_PERIOD
-    MOTHERSHIP_GATLING_BARREL_X_OFFSETS = MOTHERSHIP_GATLING_BARREL_X_OFFSETS
-    MOTHERSHIP_GATLING_TURRETS = MOTHERSHIP_GATLING_TURRETS
-    MOTHERSHIP_GATLING_MUZZLE_Y_OFFSET = MOTHERSHIP_GATLING_MUZZLE_Y_OFFSET
-    MOTHERSHIP_GATLING_BULLET_TYPE = MOTHERSHIP_GATLING_BULLET_TYPE
 
     MOTHERSHIP_BULLET_DESPAWN_MARGIN = 80
     MOTHERSHIP_MAX_BULLETS = 20
@@ -569,22 +535,6 @@ class GameIntegrator:
 
         self._game_scene.clear_ripple_effects()
 
-    def get_docking_animation_progress(self) -> float:
-        if not self._animations._docking_animation_active:
-            return 0.0
-        return self._animations._docking_animation_frame / self._animations.DOCKING_DURATION
-
-    def get_docking_animation_start(self) -> tuple:
-        return self._animations._docking_start_position or (0, 0)
-
-    def get_undocking_animation_progress(self) -> float:
-        if not self._animations._undocking_animation_active:
-            return 0.0
-        return self._animations._undocking_animation_frame / self._animations.UNDOCKING_EJECT_DURATION
-
-    def get_undocking_animation_start(self) -> tuple:
-        return self._animations._undocking_start_position or (0, 0)
-
     def _get_buff_levels(self) -> dict[str, int]:
         if not self._game_scene:
             return {}
@@ -668,15 +618,6 @@ class GameIntegrator:
         for bullet in self._mothership_bullets:
             self._entity_renderer.render_bullet(surface, bullet)
 
-    def is_entering_animation_active(self) -> bool:
-        return self._animations._entering_animation_active
-
-    def is_docking_animation_active(self) -> bool:
-        return self._animations._docking_animation_active
-
-    def is_undocking_animation_active(self) -> bool:
-        return self._animations._undocking_animation_active
-
     def is_docked(self) -> bool:
         return self._state_machine.current_state == MotherShipState.DOCKED
 
@@ -695,16 +636,6 @@ class GameIntegrator:
         """Return the current mothership state machine state."""
         return self._state_machine.current_state
 
-    def is_in_cooldown(self) -> bool:
-        return self._state_machine.is_in_cooldown()
-
-    def request_undock(self) -> None:
-        """Publish UNDOCK_REQUESTED to the internal event bus."""
-        self._event_bus.publish(EVENT_UNDOCK_REQUESTED)
-
-    def is_player_control_disabled(self) -> bool:
-        return self._player_control_disabled
-
     def get_docking_position(self) -> tuple:
         return self._mother_ship.get_docking_position()
 
@@ -713,10 +644,3 @@ class GameIntegrator:
         self._mother_ship.show()
         self._player_control_disabled = False
         self._activate_invincibility()
-
-    def reset_to_idle_with_mothership_visible(self) -> None:
-        self._state_machine.force_state(MotherShipState.IDLE)
-        self._mother_ship.show()
-        self._player_control_disabled = False
-        self._input_detector.reset_progress()
-        self._event_bus.publish(EVENT_STATE_CHANGED, state=MotherShipState.IDLE)

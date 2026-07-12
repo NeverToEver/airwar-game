@@ -18,16 +18,11 @@ class Colors:
     BACKGROUND_PANEL = (8, 10, 18)
     BACKGROUND_OVERLAY = (0, 0, 0, 200)
 
-    ACCENT_PRIMARY = (140, 170, 210)
     ACCENT_BRIGHT = (170, 195, 230)
-    ACCENT_WARM = (180, 150, 120)
-    ACCENT_WARM_DEEP = (140, 110, 80)
 
     # Legacy aliases
-    HUD_AMBER = ACCENT_PRIMARY
-    HUD_AMBER_BRIGHT = ACCENT_BRIGHT
-    HUD_ORANGE = ACCENT_WARM
-    HUD_ORANGE_DEEP = ACCENT_WARM_DEEP
+    HUD_AMBER = (140, 170, 210)
+    HUD_AMBER_BRIGHT = (170, 195, 230)
 
     ACCENT_EXPLOSIVE = (255, 100, 50)
     ACCENT_DANGER = (255, 50, 50)
@@ -42,10 +37,7 @@ class Colors:
 
     HEALTH_NORMAL = (170, 180, 110)
     HEALTH_DANGER = (220, 70, 55)
-    SCORE_COLOR = (210, 215, 230)
     PROGRESS_COLOR = (140, 170, 210)
-    KILLS_COLOR = (170, 175, 200)
-    BOSS_COLOR = (210, 90, 70)
 
     BUTTON_SELECTED_BG = (30, 38, 55)
     BUTTON_UNSELECTED_BG = (18, 24, 38)
@@ -84,7 +76,6 @@ class Colors:
 class Typography:
     """Typography — font sizes for all UI text elements."""
 
-    DISPLAY_SIZE = 110
     TITLE_SIZE = 100
     HEADING_SIZE = 72
     SUBHEADING_SIZE = 48
@@ -95,32 +86,11 @@ class Typography:
     SMALL_SIZE = 24
     TINY_SIZE = 20
 
-    FONT_FAMILY_DEFAULT = None
-
 
 class Spacing:
     """Spacing — margin, padding, and layout spacing values."""
 
-    SPACE_XS = 4
-    SPACE_SM = 8
-    SPACE_MD = 12
-    SPACE_LG = 16
-    SPACE_XL = 20
-    SPACE_2XL = 24
-    SPACE_3XL = 32
-    SPACE_4XL = 40
-    SPACE_5XL = 48
-
     BORDER_RADIUS_SM = 4
-    BORDER_RADIUS_MD = 8
-    BORDER_RADIUS_LG = 12
-    BORDER_RADIUS_XL = 15
-    BORDER_RADIUS_2XL = 18
-
-    PANEL_WIDTH = 400
-    PANEL_HEIGHT = 460
-    OPTION_HEIGHT = 70
-    OPTION_GAP = 12
     BOX_WIDTH = 350
     BOX_HEIGHT = 60
 
@@ -129,13 +99,7 @@ class Animation:
     """Animation — timing and easing values."""
 
     GLOW_SPEED = 0.08
-    GLOW_RADIUS_DEFAULT = 4
-    GLOW_RADIUS_TITLE = 6
-    GLOW_RADIUS_BUTTON = 5
-
-    HOVER_SCALE_FACTOR = 0.18
     CLICK_SCALE_FACTOR = 0.10
-    CLICK_DECAY_FACTOR = 0.82
 
     BLINK_INTERVAL = 25
     TWINKLE_SPEED_MIN = 0.05
@@ -157,24 +121,12 @@ class Animation:
 class UIComponents:
     """UI components — dimensions for standard UI elements."""
 
-    BUTTON_WIDTH = 280
-    BUTTON_HEIGHT = 60
-    TITLE_Y = 100
-    HINT_Y_OFFSET = 70
-    CONTROLS_Y_OFFSET = 45
-
     HEALTH_BAR_WIDTH = 400
     HEALTH_BAR_HEIGHT = 28
-
-    PROGRESS_BAR_WIDTH = 300
-    PROGRESS_BAR_HEIGHT = 20
 
     STAR_COUNT = 120
     PARTICLE_COUNT = 45
     PARTICLE_PARTICLE_ALT_COUNT = 30
-
-    BUFF_PANEL_WIDTH = 180
-    BUFF_PANEL_HEIGHT = 36
 
     HUD_PANEL_WIDTH = 220
     HUD_PANEL_PADDING = 15
@@ -191,7 +143,6 @@ class UIComponents:
     HUD_EXPAND_HINT_SIZE = 14
 
     HUD_PROGRESS_BAR_HEIGHT = 12
-    HUD_HEALTH_BAR_HEIGHT = 16
     HUD_COEFFICIENT_BAR_HEIGHT = 12
 
     COEFFICIENT_MAX_MULTIPLIER = 8.0

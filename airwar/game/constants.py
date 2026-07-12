@@ -38,11 +38,8 @@ class PlayerConstants:
     Attributes:
         INITIAL_X_OFFSET: Initial X offset for player spawn.
         INITIAL_Y: Initial Y position for player.
-        FINAL_Y: Final Y position for player.
         SCREEN_BOTTOM_OFFSET: Offset from screen bottom.
         INVINCIBILITY_DURATION: Invincibility duration in frames.
-        MOTHERSHIP_Y_POSITION: Player Y position when docked with mothership.
-        DEFAULT_SCREEN_WIDTH: Default screen width.
         MAX_HEALTH: Maximum player health.
         SPEED: Player movement speed.
         BULLET_DAMAGE: Player bullet damage.
@@ -51,11 +48,8 @@ class PlayerConstants:
 
     INITIAL_X_OFFSET: int = 25
     INITIAL_Y: int = -80
-    FINAL_Y: int = -100
     SCREEN_BOTTOM_OFFSET: int = 100
     INVINCIBILITY_DURATION: int = 90
-    MOTHERSHIP_Y_POSITION: int = 200
-    DEFAULT_SCREEN_WIDTH: int = 800
     MAX_HEALTH: int = 100
     SPEED: int = 7
     BULLET_SPEED: int = 14
@@ -89,12 +83,10 @@ class TimingConstants:
     """Timing-related constants.
 
     Attributes:
-        FIXED_DELTA_TIME: Fixed frame time step (~16.67ms @60fps).
         NOTIFICATION_DURATION: Notification display duration in frames.
         NOTIFICATION_ALPHA_THRESHOLD: Alpha threshold for notification color change.
     """
 
-    FIXED_DELTA_TIME: float = 1 / 60
     NOTIFICATION_DURATION: int = 90
     NOTIFICATION_ALPHA_THRESHOLD: int = 150
 
@@ -105,17 +97,12 @@ class AnimationConstants:
 
     Attributes:
         ENTRANCE_DURATION: Entrance animation duration in frames.
-        RIPPLE_INITIAL_RADIUS: Ripple effect initial radius.
-        RIPPLE_INITIAL_ALPHA: Ripple effect initial alpha.
-        NOTIFICATION_DECAY_RATE: Notification decay rate.
+        RIPPLE_EXPANSION_SPEED: Ripple effect expansion speed.
         PARTICLE_ALPHA_VISIBILITY_THRESHOLD: Minimum alpha for particle visibility.
     """
 
     ENTRANCE_DURATION: int = 60
-    RIPPLE_INITIAL_RADIUS: int = 15
-    RIPPLE_INITIAL_ALPHA: int = 350
     RIPPLE_EXPANSION_SPEED: float = 2.5
-    NOTIFICATION_DECAY_RATE: int = 1
     PARTICLE_ALPHA_VISIBILITY_THRESHOLD: int = 10
 
 
@@ -155,10 +142,8 @@ class BossConstants:
         SIDE_ANGLE_OFFSET: Side attack angle offset.
         ATTACK_DISTANCE: Attack distance for aimed shots.
         BULLET_OFFSET_X: Horizontal bullet offset for multi-shot.
-        FIRE_RATE_BASE: Base fire rate.
         PHASE_INTERVAL: Frames between phase transitions.
         SPREAD_BULLET_COUNT_BASE: Base number of spread bullets.
-        BULLET_DAMAGE_MAP: Damage map by bullet type.
     """
 
     BULLET_DAMAGE_BASE: int = 12
@@ -173,16 +158,8 @@ class BossConstants:
     SIDE_ANGLE_OFFSET: float = 22.5
     ATTACK_DISTANCE: int = 500
     BULLET_OFFSET_X: int = 30
-    FIRE_RATE_BASE: int = 60
     PHASE_INTERVAL: int = 300
     SPREAD_BULLET_COUNT_BASE: int = 5
-    BULLET_DAMAGE_MAP: dict = field(
-        default_factory=lambda: {
-            "spread": 12,
-            "laser": 35,
-            "single": 20,
-        }
-    )
 
 
 @dataclass(frozen=True)
@@ -227,25 +204,6 @@ class EnrageConstants:
 
 
 @dataclass(frozen=True)
-class HomecomingPhaseConstants:
-    """F04 M10: Homecoming sequence phase frame counts.
-
-    Previously scattered as class-level constants on HomecomingSequence.
-    """
-
-    FTL_ESCAPE: int = 54
-    BLACKOUT: int = 34
-    STATION_REVEAL: int = 70
-    APPROACH: int = 96
-    LANDING: int = 72
-    HANDOFF: int = 64
-    BASE_LAUNCH: int = 76
-    RETURN_BLACKOUT: int = 34
-    ORBITAL_STRIKE: int = 86
-    ORBITAL_STRIKE_IMPACT_PROGRESS: float = 0.56
-
-
-@dataclass(frozen=True)
 class EnemyConstants:
     """Enemy-related constants.
 
@@ -253,14 +211,12 @@ class EnemyConstants:
         LIFETIME: Enemy lifetime in frames (15 seconds = 900 frames @ 60fps).
         MOVE_RANGE_X: Horizontal movement range around active position.
         MOVE_RANGE_Y: Vertical movement range around active position.
-        MOVE_TIMER: Enemy movement pattern timer threshold.
         ESCAPE_WARNING: Escape warning time before boss escapes.
     """
 
     LIFETIME: int = 900  # 15 seconds * 60 fps
     MOVE_RANGE_X: int = 80
     MOVE_RANGE_Y: int = 50
-    MOVE_TIMER: int = 60
     ESCAPE_WARNING: int = 180
 
 
@@ -502,7 +458,6 @@ class GameConstants:
     BOSS: BossConstants = field(default_factory=BossConstants)
     BOSS_ENRAGE: EnrageConstants = field(default_factory=EnrageConstants)
     BOSS_TUNING: BossTuningConstants = field(default_factory=BossTuningConstants)
-    HOMECOMING_PHASES: HomecomingPhaseConstants = field(default_factory=HomecomingPhaseConstants)
     ENEMY: EnemyConstants = field(default_factory=EnemyConstants)
     ENEMY_TUNING: EnemyTuningConstants = field(default_factory=EnemyTuningConstants)
     REWARD: RewardConstants = field(default_factory=RewardConstants)

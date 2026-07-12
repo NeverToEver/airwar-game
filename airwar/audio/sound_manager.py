@@ -14,18 +14,15 @@ Design notes
   no-op. Game logic must not depend on audio succeeding.
 - **Global singleton** — :func:`get_sound_manager` returns the
   module-level instance.
-- **No shipped assets** — BGM and any non-builtin SFX are stubs that
-  log at debug level. ``bullet_fire`` is generated procedurally so
+- **No shipped assets** — ``bullet_fire`` is generated procedurally so
   the game can run without a binary asset bundle.
 """
 
 from __future__ import annotations
 
-import io
 import logging
 import math
-import os
-from typing import IO, ClassVar, cast
+from typing import ClassVar
 
 import pygame
 
@@ -59,8 +56,6 @@ class SoundManager:
         self._muted: bool = False
         self._sfx_cache: dict[str, pygame.mixer.Sound | None] = {}
         self._sfx_last_play_ms: dict[str, int] = {}
-        self._bgm_track: str | None = None
-        self._bgm_volume: float = 0.5
 
     # ------------------------------------------------------------------
     # Initialization
@@ -152,82 +147,6 @@ class SoundManager:
         return None
 
     # ------------------------------------------------------------------
-    # BGM
-    # ------------------------------------------------------------------
-
-    def play_bgm(self, track: str, loop: bool = True) -> None:
-        """Start streaming a background-music track.
-
-        Uses :mod:`pygame.mixer.music` to loop a stream. Real audio
-        files are looked up under ``airwar/assets/audio/``; when none is
-        shipped for ``track`` we synthesise a short sine-wave loop into
-        an in-memory WAV buffer and stream that.
-
-        On init failure, an unknown track that cannot be synthesised, or
-        any mixer error, the call degrades to a no-op and ``_bgm_track``
-        is left as ``None`` so callers can introspect failure.
-        """
-        if not self._ensure_init():
-            return
-        if self._muted:
-            # Honour the mute toggle: refuse to start a new track while
-            # muted. The previous track (if any) was already stopped by
-            # ``mute_toggle`` / ``set_volume``.
-            self._bgm_track = None
-            return
-
-        stream = _resolve_bgm_stream(track)
-        if stream is None:
-            logger.debug("BGM %r has no implementation; ignoring", track)
-            return
-
-        # ``pygame.mixer.music.load`` accepts a path-like or file-like input.
-        # The resolver above returns ``io.IOBase | str``; the type stub sees
-        # the union as incompatible with its ``FileArg`` alias (which
-        # expects ``IO[bytes] | IO[str]`` for the stream branch), so cast to
-        # a ``Union[str, IO[bytes]]`` that matches what the stub actually
-        # accepts at runtime.
-        load_arg: str | IO[bytes] = cast("str | IO[bytes]", stream)
-        try:
-            pygame.mixer.music.load(load_arg)
-            pygame.mixer.music.set_volume(self._bgm_volume)
-            pygame.mixer.music.play(-1 if loop else 0)
-        except pygame.error as exc:
-            logger.warning("BGM %r failed to play: %s", track, exc)
-            return
-
-        self._bgm_track = track
-        logger.info("BGM playing %r (loop=%s)", track, loop)
-
-    def stop_bgm(self) -> None:
-        """Stop the currently playing BGM track (if any)."""
-        if self._bgm_track is None:
-            return
-        if self._initialized:
-            try:
-                pygame.mixer.music.stop()
-            except pygame.error as exc:
-                logger.debug("BGM stop failed: %s", exc)
-        self._bgm_track = None
-
-    def set_bgm_volume(self, volume: float) -> None:
-        """Set BGM channel volume in ``[0.0, 1.0]``. Out-of-range clamps."""
-        self._bgm_volume = max(0.0, min(1.0, float(volume)))
-        if self._initialized:
-            try:
-                pygame.mixer.music.set_volume(self._bgm_volume)
-            except pygame.error as exc:
-                logger.debug("BGM set_volume failed: %s", exc)
-
-    def get_bgm_volume(self) -> float:
-        """Return the current BGM channel volume in ``[0.0, 1.0]``."""
-        return self._bgm_volume
-
-    def get_bgm_track(self) -> str | None:
-        """Return the currently playing BGM track name, or ``None``."""
-        return self._bgm_track
-
-    # ------------------------------------------------------------------
     # Volume / mute
     # ------------------------------------------------------------------
 
@@ -275,87 +194,6 @@ def get_sound_manager() -> SoundManager:
 # ----------------------------------------------------------------------
 # Procedural SFX
 # ----------------------------------------------------------------------
-
-# Path to the directory where shipped audio assets would live. Kept as
-# a module constant so the future BGM implementation has one source of
-# truth.
-_AUDIO_ASSET_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "assets",
-    "audio",
-)
-
-# Length of the synthesised BGM loop in milliseconds. Short enough to
-# keep the in-memory WAV buffer tiny (< 20 KB) and long enough that the
-# loop seam is not obvious at low frequency.
-_BGM_LOOP_DURATION_MS = 2000
-_BGM_LOOP_SAMPLE_RATE = 22050
-
-
-def _resolve_bgm_stream(track: str) -> io.IOBase | str | None:
-    """Return a file-like object (or path) suitable for ``music.load``.
-
-    Tries, in order:
-    1. ``airwar/assets/audio/<track>`` on disk.
-    2. An in-memory WAV synthesised from a deterministic sine wave
-       keyed off ``track`` so different track names sound different.
-
-    Returns ``None`` when neither path produces a usable stream.
-    """
-    candidate = os.path.join(_AUDIO_ASSET_DIR, track)
-    if os.path.isfile(candidate):
-        return candidate
-
-    return _synthesise_bgm_wav(track)
-
-
-def _synthesise_bgm_wav(track: str) -> io.BytesIO | None:
-    """Build a 2-second looping WAV in memory for the given track name."""
-    import wave
-
-    import numpy as np  # local import: numpy is not required for core game
-
-    frequency_hz = _track_frequency(track)
-    if frequency_hz is None:
-        return None
-
-    n_samples = int(_BGM_LOOP_SAMPLE_RATE * _BGM_LOOP_DURATION_MS / 1000)
-    t = np.arange(n_samples, dtype=np.float32) / _BGM_LOOP_SAMPLE_RATE
-    # Layer the carrier with a soft sub-octave so the loop has a touch
-    # of musicality rather than a flat tone.
-    wave_data = 0.6 * np.sin(2.0 * math.pi * frequency_hz * t) + 0.3 * np.sin(2.0 * math.pi * frequency_hz * 0.5 * t)
-    # 10 ms fade-in/out at the loop seam to avoid clicks.
-    env_n = max(1, int(_BGM_LOOP_SAMPLE_RATE * 0.010))
-    envelope = np.ones_like(wave_data)
-    envelope[:env_n] = np.linspace(0.0, 1.0, env_n)
-    envelope[-env_n:] = np.linspace(1.0, 0.0, env_n)
-    wave_data *= envelope
-
-    pcm = np.clip(wave_data * 20000, -32768, 32767).astype(np.int16)
-
-    buf = io.BytesIO()
-    with wave.open(buf, "wb") as wf:
-        wf.setnchannels(1)
-        wf.setsampwidth(2)  # 16-bit
-        wf.setframerate(_BGM_LOOP_SAMPLE_RATE)
-        wf.writeframes(pcm.tobytes())
-    buf.seek(0)
-    return buf
-
-
-def _track_frequency(track: str) -> float | None:
-    """Map a track name to a carrier frequency, or ``None`` to reject it.
-
-    ``None`` is reserved for track names explicitly marked as
-    unimplemented (empty string or starting with ``__``); every other
-    name gets a deterministic frequency in the audible range.
-    """
-    if not track or track.startswith("__"):
-        return None
-    # Hash the name into [220, 880] Hz (A3..A5) so each track sounds
-    # distinct. The range sits comfortably above any SFX we ship.
-    digest = sum(ord(c) for c in track)
-    return 220.0 + (digest * 7 % 661)
 
 
 def _generate_beep(

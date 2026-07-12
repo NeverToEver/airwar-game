@@ -329,15 +329,6 @@ class Boss(Entity):
     # Public enrage predicates (delegate to state machine)
     # ------------------------------------------------------------------
 
-    def is_enraged(self) -> bool:
-        return self._state.enraged
-
-    def is_enrage_active(self) -> bool:
-        return self._state.is_enrage_active()
-
-    def is_enrage_transitioning(self) -> bool:
-        return self._state.is_enrage_transitioning()
-
     def should_lock_player_movement(self) -> bool:
         return self._state.should_lock_player_movement()
 
@@ -405,16 +396,8 @@ class Boss(Entity):
     # ------------------------------------------------------------------
 
     @property
-    def _enrage_timer(self) -> int:
-        return self._state.enrage_timer
-
-    @property
     def _enrage_transition_timer(self) -> int:
         return self._state.enrage_transition_timer
-
-    @property
-    def _enrage_snapshot_target(self):
-        return self._state.enrage_snapshot_target
 
     # ------------------------------------------------------------------
     # Component entry points used by the Boss update flow.
@@ -441,31 +424,8 @@ class Boss(Entity):
             for bullet in bullets:
                 self._bullet_spawner.spawn_bullet(bullet)
 
-    def _primary_boss_muzzle_position(self) -> tuple[float, float]:
-        return self._attack.primary_muzzle_position()
-
-    def _trigger_muzzle_flash(self, position: tuple[float, float] | None = None) -> None:
-        self._attack.trigger_muzzle_flash(position)
-
-    def _update_muzzle_flash(self) -> None:
-        self._attack.tick_muzzle_flash()
-
-    def _face_target(self, target: tuple[float, float]) -> None:
-        self._renderer.face_target(target)
-
     def _facing_vector(self):
         return self._renderer.facing_vector()
-
-    def _is_aim_dashing(self) -> bool:
-        return self._movement.is_aim_dashing()
-
-    def _start_aim_dash(self, player_pos: tuple[float, float]) -> None:
-        if not self._movement.start_aim_dash(player_pos):
-            self._finish_aim_dash()
-
-    def _update_aim_dash(self) -> None:
-        if self._movement.tick_aim_dash():
-            self._finish_aim_dash()
 
     def _finish_aim_dash(self) -> None:
         self._movement.finish_aim_dash()
@@ -526,9 +486,6 @@ class Boss(Entity):
         self._spawn_bullets(bullets)
         self._state.reset_enrage_attack_timer()
 
-    def _create_enrage_snapshot_attack(self, target: tuple[float, float], progress: float) -> list[Bullet]:
-        return self._attack.create_enrage_snapshot_attack(target, progress)
-
     def _release_enrage_bullets(self, target: tuple[float, float]) -> None:
         for bullet in self._enrage_bullets:
             if not getattr(bullet, "clear_immune", False) or not getattr(bullet, "held", False):
@@ -569,20 +526,8 @@ class Boss(Entity):
             return (float(player_pos[0]), float(player_pos[1]))
         return None
 
-    def _record_enrage_trail(self) -> None:
-        self._renderer.record_enrage_trail()
-
-    def _clamped_enrage_position(self, x: float, y: float) -> tuple[float, float]:
-        return self._movement.clamped_enrage_position(x, y)
-
-    def _enrage_path_radius(self, target: tuple[float, float]) -> float:
-        return self._movement.enrage_path_radius(target)
-
     def _enrage_path_center(self, target: tuple[float, float], progress: float) -> tuple[float, float]:
         return self._movement.enrage_path_center(target, progress)
-
-    def _enrage_progress(self) -> float:
-        return self._state.enrage_progress()
 
     # ------------------------------------------------------------------
     # Renderer

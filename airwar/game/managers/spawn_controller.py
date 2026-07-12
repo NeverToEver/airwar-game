@@ -65,7 +65,6 @@ class SpawnController:
         self.boss_spawn_interval = settings.get("boss_spawn_interval", self.BOSS_SPAWN_INTERVAL)
         self._base_boss_spawn_interval = self.boss_spawn_interval
         self._escape_penalty_multiplier = settings.get("escape_penalty_multiplier", self.ESCAPE_PENALTY_MULT)
-        self.is_boss_killed = False
         self._bullet_spawner: IBulletSpawner | None = None
         self._difficulty_manager: DifficultyManager | None = None
 
@@ -266,7 +265,7 @@ class SpawnController:
             return
         if not any(not e.active for e in self.enemies):
             return
-        self.enemies = [e for e in self.enemies if e.active]
+        self.enemies[:] = [e for e in self.enemies if e.active]
 
     def _handle_boss_cleanup(self) -> None:
         if self.boss and not self.boss.active:

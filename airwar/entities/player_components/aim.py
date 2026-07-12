@@ -45,37 +45,11 @@ class PlayerAim:
     # Public accessors
     # ------------------------------------------------------------------
 
-    @property
-    def aim_target(self) -> tuple[float, float] | None:
-        return self._aim_target
-
-    @property
-    def facing_angle_degrees(self) -> float:
-        return self._facing_angle_degrees
-
-    @facing_angle_degrees.setter
-    def facing_angle_degrees(self, value: float) -> None:
-        self._facing_angle_degrees = value
-
-    @property
-    def facing_direction(self) -> Vector2:
-        return self._facing_direction
-
-    @property
-    def rotated_sprite_cache(self) -> dict:
-        return self._rotated_sprite_cache
-
     def set_aim_target(self, x: float, y: float) -> None:
         self._aim_target = (x, y)
 
-    def get_aim_target(self) -> tuple[float, float] | None:
-        return self._aim_target
-
     def get_facing_direction(self) -> Vector2:
         return self._facing_direction
-
-    def get_facing_angle_degrees(self) -> float:
-        return self._facing_angle_degrees
 
     # ------------------------------------------------------------------
     # Per-frame update

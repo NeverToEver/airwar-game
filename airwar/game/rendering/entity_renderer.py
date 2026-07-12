@@ -136,47 +136,48 @@ class EntityRenderer:
 
     def render_boss(self, surface: pygame.Surface, boss: "Boss") -> None:
         health_ratio = boss.health / boss.max_health if boss.max_health > 0 else 1.0
+        ticks = pygame.time.get_ticks()
         self._render_enrage_trail(surface, boss)
-        self._render_boss_body(surface, boss, health_ratio)
+        self._render_boss_body(surface, boss, health_ratio, ticks)
         self._render_muzzle_flash(surface, boss)
 
         if boss.is_entering:
-            pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() * 0.002)
+            pulse = 0.5 + 0.5 * math.sin(ticks * 0.002)
             warning_surf = self._get_cached_warning_text(self._get_warning_font(), "! 警告 !", Colors.ACCENT_DANGER)
             warning_surf.set_alpha(int(150 + 35 * pulse))
             surface.blit(warning_surf, warning_surf.get_rect(center=(surface.get_width() // 2, 20)))
 
         if boss.enrage_timer > 0 and not self.player_docked:
             intensity = boss.enrage_visual_intensity()
-            pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() * 0.0022)
+            pulse = 0.5 + 0.5 * math.sin(ticks * 0.0022)
             warning_surf = self._get_cached_warning_text(self._get_escape_font(), "核心过载", (178, 226, 255))
             warning_surf.set_alpha(int((105 + 42 * pulse) * max(0.42, intensity)))
             surface.blit(warning_surf, warning_surf.get_rect(center=(surface.get_width() // 2, 86)))
             self._render_enrage_transition_charge(surface, boss, intensity)
 
         if getattr(boss, "show_escape_warning", False) and not boss.is_entering:
-            pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() * 0.002)
+            pulse = 0.5 + 0.5 * math.sin(ticks * 0.002)
             warning_surf = self._get_cached_warning_text(self._get_escape_font(), "逃跑中...", (255, 200, 50))
             warning_surf.set_alpha(int(145 + 36 * pulse))
             surface.blit(warning_surf, warning_surf.get_rect(center=(surface.get_width() // 2, 50)))
 
-    def _render_boss_body(self, surface: pygame.Surface, boss: "Boss", health_ratio: float) -> None:
+    def _render_boss_body(self, surface: pygame.Surface, boss: "Boss", health_ratio: float, ticks: int) -> None:
         if boss.enrage_visual_intensity() <= 0:
             draw_boss_ship(
                 surface, boss.rect.centerx, boss.rect.centery, boss.rect.width, boss.rect.height, health_ratio
             )
             return
 
-        self._render_enrage_body_aura(surface, boss)
+        self._render_enrage_body_aura(surface, boss, ticks)
         sprite = get_boss_sprite(boss.rect.width, boss.rect.height, health_ratio)
         rotation = 90.0 - boss.facing_angle
         rotated = pygame.transform.rotozoom(sprite, rotation, 1.0)
         surface.blit(rotated, rotated.get_rect(center=(round(boss.rect.centerx), round(boss.rect.centery))))
-        self._render_enrage_core_lines(surface, boss)
+        self._render_enrage_core_lines(surface, boss, ticks)
 
-    def _render_enrage_body_aura(self, surface: pygame.Surface, boss: "Boss") -> None:
+    def _render_enrage_body_aura(self, surface: pygame.Surface, boss: "Boss", ticks: int) -> None:
         intensity = max(0.15, boss.enrage_visual_intensity())
-        pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() * 0.005)
+        pulse = 0.5 + 0.5 * math.sin(ticks * 0.005)
         core_color = boss.ENRAGE_CORE_COLOR
         danger_color = boss.ENRAGE_DANGER_COLOR
         core_radius = max(10, int(min(boss.rect.width, boss.rect.height) * (0.19 + 0.05 * pulse)))
@@ -216,8 +217,8 @@ class EntityRenderer:
                 max(1, int(1 + 2 * intensity)),
             )
 
-    def _render_enrage_core_lines(self, surface: pygame.Surface, boss: "Boss") -> None:
-        pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() * 0.007)
+    def _render_enrage_core_lines(self, surface: pygame.Surface, boss: "Boss", ticks: int) -> None:
+        pulse = 0.5 + 0.5 * math.sin(ticks * 0.007)
         forward = boss._facing_vector().normalize()
         if forward.length() <= 0:
             forward = Vector2(0, 1)

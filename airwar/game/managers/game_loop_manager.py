@@ -153,10 +153,9 @@ class GameLoopManager:
             if value is None:
                 raise ValueError(f"GameLoopManager requires a non-None {name}")
 
-        # P1-2: pre-allocated scratch buffers for the entity-update
-        # hot path. ``_entity_buf`` is reused across frames to avoid
-        # per-frame list allocation; ``_batch_indices`` ditto.
-        self._entity_buf: EntityBuffer = EntityBuffer()
+        # P1-2: pre-allocated scratch buffer for the entity-update
+        # hot path. ``_batch_indices`` is reused across frames to avoid
+        # per-frame list allocation.
         self._batch_indices: EntityBuffer = EntityBuffer()
 
         self._init_explosion_system()
@@ -291,7 +290,7 @@ class GameLoopManager:
             self._game_controller.show_notification(f"! BOSS 来袭 ({int(boss.data.escape_time / 60)}秒) !")
 
     def _estimate_player_dps(self, player: PlayerProtocol) -> float:
-        weapon_status = player.get_weapon_status() if hasattr(player, "get_weapon_status") else {}
+        weapon_status = getattr(player, "get_weapon_status", lambda: {})()
         bullets_per_shot = 6 if weapon_status.get("spread") else 2
         fire_interval = max(1, int(getattr(player, "fire_interval", PlayerConstants.FIRE_COOLDOWN)))
         damage = float(getattr(player, "bullet_damage", PlayerConstants.BULLET_DAMAGE))
@@ -320,16 +319,10 @@ class GameLoopManager:
         # (Enemy -> 12-base + 8-extra tuple) and any mismatch is a bug.
 
         # P1-2: reuse pre-allocated buffers for batch indices so we
-        # don't allocate fresh lists every frame. ``_entity_buf`` and
-        # ``_batch_indices`` are reset, not re-bound, to keep the
-        # underlying list objects stable across calls.
-        # Keep this allocation lazy because the buffer is only needed for
-        # movement-capable enemies.
-        batch_indices = getattr(self, "_batch_indices", None)
-        if batch_indices is None:
-            batch_indices = EntityBuffer()
-            self._batch_indices = batch_indices
-        batch_indices.reset()
+        # don't allocate fresh lists every frame. ``_batch_indices`` is
+        # reset, not re-bound, to keep the underlying list object stable
+        # across calls.
+        self._batch_indices.reset()
 
         # Batch Rust movement — only for enemies in 'active' state (not entering/exiting)
         if batch_update_movements_buf is not None:
@@ -356,40 +349,12 @@ class GameLoopManager:
                                 f"Enemy {enemy!r} returned extra tuple of length {len(extra)}, "
                                 f"expected 8 (spiral_radius + 7 fields)"
                             )
-                        base_buf_parts.append(
-                            struct.pack(
-                                self._MOVEMENT_BASE_FMT,
-                                base[0],
-                                base[1],
-                                base[2],
-                                base[3],
-                                base[4],
-                                base[5],
-                                base[6],
-                                base[7],
-                                base[8],
-                                base[9],
-                                base[10],
-                                base[11],
-                            )
-                        )
+                        base_buf_parts.append(struct.pack(self._MOVEMENT_BASE_FMT, *base))
                         # Pack extra: (spiral_radius, current_x, current_y,
                         #   noise_scale_x, noise_scale_y, noise_amplitude_x,
                         #   noise_amplitude_y, noise_seed)
-                        extra_buf_parts.append(
-                            struct.pack(
-                                self._MOVEMENT_EXTRA_FMT,
-                                extra[0],
-                                extra[1],
-                                extra[2],
-                                extra[3],
-                                extra[4],
-                                extra[5],
-                                extra[6],
-                                extra[7],
-                            )
-                        )
-                        batch_indices.add(i)
+                        extra_buf_parts.append(struct.pack(self._MOVEMENT_EXTRA_FMT, *extra))
+                        self._batch_indices.add(i)
                     else:
                         # F03 S2: mismatched pair is a programming error.
                         raise MovementParamError(
@@ -402,12 +367,12 @@ class GameLoopManager:
                 base_buf = b"".join(base_buf_parts)
                 extra_buf = b"".join(extra_buf_parts)
                 results = batch_update_movements_buf(base_buf, extra_buf)
-                if len(results) != len(batch_indices):
+                if len(results) != len(self._batch_indices):
                     raise MovementParamError(
-                        f"Rust movement batch returned {len(results)} results for {len(batch_indices)} enemies"
+                        f"Rust movement batch returned {len(results)} results for {len(self._batch_indices)} enemies"
                     )
                 for j, (new_x, new_y, new_timer) in enumerate(results):
-                    idx = batch_indices[j]
+                    idx = self._batch_indices[j]
                     enemies[idx].apply_batch_movement_result((new_x, new_y, new_timer))
         elif batch_update_movements is not None:
             # Fallback: tuple-based batch movement
@@ -425,13 +390,13 @@ class GameLoopManager:
                             raise MovementParamError(f"Fallback path: enemy {enemy!r} extra len {len(extra)}")
                         base_list.append(base)
                         extra_list.append(extra)
-                        batch_indices.add(i)
+                        self._batch_indices.add(i)
                     else:
                         raise MovementParamError(f"Fallback path: mismatched pair for {enemy!r}")
             if base_list:
                 results = batch_update_movements(base_list, extra_list)
                 for j, (new_x, new_y, new_timer) in enumerate(results):
-                    idx = batch_indices[j]
+                    idx = self._batch_indices[j]
                     enemies[idx].apply_batch_movement_result((new_x, new_y, new_timer))
 
         player_pos = (player.rect.centerx, player.rect.centery)

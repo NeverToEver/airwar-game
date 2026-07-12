@@ -103,8 +103,6 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         Scene.__init__(self)
         MouseInteractiveMixin.__init__(self)
         self._pause_requested = False
-        self._is_loading = True
-        self._loading_progress = 0
         self._tokens = get_design_tokens()
         self._pause_button = PauseButtonComponent()
         self._aim_assist = AimAssistSystem()
@@ -163,8 +161,6 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
     def enter(self, **kwargs) -> None:
         """Initialize the game scene via GameSceneFactory."""
         self._pause_requested = False
-        self._is_loading = True
-        self._loading_progress = 0
         self.clear_hover()
         self.clear_buttons()
         self._pause_button.clear_cache()
@@ -181,11 +177,8 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             raise ValueError("GameScene.enter requires 'save_service'")
 
         # Prewarm glow caches before gameplay starts
-        self._loading_progress = 20
         prewarm_glow_caches()
         prewarm_ship_sprite_caches()
-        self._loading_progress = 100
-        self._is_loading = False
 
         screen_width = get_screen_width()
         screen_height = get_screen_height()
@@ -391,10 +384,6 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
             ),
         )
 
-    def set_homecoming_coordinator(self, value) -> None:
-        """Set the homecoming coordinator and synchronize the dispatcher."""
-        self._set_homecoming_coordinator(value)
-
     def _update_homecoming(self, delta_seconds: float) -> None:
         """Backward-compat forwarder to SceneHomecomingDispatcher."""
         if self._homecoming_dispatcher is not None:
@@ -412,20 +401,6 @@ class GameScene(Scene, MouseInteractiveMixin, IGameScene):
         if self._homecoming_dispatcher is None:
             return False
         return self._homecoming_dispatcher.handle_console_click(pos)
-
-    def _leave_homecoming_base(self) -> None:
-        if self._homecoming_dispatcher is not None:
-            self._homecoming_dispatcher.leave_base()
-
-    def _on_homecoming_orbital_strike(self) -> None:
-        if self._homecoming_dispatcher is not None:
-            self._homecoming_dispatcher.on_orbital_strike()
-
-    def _on_homecoming_departure_complete(self) -> None:
-        if self._homecoming_dispatcher is not None:
-            self._homecoming_dispatcher.on_departure_complete()
-        if self._homecoming_coordinator is not None:
-            self._homecoming_base_pending = self._homecoming_coordinator.is_base_pending()
 
     def _save_base_loadout(self) -> bool:
         if not self._mother_ship_integrator:

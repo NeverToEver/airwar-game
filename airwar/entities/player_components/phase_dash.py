@@ -66,36 +66,12 @@ class PlayerPhaseDash:
     # ------------------------------------------------------------------
 
     @property
-    def state(self) -> PhaseDashState:
-        return self._state
-
-    @state.setter
-    def state(self, value: PhaseDashState) -> None:
-        self._state = value
-
-    @property
-    def timer(self) -> int:
-        return self._timer
-
-    @timer.setter
-    def timer(self, value: int) -> None:
-        self._timer = value
-
-    @property
     def cooldown(self) -> int:
         return self._cooldown
 
     @cooldown.setter
     def cooldown(self, value: int) -> None:
         self._cooldown = value
-
-    @property
-    def max_cooldown(self) -> int:
-        return self.COOLDOWN_FRAMES
-
-    @property
-    def direction(self) -> tuple[float, float]:
-        return self._direction
 
     @property
     def hitbox_timer(self) -> int:
@@ -115,13 +91,10 @@ class PlayerPhaseDash:
     def is_invincible(self) -> bool:
         return self.is_dashing()
 
-    def is_enabled(self) -> bool:
-        return bool(self._owner.is_phase_dash_enabled)
-
     def can_dash(self) -> bool:
         boost: PlayerBoost = self._owner.boost
         return (
-            self.is_enabled()
+            bool(self._owner.is_phase_dash_enabled)
             and self._state == PhaseDashState.READY
             and self._cooldown <= 0
             and boost.boost_current >= self._cost()
@@ -196,10 +169,6 @@ class PlayerPhaseDash:
             return int(self.ALPHA_MAX + (255 - self.ALPHA_MAX) * progress)
         pulse = abs(math.sin(self._hitbox_timer * 0.8))
         return int(self.ALPHA_MIN + (self.ALPHA_MAX - self.ALPHA_MIN) * pulse)
-
-    def progress(self) -> float:
-        """Best-effort progress for the boost HUD."""
-        return 0.0 if self._cooldown <= 0 else 1.0 - (self._cooldown / self.COOLDOWN_FRAMES)
 
     def _cost(self) -> float:
         return self._owner.boost.boost_max * self.COST_RATIO

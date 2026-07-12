@@ -155,10 +155,11 @@ class BulletManager:
 
         bullet_map = self._batch_bullet_map
         bullet_map.clear()
+        screen_w = float(get_screen_width())
         screen_h = float(get_screen_height())
 
-        # Pack bullets into binary buffer
-        active_bullets = []
+        # Pack bullets into binary buffer; cache data/laser flag/margin to avoid
+        # repeated getattr in the apply-results loop.
         for bullet in bullets:
             if not bullet.active:
                 continue
@@ -168,21 +169,22 @@ class BulletManager:
             data = getattr(bullet, "data", None)
             if data is None:
                 continue
-            active_bullets.append(bullet)
-            bullet_map[id(bullet)] = bullet
+            is_laser = getattr(data, "bullet_type", "") == "laser" or getattr(data, "is_laser", False)
+            margin = float(getattr(bullet, "OFFSCREEN_MARGIN", 80))
+            bullet_map[id(bullet)] = (bullet, data, is_laser, margin)
 
-        if not active_bullets:
+        if not bullet_map:
             return
 
-        count = len(active_bullets)
+        count = len(bullet_map)
         buf = bytearray(count * self._BULLET_BUF_SIZE)
-        for i, bullet in enumerate(active_bullets):
-            data = getattr(bullet, "data", None)
-            is_laser = getattr(data, "bullet_type", "") == "laser" or getattr(data, "is_laser", False)
+        fmt = self._BULLET_BUF_FMT
+        size = self._BULLET_BUF_SIZE
+        for i, (bullet, _data, is_laser, _margin) in enumerate(bullet_map.values()):
             struct.pack_into(
-                self._BULLET_BUF_FMT,
+                fmt,
                 buf,
-                i * self._BULLET_BUF_SIZE,
+                i * size,
                 id(bullet),
                 float(bullet.rect.x),
                 float(bullet.rect.y),
@@ -197,19 +199,17 @@ class BulletManager:
 
         # Apply results back to bullets
         for bullet_id, new_x, new_y, is_active in results:
-            if bullet_id not in bullet_map:
+            entry = bullet_map.get(bullet_id)
+            if entry is None:
                 continue
-            bullet = bullet_map[bullet_id]
+            bullet, data, is_laser, margin = entry
 
             # Update position
             bullet.rect.x = new_x
             bullet.rect.y = new_y
 
             # Handle laser trail (still needs Python for pygame operations)
-            data = getattr(bullet, "data", None)
-            if data is None:
-                continue
-            if getattr(data, "bullet_type", "") == "laser" or getattr(data, "is_laser", False):
+            if is_laser:
                 bullet._trail.append(
                     (
                         bullet.rect.x,
@@ -220,7 +220,13 @@ class BulletManager:
                 )
 
             # Update active state
-            if not is_active or self._is_bullet_outside_screen(bullet):
+            r = bullet.rect
+            if not is_active or (
+                r.right < -margin
+                or r.left > screen_w + margin
+                or r.bottom < -margin
+                or r.top > screen_h + margin
+            ):
                 bullet.active = False
 
         # Note: cleanup is handled by the caller
@@ -243,15 +249,6 @@ class BulletManager:
         bullet.velocity = direction * getattr(bullet, "enrage_release_speed", bullet.data.speed)
         bullet.held = False
         bullet.enrage_release_pending = False
-
-    def _is_bullet_outside_screen(self, bullet) -> bool:
-        margin = getattr(bullet, "OFFSCREEN_MARGIN", 80)
-        return (
-            bullet.rect.right < -margin
-            or bullet.rect.left > get_screen_width() + margin
-            or bullet.rect.bottom < -margin
-            or bullet.rect.top > get_screen_height() + margin
-        )
 
     def _cleanup_enemy_bullets(self) -> None:
         """Remove inactive bullets from the enemy bullet list."""

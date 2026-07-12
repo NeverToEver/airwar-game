@@ -3,7 +3,6 @@
 import logging
 import math
 import random
-from collections import OrderedDict
 
 import pygame
 
@@ -15,87 +14,7 @@ from airwar.core_bindings import (
 from ..constants import GAME_CONSTANTS
 from .explosion_particle import ExplosionParticle
 
-# Pre-rendered glow texture cache — avoids per-frame pygame.draw.circle() loops
-# 限制缓存大小防止内存泄漏
-# Note: the LRU helpers below call ``.move_to_end`` and ``.popitem(last=...)``,
-# which are ``OrderedDict``-only APIs. Using a plain ``{}`` here is a silent
-# regression that only surfaces at runtime (the dummy SDL driver never
-# reaches the explosion render path).
-_MAX_CACHE_SIZE = 64
-_glow_texture_cache: "OrderedDict[tuple, pygame.Surface]" = OrderedDict()
-_spark_core_cache: "OrderedDict[int, pygame.Surface]" = OrderedDict()
-_flash_cache: "OrderedDict[int, pygame.Surface]" = OrderedDict()
-
 logger = logging.getLogger(__name__)
-
-
-def _get_glow_texture(radius: int, base_color=(255, 120, 20), alpha_mult=0.15) -> pygame.Surface:
-    """Get or create a pre-rendered soft radial glow texture.
-
-    The glow is rendered once and cached — callers just blit it.
-
-    The cache is LRU (least-recently-used): on hit the key is moved to
-    the back, on insert at capacity the front (oldest) entry is evicted.
-    """
-    cache_key = (radius, base_color, alpha_mult)
-    if cache_key in _glow_texture_cache:
-        _glow_texture_cache.move_to_end(cache_key)
-        return _glow_texture_cache[cache_key]
-    if len(_glow_texture_cache) >= _MAX_CACHE_SIZE:
-        _glow_texture_cache.popitem(last=False)
-    size = radius * 2 + 2
-    surf = pygame.Surface((size, size), pygame.SRCALPHA)
-    for r in range(radius, 0, -1):
-        ring_alpha = int(255 * alpha_mult * (r / radius))
-        if ring_alpha > 0:
-            pygame.draw.circle(
-                surf,
-                (*base_color, ring_alpha),
-                (radius + 1, radius + 1),
-                r,
-            )
-    _glow_texture_cache[cache_key] = surf
-    return surf
-
-
-def _get_spark_core(size: int) -> pygame.Surface:
-    """Get or create a cached bright dot for spark particle cores.
-
-    LRU eviction: on hit the key is moved to the back, on insert at
-    capacity the front (oldest) entry is evicted.
-    """
-    if size in _spark_core_cache:
-        _spark_core_cache.move_to_end(size)
-        return _spark_core_cache[size]
-    if len(_spark_core_cache) >= _MAX_CACHE_SIZE:
-        _spark_core_cache.popitem(last=False)
-    s = size * 2 + 2
-    surf = pygame.Surface((s, s), pygame.SRCALPHA)
-    pygame.draw.circle(surf, (255, 202, 132, 210), (size + 1, size + 1), size)
-    _spark_core_cache[size] = surf
-    return surf
-
-
-def _get_flash_surface(radius: int) -> pygame.Surface:
-    """Get or create a cached flash surface with dual circles.
-
-    The flash consists of an outer white circle and an inner warm-tinted circle.
-
-    LRU eviction: on hit the key is moved to the back, on insert at
-    capacity the front (oldest) entry is evicted.
-    """
-    if radius in _flash_cache:
-        _flash_cache.move_to_end(radius)
-        return _flash_cache[radius]
-    if len(_flash_cache) >= _MAX_CACHE_SIZE:
-        _flash_cache.popitem(last=False)
-    size = radius * 4 + 2
-    surf = pygame.Surface((size, size), pygame.SRCALPHA)
-    surf.fill((0, 0, 0, 0))
-    pygame.draw.circle(surf, (255, 188, 96, 180), (radius * 2 + 1, radius * 2 + 1), radius)
-    pygame.draw.circle(surf, (255, 154, 72, 115), (radius * 2 + 1, radius * 2 + 1), int(radius * 0.6))
-    _flash_cache[radius] = surf
-    return surf
 
 
 class ExplosionEffect:
@@ -137,8 +56,6 @@ class ExplosionEffect:
         self._x = 0.0
         self._y = 0.0
         self._radius = 0
-        self._glow_surf_cache = None
-        self._glow_surf_size = 0
         self._shockwave_radius = 0.0
         self._shockwave_max_radius = 0.0
         self._core_flash = 1.0
@@ -159,8 +76,6 @@ class ExplosionEffect:
         self._particles.clear()
         self._sparks.clear()
         self._debris.clear()
-        self._glow_surf_cache = None
-        self._glow_surf_size = 0
         self._shockwave_radius = 0.0
         self._shockwave_max_radius = radius * 2.5
         self._core_flash = 1.0
@@ -481,10 +396,8 @@ class ExplosionEffect:
         self._x = 0.0
         self._y = 0.0
         self._radius = 0
-        self._glow_surf_cache = None
-        self._glow_surf_size = 0
-        self._shockwave_radius = 0
-        self._shockwave_max_radius = 0
+        self._shockwave_radius = 0.0
+        self._shockwave_max_radius = 0.0
         self._core_flash = 0.0
         self._central_glow = 0.0
 

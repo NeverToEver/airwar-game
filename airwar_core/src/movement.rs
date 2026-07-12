@@ -231,7 +231,7 @@ pub fn batch_update_movements_buf(
     extra_buf: &[u8],
 ) -> PyResult<Vec<MovementResult>> {
     let count = base_buf.len() / BASE_BUF_STRIDE;
-    if base_buf.len() % BASE_BUF_STRIDE != 0 || extra_buf.len() < count * EXTRA_BUF_STRIDE {
+    if !base_buf.len().is_multiple_of(BASE_BUF_STRIDE) || extra_buf.len() < count * EXTRA_BUF_STRIDE {
         return Err(pyo3::exceptions::PyValueError::new_err("movement buffers length mismatch"));
     }
     let mut results = Vec::with_capacity(count);

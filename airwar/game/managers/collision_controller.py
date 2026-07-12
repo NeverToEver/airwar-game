@@ -22,7 +22,7 @@ strategies need them.
 from __future__ import annotations
 
 import math
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -74,7 +74,6 @@ class CollisionController:
     Attributes:
         _events: Registered collision event callbacks.
         _use_rust: Whether Rust batch collision is enabled.
-        _previous_enemy_ids: Set of enemy ids tracked from the previous frame.
     """
 
     GRID_CELL_SIZE = 100
@@ -87,7 +86,8 @@ class CollisionController:
         self._enemy_grid_cells: dict[tuple[int, int], list[Any]] = {}
         self._grid_cell_size = self.GRID_CELL_SIZE
         self._use_rust = True
-        self._previous_enemy_ids: set = set()
+        # Reusable temp containers for Python spatial-hash queries.
+        self._query_seen: set[int] = set()
         # Reusable temp containers for Rust batch collision
         self._bullet_data: list[tuple] = []
         self._bullet_map: dict = {}
@@ -134,15 +134,10 @@ class CollisionController:
         """Get (left, right, top, bottom) from rect, supporting both pygame.Rect and MockRect."""
         if hasattr(rect, "left"):
             return rect.left, rect.right, rect.top, rect.bottom
-        else:
-            # MockRect uses centerx, centery, width, height
-            left = rect.centerx - rect.width // 2
-            top = rect.centery - rect.height // 2
-            return left, left + rect.width, top, top + rect.height
-
-    def _get_cell_key(self, x: int, y: int) -> tuple[int, int]:
-        """Get grid cell key for a position."""
-        return (math.floor(x / self._grid_cell_size), math.floor(y / self._grid_cell_size))
+        # MockRect uses centerx, centery, width, height
+        left = rect.centerx - rect.width // 2
+        top = rect.centery - rect.height // 2
+        return left, left + rect.width, top, top + rect.height
 
     def _add_to_grid(self, entity, rect) -> None:
         """Add entity to spatial hash grid based on its rect."""
@@ -166,15 +161,16 @@ class CollisionController:
                     cells[key] = []
                 cells[key].append(entity)
 
-    def _get_potential_collisions(self, rect) -> list:
-        """Get entities that might collide with the given rect."""
-        return self._get_entities_in_cells(self._grid_cells, rect)
+    def _get_potential_collisions(self, rect) -> Iterator:
+        """Yield entities that might collide with the given rect."""
+        yield from self._get_entities_in_cells(self._grid_cells, rect)
 
-    def _get_potential_explosion_targets(self, x: float, y: float, radius: float, enemies: list[Enemy]) -> list:
+    def _get_potential_explosion_targets(self, x: float, y: float, radius: float, enemies: list[Enemy]) -> Iterator:
         if not self._enemy_grid_cells:
-            return [enemy for enemy in enemies if enemy.active]
+            yield from (enemy for enemy in enemies if enemy.active)
+            return
         rect = self._make_query_rect(x, y, radius)
-        return self._get_entities_in_cells(self._enemy_grid_cells, rect)
+        yield from self._get_entities_in_cells(self._enemy_grid_cells, rect)
 
     def _get_potential_boss_bullets(self, player_bullets: list[Bullet], boss_hitbox, active_count: int) -> list[Bullet]:
         if active_count < 32:
@@ -186,25 +182,24 @@ class CollisionController:
                 self._add_entity_to_cells(grid, bullet, bullet.get_rect())
         return list(self._get_entities_in_cells(grid, boss_hitbox))
 
-    def _get_entities_in_cells(self, cells: dict, rect) -> list:
+    def _get_entities_in_cells(self, cells: dict, rect) -> Iterator:
         left, right, top, bottom = self._get_rect_bounds(rect)
         min_x = math.floor(left / self._grid_cell_size)
         max_x = math.floor(right / self._grid_cell_size)
         min_y = math.floor(top / self._grid_cell_size)
         max_y = math.floor(bottom / self._grid_cell_size)
 
-        potential = []
-        seen_ids = set()
+        seen = self._query_seen
+        seen.clear()
         for gx in range(min_x, max_x + 1):
             for gy in range(min_y, max_y + 1):
                 key = (gx, gy)
                 if key in cells:
                     for entity in cells[key]:
                         entity_id = id(entity)
-                        if entity_id not in seen_ids:
-                            potential.append(entity)
-                            seen_ids.add(entity_id)
-        return potential
+                        if entity_id not in seen:
+                            seen.add(entity_id)
+                            yield entity
 
     @staticmethod
     def _make_query_rect(center_x: float, center_y: float, radius: float):
@@ -244,14 +239,6 @@ class CollisionController:
             without mutating the controller's internal list).
         """
         return self._events.copy()
-
-    def clear_events(self) -> None:
-        """Clear all recorded collision events.
-
-        Called by `check_all_collisions` at the start of each frame to
-        ensure events reflect only the current frame's collisions.
-        """
-        self._events.clear()
 
     def set_explosion_callback(self, callback: Callable[[float, float, int], None]) -> None:
         """Set explosion callback function
@@ -398,20 +385,30 @@ class CollisionController:
     ) -> bool:
         """Check whether the player's hitbox collides with any active enemy.
 
+        Uses the enemy spatial hash when populated (i.e. when called from
+        :meth:`check_all_collisions`), otherwise falls back to a linear scan.
+
         Args:
             player_hitbox: pygame.Rect-like hitbox for the player.
-            enemies: Active enemy entities checked for collisions.
+            enemies: Active enemy entities checked for collisions (fallback only).
             try_dodge_func: Callable returning True if the player dodged.
             on_player_hit_func: Callable invoked with damage on collision.
 
         Returns:
             bool: True if a non-dodged enemy collision occurred.
         """
+        if self._enemy_grid_cells:
+            for enemy in self._get_entities_in_cells(self._enemy_grid_cells, player_hitbox):
+                if enemy.active and player_hitbox.colliderect(enemy.get_hitbox()) and not try_dodge_func():
+                    on_player_hit_func(GAME_CONSTANTS.DAMAGE.ENEMY_COLLISION_DAMAGE)
+                    return True
+            return False
+
+        # Fallback for direct callers that have not built the grid.
         for enemy in enemies:
             if enemy.active and player_hitbox.colliderect(enemy.get_hitbox()) and not try_dodge_func():
                 on_player_hit_func(GAME_CONSTANTS.DAMAGE.ENEMY_COLLISION_DAMAGE)
                 return True
-
         return False
 
     def check_enemy_bullets_vs_player(

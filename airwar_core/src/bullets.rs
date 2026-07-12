@@ -43,7 +43,7 @@ const BULLET_BUF_STRIDE: usize = 32;
 
 #[pyfunction]
 pub fn batch_update_bullets_buf(buf: &[u8]) -> PyResult<Vec<BulletUpdateOutput>> {
-    if buf.len() % BULLET_BUF_STRIDE != 0 {
+    if !buf.len().is_multiple_of(BULLET_BUF_STRIDE) {
         return Err(pyo3::exceptions::PyValueError::new_err("bullet buffer length must be multiple of 32"));
     }
     let count = buf.len() / BULLET_BUF_STRIDE;

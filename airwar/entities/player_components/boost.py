@@ -56,21 +56,6 @@ class PlayerBoost:
         """Drain one frame of boost (called by movement during boost)."""
         self.boost_current = max(0, self.boost_current - 1)
 
-    def set_active_flag(self, value: bool) -> None:
-        """Update the active flag (set by movement each frame)."""
-        self.is_boost_active = value
-
-    def set_toggle_active(self, value: bool) -> None:
-        """Set the toggle latch (used by movement on key edge)."""
-        self._boost_toggle_active = value
-
-    def read_toggle_active(self) -> bool:
-        return self._boost_toggle_active
-
-    def is_boost_active_q(self) -> bool:
-        """Expose boost_active without the collision-prone name."""
-        return self.is_boost_active
-
     def reset_idle(self) -> None:
         self._boost_idle_frames = 0
 

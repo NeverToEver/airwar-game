@@ -75,7 +75,6 @@ class Player(Entity):
     BOOST_RAMP_MIN = PlayerBoost.BOOST_RAMP_MIN
     BOOST_RAMP_DELTA = PlayerBoost.BOOST_RAMP_DELTA
     PRECISION_SPEED_MULT = 0.35
-    BULLET_SPAWN_Y_OFFSET = 36
     SPREAD_ANGLES = PlayerWeapon.SPREAD_ANGLES
     WING_MUZZLE_X_OFFSETS = PlayerWeapon.WING_MUZZLE_X_OFFSETS
     WING_MUZZLE_Y_OFFSET = PlayerWeapon.WING_MUZZLE_Y_OFFSET
@@ -181,14 +180,6 @@ class Player(Entity):
     is_shielded = _Comp("shield", "is_shielded")
     hitbox_width = _Comp("hitbox", "hitbox_width")
     hitbox_height = _Comp("hitbox", "hitbox_height")
-
-    @property
-    def bullet_damage_value(self) -> int:
-        return self.bullet_damage
-
-    @bullet_damage_value.setter
-    def bullet_damage_value(self, value: int) -> None:
-        self.bullet_damage = value
 
     @property
     def boost_speed_mult(self) -> float:
@@ -413,34 +404,10 @@ class Player(Entity):
     def get_bullets(self) -> list[Bullet]:
         return self.weapon.get_bullets()
 
-    def remove_bullet(self, bullet: Bullet) -> None:
-        self.weapon.remove_bullet(bullet)
-
     def cleanup_inactive_bullets(self) -> None:
         self.weapon.cleanup_inactive_bullets()
 
-    def is_colliding_with(self, other) -> bool:
-        return self.hitbox.is_colliding_with(other)
-
-    def is_phase_dashing(self) -> bool:
-        return self.phase_dash.is_dashing()
-
     # --- HSM predicates (Phase 3) ---
-
-    def is_alive(self) -> bool:
-        return self._state.is_alive()
-
-    def is_dying(self) -> bool:
-        return self._state.is_dying()
-
-    def is_dead(self) -> bool:
-        return self._state.is_dead()
-
-    def alive_substate(self):
-        return self._state.alive_substate
-
-    def is_alive_substate(self, sub) -> bool:
-        return self._state.alive_substate == sub
 
     def is_phase_dash_invincible(self) -> bool:
         return self.phase_dash.is_invincible()
@@ -457,17 +424,8 @@ class Player(Entity):
     def set_aim_target(self, x: float, y: float) -> None:
         self.aim.set_aim_target(x, y)
 
-    def get_aim_target(self) -> tuple[float, float] | None:
-        return self.aim.get_aim_target()
-
     def get_facing_direction(self):
         return self.aim.get_facing_direction()
-
-    def get_facing_angle_degrees(self) -> float:
-        return self.aim.get_facing_angle_degrees()
-
-    def set_render_hitbox(self, value: bool) -> None:
-        self.hitbox.set_render_hitbox(value)
 
     # 5. Private helpers
 

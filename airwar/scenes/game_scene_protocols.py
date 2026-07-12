@@ -60,8 +60,6 @@ class GameSceneProtocol(Protocol):
     show_delete_confirm: bool
     show_leaderboard: bool
     _pause_requested: bool
-    _is_loading: bool
-    _loading_progress: int
     _homecoming_base_pending: bool
 
     # Game session boundaries
