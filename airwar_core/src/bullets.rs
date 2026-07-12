@@ -1,3 +1,5 @@
+#![allow(clippy::useless_conversion)]
+
 use pyo3::prelude::*;
 
 type BulletUpdateInput = (i64, f32, f32, f32, f32, i32, bool, f32);
@@ -41,6 +43,9 @@ pub fn batch_update_bullets(bullets: Vec<BulletUpdateInput>) -> Vec<BulletUpdate
 ///   [28..32) f32   screen_height
 const BULLET_BUF_STRIDE: usize = 32;
 
+/// # Errors
+///
+/// Returns `PyValueError` if `buf` length is not a multiple of `BULLET_BUF_STRIDE`.
 #[pyfunction]
 pub fn batch_update_bullets_buf(buf: &[u8]) -> PyResult<Vec<BulletUpdateOutput>> {
     if !buf.len().is_multiple_of(BULLET_BUF_STRIDE) {

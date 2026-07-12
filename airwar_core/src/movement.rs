@@ -1,3 +1,5 @@
+#![allow(clippy::useless_conversion)]
+
 use pyo3::prelude::*;
 
 type MovementBaseParams = (u8, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32);
@@ -129,6 +131,10 @@ pub fn update_movement(
 ///   `noise_amplitude_x`, `noise_amplitude_y`, `noise_seed`) — 8 elements
 ///
 /// Returns Vec of (`new_x`, `new_y`, `new_timer`) in the same order.
+///
+/// # Errors
+///
+/// Returns `PyValueError` if `base_params` and `extra_params` have different lengths.
 #[pyfunction]
 pub fn batch_update_movements(
     base_params: Vec<MovementBaseParams>,
@@ -225,6 +231,11 @@ pub fn batch_update_movements(
 const BASE_BUF_STRIDE: usize = 48;
 const EXTRA_BUF_STRIDE: usize = 32;
 
+/// # Errors
+///
+/// Returns `PyValueError` if `base_buf` length is not a multiple of
+/// `BASE_BUF_STRIDE` or if `extra_buf` does not contain enough data for the
+/// number of enemies described by `base_buf`.
 #[pyfunction]
 pub fn batch_update_movements_buf(
     base_buf: &[u8],
