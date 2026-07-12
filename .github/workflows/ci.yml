@@ -42,7 +42,7 @@ jobs:
       - name: Install SDL2 system libraries
         run: |
           sudo apt-get update
-          sudo apt-get install -y libsdl2-2.0-0 libsdl2-mixer-2.0-0 libsdl2-image-2.0-0 libsdl2-ttf-2.0-0 libportmidi2
+          sudo apt-get install -y libsdl2-dev libsdl2-mixer-dev libsdl2-image-dev libsdl2-ttf-dev libportmidi-dev
 
       - name: Install Python dependencies
         run: |
