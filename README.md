@@ -2,6 +2,7 @@
 
 [English](./README.en.md) | **中文**
 
+![CI](https://github.com/NeverToEver/airwar-game/actions/workflows/ci.yml/badge.svg?branch=master)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![Pygame](https://img.shields.io/badge/pygame-2.6%2B-2e8b57)
 ![Rust](https://img.shields.io/badge/rust-PyO3-orange?logo=rust)
