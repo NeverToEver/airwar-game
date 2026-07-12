@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import logging
 import math
 import random
@@ -78,6 +79,40 @@ _RUST_NAMES = (
     "vec2_sub",
 )
 
+# Expected Python-visible parameter counts for the Rust exports. Used to
+# detect ABI/signature mismatches beyond mere function existence.
+_RUST_SIGNATURES: dict[str, int] = {
+    "batch_collide_bullets_vs_entities": 3,
+    "batch_hallucinated_enemy_centers": 5,
+    "batch_render_particles": 3,
+    "batch_update_bullets": 1,
+    "batch_update_bullets_buf": 1,
+    "batch_update_movements": 2,
+    "batch_update_movements_buf": 2,
+    "batch_update_particles": 2,
+    "compute_starfield_positions": 11,
+    "create_explosive_missile_glow": 2,
+    "create_glow_circle": 5,
+    "create_laser_bullet_glow": 1,
+    "create_single_bullet_glow": 2,
+    "create_spread_bullet_glow": 1,
+    "find_nearest_target": 3,
+    "find_target_in_direction": 7,
+    "generate_explosion_particles": 9,
+    "update_movement": 20,
+    "vec2_add": 4,
+    "vec2_angle": 2,
+    "vec2_clamp_length": 3,
+    "vec2_distance": 4,
+    "vec2_dot": 4,
+    "vec2_from_angle": 2,
+    "vec2_length": 2,
+    "vec2_lerp": 5,
+    "vec2_normalize": 2,
+    "vec2_scale": 3,
+    "vec2_sub": 4,
+}
+
 try:
     import airwar_core
 
@@ -85,6 +120,20 @@ try:
     if _missing:
         _logger.error("airwar_core missing functions: %s; falling back to pure Python", _missing)
         raise ImportError(f"airwar_core missing: {_missing}")
+
+    _abi_mismatches: list[str] = []
+    for _name, _expected_count in _RUST_SIGNATURES.items():
+        try:
+            _sig = inspect.signature(getattr(airwar_core, _name))
+        except ValueError:
+            # Some native modules do not expose inspectable signatures.
+            continue
+        _params = [p for p in _sig.parameters.values() if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)]
+        if len(_params) != _expected_count:
+            _abi_mismatches.append(f"{_name}(expected {_expected_count}, got {len(_params)})")
+    if _abi_mismatches:
+        _logger.error("airwar_core ABI mismatch: %s; falling back to pure Python", _abi_mismatches)
+        raise ImportError(f"airwar_core ABI mismatch: {_abi_mismatches}")
 
     from airwar_core import (
         batch_collide_bullets_vs_entities,
@@ -465,6 +514,9 @@ except (ImportError, OSError):
             cx, cy = int(px), int(py)
             total_radius = int(size + glow_radius)
             a_base = max(0.0, min(1.0, alpha))
+            r = max(0, min(255, int(r)))
+            g = max(0, min(255, int(g)))
+            b = max(0, min(255, int(b)))
             for dy in range(-total_radius, total_radius + 1):
                 for dx in range(-total_radius, total_radius + 1):
                     x, y = cx + dx, cy + dy
@@ -490,9 +542,9 @@ except (ImportError, OSError):
 
     def _set_pixel(data: bytearray, width: int, x: int, y: int, color: tuple[int, int, int], alpha: int) -> None:
         idx = (y * width + x) * 4
-        data[idx] = color[0]
-        data[idx + 1] = color[1]
-        data[idx + 2] = color[2]
+        data[idx] = max(0, min(255, color[0]))
+        data[idx + 1] = max(0, min(255, color[1]))
+        data[idx + 2] = max(0, min(255, color[2]))
         data[idx + 3] = max(0, min(255, alpha))
 
     def _fill_glow_circle(
@@ -540,6 +592,8 @@ except (ImportError, OSError):
                     _set_pixel(data, width, x, y, color, alpha)
 
     def create_single_bullet_glow(width: float, height: float) -> bytes:
+        if width <= 0.0 or height <= 0.0:
+            return b""
         surf_w = int(width + 16.0)
         surf_h = int(height + 12.0)
         data = bytearray(surf_w * surf_h * 4)
@@ -558,6 +612,8 @@ except (ImportError, OSError):
         return bytes(data)
 
     def create_spread_bullet_glow(radius: float) -> bytes:
+        if radius <= 0.0:
+            return b""
         surf_size = int(radius * 4.0 + 8.0)
         data = bytearray(surf_size * surf_size * 4)
         cx = surf_size / 2.0
@@ -575,6 +631,8 @@ except (ImportError, OSError):
         return bytes(data)
 
     def create_laser_bullet_glow(height: float) -> bytes:
+        if height <= 0.0:
+            return b""
         surf_w = 24
         surf_h = int(height + 12.0)
         data = bytearray(surf_w * surf_h * 4)
@@ -588,6 +646,8 @@ except (ImportError, OSError):
         return bytes(data)
 
     def create_explosive_missile_glow(width: float, height: float) -> bytes:
+        if width <= 0.0 or height <= 0.0:
+            return b""
         body_width = width * 0.8
         surf_w = int(body_width * 3.0 + 12.0)
         surf_h = int(height + 10.0)
@@ -607,6 +667,8 @@ except (ImportError, OSError):
         return bytes(data)
 
     def create_glow_circle(radius: int, r: int, g: int, b: int, glow_radius: int) -> bytes:
+        if radius <= 0 or glow_radius < 0:
+            return b""
         surf_size = int((radius + glow_radius) * 2 + 4)
         data = bytearray(surf_size * surf_size * 4)
         _fill_glow_circle(
@@ -638,10 +700,10 @@ except (ImportError, OSError):
         if len(buf) % 32 != 0:
             raise ValueError("bullet buffer length must be multiple of 32")
         count = len(buf) // 32
-        fmt = "<QffffBxxxf"
+        fmt = "<qffffBxxxf"
         results = []
         for i in range(count):
-            bullet_id, x, y, vx, vy, is_laser, _pad, screen_height = struct.unpack_from(fmt, buf, i * 32)
+            bullet_id, x, y, vx, vy, is_laser, screen_height = struct.unpack_from(fmt, buf, i * 32)
             new_x = x + vx
             new_y = y + vy
             active = True if is_laser else -10.0 <= new_y <= screen_height + 10.0

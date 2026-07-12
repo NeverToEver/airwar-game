@@ -99,7 +99,7 @@ pub fn generate_explosion_particles(
 }
 
 /// Particle render data: (x, y, size, glow_radius, alpha, r, g, b)
-type ParticleRenderData = (f32, f32, f32, f32, f32, u8, u8, u8);
+type ParticleRenderData = (f32, f32, f32, f32, f32, i32, i32, i32);
 
 /// Batch render particles into a single RGBA buffer.
 ///
@@ -119,6 +119,9 @@ pub fn batch_render_particles(py: Python<'_>, particles: Vec<ParticleRenderData>
         let center_y = py as i32;
         let total_radius = (size + glow_radius) as i32;
         let alpha_f = alpha.clamp(0.0, 1.0);
+        let red = red.clamp(0, 255) as u8;
+        let green = green.clamp(0, 255) as u8;
+        let blue = blue.clamp(0, 255) as u8;
 
         for dy in -total_radius..=total_radius {
             for dx in -total_radius..=total_radius {

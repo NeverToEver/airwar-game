@@ -1,4 +1,5 @@
 use pyo3::prelude::*;
+use pyo3::types::PyBytes;
 
 #[derive(Clone, Copy)]
 struct RgbaColor(u8, u8, u8);
@@ -115,9 +116,9 @@ fn fill_glow_ellipse(
 /// Create glow surface for a single bullet
 /// Returns RGBA bytes
 #[pyfunction]
-pub fn create_single_bullet_glow(width: f32, height: f32) -> Vec<u8> {
+pub fn create_single_bullet_glow(py: Python<'_>, width: f32, height: f32) -> Bound<'_, PyBytes> {
     if width <= 0.0 || height <= 0.0 {
-        return Vec::new();
+        return PyBytes::new_bound(py, &[]);
     }
     let surf_w = (width + 16.0) as usize;
     let surf_h = (height + 12.0) as usize;
@@ -135,14 +136,14 @@ pub fn create_single_bullet_glow(width: f32, height: f32) -> Vec<u8> {
         fill_glow_ellipse(&mut data, surf_w, surf_h, cx, cy + 2.0, rx, ry, glow_color, alpha);
     }
 
-    data
+    PyBytes::new_bound(py, &data)
 }
 
 /// Create glow surface for a spread bullet
 #[pyfunction]
-pub fn create_spread_bullet_glow(radius: f32) -> Vec<u8> {
+pub fn create_spread_bullet_glow(py: Python<'_>, radius: f32) -> Bound<'_, PyBytes> {
     if radius <= 0.0 {
-        return Vec::new();
+        return PyBytes::new_bound(py, &[]);
     }
     let surf_size = (radius * 4.0 + 8.0) as usize;
     let cx = (surf_size as f32) / 2.0;
@@ -182,14 +183,14 @@ pub fn create_spread_bullet_glow(radius: f32) -> Vec<u8> {
         }
     }
 
-    data
+    PyBytes::new_bound(py, &data)
 }
 
 /// Create glow surface for a laser bullet
 #[pyfunction]
-pub fn create_laser_bullet_glow(height: f32) -> Vec<u8> {
+pub fn create_laser_bullet_glow(py: Python<'_>, height: f32) -> Bound<'_, PyBytes> {
     if height <= 0.0 {
-        return Vec::new();
+        return PyBytes::new_bound(py, &[]);
     }
     let surf_w = 24usize;
     let surf_h = (height + 12.0) as usize;
@@ -220,14 +221,14 @@ pub fn create_laser_bullet_glow(height: f32) -> Vec<u8> {
         }
     }
 
-    data
+    PyBytes::new_bound(py, &data)
 }
 
 /// Create glow surface for an explosive missile
 #[pyfunction]
-pub fn create_explosive_missile_glow(width: f32, height: f32) -> Vec<u8> {
+pub fn create_explosive_missile_glow(py: Python<'_>, width: f32, height: f32) -> Bound<'_, PyBytes> {
     if width <= 0.0 || height <= 0.0 {
-        return Vec::new();
+        return PyBytes::new_bound(py, &[]);
     }
     let bw = width * 0.8;
     let surf_w = (bw * 3.0 + 12.0) as usize;
@@ -254,14 +255,14 @@ pub fn create_explosive_missile_glow(width: f32, height: f32) -> Vec<u8> {
         );
     }
 
-    data
+    PyBytes::new_bound(py, &data)
 }
 
 /// Create glow circle surface
 #[pyfunction]
-pub fn create_glow_circle(radius: i32, r: u8, g: u8, b: u8, glow_radius: i32) -> Vec<u8> {
+pub fn create_glow_circle(py: Python<'_>, radius: i32, r: i32, g: i32, b: i32, glow_radius: i32) -> Bound<'_, PyBytes> {
     if radius <= 0 || glow_radius < 0 {
-        return Vec::new();
+        return PyBytes::new_bound(py, &[]);
     }
     let surf_size = (radius + glow_radius) * 2 + 4;
     let surf_size = surf_size as usize;
@@ -278,9 +279,9 @@ pub fn create_glow_circle(radius: i32, r: u8, g: u8, b: u8, glow_radius: i32) ->
         cx,
         cy,
         radius as f32,
-        RgbaColor(r, g, b),
+        RgbaColor(r.clamp(0, 255) as u8, g.clamp(0, 255) as u8, b.clamp(0, 255) as u8),
         glow_radius as f32,
     );
 
-    data
+    PyBytes::new_bound(py, &data)
 }

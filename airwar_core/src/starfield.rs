@@ -65,7 +65,7 @@ pub fn compute_starfield_positions(
 
         // Sin-table twinkle lookup (matches `twinkle_phase = (time * speed + offset) * (size / TAU)`).
         let phase = (time * twinkle_speed + twinkle_offset) * scale;
-        let idx = (phase as i32 as usize) % sin_table.len();
+        let idx = (phase as i32).rem_euclid(sin_table.len() as i32) as usize;
         let twinkle = sin_table[idx];
 
         // Brightness: `brightness * (0.5 + 0.5 * sin) * 255`, clamped to 0..255.

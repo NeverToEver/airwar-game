@@ -4,7 +4,7 @@ type BulletUpdateInput = (i64, f32, f32, f32, f32, i32, bool, f32);
 type BulletUpdateOutput = (i64, f32, f32, bool);
 
 /// Bullet update data: (id, x, y, vx, vy, `bullet_type`, `is_laser`, `screen_height`)
-/// id is u64 to handle Python's arbitrary precision integers
+/// id is i64 to handle Python's arbitrary precision integers
 /// Returns: (id, `new_x`, `new_y`, `is_active`)
 #[pyfunction]
 pub fn batch_update_bullets(bullets: Vec<BulletUpdateInput>) -> Vec<BulletUpdateOutput> {
@@ -31,7 +31,7 @@ pub fn batch_update_bullets(bullets: Vec<BulletUpdateInput>) -> Vec<BulletUpdate
 /// Binary buffer variant of `batch_update_bullets` for reduced FFI overhead.
 ///
 /// Buffer layout per bullet (32 bytes, little-endian):
-///   [0..8)   u64   id
+///   [0..8)   i64   id
 ///   [8..12)  f32   x
 ///   [12..16) f32   y
 ///   [16..20) f32   vx
