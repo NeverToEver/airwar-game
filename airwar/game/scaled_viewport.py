@@ -13,10 +13,30 @@ class ScaledViewport:
     """
 
     def __init__(self, logical_w: int = 1920, logical_h: int = 1080):
-        self.logical_size = (logical_w, logical_h)
+        if logical_w <= 0 or logical_h <= 0:
+            raise ValueError(f"logical size must be positive, got ({logical_w}, {logical_h})")
+        self._logical_size = (logical_w, logical_h)
         self._scale = 1.0
         self._offset = (0.0, 0.0)
         self._logical_surface = pygame.Surface((logical_w, logical_h), pygame.SRCALPHA)
+
+    @property
+    def logical_size(self) -> tuple[int, int]:
+        """Logical design-time resolution (width, height).
+
+        This value is read-only from the outside. To resize the viewport,
+        construct a new instance or call ``update(display_w, display_h)``
+        to adjust the display-to-logical transform.
+        """
+        return self._logical_size
+
+    @logical_size.setter
+    def logical_size(self, value: tuple[int, int]) -> None:
+        w, h = value
+        if w <= 0 or h <= 0:
+            raise ValueError(f"logical size must be positive, got ({w}, {h})")
+        self._logical_size = (w, h)
+        self._logical_surface = pygame.Surface((w, h), pygame.SRCALPHA)
 
     def update(self, display_w: int, display_h: int) -> None:
         """Compute the transform that maps display-space mouse coords

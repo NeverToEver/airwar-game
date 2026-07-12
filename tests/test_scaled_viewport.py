@@ -45,3 +45,24 @@ class TestScaledViewport:
         vp.logical_surface.fill((0, 255, 0))
         vp.present(display)
         assert display.get_at((50, 50)) == (0, 255, 0, 255)
+
+    def test_rejects_non_positive_logical_size(self):
+        with pytest.raises(ValueError):
+            ScaledViewport(logical_w=0, logical_h=1080)
+        with pytest.raises(ValueError):
+            ScaledViewport(logical_w=1920, logical_h=-1)
+
+    def test_logical_size_setter_rebuilds_surface(self):
+        vp = ScaledViewport(logical_w=100, logical_h=100)
+        original_surface = vp.logical_surface
+        vp.logical_size = (200, 200)
+        assert vp.logical_size == (200, 200)
+        assert vp.logical_surface is not original_surface
+        assert vp.logical_surface.get_size() == (200, 200)
+
+    def test_logical_size_setter_rejects_non_positive_size(self):
+        vp = ScaledViewport(logical_w=100, logical_h=100)
+        with pytest.raises(ValueError):
+            vp.logical_size = (0, 100)
+        with pytest.raises(ValueError):
+            vp.logical_size = (100, -1)

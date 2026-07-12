@@ -38,6 +38,23 @@ class TestFixedStepAccumulator:
         with pytest.raises(ValueError):
             FixedStepAccumulator(fixed_delta_seconds=-0.01)
 
+    def test_rejects_fixed_delta_out_of_bounds(self):
+        with pytest.raises(ValueError):
+            FixedStepAccumulator(fixed_delta_seconds=1.0 / 1201.0)
+        with pytest.raises(ValueError):
+            FixedStepAccumulator(fixed_delta_seconds=1.0 / 9.0)
+
+    def test_rejects_invalid_delta_seconds(self):
+        acc = FixedStepAccumulator()
+        with pytest.raises(ValueError):
+            acc.advance(-0.1, simulate=True)
+        with pytest.raises(ValueError):
+            acc.advance(float("nan"), simulate=True)
+        with pytest.raises(ValueError):
+            acc.advance(float("inf"), simulate=True)
+        with pytest.raises(ValueError):
+            acc.advance(float("-inf"), simulate=True)
+
     def test_non_simulate_mode_emits_zero_steps(self):
         acc = FixedStepAccumulator()
         ctx = acc.advance(0.016, simulate=False)

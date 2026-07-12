@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -51,10 +52,17 @@ class FixedStepAccumulator:
     """Accumulate wall time and emit lossless, capped fixed-rate steps."""
 
     MAX_DELTA_SECONDS = 0.25
+    MIN_FIXED_DELTA_SECONDS = 1.0 / 1200.0
+    MAX_FIXED_DELTA_SECONDS = 1.0 / 10.0
 
     def __init__(self, fixed_delta_seconds: float = FrameContext.FIXED_DELTA_SECONDS) -> None:
-        if fixed_delta_seconds <= 0:
-            raise ValueError("fixed_delta_seconds must be positive")
+        if not math.isfinite(fixed_delta_seconds):
+            raise ValueError("fixed_delta_seconds must be finite")
+        if fixed_delta_seconds < self.MIN_FIXED_DELTA_SECONDS or fixed_delta_seconds > self.MAX_FIXED_DELTA_SECONDS:
+            raise ValueError(
+                f"fixed_delta_seconds must be between "
+                f"{self.MIN_FIXED_DELTA_SECONDS} and {self.MAX_FIXED_DELTA_SECONDS}"
+            )
         self._fixed_delta_seconds = fixed_delta_seconds
         self._elapsed_seconds = 0.0
         self._remainder_seconds = 0.0
@@ -64,7 +72,11 @@ class FixedStepAccumulator:
         self._remainder_seconds = 0.0
 
     def advance(self, delta_seconds: float, *, simulate: bool) -> FrameContext:
-        delta = max(0.0, min(float(delta_seconds), self.MAX_DELTA_SECONDS))
+        if not math.isfinite(delta_seconds):
+            raise ValueError("delta_seconds must be finite")
+        if delta_seconds < 0:
+            raise ValueError("delta_seconds must be non-negative")
+        delta = min(delta_seconds, self.MAX_DELTA_SECONDS)
         if not simulate:
             return FrameContext(delta, self._elapsed_seconds, 0)
 

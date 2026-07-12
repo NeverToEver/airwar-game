@@ -48,6 +48,11 @@ class InputHandler(ABC):
     def is_precision_just_pressed(self) -> bool:
         pass
 
+    @abstractmethod
+    def tick(self) -> None:
+        """Read current input state and update edge-detection state."""
+        pass
+
 
 class PygameInputHandler(InputHandler):
     """Pygame input handler — reads keyboard input from pygame events.
@@ -63,16 +68,28 @@ class PygameInputHandler(InputHandler):
     }
 
     def __init__(self, key_bindings: dict[str, int] | None = None):
-        self._bindings = key_bindings or self.DEFAULT_BINDINGS
+        self._bindings = dict(key_bindings) if key_bindings is not None else dict(self.DEFAULT_BINDINGS)
         missing = self._REQUIRED_BINDINGS - self._bindings.keys()
         if missing:
             raise ValueError(f"Missing key bindings: {sorted(missing)}")
+        for action, key in self._bindings.items():
+            if not isinstance(key, int) or key < 0 or not pygame.key.name(key):
+                raise ValueError(
+                    f"Invalid key binding for '{action}': {key!r} (must be a valid pygame key constant)"
+                )
         self._prev_boost_pressed = False
         self._boost_just_pressed = False
         self._prev_precision_pressed = False
         self._precision_just_pressed = False
 
     def get_movement_direction(self) -> Vector2:
+        """Return the normalized movement direction from keyboard input.
+
+        Opposite direction keys are resolved by later assignments overriding
+        earlier ones: right overrides left, and down overrides up. Callers
+        that need neutral-opposite behavior must handle that at a higher
+        level.
+        """
         keys = pygame.key.get_pressed()
         dx = 0
         dy = 0
