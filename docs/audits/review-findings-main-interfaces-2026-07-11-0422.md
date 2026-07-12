@@ -30,7 +30,7 @@ Reviewer: AI Agent (fresh context)
 - [ ] **[ERR]** 主循环对 `update()` / `render()` / `handle_events()` 没有帧级异常隔离，任一帧失败即退出整个游戏进程。 — [`airwar/game/scene_director.py:76-88`](airwar/game/scene_director.py:76)、[`airwar/game/scene_director_components/scene_switcher.py:182-225`](airwar/game/scene_director_components/scene_switcher.py:182)
 - [ ] **[ERR]** `SceneManager.switch()` 先设置 `_current_scene` 再调用 `enter()`；若 `enter()` 抛异常，场景管理器会指向一个未完全初始化的场景。 — [`airwar/scenes/scene.py:225-229`](airwar/scenes/scene.py:225)
 - [ ] **[ERR]** 子场景（Pause/Settings/Death/ExitConfirm）手动调用 `enter()` / `exit()`，但无 `try/finally`；异常时 `exit()` 不会被调用，资源与状态可能泄漏。 — [`airwar/game/scene_director_components/scene_switcher.py:320-426`](airwar/game/scene_director_components/scene_switcher.py:320)
-- [ ] **[ERR]** `LockManager.release()` 无 owner/cookie 校验，任何持有 `LockManager` 引用的代码都能释放任意层，存在误释放风险。 — [`airwar/game/systems/lock_manager.py:162-166`](airwar/game/systems/lock_manager.py:162)
+- [x] **[ERR]** `LockManager.release()` 无 owner/cookie 校验，任何持有 `LockManager` 引用的代码都能释放任意层，存在误释放风险。 — [`airwar/game/systems/lock_manager.py:162-166`](airwar/game/systems/lock_manager.py:162)（已修复：新增 `LockToken`，`release` 支持 token 并校验 cookie，兼容 layer 调用但记录 warning）
 - [ ] **[ERR]** `FrameContext` / `FixedStepAccumulator` 对负数 `delta_seconds` 静默取 0，对 `NaN/Inf` 未做校验；极小的 `fixed_delta_seconds` 可能导致单帧步数爆炸。 — [`airwar/game/frame_context.py:66-72`](airwar/game/frame_context.py:66)
 - [ ] **[ERR]** `Boss._trigger_enrage_if_needed` 中 `max_health <= 0` 的 guard 位于除法比较之后，仍可能触发除零。 — [`airwar/entities/enemy/boss/boss.py:486-489`](airwar/entities/enemy/boss/boss.py:486)
 - [ ] **[ERR]** `BulletManager._update_bullets_batch` 在把子弹加入 `active_bullets` 后才检查 `data is None` 并 `continue`，导致 buffer 索引与 `active_bullets` 不同步，未初始化槽位被 Rust 读取。 — [`airwar/game/managers/bullet_manager.py:174-192`](airwar/game/managers/bullet_manager.py:174)
@@ -38,7 +38,7 @@ Reviewer: AI Agent (fresh context)
 
 ### 架构与设计
 
-- [ ] **[ARCH]** `LockManager` 仅“无敌”按优先级仲裁；控制锁与暂停是全局 OR 组合，低优先级层（如 `GAME_PAUSE`）可继续锁定控制/暂停，与 `AGENTS.md` 中“按优先级统一仲裁”的描述不一致。 — [`airwar/game/systems/lock_manager.py:221-234`](airwar/game/systems/lock_manager.py:221)
+- [x] **[ARCH]** `LockManager` 仅“无敌”按优先级仲裁；控制锁与暂停是全局 OR 组合，低优先级层（如 `GAME_PAUSE`）可继续锁定控制/暂停，与 `AGENTS.md` 中“按优先级统一仲裁”的描述不一致。 — [`airwar/game/systems/lock_manager.py:221-234`](airwar/game/systems/lock_manager.py:221)（已修复：`_recompute` 中 `lock_controls` / `is_paused` 按最高优先级置位仲裁，并自动清理过期锁）
 - [ ] **[ARCH]** `Entity` 基类未统一 `take_damage` / `kill` 接口，玩家、敌机、Boss 签名与返回值不一致，调用方无法多态替换。 — [`airwar/entities/base.py:199-234`](airwar/entities/base.py:199)
 - [ ] **[ARCH]** `GameLoopManager` 构造时未校验 8 个依赖，运行时 `None` 会触发 `AttributeError` 而非清晰的 `ValueError`。 — [`airwar/game/managers/game_loop_manager.py:123-141`](airwar/game/managers/game_loop_manager.py:123)
 - [ ] **[ARCH]** `BossManager.clear_boss()` 直接修改 `SpawnController.boss`，绕过 `SpawnController` 自身的清理与计时器逻辑，易导致下一只 Boss 出现时机异常。 — [`airwar/game/managers/boss_manager.py:143-145`](airwar/game/managers/boss_manager.py:143)

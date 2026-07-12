@@ -1,5 +1,8 @@
 """Tests for the layered lock arbitration system."""
 
+import dataclasses
+import logging
+import time
 from types import SimpleNamespace
 
 import pytest
@@ -9,6 +12,7 @@ from airwar.game.systems.lock_manager import (
     LockLayerConflict,
     LockManager,
     LockRequest,
+    LockToken,
 )
 
 
@@ -161,3 +165,123 @@ class TestLockManagerTransient:
         assert hasattr(LockLayer, "TRANSIENT")
         assert LockLayer.TRANSIENT == 5
         assert min(LockLayer) == LockLayer.TRANSIENT
+
+    def test_transient_state_merges_booleans(self, manager, game_state):
+        manager.apply_transient_state(paused=True)
+        manager.apply_transient_state(invincible=True, invincibility_duration=30)
+        assert game_state.is_paused is True
+        assert game_state.is_player_invincible is True
+        assert manager.is_locked(LockLayer.TRANSIENT)
+
+    def test_transient_state_release_clears_layer(self, manager, game_state):
+        manager.apply_transient_state(paused=True)
+        manager.apply_transient_state(paused=False)
+        assert game_state.is_paused is False
+        assert not manager.is_locked(LockLayer.TRANSIENT)
+
+
+class TestLockManagerToken:
+    def test_acquire_returns_token(self, manager):
+        token = manager.acquire(LockLayer.GAME_PAUSE, LockRequest(is_paused=True))
+        assert isinstance(token, LockToken)
+        assert token.layer is LockLayer.GAME_PAUSE
+
+    def test_release_with_token_succeeds(self, manager, game_state, player):
+        token = manager.acquire(
+            LockLayer.GAME_PAUSE,
+            LockRequest(lock_controls=True, is_paused=True),
+        )
+        assert manager.release(token) is True
+        assert game_state.is_paused is False
+        assert player.is_controls_locked is False
+        assert not manager.has_locks()
+
+    def test_release_with_layer_logs_warning(self, manager, caplog):
+        manager.acquire(LockLayer.GAME_PAUSE, LockRequest(is_paused=True))
+        with caplog.at_level(logging.WARNING, logger="airwar.game.systems.lock_manager"):
+            manager.release(LockLayer.GAME_PAUSE)
+        assert "without token" in caplog.text
+
+    def test_release_with_stale_token_warns_and_ignores(self, manager, game_state, caplog):
+        stale_token = manager.acquire(
+            LockLayer.PHASE_DASH,
+            LockRequest(invincible=True, invincibility_duration=10),
+        )
+        manager.acquire(
+            LockLayer.PHASE_DASH,
+            LockRequest(invincible=True, invincibility_duration=20),
+        )
+        with caplog.at_level(logging.WARNING, logger="airwar.game.systems.lock_manager"):
+            result = manager.release(stale_token)
+        assert result is False
+        assert manager.is_locked(LockLayer.PHASE_DASH)
+        assert game_state.invincibility_timer == 20
+        assert "stale" in caplog.text or "mismatched" in caplog.text
+
+
+class TestLockManagerPriorityArbitration:
+    def test_high_priority_control_lock_suppresses_lower(self, manager, player):
+        low = manager.acquire(LockLayer.GAME_PAUSE, LockRequest(lock_controls=True))
+        high = manager.acquire(LockLayer.PLAYER_HIT, LockRequest(lock_controls=True))
+        assert player.is_controls_locked is True
+        manager.release(high)
+        assert player.is_controls_locked is True
+        manager.release(low)
+        assert player.is_controls_locked is False
+
+    def test_high_priority_pause_suppresses_lower(self, manager, game_state):
+        low = manager.acquire(LockLayer.GAME_PAUSE, LockRequest(is_paused=True))
+        high = manager.acquire(LockLayer.HOMECOMING, LockRequest(is_paused=True))
+        assert game_state.is_paused is True
+        manager.release(high)
+        assert game_state.is_paused is True
+        manager.release(low)
+        assert game_state.is_paused is False
+
+    def test_lower_priority_controls_apply_when_high_does_not_lock(self, manager, player):
+        manager.acquire(LockLayer.PHASE_DASH, LockRequest(invincible=True))
+        manager.acquire(LockLayer.GAME_PAUSE, LockRequest(lock_controls=True))
+        assert player.is_controls_locked is True
+
+
+class TestLockManagerExpiration:
+    def test_expired_lock_is_automatically_removed(self, manager):
+        manager.acquire(
+            LockLayer.PHASE_DASH,
+            LockRequest(invincible=True, expires_at=time.monotonic() + 0.01),
+        )
+        assert manager.is_locked(LockLayer.PHASE_DASH) is True
+        time.sleep(0.02)
+        manager.refresh()
+        assert manager.is_locked(LockLayer.PHASE_DASH) is False
+
+    def test_permanent_lock_not_cleaned(self, manager):
+        manager.acquire(
+            LockLayer.PHASE_DASH,
+            LockRequest(
+                invincible=True,
+                invincibility_duration=LockManager.PERMANENT_INVINCIBILITY_FRAMES,
+            ),
+        )
+        manager.refresh()
+        assert manager.is_locked(LockLayer.PHASE_DASH) is True
+
+
+class TestLockManagerImmutability:
+    def test_acquire_does_not_mutate_request(self, manager):
+        req = LockRequest(invincible=True, invincibility_duration=10)
+        original = dataclasses.asdict(req)
+        manager.acquire(LockLayer.PHASE_DASH, req)
+        assert dataclasses.asdict(req) == original
+
+    def test_acquire_or_update_does_not_mutate_request(self, manager):
+        req = LockRequest(invincible=True, invincibility_duration=10)
+        original = dataclasses.asdict(req)
+        manager.acquire_or_update(LockLayer.PHASE_DASH, req)
+        assert dataclasses.asdict(req) == original
+
+    def test_acquire_strict_does_not_mutate_request(self, manager):
+        req = LockRequest(invincible=True, invincibility_duration=10)
+        original = dataclasses.asdict(req)
+        manager.acquire_strict(LockLayer.PHASE_DASH, req)
+        assert dataclasses.asdict(req) == original

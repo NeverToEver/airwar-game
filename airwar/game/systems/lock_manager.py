@@ -1,7 +1,9 @@
 """Layered lock arbitration for gameplay state flags."""
 
+import dataclasses
 import logging
 import time
+import uuid
 from dataclasses import dataclass
 from enum import IntEnum
 
@@ -9,7 +11,14 @@ logger = logging.getLogger(__name__)
 
 
 class LockLayer(IntEnum):
-    """Enum defining lock priority layers for state arbitration."""
+    """Enum defining lock priority layers for state arbitration.
+
+    Higher values win. Within the same layer the most recent request replaces
+    the previous one. Across layers, the highest priority request that sets a
+    given flag controls that flag: ``lock_controls`` and ``is_paused`` are
+    arbitrated by priority (not OR-ed), while invincibility is taken from the
+    single highest priority invincible request.
+    """
 
     HOMECOMING = 100
     MOTHERSHIP = 80
@@ -31,6 +40,19 @@ class LockRequest:
     expires_at: float = 0.0
 
 
+@dataclass(frozen=True)
+class LockToken:
+    """Capability token returned by acquire methods.
+
+    The preferred way to release a lock is to pass the token back to
+    :meth:`LockManager.release`. Releasing by bare layer still works for
+    backwards compatibility but logs a warning.
+    """
+
+    layer: LockLayer
+    cookie: str = dataclasses.field(default_factory=lambda: uuid.uuid4().hex)
+
+
 class LockLayerConflict(RuntimeError):
     """Raised by :meth:`LockManager.acquire_strict` when a layer is
     already locked with a different request. See M-10 for rationale.
@@ -46,6 +68,7 @@ class LockManager:
         self._game_state = game_state
         self._player = player
         self._locks: dict[LockLayer, LockRequest] = {}
+        self._tokens: dict[LockLayer, LockToken] = {}
         self._force_timer_update = False
 
     def set_game_state(self, game_state) -> None:
@@ -69,17 +92,27 @@ class LockManager:
             if not isinstance(getattr(request, field), bool):
                 raise ValueError(f"{field} must be a bool, got {type(getattr(request, field)).__name__}")
 
-    def acquire(self, layer: LockLayer, request: LockRequest):
+    @staticmethod
+    def _with_expires_at(request: LockRequest) -> LockRequest:
+        """Return a copy of ``request`` with ``expires_at`` computed from ``invincibility_duration``."""
+        if request.expires_at <= 0 and request.invincibility_duration > 0:
+            return dataclasses.replace(
+                request, expires_at=time.monotonic() + request.invincibility_duration
+            )
+        return request
+
+    def acquire(self, layer: LockLayer, request: LockRequest) -> LockToken:
         """Acquire ``request`` on ``layer``.
 
         Silently replaces any prior request on the same layer. Use
         :meth:`acquire_strict` if the call site wants to be told about a
         conflict, or :meth:`acquire_or_update` to merge the new request
         with the existing one (max duration, OR of booleans).
+
+        Returns a :class:`LockToken` that should be used to release the lock.
         """
         self._validate(layer, request)
-        if request.expires_at <= 0 and request.invincibility_duration > 0:
-            request.expires_at = time.monotonic() + request.invincibility_duration
+        request = self._with_expires_at(request)
         if layer in self._locks:
             prior = self._locks[layer]
             if prior != request:
@@ -87,25 +120,28 @@ class LockManager:
                     "LockManager.acquire overwriting prior request on layer %s: %r -> %r",
                     layer.name, prior, request,
                 )
+        token = LockToken(layer)
         self._locks[layer] = request
+        self._tokens[layer] = token
         self._force_timer_update = True
         self._recompute()
+        return token
 
-    def acquire_or_update(self, layer: LockLayer, request: LockRequest):
+    def acquire_or_update(self, layer: LockLayer, request: LockRequest) -> LockToken:
         """Acquire ``request`` on ``layer``, merging with the existing
         request if one is present. Booleans are OR-ed together; the
         invincibility timer takes the max of the two; the silent /
         non-silent distinction follows the more-recent call.
+
+        Returns a :class:`LockToken` for the resulting lock.
         """
         self._validate(layer, request)
-        if request.expires_at <= 0 and request.invincibility_duration > 0:
-            request.expires_at = time.monotonic() + request.invincibility_duration
+        request = self._with_expires_at(request)
         existing = self._locks.get(layer)
         if existing is None:
             self._locks[layer] = request
         else:
-            if existing.expires_at <= 0 and existing.invincibility_duration > 0:
-                existing.expires_at = time.monotonic() + existing.invincibility_duration
+            existing = self._with_expires_at(existing)
             merged_expires_at = 0.0
             if existing.invincible and request.invincible:
                 merged_expires_at = (
@@ -137,36 +173,74 @@ class LockManager:
                     layer.name, existing, merged,
                 )
             self._locks[layer] = merged
+        token = LockToken(layer)
+        self._tokens[layer] = token
         self._force_timer_update = True
         self._recompute()
+        return token
 
-    def acquire_strict(self, layer: LockLayer, request: LockRequest):
+    def acquire_strict(self, layer: LockLayer, request: LockRequest) -> LockToken:
         """Like :meth:`acquire`, but raise ``LockLayerConflict`` if the
         layer is already locked with a different request. Useful at
         call sites that want a hard failure (rather than a silent
         overwrite) when two systems race for the same layer.
+
+        Returns a :class:`LockToken` for the resulting lock.
         """
         self._validate(layer, request)
-        if request.expires_at <= 0 and request.invincibility_duration > 0:
-            request.expires_at = time.monotonic() + request.invincibility_duration
+        request = self._with_expires_at(request)
         existing = self._locks.get(layer)
         if existing is not None and existing != request:
             raise LockLayerConflict(
                 f"Lock layer {layer.name} already held with a different "
                 f"request: {existing!r} vs {request!r}"
             )
+        token = LockToken(layer)
         self._locks[layer] = request
+        self._tokens[layer] = token
         self._force_timer_update = True
         self._recompute()
+        return token
 
-    def release(self, layer: LockLayer):
+    def release(self, token: LockLayer | LockToken) -> bool:
+        """Release a lock.
+
+        Accepts a :class:`LockToken` returned by an ``acquire*`` method,
+        or a bare :class:`LockLayer` for backwards compatibility. Passing a
+        bare layer logs a warning because it bypasses the token owner check.
+        """
+        if isinstance(token, LockToken):
+            layer = token.layer
+            current = self._tokens.get(layer)
+            if current is None or current.cookie != token.cookie:
+                logger.warning(
+                    "Ignoring release of layer %s with stale/mismatched LockToken", layer.name
+                )
+                return False
+            self._locks.pop(layer, None)
+            self._tokens.pop(layer, None)
+            self._force_timer_update = True
+            self._recompute()
+            return True
+
+        return self._release_layer(token, warn=True)
+
+    def _release_layer(self, layer: LockLayer, *, warn: bool) -> bool:
         removed = self._locks.pop(layer, None)
+        self._tokens.pop(layer, None)
         if removed is not None:
+            if warn:
+                logger.warning(
+                    "Releasing lock by layer %r without token; prefer using token from acquire",
+                    layer.name,
+                )
             self._force_timer_update = True
         self._recompute()
+        return removed is not None
 
     def clear(self) -> None:
         self._locks.clear()
+        self._tokens.clear()
         self._force_timer_update = True
         self._recompute()
 
@@ -187,31 +261,45 @@ class LockManager:
         invincibility_duration: int | None = None,
         silent_invincible: bool | None = None,
     ) -> None:
-        has_active_request = (
-            paused is True or invincible is True or invincibility_duration is not None
-        )
-        has_release_request = paused is False or invincible is False
+        existing = self._locks.get(LockLayer.TRANSIENT)
+        merged_kwargs = dataclasses.asdict(existing) if existing else {}
+        if paused is not None:
+            merged_kwargs["is_paused"] = paused
+        if invincible is not None:
+            merged_kwargs["invincible"] = invincible
+        if invincibility_duration is not None:
+            merged_kwargs["invincibility_duration"] = invincibility_duration
+            merged_kwargs["invincible"] = True
+        if silent_invincible is not None:
+            merged_kwargs["is_silent_invincible"] = silent_invincible
 
-        if has_active_request:
-            request_kwargs = {}
-            if paused is True:
-                request_kwargs["is_paused"] = True
-            if invincibility_duration is not None:
-                request_kwargs["invincible"] = True
-                request_kwargs["invincibility_duration"] = invincibility_duration
-            elif invincible is not None:
-                request_kwargs["invincible"] = invincible
-            if silent_invincible is not None:
-                request_kwargs["is_silent_invincible"] = silent_invincible
-            self.acquire(LockLayer.TRANSIENT, LockRequest(**request_kwargs))
-        elif has_release_request:
-            self.release(LockLayer.TRANSIENT)
-        elif silent_invincible is not None and self._game_state:
-            # Preserve the legacy direct-flag behavior when only the silent
-            # bit is toggled without an accompanying invincibility request.
-            self._game_state.is_silent_invincible = silent_invincible
+        has_active_state = any(
+            merged_kwargs.get(k) for k in ("invincible", "lock_controls", "is_paused")
+        ) or bool(merged_kwargs.get("invincibility_duration"))
+
+        if has_active_state:
+            self.acquire_or_update(LockLayer.TRANSIENT, LockRequest(**merged_kwargs))
+        else:
+            self._release_layer(LockLayer.TRANSIENT, warn=False)
+            if silent_invincible is not None and self._game_state:
+                # Preserve the legacy direct-flag behavior when only the silent
+                # bit is toggled without an accompanying invincibility request.
+                self._game_state.is_silent_invincible = silent_invincible
 
     def _recompute(self):
+        now = time.monotonic()
+        expired = [
+            layer
+            for layer, req in self._locks.items()
+            if req.expires_at > 0
+            and req.expires_at <= now
+            and req.invincibility_duration < self.PERMANENT_INVINCIBILITY_FRAMES
+        ]
+        for layer in expired:
+            logger.debug("Lock %s expired, removing", layer.name)
+            self._locks.pop(layer, None)
+            self._tokens.pop(layer, None)
+
         invincible = False
         lock_controls = False
         paused = False
@@ -228,10 +316,14 @@ class LockManager:
                 else:
                     timer = req.invincibility_duration
                 invincibility_applied = True
-            if req.lock_controls:
+            # Priority arbitration: once a higher-priority layer sets a flag,
+            # lower-priority layers can no longer override it.
+            if req.lock_controls and not lock_controls:
                 lock_controls = True
-            if req.is_paused:
+            if req.is_paused and not paused:
                 paused = True
+            if lock_controls and paused and invincibility_applied:
+                break
         if self._game_state:
             was_invincible = getattr(self._game_state, "is_player_invincible", False)
             self._game_state.is_player_invincible = invincible

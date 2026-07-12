@@ -218,14 +218,22 @@ WelcomeScene → TutorialScene → GameScene
 `airwar.game.systems.lock_manager.LockManager` 按优先级统一仲裁无敌、控制锁与暂停：
 
 ```text
-HOMECOMING > MOTHERSHIP > BOSS_ENRAGE > PHASE_DASH > PLAYER_HIT > GIVE_UP > GAME_PAUSE
+HOMECOMING > MOTHERSHIP > BOSS_ENRAGE > PHASE_DASH > PLAYER_HIT > GIVE_UP > GAME_PAUSE > TRANSIENT
 ```
 
 相关类：
 
 - `LockLayer`：优先级枚举。
-- `LockRequest`：请求参数（无敌、控制锁、暂停、静默无敌、无敌时长）。
+- `LockRequest`：请求参数（无敌、控制锁、暂停、静默无敌、无敌时长、过期时间）。
+- `LockToken`：`acquire*` 返回的能力令牌，建议用令牌释放锁；直接传 `LockLayer` 释放仍可工作，但会记录 warning。
 - `acquire` / `acquire_or_update` / `acquire_strict` / `release` / `clear`。
+
+语义要点：
+
+- 无敌状态取最高优先级且设置了 `invincible=True` 的层。
+- 控制锁与暂停按优先级仲裁：一旦高优先级层置位，低优先级层不再覆盖；高优先级层释放后低优先级层生效。
+- `expires_at` 到期的非永久锁会在 `_recompute()` / `refresh()` 时自动清理。
+- `TRANSIENT` 层用于临时状态，多个 `apply_transient_state` 调用会合并布尔值，而不是相互覆盖。
 
 ### 7.4 帧时间
 
