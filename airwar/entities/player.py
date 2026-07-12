@@ -20,6 +20,8 @@ its own focused state.
 """
 
 # === Third-party ===
+import logging
+
 import pygame
 
 # === Local: different package in airwar ===
@@ -41,6 +43,8 @@ from .player_components import (
 from .player_state import IllegalPlayerTransition, PlayerStateMachine
 
 __all__ = ["Player"]
+
+_logger = logging.getLogger(__name__)
 
 
 class Player(Entity):
@@ -270,8 +274,14 @@ class Player(Entity):
             if hasattr(self._state, "enter_boost"):
                 try:
                     self._state.enter_boost()
-                except IllegalPlayerTransition:
-                    pass
+                except IllegalPlayerTransition as exc:
+                    # Already boosting is the only silently-ignorable case;
+                    # all other illegal transitions are logged so state-machine
+                    # bugs do not go unnoticed.
+                    if self._state.is_boosting():
+                        pass
+                    else:
+                        _logger.warning("Ignored illegal boost transition: %s", exc)
         elif not self.boost.is_boost_active and self._state.is_boosting():
             if hasattr(self._state, "exit_boost"):
                 self._state.exit_boost()

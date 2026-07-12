@@ -53,6 +53,14 @@ class Bullet(Entity):
             angle_rad = math.radians(data.angle_offset)
             self.velocity = Vector2(data.speed * math.sin(angle_rad), -data.speed * math.cos(angle_rad))
 
+    def take_damage(self, damage: int) -> None:
+        """Bullets do not take damage.
+
+        Required by the :class:`Entity` interface; bullets are destroyed by
+        collision or boundary checks, not by incoming damage.
+        """
+        pass
+
     def update(self, *args, **kwargs) -> None:
         """Advance the bullet one frame: record trail, move, and cull offscreen.
 

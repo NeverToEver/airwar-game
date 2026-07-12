@@ -39,11 +39,15 @@ These are independent flags that apply across every alive sub-state.
 
 from __future__ import annotations
 
+import logging
 from enum import IntEnum
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .player import Player
+
+
+_logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -206,8 +210,28 @@ class PlayerStateMachine:
             )
         self._alive_substate = new_sub
 
-    def force_substate(self, new_sub: PlayerAliveState) -> None:
-        """Bypass the legal-edge check (used for save/restore)."""
+    def force_substate(self, new_sub: PlayerAliveState, validate: bool = True) -> None:
+        """Bypass the legal-edge check (used for save/restore).
+
+        Args:
+            new_sub: Target alive substate.
+            validate: When ``True`` (default), enforce the legal-edge table.
+                Callers restoring from a save should pass ``False``; an
+                illegal forced state is still applied but logged as a warning
+                so corrupted saves are visible.
+        """
+        if validate:
+            self.transition_substate(new_sub)
+            return
+
+        if new_sub != self._alive_substate and new_sub not in _ALIVE_TRANSITIONS.get(
+            self._alive_substate, set()
+        ):
+            _logger.warning(
+                "Force substate %s -> %s bypasses the legal-edge table",
+                self._alive_substate.name,
+                new_sub.name,
+            )
         self._alive_substate = new_sub
 
     # ------------------------------------------------------------------

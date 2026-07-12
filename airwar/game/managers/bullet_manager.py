@@ -165,6 +165,9 @@ class BulletManager:
             self._update_release_delay(bullet)
             if getattr(bullet, "held", False):
                 continue
+            data = getattr(bullet, "data", None)
+            if data is None:
+                continue
             active_bullets.append(bullet)
             bullet_map[id(bullet)] = bullet
 
@@ -175,8 +178,6 @@ class BulletManager:
         buf = bytearray(count * self._BULLET_BUF_SIZE)
         for i, bullet in enumerate(active_bullets):
             data = getattr(bullet, "data", None)
-            if data is None:
-                continue
             is_laser = getattr(data, "bullet_type", "") == "laser" or getattr(data, "is_laser", False)
             struct.pack_into(
                 self._BULLET_BUF_FMT,

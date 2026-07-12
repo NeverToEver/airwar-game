@@ -135,6 +135,16 @@ class Enemy(Entity):
     _timer_attr: str
     _batch_result: tuple[float, float, float] | None
 
+    # Map move_type to the attribute that feeds ``_rust_params["speed"]``.
+    # Used by the Python fallback path so ``set_difficulty`` speed multipliers
+    # also affect non-Rust movement updates.
+    _SPEED_ATTRS: dict[str, str] = {
+        "zigzag": "zigzag_speed",
+        "noise": "noise_speed",
+        "aggressive": "agg_speed",
+        "spiral": "spiral_speed",
+    }
+
     # 1. Special methods
 
     def __init__(self, x: float, y: float, data: EnemyData):
@@ -286,7 +296,18 @@ class Enemy(Entity):
         if self._can_use_rust_movement():
             self._update_rust_movement()
         else:
-            self._movement_strategy.update(self, self._slow_factor, self._player_pos)
+            # F10: apply difficulty speed multiplier in the Python fallback path.
+            speed_attr = self._SPEED_ATTRS.get(self.move_type)
+            original_speed = None
+            if speed_attr is not None:
+                original_speed = getattr(self, speed_attr, None)
+                if isinstance(original_speed, (int, float)):
+                    setattr(self, speed_attr, original_speed * self._difficulty_multiplier)
+            try:
+                self._movement_strategy.update(self, self._slow_factor, self._player_pos)
+            finally:
+                if original_speed is not None:
+                    setattr(self, speed_attr, original_speed)
 
     def _can_use_rust_movement(self) -> bool:
         return self.move_type in MOVEMENT_TYPE_MAP

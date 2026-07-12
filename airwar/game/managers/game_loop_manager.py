@@ -140,6 +140,19 @@ class GameLoopManager:
         self._collision_controller = collision_controller
         self._lock_manager = lock_manager
 
+        for name, value in (
+            ("game_controller", game_controller),
+            ("game_renderer", game_renderer),
+            ("spawn_controller", spawn_controller),
+            ("reward_system", reward_system),
+            ("bullet_manager", bullet_manager),
+            ("boss_manager", boss_manager),
+            ("collision_controller", collision_controller),
+            ("lock_manager", lock_manager),
+        ):
+            if value is None:
+                raise ValueError(f"GameLoopManager requires a non-None {name}")
+
         # P1-2: pre-allocated scratch buffers for the entity-update
         # hot path. ``_entity_buf`` is reused across frames to avoid
         # per-frame list allocation; ``_batch_indices`` ditto.
@@ -228,7 +241,7 @@ class GameLoopManager:
 
         self._bullet_manager.update_all()
         self._update_enemy_spawning(player)
-        self._update_entities()
+        self._update_entities(player)
 
         if self._spawn_controller.boss:
             self._boss_manager.update(player)
@@ -297,7 +310,7 @@ class GameLoopManager:
     _MOVEMENT_EXTRA_FMT = "<fffffffI"
     _MOVEMENT_EXTRA_SIZE = struct.calcsize(_MOVEMENT_EXTRA_FMT)  # 32
 
-    def _update_entities(self) -> None:
+    def _update_entities(self, player: PlayerProtocol) -> None:
         enemies = self._spawn_controller.enemies
         if not enemies:
             return
@@ -421,8 +434,13 @@ class GameLoopManager:
                     idx = batch_indices[j]
                     enemies[idx].apply_batch_movement_result((new_x, new_y, new_timer))
 
+        player_pos = (player.rect.centerx, player.rect.centery)
         for enemy in enemies:
-            enemy.update(self._spawn_controller.enemies, self._reward_system.slow_factor)
+            enemy.update(
+                self._spawn_controller.enemies,
+                self._reward_system.slow_factor,
+                player_pos=player_pos,
+            )
 
     def check_collisions(
         self,

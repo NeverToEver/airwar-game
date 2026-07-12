@@ -581,43 +581,6 @@ class Boss(Entity):
     def _enrage_path_center(self, target: tuple[float, float], progress: float) -> tuple[float, float]:
         return self._movement.enrage_path_center(target, progress)
 
-    def _update_enrage_transition(self, player_pos: tuple[int, int] | None = None, player=None) -> None:
-        target = self._center_player_for_enrage(player, self._state.enrage_snapshot_target or player_pos)
-        self._state.enrage_snapshot_target = target
-        self._movement.tick_enrage_transition()
-        self._renderer.face_target(target)
-        self._attack.tick_muzzle_flash()
-        self._state.tick_enrage_transition_timer()
-        if self._state.enrage_transition_timer <= 0:
-            self._state.finish_enrage_transition()
-
-    def _update_enrage_release_hold(self, player_pos: tuple[int, int] | None = None, player=None) -> None:
-        target = (
-            self._current_player_target(player, player_pos)
-            or self._state.enrage_snapshot_target
-            or (get_screen_width() / 2, get_screen_height() / 2)
-        )
-        self._movement.tick_enrage_release_hold()
-        self._renderer.face_target(target)
-        self._attack.tick_muzzle_flash()
-        self._state.tick_enrage_release_hold_timer()
-        if self._state.enrage_release_hold_timer <= 0:
-            self._movement.start_enrage_return()
-
-    def _start_enrage_return(self) -> None:
-        self._movement.start_enrage_return()
-
-    def _update_enrage_return(self, player_pos: tuple[int, int] | None = None, player=None) -> None:
-        target = self._current_player_target(player, player_pos) or self._state.enrage_snapshot_target
-        self._movement.tick_enrage_return()
-        if target is not None:
-            self._renderer.face_target(target)
-        self._attack.tick_muzzle_flash()
-        self._state.tick_enrage_return_timer()
-        if self._state.enrage_return_timer <= 0:
-            self._state.finish_enrage_return()
-            self.fire_timer = 0
-
     def _enrage_progress(self) -> float:
         return self._state.enrage_progress()
 

@@ -230,6 +230,19 @@ class Entity(ABC):
     def render(self, surface: pygame.Surface) -> None:
         pass
 
+    @abstractmethod
+    def take_damage(self, damage: int) -> None:
+        """Apply damage to the entity.
+
+        Subclasses must implement this so the collision system can treat
+        all entities polymorphically.
+        """
+        pass
+
+    def kill(self) -> None:
+        """Deactivate the entity immediately."""
+        self.active = False
+
     def get_rect(self) -> pygame.Rect:
         return pygame.Rect(self.rect.x, self.rect.y, self.rect.width, self.rect.height)
 

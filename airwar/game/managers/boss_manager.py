@@ -141,8 +141,12 @@ class BossManager:
         self._bullet_manager.clear_enemy_bullets(include_clear_immune=True)
 
     def clear_boss(self) -> None:
-        """Remove the current boss from the spawn controller."""
-        self._spawn_controller.boss = None
+        """Remove the current boss from the spawn controller.
+
+        Delegates to :meth:`SpawnController.clear_boss` so the boss spawn
+        timer is reset consistently with other cleanup paths.
+        """
+        self._spawn_controller.clear_boss()
 
     @property
     def has_boss(self) -> bool:
