@@ -158,5 +158,7 @@ refactor_docs/
 game_scene_review/
 /airwar-game/
 
-# Claude Code-local — per "stop tracking docs" policy; not for collaborators
+# Claude / AI-agent-local docs — per "stop tracking docs" policy;
 /CLAUDE.md
+/Agent.md
+/AGENTS.md
