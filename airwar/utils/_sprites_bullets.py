@@ -169,8 +169,10 @@ def draw_explosive_missile(surface: pygame.Surface, x: float, y: float, width: f
 
     cache_key = (bw, int(height))
     if cache_key not in _explosive_missile_cache:
-        data = create_explosive_missile_glow(float(bw), height)
-        surf_w = bw * 3 + 12
+        # The binding scales width by 0.8 internally; pass the raw width and
+        # mirror the binding's surface-size formula exactly.
+        data = create_explosive_missile_glow(float(width), float(height))
+        surf_w = int(width * 0.8 * 3 + 12)
         surf_h = int(height) + 10
         glow_surf = _bytes_to_surface(data, surf_w, surf_h)
         _explosive_missile_cache[cache_key] = glow_surf
