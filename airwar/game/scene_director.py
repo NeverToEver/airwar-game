@@ -21,6 +21,7 @@ import logging
 
 import pygame
 
+from .._log import register_crash_context_provider
 from ..scenes import GameScene, SceneManager
 from ..scenes.scene import PauseAction
 from ..utils.database import DatabaseError
@@ -49,7 +50,9 @@ class SceneDirector:
         user_db=None,
         viewport: ScaledViewport | None = None,
     ):
-        self._logger = logging.getLogger(self.__class__.__name__)
+        # Child of the "airwar" logger so --debug also covers this module
+        # and records propagate to the root file handler.
+        self._logger = logging.getLogger(f"airwar.{self.__class__.__name__}")
         self._window = window
         self._scene_manager = scene_manager
         self._user_db = user_db
@@ -70,9 +73,23 @@ class SceneDirector:
 
         self._switcher.update_viewport_from_window()
 
+        # Attach live game state to crash dumps (invoked at crash time only).
+        register_crash_context_provider(self._crash_context)
+
     @property
     def current_user(self) -> str | None:
         return self._current_user
+
+    def _crash_context(self) -> dict:
+        """Live game state merged into crash dumps (called at crash time only)."""
+        return {
+            "scene": self._scene_manager.get_current_scene_name(),
+            "running": self._running,
+            "user": self._current_user,
+            "difficulty": self._selected_difficulty,
+            "frames_since_reset": self._switcher._frames_advanced,
+            "consecutive_frame_errors": self._switcher._consecutive_frame_errors,
+        }
 
     # -- Public API (3) ---------------------------------------------------------
 

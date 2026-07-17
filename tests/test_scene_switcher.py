@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from types import SimpleNamespace
 from typing import Any
 
 import pygame
@@ -10,6 +11,7 @@ import pytest
 
 from airwar.game.scaled_viewport import ScaledViewport
 from airwar.game.scene_director_components.scene_switcher import SceneSwitcher
+from airwar.scenes import GameScene
 from airwar.scenes.scene import Scene, SceneManager
 
 
@@ -44,9 +46,18 @@ class FakeDirector:
         self._user_db = None
         self._current_user = "guest"
         self._settings_ref = {}
+        self._selected_difficulty = "medium"
+        self._pending_save_data = None
+        self._persistence = SimpleNamespace(save_service=None)
 
     def __class_getitem__(cls, item):
         return cls
+
+    def _handle_pause_toggle(self, events, game_scene) -> str:
+        return "none"
+
+    def _dispatch_pause_result(self, result, current_scene):
+        return None
 
 
 class FakeScene(Scene):
@@ -201,3 +212,83 @@ class TestSceneSwitcherSubsceneLifecycle:
 
         # The loop aborts after max consecutive errors, but exit() must still run.
         assert scene.exit_calls == 1
+
+
+class FakeGameScene(GameScene):
+    """GameScene stand-in that passes run_game_flow's isinstance checks.
+
+    Skips ``GameScene.__init__`` (which builds the full gameplay world) and
+    implements only the surface ``run_game_flow`` touches.
+    """
+
+    def __init__(self) -> None:
+        self.update_calls = 0
+        self.frame_errors: list[str] = []
+
+    def enter(self, **kwargs) -> None:
+        pass
+
+    def exit(self) -> None:
+        pass
+
+    def handle_events(self, event: pygame.event.Event) -> None:
+        pass
+
+    def update(self, *args, **kwargs) -> None:
+        self.update_calls += 1
+        raise RuntimeError("update error")
+
+    def render(self, surface: pygame.Surface) -> None:
+        pass
+
+    def is_homecoming_locked(self) -> bool:
+        return False
+
+    def consume_pause_request(self) -> bool:
+        return False
+
+    def is_game_over(self) -> bool:
+        return False
+
+    def on_frame_error(self, operation: str) -> None:
+        self.frame_errors.append(operation)
+
+
+class TestGameFlowFrameErrors:
+    """run_game_flow must isolate bad frames like the other scene loops."""
+
+    def test_consecutive_update_errors_abort_to_main_menu(self, switcher, caplog):
+        scene = FakeGameScene()
+        switcher._scene_manager.register("game", scene)
+
+        with caplog.at_level(logging.ERROR):
+            result = switcher.run_game_flow()
+
+        assert result == "main_menu"
+        assert scene.update_calls == SceneSwitcher._MAX_CONSECUTIVE_FRAME_ERRORS
+        assert scene.frame_errors == ["update"] * SceneSwitcher._MAX_CONSECUTIVE_FRAME_ERRORS
+        assert "Too many consecutive frame errors" in caplog.text
+        # The next flow starts with a clean error budget.
+        assert switcher._consecutive_frame_errors == 0
+
+    def test_game_flow_recovers_after_single_update_error(self, switcher, caplog):
+        scene = FakeGameScene()
+        switcher._scene_manager.register("game", scene)
+
+        def update(*args, **kwargs) -> None:
+            scene.update_calls += 1
+            if scene.update_calls == 1:
+                raise RuntimeError("first frame only")
+            if scene.update_calls >= 4:
+                switcher._director._running = False
+
+        scene.update = update
+
+        with caplog.at_level(logging.ERROR):
+            result = switcher.run_game_flow()
+
+        assert result == "quit"  # director stopped -> normal loop exit
+        assert scene.update_calls == 4
+        assert scene.frame_errors == ["update"]
+        assert "Too many consecutive frame errors" not in caplog.text
+        assert switcher._frames_advanced >= 4

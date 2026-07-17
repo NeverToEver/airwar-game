@@ -2,10 +2,15 @@
 
 Public API:
     setup_logging(debug: bool = False) -> None
-        Configure the ``airwar`` logger via ``logging.config.dictConfig``.
-        ``debug=True`` adds a file handler at ``<cache>/airwar.log`` and
-        raises the level to DEBUG. ``debug=False`` keeps console-only INFO
-        output and writes no file.
+        Configure logging via ``logging.config.dictConfig``. A rotating
+        file handler at ``<cache>/airwar.log`` is always installed so
+        crashes during normal play leave a trail; ``debug=True`` raises
+        the ``airwar`` logger and the console to DEBUG. Handlers are
+        attached to the root logger so every module logger -- including
+        legacy class-named ones such as ``SceneDirector`` -- reaches the
+        file. Also enables :mod:`faulthandler` writing to
+        ``<cache>/faulthandler.log`` so native (SDL) crashes leave a
+        Python stack trace.
 
     get_cache_dir() -> Path
         Return the cache directory used for both the log file and crash
@@ -13,19 +18,30 @@ Public API:
         to ``$XDG_CACHE_HOME/airwar`` or ``~/.cache/airwar`` on POSIX and
         ``%LOCALAPPDATA%\\airwar`` on Windows.
 
+    get_log_file_path() -> Path
+        Return the path of the always-on rotating log file.
+
     crash_dump(exception, context: dict | None = None) -> Path | None
         Serialize ``exception`` + ``context`` to a timestamped JSON file
         under the cache directory and return the path. Returns ``None`` if
         the dump itself fails -- the original exception is never re-raised.
 
+    register_crash_context_provider(provider) -> None
+        Register a zero-arg callable returning a mapping of live game
+        state (scene name, frame counter, ...). Providers are called at
+        crash time and merged into every dump; a raising provider is
+        skipped so it can never mask the crash.
+
     install_crash_hook(extra_context: dict | None = None) -> None
         Register :func:`crash_dump` as ``sys.excepthook``. ``extra_context``
-        is merged into every dump and is the place to attach live game
-        state (scene name, frame counter, ...).
+        is merged into every dump; use providers for live state. The full
+        traceback is also logged at CRITICAL level so it lands in the
+        log file even when stderr is lost (packaged builds, launchers).
 """
 
 from __future__ import annotations
 
+import faulthandler
 import json
 import logging
 import logging.config
@@ -35,13 +51,20 @@ import sys
 import tempfile
 import time
 import traceback
+from collections.abc import Callable, Mapping
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 LOGGER_NAME = "airwar"
 _LOG_FILE_NAME = "airwar.log"
+_FAULT_LOG_NAME = "faulthandler.log"
+_LOG_MAX_BYTES = 1_000_000
+_LOG_BACKUP_COUNT = 2
 _CRASH_PREFIX = "crash-"
+
+_CRASH_CONTEXT_PROVIDERS: list[Callable[[], Mapping[str, Any] | None]] = []
+_FAULT_HANDLER_STREAM = None  # Kept alive for the process lifetime: faulthandler writes into it.
 
 
 def get_cache_dir() -> Path:
@@ -66,6 +89,11 @@ def get_cache_dir() -> Path:
     return Path(tempfile.gettempdir()) / "airwar"
 
 
+def get_log_file_path() -> Path:
+    """Return the path of the always-on rotating log file."""
+    return get_cache_dir() / _LOG_FILE_NAME
+
+
 def _console_formatter() -> logging.Formatter:
     return logging.Formatter(
         fmt="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -81,10 +109,15 @@ def _file_formatter() -> logging.Formatter:
 
 
 def setup_logging(debug: bool = False) -> None:
-    """Configure the ``airwar`` logger.
+    """Configure root logging handlers plus the ``airwar`` logger level.
 
-    Idempotent: safe to call multiple times. The console handler is always
-    installed; the file handler is added only when ``debug=True``.
+    Idempotent: safe to call multiple times. The console handler and an
+    always-on rotating file handler are attached to the *root* logger, so
+    every logger in the process (``airwar.*``, pygame, and any stray
+    top-level logger) propagates into the same sinks. The ``airwar``
+    logger itself only carries the level gate, so ``debug=True`` turns on
+    DEBUG output for AirWar's own modules without enabling DEBUG for
+    third-party loggers.
     """
     cache_dir = get_cache_dir()
 
@@ -98,23 +131,23 @@ def setup_logging(debug: bool = False) -> None:
     }
     root_handlers: list[str] = ["console"]
 
-    if debug:
-        try:
-            cache_dir.mkdir(parents=True, exist_ok=True)
-            handlers["file"] = {
-                "class": "logging.FileHandler",
-                "filename": str(cache_dir / _LOG_FILE_NAME),
-                "mode": "a",
-                "encoding": "utf-8",
-                "formatter": "file",
-                "level": "DEBUG",
-            }
-            root_handlers.append("file")
-        except OSError:
-            logging.getLogger(LOGGER_NAME).warning(
-                "Could not open log file under %s; continuing without file handler.",
-                cache_dir,
-            )
+    try:
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        handlers["file"] = {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": str(get_log_file_path()),
+            "maxBytes": _LOG_MAX_BYTES,
+            "backupCount": _LOG_BACKUP_COUNT,
+            "encoding": "utf-8",
+            "formatter": "file",
+            "level": "DEBUG",
+        }
+        root_handlers.append("file")
+    except OSError:
+        logging.getLogger(LOGGER_NAME).warning(
+            "Could not open log file under %s; continuing without file handler.",
+            cache_dir,
+        )
 
     config = {
         "version": 1,
@@ -125,18 +158,63 @@ def setup_logging(debug: bool = False) -> None:
         },
         "handlers": handlers,
         "loggers": {
+            # No handlers of its own: records propagate to the root
+            # handlers above. The level gate lives here so --debug only
+            # raises AirWar's own verbosity, not third-party loggers'.
             LOGGER_NAME: {
-                "handlers": root_handlers,
                 "level": "DEBUG" if debug else "INFO",
-                "propagate": False,
+                "propagate": True,
             },
         },
         "root": {
-            "handlers": [],
-            "level": "WARNING",
+            "handlers": root_handlers,
+            "level": "INFO",
         },
     }
     logging.config.dictConfig(config)
+    _enable_faulthandler(cache_dir)
+
+
+def _enable_faulthandler(cache_dir: Path) -> None:
+    """Dump Python tracebacks on native crashes (segfaults) to a file.
+
+    SDL/pygame can die in C code without ever raising a Python exception;
+    ``sys.excepthook`` never fires for those. ``faulthandler`` catches the
+    fatal signals and writes the current Python stack to
+    ``<cache>/faulthandler.log`` before the process dies.
+    """
+    global _FAULT_HANDLER_STREAM
+    if faulthandler.is_enabled():
+        return
+    try:
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        _FAULT_HANDLER_STREAM = (cache_dir / _FAULT_LOG_NAME).open("a", encoding="utf-8")
+        faulthandler.enable(file=_FAULT_HANDLER_STREAM)
+    except OSError:
+        faulthandler.enable()  # Fall back to stderr rather than nothing.
+
+
+def register_crash_context_provider(provider: Callable[[], Mapping[str, Any] | None]) -> None:
+    """Register a callable returning live game state for crash dumps.
+
+    Providers are called at crash time (never during normal play) and are
+    allowed to fail: a raising provider is skipped so it cannot mask the
+    crash being reported.
+    """
+    _CRASH_CONTEXT_PROVIDERS.append(provider)
+
+
+def _collect_crash_context(extra_context: dict[str, Any] | None) -> dict[str, Any]:
+    """Merge static ``extra_context`` with every registered provider's state."""
+    merged: dict[str, Any] = dict(extra_context or {})
+    for provider in list(_CRASH_CONTEXT_PROVIDERS):
+        try:
+            data = provider()
+        except Exception:  # noqa: BLE001 -- a broken provider must not mask the crash
+            continue
+        if data:
+            merged.update(data)
+    return merged
 
 
 def _coerce(value: Any) -> Any:
@@ -194,15 +272,17 @@ def _make_excepthook(extra_context: dict[str, Any] | None):
         if issubclass(exc_type, KeyboardInterrupt):
             sys.__excepthook__(exc_type, exc_value, exc_tb)
             return
-        merged: dict[str, Any] = {}
-        if extra_context:
-            merged.update(extra_context)
+        logger = logging.getLogger(LOGGER_NAME)
         # Original traceback on stderr (so the player still sees the error).
         sys.__excepthook__(exc_type, exc_value, exc_tb)
+        # Also land the full traceback in the always-on log file: stderr is
+        # lost for packaged builds and double-clicked launchers.
+        logger.critical("Unhandled exception", exc_info=(exc_type, exc_value, exc_tb))
         try:
             exc_value.__traceback__ = exc_tb
-            path = crash_dump(exc_value, merged)
+            path = crash_dump(exc_value, _collect_crash_context(extra_context))
             if path is not None:
+                logger.critical("Crash dump written to %s", path)
                 sys.stderr.write(f"\n[airwar] crash dump written to: {path}\n")
         except Exception:  # noqa: BLE001 -- must not mask the original crash
             pass
@@ -217,7 +297,9 @@ def install_crash_hook(extra_context: dict[str, Any] | None = None) -> None:
 __all__ = [
     "LOGGER_NAME",
     "get_cache_dir",
+    "get_log_file_path",
     "setup_logging",
     "crash_dump",
+    "register_crash_context_provider",
     "install_crash_hook",
 ]

@@ -40,7 +40,7 @@ class DifficultyManager:
     SPAWN_SCALE: float = 0.1
 
     def __init__(self, difficulty: str = "medium") -> None:
-        self._logger = logging.getLogger(self.__class__.__name__)
+        self._logger = logging.getLogger(f"airwar.{self.__class__.__name__}")
         self._strategy = DifficultyStrategyFactory.create(difficulty)
         self._boss_kill_count: int = 0
         self._current_multiplier: float = self._strategy.base_multiplier

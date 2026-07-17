@@ -31,11 +31,14 @@ class SceneSwitcher:
 
     def __init__(self, director, scene_manager: SceneManager, viewport: ScaledViewport) -> None:
         self._director = director
-        self._logger = logging.getLogger(director.__class__.__name__)
+        # Child of the "airwar" logger so records propagate to the root
+        # file handler (a bare class-name logger only reached stderr).
+        self._logger = logging.getLogger(f"airwar.{director.__class__.__name__}")
         self._scene_manager = scene_manager
         self._viewport = viewport
         self._frame_clock = FrameClock()
         self._consecutive_frame_errors = 0
+        self._frames_advanced = 0
 
     # -- Scene-flow entry points -------------------------------------------------
 
@@ -124,6 +127,10 @@ class SceneSwitcher:
             self._director._pending_save_data = None
             return "main_menu"
         self._reset_game_timing()
+        # Start each flow with a clean error budget: the counter is shared
+        # across scene loops and must not carry over from a previous one
+        # (an aborted game flow now returns to the menu instead of quitting).
+        self._consecutive_frame_errors = 0
 
         current_scene = self._scene_manager.get_current_scene()
         if not isinstance(current_scene, GameScene):
@@ -157,7 +164,15 @@ class SceneSwitcher:
                     return dispatched
                 escape_handled = result == "resume"
 
-            self._handle_scene_events(events, escape_handled, target_scene=current_scene)
+            # Frame-level guard, mirroring ``_run_scene_loop``: a single bad
+            # frame is logged with a full traceback and skipped instead of
+            # killing the whole game session.
+            try:
+                self._handle_scene_events(events, escape_handled, target_scene=current_scene)
+            except Exception:
+                if self._handle_frame_error(current_scene, "handle_events"):
+                    return self._abort_game_flow()
+                continue
 
             # Check for pause requests triggered by mouse click
             if isinstance(current_scene, GameScene) and not escape_handled:
@@ -168,9 +183,29 @@ class SceneSwitcher:
                     if result:
                         return result
 
-            self._scene_manager.update(frame)
-            self._render_current_scene()
-            self._director._window.flip()
+            try:
+                self._scene_manager.update(frame)
+            except Exception:
+                if self._handle_frame_error(current_scene, "update"):
+                    return self._abort_game_flow()
+                continue
+
+            try:
+                self._render_current_scene()
+            except Exception:
+                if self._handle_frame_error(current_scene, "render"):
+                    return self._abort_game_flow()
+                continue
+
+            try:
+                self._director._window.flip()
+            except Exception:
+                if self._handle_frame_error(current_scene, "flip"):
+                    return self._abort_game_flow()
+                continue
+
+            # Successful frame: reset the error counter.
+            self._consecutive_frame_errors = 0
 
             if isinstance(current_scene, GameScene) and current_scene.is_game_over():
                 self._director._clear_saved_game()
@@ -181,6 +216,17 @@ class SceneSwitcher:
                     return "quit"
 
         return "quit"
+
+    def _abort_game_flow(self) -> str:
+        """Give up on the game flow after repeated frame errors.
+
+        Returns the player to the main menu (rather than killing the whole
+        app) so a persistent update/render defect does not cost them the
+        session; the per-frame tracebacks are already in the log file.
+        """
+        self._logger.error("Aborting game flow after repeated frame errors; returning to main menu")
+        self._consecutive_frame_errors = 0
+        return "main_menu"
 
     # -- Per-scene main loop ----------------------------------------------------
 
@@ -206,6 +252,11 @@ class SceneSwitcher:
         #
         # Gated on ``is_running()`` so an exited scene does not have its
         # pre-render fired before the loop bails out.
+        #
+        # Reset the shared error budget: an aborted game flow returns to the
+        # menu (it no longer quits the app), so a previous flow's errors must
+        # not bleed into this loop.
+        self._consecutive_frame_errors = 0
         if scene.is_running():
             self._render_scene(scene)
         while self._director._running and scene.is_running():
@@ -281,11 +332,13 @@ class SceneSwitcher:
 
     def _reset_game_timing(self) -> None:
         self._frame_clock.reset()
+        self._frames_advanced = 0
         reset_timing = getattr(self._director._window, "reset_timing", None)
         if reset_timing is not None:
             reset_timing()
 
     def _next_frame(self, *, simulate: bool) -> FrameContext:
+        self._frames_advanced += 1
         return self._frame_clock.advance(self._director._window.tick(FPS), simulate=simulate)
 
     def _poll_events(self) -> list[pygame.event.Event]:

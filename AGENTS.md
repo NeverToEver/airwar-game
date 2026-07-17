@@ -116,7 +116,7 @@ scripts/                # 工具脚本
 ./run.sh --prepare-only       # 仅准备运行环境
 ./run.sh --skip-rust          # 使用纯 Python 回退路径启动
 ./run.sh --rebuild-rust       # 强制重新编译 Rust 扩展
-./run.sh -- --debug           # 将参数转发给游戏（开启调试日志）
+./run.sh -- --debug           # 将参数转发给游戏（DEBUG 级别日志；日志文件始终写入，见 7.9）
 ```
 
 如需同时启动本地排行榜服务器：
@@ -170,7 +170,7 @@ python3 -m pytest tests/ -v
 
 当前测试覆盖核心架构组件：帧时间上下文、锁仲裁、场景生命周期、存档持久化、缩放视口坐标转换、游戏场景事件总线。不覆盖渲染与具体玩法逻辑。
 
-最近验证结果（2026-07-10）：`61 passed`，`ruff check .` 全绿，`compileall -q airwar main.py` 通过。
+最近验证结果（2026-07-17）：`200 passed`，`ruff check .` 全绿，`compileall -q airwar main.py` 通过。
 
 ## 6. 代码风格与检查
 
@@ -275,6 +275,16 @@ HOMECOMING > MOTHERSHIP > BOSS_ENRAGE > PHASE_DASH > PLAYER_HIT > GIVE_UP > GAME
 pip install -e ".[server]"
 python -m airwar.leaderboard.server --port 8000 --db-path ./leaderboard.db
 ```
+
+### 7.9 日志与崩溃转储
+
+集中配置在 `airwar/_log.py`，产物目录为 `get_cache_dir()`（`$AIRWAR_CACHE_DIR` 优先，否则 POSIX 下 `~/.cache/airwar`，Windows 下 `%LOCALAPPDATA%\airwar`）：
+
+- `airwar.log`：常驻滚动文件日志（1 MB × 2），handler 挂在 **root** logger 上，所有模块 logger（含 `airwar.*` 与类名 logger）都会落盘；`--debug` 仅提升 `airwar` logger 与控制台到 DEBUG。
+- `faulthandler.log`：`faulthandler` 输出，SDL 层原生崩溃（segfault 等不经过 `sys.excepthook` 的崩溃）在此留下 Python 栈。
+- `crash-*.json`：`sys.excepthook` 捕获的未处理异常转储（异常、traceback、平台信息、上下文）。实时游戏状态（场景名、帧计数、用户等）通过 `register_crash_context_provider()` 注入，目前由 `SceneDirector._crash_context` 提供；transient 崩溃排查先看 `airwar.log` 里的 `Frame error in ...` 记录。
+
+对局主循环（`SceneSwitcher.run_game_flow`）与其他场景循环一样有逐帧异常隔离：单帧异常记录 traceback 后跳过，连续 5 帧出错退回主菜单而不是杀掉整个进程。
 
 ## 8. 国际化
 

@@ -76,7 +76,7 @@ class GameController:
     # 1. Special methods
 
     def __init__(self, difficulty: str, username: str):
-        self._logger = logging.getLogger(self.__class__.__name__)
+        self._logger = logging.getLogger(f"airwar.{self.__class__.__name__}")
         if difficulty not in VALID_DIFFICULTIES:
             raise ValueError(f"Invalid difficulty: {difficulty}")
 
