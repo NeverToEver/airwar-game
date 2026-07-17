@@ -234,21 +234,41 @@ class BulletVsEntitiesStrategy:
         if bullet.data.owner == "player" and piercing_level > 0:
             self._record_bullet_enemy_hit(bullet, enemy)
 
-        if explosive_level > 0:
-            self._handle_explosive_damage(bullet, enemies, explosive_level)
-
         enemies_killed = 0
         score_gained = 0
+        if explosive_level > 0:
+            splash_killed, splash_score = self._handle_explosive_damage(
+                bullet, enemies, explosive_level, score_multiplier, exclude=enemy
+            )
+            enemies_killed += splash_killed
+            score_gained += splash_score
+
         if not enemy.active:
-            enemies_killed = 1
-            score_gained = _scaled_score(enemy.data.score, score_multiplier)
+            enemies_killed += 1
+            score_gained += _scaled_score(enemy.data.score, score_multiplier)
 
         if bullet.data.owner == "player" and piercing_level <= 0:
             bullet.active = False
 
         return enemies_killed, score_gained
 
-    def _handle_explosive_damage(self, bullet: Bullet, enemies: list[Enemy], explosive_level: int) -> None:
+    def _handle_explosive_damage(
+        self,
+        bullet: Bullet,
+        enemies: list[Enemy],
+        explosive_level: int,
+        score_multiplier: float,
+        exclude: Enemy | None = None,
+    ) -> tuple[int, int]:
+        """Apply AoE explosion damage around the bullet impact point.
+
+        Enemies killed by the splash are scored like direct hits. ``exclude``
+        is the directly-hit enemy: it still takes splash damage (a killing
+        blow is scored by the caller), but is never double-counted here.
+
+        Returns:
+            tuple[int, int]: (enemies_killed_by_splash, score_gained_by_splash).
+        """
         bullet_x = bullet.rect.centerx
         bullet_y = bullet.rect.centery
         explosion_radius_sq = (GAME_CONSTANTS.BALANCE.EXPLOSION_RADIUS * explosive_level) ** 2
@@ -256,6 +276,8 @@ class BulletVsEntitiesStrategy:
 
         explosion_triggered = False
         explosion_callback = self._get_explosion_callback()
+        enemies_killed = 0
+        score_gained = 0
 
         for enemy in self._get_potential_explosion_targets(bullet_x, bullet_y, explosion_radius, enemies):
             if enemy.active:
@@ -267,9 +289,15 @@ class BulletVsEntitiesStrategy:
                     explosion_damage = GAME_CONSTANTS.DAMAGE.EXPLOSIVE_DAMAGE * explosive_level
                     enemy.take_damage(explosion_damage)
 
+                    if not enemy.active and enemy is not exclude:
+                        enemies_killed += 1
+                        score_gained += _scaled_score(enemy.data.score, score_multiplier)
+
                     if not explosion_triggered and explosion_callback:
                         explosion_callback(bullet_x, bullet_y, explosion_radius)
                         explosion_triggered = True
+
+        return enemies_killed, score_gained
 
     def check_player_bullets_vs_boss(
         self, player_bullets: list[Bullet], boss: Boss, piercing_level: int
