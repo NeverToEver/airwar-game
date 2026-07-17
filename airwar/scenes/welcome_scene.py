@@ -200,23 +200,25 @@ class WelcomeScene(Scene, MouseInteractiveMixin):
             self._handle_keydown(event)
         elif event.type == pygame.MOUSEMOTION:
             self.handle_mouse_motion(event.pos)
-        elif event.type == pygame.MOUSEBUTTONDOWN and self._login_panel is not None:
-            if self._login_panel.handle_user_dropdown_click(event.pos):
-                return
-        elif event.type == pygame.MOUSEBUTTONDOWN and self.show_delete_confirm and self._modals is not None:
-            self._modals.handle_modal_mouse_click(event.pos, {"delete_confirm_yes", "delete_confirm_no"})
-        elif event.type == pygame.MOUSEBUTTONDOWN and self.handle_mouse_click(event.pos):
-            btn = self.get_hovered_button()
-            if btn:
-                self._handle_button_click(btn)
-            # Clicking on input areas sets focus (only outside confirm mode)
-            if not self.show_guest_confirm and self._login_panel is not None:
-                if btn == "username_field":
-                    self._login_panel.focus_username_field()
-                elif btn == "password_field":
-                    self._login_panel.focus_password_field()
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            self.show_user_dropdown = False
+            # The dropdown consumes the click only when an open entry is hit;
+            # otherwise the click must fall through to the main button path.
+            if self._login_panel is not None and self._login_panel.handle_user_dropdown_click(event.pos):
+                return
+            if self.show_delete_confirm and self._modals is not None:
+                self._modals.handle_modal_mouse_click(event.pos, {"delete_confirm_yes", "delete_confirm_no"})
+            elif self.handle_mouse_click(event.pos):
+                btn = self.get_hovered_button()
+                if btn:
+                    self._handle_button_click(btn)
+                # Clicking on input areas sets focus (only outside confirm mode)
+                if not self.show_guest_confirm and self._login_panel is not None:
+                    if btn == "username_field":
+                        self._login_panel.focus_username_field()
+                    elif btn == "password_field":
+                        self._login_panel.focus_password_field()
+            else:
+                self.show_user_dropdown = False
 
     def _handle_keydown(self, event: pygame.event.Event) -> None:
         if event.key == pygame.K_ESCAPE:
