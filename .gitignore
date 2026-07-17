@@ -151,14 +151,3 @@ plans/
 .playwright-mcp/
 *.generated_assets/
 /.generated_assets/
-
-# Private design & audit docs — local only, never commit
-docs/
-refactor_docs/
-game_scene_review/
-/airwar-game/
-
-# Claude / AI-agent-local docs — per "stop tracking docs" policy;
-/CLAUDE.md
-/Agent.md
-/AGENTS.md
