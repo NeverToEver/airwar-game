@@ -151,3 +151,9 @@ plans/
 .playwright-mcp/
 *.generated_assets/
 /.generated_assets/
+
+# Private design & audit docs — local only, never commit
+docs/
+refactor_docs/
+game_scene_review/
+/airwar-game/
