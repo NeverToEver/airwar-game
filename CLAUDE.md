@@ -4,6 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 > 完整版 AI 助手指南见 `AGENTS.md`（中文）。本文件是 Claude Code 的精简版，聚焦架构骨架与高频命令。
 
+> **当前高优先级执行任务**：见 `AGENTS.md` 第 12 节（2026-07-17 标记：Boss 狂暴×母舰对接冲突、狂暴锁母舰、Rust 审计重编、服务器检测、固定音效等）。
+
 ## 项目一句话
 
 `main.py` → `airwar/__main__:main()` → `airwar.game.Game.run()`。Scene-based 2D 太空射击（Python + Pygame，可选 Rust + PyO3 加速）。

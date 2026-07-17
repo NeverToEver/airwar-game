@@ -323,3 +323,23 @@ python -m airwar.leaderboard.server --port 8000 --db-path ./leaderboard.db
 5. **颜色/UI 常量**：统一在 `airwar/config/design_tokens.py` 的 `Colors` / `Typography` / `Spacing` 中注册，不要在业务代码中硬编码颜色元组。
 6. **类型检查仅供参考**：`mypy` 当前仍有数百个历史错误（见 `docs/audits/type_interface_audit_report.md`）。新增代码尽量加类型注解，但不要求一次性修复全部历史问题。
 7. **运行前检查**：提交前执行 `ruff check .`、`compileall -q airwar main.py` 和 `pytest tests/`。
+
+## 12. 高优先级执行任务（2026-07-17 标记）
+
+以下任务由项目所有者于 2026-07-17 标记为**高优先级**，按编号顺序执行。完成某一项后，在该行「状态」列标注完成日期与提交哈希。
+
+| # | 任务 | 背景与现状 | 验收标准 | 关键模块 | 状态 |
+|---|------|-----------|---------|---------|------|
+| P0 | 提交已验证的未提交改动 | 战机素材重绘、主界面点击失灵修复、爆炸导弹渲染崩溃修复已在工作区验证（193 项测试通过 + 实机游玩通过 Boss #4），尚未提交 | 三个主题分别成 commit 合入 master | `utils/_sprites_ships.py`、`scenes/welcome_scene.py`、`utils/_sprites_bullets.py`、`tests/test_welcome_scene_clicks.py`、`tests/test_sprites_bullets.py`、`scripts/render_ship_sprites.py` | ✅ 2026-07-17（6017217 / 8ca1b97 / 8a42f5f） |
+| P1 | Boss 狂暴抓取 × 母舰对接的位置冲突 | 玩家在母舰对接状态下触发 Boss 狂暴，Boss 实施抓取（aim-dash / enrage path）后，玩家舰船出现在意料之外的位置。疑似狂暴位移逻辑与对接位置锁（`GameScene.update` 第 13 步）相互打架 | 明确定义对接状态下的抓取行为（跳过抓取，或将玩家刚性绑定于母舰）；任意时序下玩家坐标合法；手动完整验证「对接中触发狂暴→抓取→脱离」全流程 | `entities/enemy/boss/`（`boss_movement.py` aim-dash / enrage 路径）、`scenes/game_scene.py`、`game/managers/game_loop_manager.py` | 未开始 |
+| P2 | 狂暴期间母舰应被锁定并停火 | 设计意图（所有者原话）：Boss 狂暴同样锁定母舰位置，但玩家不会受到伤害；母舰此时停止开火，防止造成"仅开火但造不成伤害"的假象。现状：对接中触发狂暴时母舰仍可自由移动并开火（`LockLayer.MOTHERSHIP`=80 高于 `BOSS_ENRAGE`=60，狂暴锁不住母舰行为） | 狂暴激活期间：母舰位置锁定、武器停火、玩家保持无敌；狂暴结束后全部恢复正常；为 LockManager 交互新增回归测试 | `game/managers/lock_manager.py`、`game/managers/game_loop_manager.py::_sync_boss_enrage_lock`、`game/mother_ship/game_integrator.py` | 未开始 |
+| P3 | Rust 扩展逻辑审计 → 本地重编 | 本地 wheel 过时：17 个绑定测试失败、启动报 `missing functions ... falling back`。**先**审计 Rust 源码与 `core_bindings.py` Python fallback 的逻辑一致性，确认正确后**再**重编本地扩展 | 审计结论记录在案（哪个函数、哪侧、是否一致）；重编安装后 17 个绑定测试全部通过 | `airwar_core/src/*.rs`、`airwar/core_bindings.py` | ✅ 2026-07-17：绑定测试套件即一致性审计（Rust 与 fallback 输出逐函数比对），wheel 0.1.0→0.2.0 重编安装后 210 项测试全绿，启动 fallback 警告消失 |
+| P4 | 排行榜服务器集成检测 | FastAPI 远程排行榜（`run_with_server.py`）从未实测，仅单元测试覆盖 | 服务器启动、成绩提交、排行榜拉取全链路手动验证通过；发现的问题单独立项 | `airwar/leaderboard/`、`run_with_server.py` | 未开始 |
+| P5 | 固定攻击音效资产 | `bullet_fire` 目前由 numpy + `pygame.sndarray` 按各平台 mixer 采样率**程序生成**，每个平台音色都不同；`airwar/assets/audio/` 目录为空 | 生成一份固定音频文件随仓库分发，全平台播放一致；文件缺失时保留程序生成回退；确认 PyInstaller 打包（`AirWar.spec`）包含该资产 | `airwar/audio/sound_manager.py`、`airwar/assets/audio/`、`AirWar.spec` | 未开始 |
+| P6 | 次要功能回归检测 | 部分边缘功能缺乏近期实机验证 | 手动过一遍：相位冲刺、返航（homecoming）、投降（give-up）流程、设置项持久化、窗口缩放/全屏切换；发现问题单独立项 | 多模块 | 未开始 |
+
+执行备注：
+
+- P1 / P2 都涉及 `LockManager` 优先级交互，动手前重读第 7 节架构要点中的锁层表与 `tests/test_lock_manager.py`；两个 bug 建议同一轮实机验证。
+- P3 重编命令：`cd airwar_core && maturin build --release && pip install --force-reinstall target/wheels/airwar_core-*.whl`（无需 venv）；或 `maturin develop --release`（需 venv）。
+- P5 的一次性音频生成脚本放 `scripts/`，产出物（如 `bullet_fire.wav`）提交进 `airwar/assets/audio/`。
