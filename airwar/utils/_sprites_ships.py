@@ -16,13 +16,13 @@ _boss_sprite_cache: dict[tuple[int, int, int, int, str], pygame.Surface] = {}
 _elite_sprite_cache: dict[tuple[int, int, int, int, str], pygame.Surface] = {}
 _ship_sprite_caches_prewarmed = False
 
-PLAYER_SPRITE_STYLE_VERSION = 5
+PLAYER_SPRITE_STYLE_VERSION = 6
 PLAYER_SPRITE_CANVAS_PADDING = 20
 PLAYER_SPRITE_MIN_BORDER = 4
 PLAYER_SPRITE_CACHE_MAX = 8
-BOSS_SPRITE_STYLE_VERSION = 4
-ENEMY_SPRITE_STYLE_VERSION = 3
-ELITE_SPRITE_STYLE_VERSION = 2
+BOSS_SPRITE_STYLE_VERSION = 5
+ENEMY_SPRITE_STYLE_VERSION = 4
+ELITE_SPRITE_STYLE_VERSION = 3
 
 
 @functools.lru_cache(maxsize=4)
@@ -97,8 +97,8 @@ def _draw_player_ship(surface: pygame.Surface, x: float, y: float, width: float 
     glass_mid = (38, 186, 220)
     glass_bright = (170, 246, 255)
 
-    panel_accent = (122, 98, 74)
-    panel_accent_light = (176, 150, 110)
+    panel_accent = (34, 64, 88)
+    panel_accent_light = (96, 186, 214)
     flame_core = (245, 178, 74)
     flame_hot = (176, 76, 42)
     exhaust_blue = (58, 88, 132)
@@ -176,6 +176,16 @@ def _draw_player_ship(surface: pygame.Surface, x: float, y: float, width: float 
             1,
         )
 
+    # Wingtip navigation lights (teal, matches HUD accent).
+    for side in (-1, 1):
+        draw_glow_circle(
+            surface,
+            (int(center_x + side * width * 1.02), int(y + height * 0.12)),
+            2,
+            glass_mid,
+            6,
+        )
+
     # Under-wing engine pods and bright rear exhaust.
     for side in (-1, 1):
         pod_x = center_x + side * width * 0.42
@@ -207,6 +217,17 @@ def _draw_player_ship(surface: pygame.Surface, x: float, y: float, width: float 
                     max(4, int(height * 0.055)),
                 ),
             )
+        # White-hot core at the nozzle throat.
+        pygame.draw.ellipse(
+            surface,
+            (255, 240, 200, 220),
+            (
+                int(pod_x - width * 0.028),
+                int(y + height * 0.99),
+                max(3, int(width * 0.056)),
+                max(3, int(height * 0.04)),
+            ),
+        )
 
     center_flame = [
         (center_x, y + height * 1.24),
@@ -223,6 +244,15 @@ def _draw_player_ship(surface: pygame.Surface, x: float, y: float, width: float 
             (center_x, y + height * 1.16),
             (center_x + width * 0.04, y + height * 1.02),
             (center_x - width * 0.04, y + height * 1.02),
+        ],
+    )
+    pygame.draw.polygon(
+        surface,
+        (255, 244, 210, 220),
+        [
+            (center_x, y + height * 1.09),
+            (center_x + width * 0.02, y + height * 1.01),
+            (center_x - width * 0.02, y + height * 1.01),
         ],
     )
 
@@ -304,6 +334,8 @@ def _draw_player_ship(surface: pygame.Surface, x: float, y: float, width: float 
     ]
     pygame.draw.polygon(surface, hull_dark, spine)
     pygame.draw.line(surface, panel_accent_light, (center_x, y - height * 0.24), (center_x, y + height * 0.88), 1)
+    # Bright glint along the nose spine catches the light from above.
+    pygame.draw.line(surface, hull_edge, (center_x, y - height * 0.50), (center_x, y - height * 0.32), 1)
 
     # Cockpit has a dark recessed frame and bright glass facets.
     cockpit_frame = [
@@ -421,205 +453,211 @@ def draw_enemy_ship(
 def _draw_enemy_ship(
     surface: pygame.Surface, x: float, y: float, width: float = 50, height: float = 50, health_ratio: float = 1.0
 ) -> None:
-    """Alien mecha combat drone — angular armor plating, red optical sensors, energy thrusters."""
+    """Alien mecha stingray — swept crescent wings, armored diamond hull, red sensor slit.
+
+    The drone faces down-screen toward the player: sensor head and gun pods at
+    the bottom, engine plumes trailing at the top.
+    """
     center_x = x + width / 2
     armor_dark, armor_mid, armor_light, sensor_red, sensor_glow = _enemy_colors(health_ratio)
-    dread_shadow = (14, 12, 18)
-    gunmetal = (28, 26, 32)
+    void = (14, 12, 18)
+    gunmetal = (30, 28, 34)
 
-    # Outer horn armor gives regular drones a more threatening silhouette.
+    # ── Rear thruster plumes (top, trailing upward; bells drawn later) ────
     for side in (-1, 1):
-        horn = [
-            (center_x + side * width * 0.10, y + height * 0.24),
-            (center_x + side * width * 0.34, y + height * 0.08),
-            (center_x + side * width * 0.56, y + height * 0.15),
-            (center_x + side * width * 0.42, y + height * 0.30),
-            (center_x + side * width * 0.18, y + height * 0.34),
+        tx = center_x + side * width * 0.11
+        for i in range(3):
+            flame_y = y + height * (0.055 - i * 0.05)
+            flame_w = max(3, int(width * (0.085 - i * 0.018)))
+            pygame.draw.ellipse(
+                surface,
+                (140 - i * 45, 220 - i * 40, 255, 150 - i * 45),
+                (int(tx - flame_w // 2), int(flame_y), flame_w, max(2, int(height * 0.045))),
+            )
+
+    # ── Crescent wings (tips swept back, layered plating) ─────────────────
+    for side in (-1, 1):
+        wing_outer = [
+            (center_x + side * width * 0.12, y + height * 0.30),
+            (center_x + side * width * 0.16, y + height * 0.52),
+            (center_x + side * width * 0.44, y + height * 0.57),
+            (center_x + side * width * 0.92, y + height * 0.46),
+            (center_x + side * width * 0.88, y + height * 0.27),
+            (center_x + side * width * 0.56, y + height * 0.21),
+            (center_x + side * width * 0.28, y + height * 0.19),
         ]
-        pygame.draw.polygon(surface, dread_shadow, horn)
+        pygame.draw.polygon(surface, void, wing_outer)
+        wing_mid = [
+            (center_x + side * width * 0.16, y + height * 0.31),
+            (center_x + side * width * 0.19, y + height * 0.48),
+            (center_x + side * width * 0.42, y + height * 0.52),
+            (center_x + side * width * 0.80, y + height * 0.43),
+            (center_x + side * width * 0.77, y + height * 0.29),
+            (center_x + side * width * 0.53, y + height * 0.25),
+            (center_x + side * width * 0.29, y + height * 0.23),
+        ]
+        pygame.draw.polygon(surface, armor_dark, wing_mid)
+        wing_plate = [
+            (center_x + side * width * 0.21, y + height * 0.33),
+            (center_x + side * width * 0.23, y + height * 0.45),
+            (center_x + side * width * 0.40, y + height * 0.48),
+            (center_x + side * width * 0.68, y + height * 0.41),
+            (center_x + side * width * 0.66, y + height * 0.31),
+            (center_x + side * width * 0.49, y + height * 0.28),
+            (center_x + side * width * 0.30, y + height * 0.26),
+        ]
+        pygame.draw.polygon(surface, armor_mid, wing_plate)
+        # Leading-edge rim light and a recessed panel seam below it.
+        pygame.draw.line(
+            surface,
+            armor_light,
+            (center_x + side * width * 0.28, y + height * 0.22),
+            (center_x + side * width * 0.84, y + height * 0.29),
+            2,
+        )
+        pygame.draw.line(
+            surface,
+            void,
+            (center_x + side * width * 0.24, y + height * 0.38),
+            (center_x + side * width * 0.62, y + height * 0.42),
+            1,
+        )
+        # Wingtip sensor strobe.
+        draw_glow_circle(
+            surface,
+            (int(center_x + side * width * 0.84), int(y + height * 0.35)),
+            2,
+            sensor_red,
+            6,
+        )
+
+    # ── Under-wing gun pods (muzzles point down at the player) ────────────
+    for side in (-1, 1):
+        pod_x = center_x + side * width * 0.40
         pygame.draw.polygon(
             surface,
-            armor_mid,
+            gunmetal,
             [
-                (center_x + side * width * 0.18, y + height * 0.25),
-                (center_x + side * width * 0.36, y + height * 0.15),
-                (center_x + side * width * 0.48, y + height * 0.17),
-                (center_x + side * width * 0.36, y + height * 0.25),
-                (center_x + side * width * 0.21, y + height * 0.30),
+                (pod_x - side * width * 0.045, y + height * 0.52),
+                (pod_x + side * width * 0.055, y + height * 0.53),
+                (pod_x + side * width * 0.06, y + height * 0.72),
+                (pod_x - side * width * 0.03, y + height * 0.71),
             ],
         )
         pygame.draw.line(
             surface,
             armor_light,
-            (center_x + side * width * 0.22, y + height * 0.27),
-            (center_x + side * width * 0.42, y + height * 0.18),
+            (pod_x + side * width * 0.01, y + height * 0.54),
+            (pod_x + side * width * 0.03, y + height * 0.70),
+            1,
+        )
+        draw_glow_circle(
+            surface,
+            (int(pod_x + side * width * 0.02), int(y + height * 0.73)),
+            1,
+            sensor_red,
+            5,
+        )
+
+    # ── Armored diamond hull ──────────────────────────────────────────────
+    hull_outer = [
+        (center_x, y + height * 0.12),
+        (center_x + width * 0.14, y + height * 0.26),
+        (center_x + width * 0.17, y + height * 0.50),
+        (center_x + width * 0.11, y + height * 0.72),
+        (center_x, y + height * 0.86),
+        (center_x - width * 0.11, y + height * 0.72),
+        (center_x - width * 0.17, y + height * 0.50),
+        (center_x - width * 0.14, y + height * 0.26),
+    ]
+    pygame.draw.polygon(surface, armor_dark, hull_outer)
+    hull_mid = [
+        (center_x, y + height * 0.18),
+        (center_x + width * 0.10, y + height * 0.30),
+        (center_x + width * 0.12, y + height * 0.50),
+        (center_x + width * 0.08, y + height * 0.66),
+        (center_x, y + height * 0.78),
+        (center_x - width * 0.08, y + height * 0.66),
+        (center_x - width * 0.12, y + height * 0.50),
+        (center_x - width * 0.10, y + height * 0.30),
+    ]
+    pygame.draw.polygon(surface, armor_mid, hull_mid)
+    # Top armor plate catches the light; dark spine groove adds depth.
+    pygame.draw.polygon(
+        surface,
+        armor_light,
+        [
+            (center_x, y + height * 0.24),
+            (center_x + width * 0.055, y + height * 0.33),
+            (center_x + width * 0.045, y + height * 0.52),
+            (center_x, y + height * 0.62),
+            (center_x - width * 0.045, y + height * 0.52),
+            (center_x - width * 0.055, y + height * 0.33),
+        ],
+    )
+    pygame.draw.line(surface, void, (center_x, y + height * 0.28), (center_x, y + height * 0.58), 1)
+    for frac, half_w in ((0.36, 0.11), (0.48, 0.115)):
+        pygame.draw.line(
+            surface,
+            void,
+            (center_x - width * half_w, y + height * frac),
+            (center_x + width * half_w, y + height * frac),
             1,
         )
 
-    # ── Angular armor wings (stubby, mechanical, NOT forward-swept) ─────────
-    # Left wing — angular blade sweeping slightly back
-    wing_left = [
-        (center_x - width * 0.08, y + height * 0.30),  # root upper
-        (center_x - width * 0.12, y + height * 0.42),  # root mid
-        (center_x - width * 0.08, y + height * 0.55),  # root lower
-        (x - width * 0.40, y + height * 0.65),  # tip lower
-        (x - width * 0.32, y + height * 0.48),  # tip mid
-        (x - width * 0.36, y + height * 0.30),  # tip upper
-    ]
-    pygame.draw.polygon(surface, armor_dark, wing_left)
-    wing_left_inner = [
-        (center_x - width * 0.06, y + height * 0.34),
-        (center_x - width * 0.09, y + height * 0.44),
-        (center_x - width * 0.06, y + height * 0.50),
-        (x - width * 0.30, y + height * 0.60),
-        (x - width * 0.24, y + height * 0.48),
-        (x - width * 0.28, y + height * 0.34),
-    ]
-    pygame.draw.polygon(surface, armor_mid, wing_left_inner)
-    # Armor edge highlight
-    pygame.draw.line(
-        surface, armor_light, (center_x - width * 0.08, y + height * 0.30), (x - width * 0.36, y + height * 0.30), 2
-    )
-
-    # Right wing
-    wing_right = [
-        (center_x + width * 0.08, y + height * 0.30),
-        (center_x + width * 0.12, y + height * 0.42),
-        (center_x + width * 0.08, y + height * 0.55),
-        (x + width + width * 0.40, y + height * 0.65),
-        (x + width + width * 0.32, y + height * 0.48),
-        (x + width + width * 0.36, y + height * 0.30),
-    ]
-    pygame.draw.polygon(surface, armor_dark, wing_right)
-    wing_right_inner = [
-        (center_x + width * 0.06, y + height * 0.34),
-        (center_x + width * 0.09, y + height * 0.44),
-        (center_x + width * 0.06, y + height * 0.50),
-        (x + width + width * 0.30, y + height * 0.60),
-        (x + width + width * 0.24, y + height * 0.48),
-        (x + width + width * 0.28, y + height * 0.34),
-    ]
-    pygame.draw.polygon(surface, armor_mid, wing_right_inner)
-    pygame.draw.line(
-        surface,
-        armor_light,
-        (center_x + width * 0.08, y + height * 0.30),
-        (x + width + width * 0.36, y + height * 0.30),
-        2,
-    )
-
-    # ── Central armored body ────────────────────────────────────────────────
-    body = [
-        (center_x, y - height * 0.06),  # top
-        (center_x + width * 0.14, y + height * 0.08),  # shoulder right
-        (center_x + width * 0.16, y + height * 0.32),  # mid right
-        (center_x + width * 0.08, y + height * 0.60),  # lower right
-        (center_x, y + height * 0.78),  # bottom tip
-        (center_x - width * 0.08, y + height * 0.60),  # lower left
-        (center_x - width * 0.16, y + height * 0.32),  # mid left
-        (center_x - width * 0.14, y + height * 0.08),  # shoulder left
-    ]
-    pygame.draw.polygon(surface, armor_dark, body)
-    pygame.draw.polygon(
-        surface,
-        (12, 10, 16),
-        [
-            (center_x, y - height * 0.12),
-            (center_x + width * 0.06, y + height * 0.02),
-            (center_x, y + height * 0.20),
-            (center_x - width * 0.06, y + height * 0.02),
-        ],
-    )
-    body_inner = [
-        (center_x, y + height * 0.02),
-        (center_x + width * 0.10, y + height * 0.12),
-        (center_x + width * 0.12, y + height * 0.32),
-        (center_x + width * 0.05, y + height * 0.55),
-        (center_x, y + height * 0.70),
-        (center_x - width * 0.05, y + height * 0.55),
-        (center_x - width * 0.12, y + height * 0.32),
-        (center_x - width * 0.10, y + height * 0.12),
-    ]
-    pygame.draw.polygon(surface, armor_mid, body_inner)
-    pygame.draw.polygon(
-        surface,
-        armor_light,
-        [
-            (center_x, y + height * 0.08),
-            (center_x + width * 0.06, y + height * 0.18),
-            (center_x + width * 0.04, y + height * 0.48),
-            (center_x, y + height * 0.62),
-            (center_x - width * 0.04, y + height * 0.48),
-            (center_x - width * 0.06, y + height * 0.18),
-        ],
-    )
-
-    # ── Red optical sensor array (central "eye") ────────────────────────────
-    eye_y = y + height * 0.22
-    # Sensor housing (angular)
-    housing = [
-        (center_x - width * 0.08, eye_y - height * 0.04),
-        (center_x + width * 0.08, eye_y - height * 0.04),
-        (center_x + width * 0.06, eye_y + height * 0.06),
-        (center_x - width * 0.06, eye_y + height * 0.06),
-    ]
-    pygame.draw.polygon(surface, (20, 18, 22), housing)
-    # Glowing sensor core
-    draw_glow_circle(surface, (int(center_x), int(eye_y)), 8, sensor_red, 22)
-    draw_glow_circle(surface, (int(center_x), int(eye_y)), 4, sensor_glow, 14)
-    draw_glow_circle(surface, (int(center_x), int(eye_y)), 1, (255, 200, 180), 6)
-
-    # Secondary sensor dots
-    for sx, sy_f in [(center_x - width * 0.06, 0.12), (center_x + width * 0.06, 0.12)]:
-        draw_glow_circle(surface, (int(sx), int(y + height * sy_f)), 2, sensor_red, 6)
-
-    # Side weapon pods widen the readable threat profile without adding glow clutter.
+    # ── Engine bells capping the hull's top edge ──────────────────────────
     for side in (-1, 1):
-        pod_x = center_x + side * width * 0.34
+        tx = center_x + side * width * 0.11
         pygame.draw.polygon(
             surface,
             gunmetal,
             [
-                (pod_x - side * width * 0.05, y + height * 0.38),
-                (pod_x + side * width * 0.10, y + height * 0.42),
-                (pod_x + side * width * 0.12, y + height * 0.56),
-                (pod_x - side * width * 0.02, y + height * 0.55),
+                (tx - width * 0.05, y + height * 0.06),
+                (tx + width * 0.05, y + height * 0.06),
+                (tx + width * 0.04, y + height * 0.18),
+                (tx - width * 0.04, y + height * 0.18),
             ],
         )
         pygame.draw.line(
-            surface,
-            sensor_red,
-            (pod_x + side * width * 0.03, y + height * 0.48),
-            (pod_x + side * width * 0.12, y + height * 0.50),
-            1,
+            surface, armor_light, (tx - width * 0.05, y + height * 0.06), (tx + width * 0.05, y + height * 0.06), 1
         )
 
-    # ── Armor plate seams ───────────────────────────────────────────────────
-    for i in range(3):
-        line_y = y + height * (0.32 + i * 0.12)
-        pygame.draw.line(surface, armor_light, (center_x - width * 0.14, line_y), (center_x + width * 0.14, line_y), 1)
-
-    # ── Thruster nozzles (rear, angular) ────────────────────────────────────
-    for tx, ty in [(center_x - width * 0.06, y + height * 0.62), (center_x + width * 0.06, y + height * 0.62)]:
-        pygame.draw.polygon(
+    # ── Sensor head — armored brow over a glowing red slit ────────────────
+    eye_y = y + height * 0.735
+    pygame.draw.polygon(
+        surface,
+        void,
+        [
+            (center_x - width * 0.13, y + height * 0.60),
+            (center_x + width * 0.13, y + height * 0.60),
+            (center_x + width * 0.095, y + height * 0.70),
+            (center_x - width * 0.095, y + height * 0.70),
+        ],
+    )
+    for i, (color, alpha) in enumerate(((sensor_red, 60), (sensor_red, 140), (sensor_glow, 255))):
+        shrink = i * 0.30
+        pygame.draw.ellipse(
             surface,
-            (20, 18, 22),
-            [
-                (tx - width * 0.04, ty),
-                (tx + width * 0.04, ty),
-                (tx + width * 0.05, ty + height * 0.10),
-                (tx - width * 0.05, ty + height * 0.10),
-            ],
+            (*color, alpha),
+            (
+                int(center_x - width * 0.085 * (1 - shrink)),
+                int(eye_y - height * 0.025 * (1 - shrink)),
+                max(2, int(width * 0.17 * (1 - shrink))),
+                max(1, int(height * 0.05 * (1 - shrink))),
+            ),
         )
-        # Blue energy exhaust
-        for i in range(3):
-            flame_y = ty + height * 0.08 + i * height * 0.04
-            alpha = 160 - i * 45
-            pygame.draw.ellipse(
-                surface,
-                (40, 160, 255, alpha),
-                (int(tx - width * 0.03), int(flame_y), int(width * 0.06), int(height * 0.035)),
-            )
+    pygame.draw.circle(surface, (255, 215, 200), (int(center_x), int(eye_y)), 1)
+    # Chin plate under the sensor completes the nose.
+    pygame.draw.polygon(
+        surface,
+        armor_mid,
+        [
+            (center_x - width * 0.08, y + height * 0.76),
+            (center_x + width * 0.08, y + height * 0.76),
+            (center_x + width * 0.04, y + height * 0.84),
+            (center_x - width * 0.04, y + height * 0.84),
+        ],
+    )
 
 
 # ─── Elite Enemy (Golden Armored Commander) ─────────────────────────────
@@ -667,237 +705,253 @@ def draw_elite_enemy_ship(
 def _draw_elite_enemy_ship(
     surface: pygame.Surface, x: float, y: float, width: float = 65, height: float = 65, health_ratio: float = 1.0
 ) -> None:
-    """Elite Commander — reinforced angular armor with golden trim and amber energy core."""
+    """Elite Commander — heavy crescent armor, gold leading edges, amber reactor core.
+
+    Faces down-screen like the regular drone, but bulkier: swept-back command
+    horns, shoulder plates, and forward gun prongs flanking the chin.
+    """
     center_x = x + width / 2
     armor_dark, armor_mid, _armor_light, gold_trim, amber_core, amber_glow = _elite_colors(health_ratio)
     obsidian = (12, 10, 14)
     deep_red = (92, 24, 20)
 
-    # ── Energy shield aura (subtle outer glow) ──────────────────────────
-    shield_points = [
-        (center_x, y - height * 0.15),
-        (center_x + width * 0.45, y + height * 0.05),
-        (center_x + width * 0.50, y + height * 0.40),
-        (center_x + width * 0.20, y + height * 0.78),
-        (center_x, y + height * 0.88),
-        (center_x - width * 0.20, y + height * 0.78),
-        (center_x - width * 0.50, y + height * 0.40),
-        (center_x - width * 0.45, y + height * 0.05),
-    ]
-    pygame.draw.polygon(surface, (*amber_glow, 25), shield_points)
-
-    # Command crown and heavy shoulder plates make elites read as a higher tier.
-    crown = [
-        (center_x, y - height * 0.22),
-        (center_x + width * 0.18, y - height * 0.02),
-        (center_x + width * 0.10, y + height * 0.12),
-        (center_x, y + height * 0.04),
-        (center_x - width * 0.10, y + height * 0.12),
-        (center_x - width * 0.18, y - height * 0.02),
-    ]
-    pygame.draw.polygon(surface, obsidian, crown)
-    pygame.draw.line(surface, gold_trim, crown[0], crown[1], 2)
-    pygame.draw.line(surface, gold_trim, crown[0], crown[-1], 2)
-
+    # ── Heavy thruster plumes (top, trailing upward; bells drawn later) ───
     for side in (-1, 1):
-        shoulder = [
-            (center_x + side * width * 0.20, y + height * 0.16),
-            (center_x + side * width * 0.58, y + height * 0.08),
-            (center_x + side * width * 0.72, y + height * 0.25),
-            (center_x + side * width * 0.34, y + height * 0.34),
-        ]
-        pygame.draw.polygon(surface, obsidian, shoulder)
+        tx = center_x + side * width * 0.09
+        for i in range(4):
+            flame_y = y + height * (0.05 - i * 0.05)
+            flame_w = max(3, int(width * (0.10 - i * 0.017)))
+            pygame.draw.ellipse(
+                surface,
+                (255 - i * 18, 150 - i * 28, 30, 180 - i * 40),
+                (int(tx - flame_w // 2), int(flame_y), flame_w, max(2, int(height * 0.05))),
+            )
+
+    # ── Swept-back command horns (elite silhouette marker) ────────────────
+    for side in (-1, 1):
         pygame.draw.polygon(
             surface,
-            deep_red,
+            obsidian,
             [
-                (center_x + side * width * 0.28, y + height * 0.18),
-                (center_x + side * width * 0.56, y + height * 0.13),
-                (center_x + side * width * 0.62, y + height * 0.24),
-                (center_x + side * width * 0.36, y + height * 0.29),
+                (center_x + side * width * 0.04, y + height * 0.18),
+                (center_x + side * width * 0.10, y + height * 0.04),
+                (center_x + side * width * 0.22, y - height * 0.02),
+                (center_x + side * width * 0.16, y + height * 0.10),
+                (center_x + side * width * 0.08, y + height * 0.16),
             ],
         )
         pygame.draw.line(
             surface,
             gold_trim,
-            (center_x + side * width * 0.30, y + height * 0.18),
-            (center_x + side * width * 0.62, y + height * 0.15),
+            (center_x + side * width * 0.10, y + height * 0.06),
+            (center_x + side * width * 0.20, y + height * 0.00),
             2,
         )
 
-    # ── Reinforced angular wings (wider, heavier than regular) ──────────
-    # Left wing — broad angular blade
-    wing_left = [
-        (center_x - width * 0.06, y + height * 0.28),
-        (center_x - width * 0.12, y + height * 0.44),
-        (center_x - width * 0.08, y + height * 0.58),
-        (x - width * 0.48, y + height * 0.68),
-        (x - width * 0.38, y + height * 0.46),
-        (x - width * 0.42, y + height * 0.26),
-    ]
-    pygame.draw.polygon(surface, armor_dark, wing_left)
-    wing_left_inner = [
-        (center_x - width * 0.04, y + height * 0.32),
-        (center_x - width * 0.09, y + height * 0.46),
-        (center_x - width * 0.06, y + height * 0.54),
-        (x - width * 0.36, y + height * 0.63),
-        (x - width * 0.28, y + height * 0.46),
-        (x - width * 0.32, y + height * 0.30),
-    ]
-    pygame.draw.polygon(surface, armor_mid, wing_left_inner)
-    # Gold trim on wing edge
-    pygame.draw.line(
-        surface, gold_trim, (center_x - width * 0.06, y + height * 0.28), (x - width * 0.42, y + height * 0.26), 3
-    )
+    # ── Heavy crescent wings with gold leading edges ──────────────────────
+    for side in (-1, 1):
+        wing_outer = [
+            (center_x + side * width * 0.10, y + height * 0.26),
+            (center_x + side * width * 0.15, y + height * 0.50),
+            (center_x + side * width * 0.12, y + height * 0.64),
+            (center_x + side * width * 0.48, y + height * 0.62),
+            (center_x + side * width * 0.98, y + height * 0.50),
+            (center_x + side * width * 0.94, y + height * 0.24),
+            (center_x + side * width * 0.60, y + height * 0.18),
+            (center_x + side * width * 0.30, y + height * 0.15),
+        ]
+        pygame.draw.polygon(surface, obsidian, wing_outer)
+        wing_mid = [
+            (center_x + side * width * 0.15, y + height * 0.29),
+            (center_x + side * width * 0.19, y + height * 0.48),
+            (center_x + side * width * 0.17, y + height * 0.58),
+            (center_x + side * width * 0.47, y + height * 0.56),
+            (center_x + side * width * 0.87, y + height * 0.46),
+            (center_x + side * width * 0.83, y + height * 0.27),
+            (center_x + side * width * 0.57, y + height * 0.23),
+            (center_x + side * width * 0.31, y + height * 0.20),
+        ]
+        pygame.draw.polygon(surface, armor_dark, wing_mid)
+        wing_plate = [
+            (center_x + side * width * 0.21, y + height * 0.32),
+            (center_x + side * width * 0.24, y + height * 0.46),
+            (center_x + side * width * 0.22, y + height * 0.53),
+            (center_x + side * width * 0.45, y + height * 0.51),
+            (center_x + side * width * 0.74, y + height * 0.43),
+            (center_x + side * width * 0.71, y + height * 0.30),
+            (center_x + side * width * 0.52, y + height * 0.27),
+            (center_x + side * width * 0.32, y + height * 0.24),
+        ]
+        pygame.draw.polygon(surface, armor_mid, wing_plate)
+        # Gold leading edge — the elite signature.
+        pygame.draw.line(
+            surface,
+            gold_trim,
+            (center_x + side * width * 0.30, y + height * 0.17),
+            (center_x + side * width * 0.92, y + height * 0.27),
+            3,
+        )
+        pygame.draw.line(
+            surface,
+            obsidian,
+            (center_x + side * width * 0.26, y + height * 0.38),
+            (center_x + side * width * 0.70, y + height * 0.43),
+            1,
+        )
+        draw_glow_circle(
+            surface,
+            (int(center_x + side * width * 0.90), int(y + height * 0.36)),
+            2,
+            amber_core,
+            6,
+        )
 
-    # Right wing
-    wing_right = [
-        (center_x + width * 0.06, y + height * 0.28),
-        (center_x + width * 0.12, y + height * 0.44),
-        (center_x + width * 0.08, y + height * 0.58),
-        (x + width + width * 0.48, y + height * 0.68),
-        (x + width + width * 0.38, y + height * 0.46),
-        (x + width + width * 0.42, y + height * 0.26),
-    ]
-    pygame.draw.polygon(surface, armor_dark, wing_right)
-    wing_right_inner = [
-        (center_x + width * 0.04, y + height * 0.32),
-        (center_x + width * 0.09, y + height * 0.46),
-        (center_x + width * 0.06, y + height * 0.54),
-        (x + width + width * 0.36, y + height * 0.63),
-        (x + width + width * 0.28, y + height * 0.46),
-        (x + width + width * 0.32, y + height * 0.30),
-    ]
-    pygame.draw.polygon(surface, armor_mid, wing_right_inner)
-    pygame.draw.line(
-        surface,
-        gold_trim,
-        (center_x + width * 0.06, y + height * 0.28),
-        (x + width + width * 0.42, y + height * 0.26),
-        3,
-    )
+    # ── Shoulder plates at the wing roots ─────────────────────────────────
+    for side in (-1, 1):
+        pygame.draw.polygon(
+            surface,
+            obsidian,
+            [
+                (center_x + side * width * 0.16, y + height * 0.24),
+                (center_x + side * width * 0.34, y + height * 0.20),
+                (center_x + side * width * 0.40, y + height * 0.32),
+                (center_x + side * width * 0.22, y + height * 0.36),
+            ],
+        )
+        pygame.draw.polygon(
+            surface,
+            deep_red,
+            [
+                (center_x + side * width * 0.21, y + height * 0.26),
+                (center_x + side * width * 0.32, y + height * 0.24),
+                (center_x + side * width * 0.35, y + height * 0.30),
+                (center_x + side * width * 0.24, y + height * 0.32),
+            ],
+        )
+        pygame.draw.line(
+            surface,
+            gold_trim,
+            (center_x + side * width * 0.20, y + height * 0.26),
+            (center_x + side * width * 0.35, y + height * 0.23),
+            2,
+        )
 
-    # ── Central reinforced body (bulkier than regular) ──────────────────
-    body = [
-        (center_x, y - height * 0.08),
-        (center_x + width * 0.18, y + height * 0.06),
-        (center_x + width * 0.20, y + height * 0.34),
-        (center_x + width * 0.10, y + height * 0.62),
-        (center_x, y + height * 0.80),
-        (center_x - width * 0.10, y + height * 0.62),
-        (center_x - width * 0.20, y + height * 0.34),
-        (center_x - width * 0.18, y + height * 0.06),
+    # ── Bulky armored hull ────────────────────────────────────────────────
+    hull_outer = [
+        (center_x, y + height * 0.14),
+        (center_x + width * 0.18, y + height * 0.26),
+        (center_x + width * 0.20, y + height * 0.52),
+        (center_x + width * 0.12, y + height * 0.76),
+        (center_x, y + height * 0.90),
+        (center_x - width * 0.12, y + height * 0.76),
+        (center_x - width * 0.20, y + height * 0.52),
+        (center_x - width * 0.18, y + height * 0.26),
     ]
-    pygame.draw.polygon(surface, armor_dark, body)
-    body_inner = [
-        (center_x, y + height * 0.00),
-        (center_x + width * 0.13, y + height * 0.10),
-        (center_x + width * 0.15, y + height * 0.34),
-        (center_x + width * 0.07, y + height * 0.58),
-        (center_x, y + height * 0.72),
-        (center_x - width * 0.07, y + height * 0.58),
-        (center_x - width * 0.15, y + height * 0.34),
-        (center_x - width * 0.13, y + height * 0.10),
+    pygame.draw.polygon(surface, armor_dark, hull_outer)
+    hull_mid = [
+        (center_x, y + height * 0.20),
+        (center_x + width * 0.13, y + height * 0.30),
+        (center_x + width * 0.145, y + height * 0.52),
+        (center_x + width * 0.085, y + height * 0.70),
+        (center_x, y + height * 0.82),
+        (center_x - width * 0.085, y + height * 0.70),
+        (center_x - width * 0.145, y + height * 0.52),
+        (center_x - width * 0.13, y + height * 0.30),
     ]
-    pygame.draw.polygon(surface, armor_mid, body_inner)
-
+    pygame.draw.polygon(surface, armor_mid, hull_mid)
     # Central black armor spine for depth.
     pygame.draw.polygon(
         surface,
         obsidian,
         [
-            (center_x, y + height * 0.02),
-            (center_x + width * 0.05, y + height * 0.18),
+            (center_x, y + height * 0.26),
+            (center_x + width * 0.05, y + height * 0.36),
             (center_x + width * 0.04, y + height * 0.60),
-            (center_x, y + height * 0.76),
+            (center_x, y + height * 0.72),
             (center_x - width * 0.04, y + height * 0.60),
-            (center_x - width * 0.05, y + height * 0.18),
+            (center_x - width * 0.05, y + height * 0.36),
         ],
     )
-
-    # ── Gold chevron insignia (elite rank mark) ─────────────────────────
-    chevron_y = y + height * 0.40
-    chevron = [
-        (center_x, chevron_y - height * 0.08),
-        (center_x + width * 0.10, chevron_y + height * 0.04),
-        (center_x, chevron_y),
-        (center_x - width * 0.10, chevron_y + height * 0.04),
-    ]
-    pygame.draw.polygon(surface, gold_trim, chevron)
-    pygame.draw.polygon(surface, amber_core, chevron, 1)
-
-    # ── Amber energy core (replaces red sensor) ─────────────────────────
-    core_y = y + height * 0.20
-    # Core housing
-    housing = [
-        (center_x - width * 0.10, core_y - height * 0.06),
-        (center_x + width * 0.10, core_y - height * 0.06),
-        (center_x + width * 0.08, core_y + height * 0.08),
-        (center_x - width * 0.08, core_y + height * 0.08),
-    ]
-    pygame.draw.polygon(surface, (18, 18, 20), housing)
-    pygame.draw.polygon(surface, gold_trim, housing, 1)
-    # Glowing amber core
-    draw_glow_circle(surface, (int(center_x), int(core_y)), 9, amber_core, 26)
-    draw_glow_circle(surface, (int(center_x), int(core_y)), 5, amber_glow, 18)
-    draw_glow_circle(surface, (int(center_x), int(core_y)), 2, (255, 240, 180), 8)
-
-    # ── Secondary sensor nodes (golden) ─────────────────────────────────
-    for sx, sy_f in [(center_x - width * 0.07, 0.10), (center_x + width * 0.07, 0.10)]:
-        draw_glow_circle(surface, (int(sx), int(y + height * sy_f)), 2, amber_core, 6)
-
-    # Heavy side cannons.
+    # ── Engine bells capping the hull's top edge ──────────────────────────
     for side in (-1, 1):
-        cannon_x = center_x + side * width * 0.30
+        tx = center_x + side * width * 0.09
         pygame.draw.polygon(
             surface,
             obsidian,
             [
-                (cannon_x - side * width * 0.04, y + height * 0.43),
-                (cannon_x + side * width * 0.12, y + height * 0.47),
-                (cannon_x + side * width * 0.12, y + height * 0.62),
-                (cannon_x - side * width * 0.02, y + height * 0.60),
+                (tx - width * 0.065, y + height * 0.07),
+                (tx + width * 0.065, y + height * 0.07),
+                (tx + width * 0.05, y + height * 0.20),
+                (tx - width * 0.05, y + height * 0.20),
+            ],
+        )
+        pygame.draw.line(
+            surface, gold_trim, (tx - width * 0.065, y + height * 0.07), (tx + width * 0.065, y + height * 0.07), 1
+        )
+    # Gold chevron insignia above the core.
+    pygame.draw.polygon(
+        surface,
+        gold_trim,
+        [
+            (center_x, y + height * 0.30),
+            (center_x + width * 0.10, y + height * 0.38),
+            (center_x, y + height * 0.345),
+            (center_x - width * 0.10, y + height * 0.38),
+        ],
+    )
+    # Gold-lined panel seams.
+    for frac, half_w in ((0.44, 0.15), (0.72, 0.09)):
+        pygame.draw.line(
+            surface,
+            gold_trim,
+            (center_x - width * half_w, y + height * frac),
+            (center_x + width * half_w, y + height * frac),
+            1,
+        )
+
+    # ── Amber reactor core (chest, gold-ringed housing) ───────────────────
+    core_y = y + height * 0.58
+    housing = [
+        (center_x - width * 0.10, core_y - height * 0.05),
+        (center_x + width * 0.10, core_y - height * 0.05),
+        (center_x + width * 0.12, core_y + height * 0.02),
+        (center_x + width * 0.08, core_y + height * 0.09),
+        (center_x - width * 0.08, core_y + height * 0.09),
+        (center_x - width * 0.12, core_y + height * 0.02),
+    ]
+    pygame.draw.polygon(surface, obsidian, housing)
+    pygame.draw.polygon(surface, gold_trim, housing, 1)
+    draw_glow_circle(surface, (int(center_x), int(core_y + height * 0.02)), 7, amber_core, 22)
+    draw_glow_circle(surface, (int(center_x), int(core_y + height * 0.02)), 4, amber_glow, 14)
+    draw_glow_circle(surface, (int(center_x), int(core_y + height * 0.02)), 2, (255, 240, 180), 8)
+
+    # ── Forward gun prongs flanking the chin ──────────────────────────────
+    for side in (-1, 1):
+        prong_x = center_x + side * width * 0.28
+        pygame.draw.polygon(
+            surface,
+            obsidian,
+            [
+                (prong_x - side * width * 0.045, y + height * 0.66),
+                (prong_x + side * width * 0.055, y + height * 0.67),
+                (prong_x + side * width * 0.035, y + height * 0.86),
+                (prong_x - side * width * 0.03, y + height * 0.85),
             ],
         )
         pygame.draw.line(
             surface,
             gold_trim,
-            (cannon_x + side * width * 0.02, y + height * 0.52),
-            (cannon_x + side * width * 0.12, y + height * 0.54),
-            2,
+            (prong_x - side * width * 0.03, y + height * 0.82),
+            (prong_x + side * width * 0.035, y + height * 0.83),
+            1,
         )
-
-    # ── Armor plate seams (gold-lined) ──────────────────────────────────
-    for i in range(3):
-        line_y = y + height * (0.30 + i * 0.13)
-        pygame.draw.line(surface, gold_trim, (center_x - width * 0.16, line_y), (center_x + width * 0.16, line_y), 1)
-
-    # ── Twin heavy thrusters (orange exhaust) ───────────────────────────
-    for tx, ty in [(center_x - width * 0.08, y + height * 0.64), (center_x + width * 0.08, y + height * 0.64)]:
-        # Thruster housing
-        pygame.draw.polygon(
+        draw_glow_circle(
             surface,
-            (18, 18, 20),
-            [
-                (tx - width * 0.06, ty),
-                (tx + width * 0.06, ty),
-                (tx + width * 0.07, ty + height * 0.12),
-                (tx - width * 0.07, ty + height * 0.12),
-            ],
+            (int(prong_x + side * width * 0.005), int(y + height * 0.86)),
+            1,
+            amber_core,
+            5,
         )
-        # Gold thruster trim
-        pygame.draw.line(surface, gold_trim, (tx - width * 0.06, ty), (tx + width * 0.06, ty), 1)
-        # Orange/amber exhaust flames
-        for i in range(4):
-            flame_y = ty + height * 0.10 + i * height * 0.05
-            alpha = 180 - i * 40
-            r = 255 - i * 20
-            g = 140 - i * 25
-            pygame.draw.ellipse(
-                surface,
-                (r, g, 20, alpha),
-                (int(tx - width * 0.04), int(flame_y), int(width * 0.08), int(height * 0.04)),
-            )
 
 
 # ─── Boss (Armored Alien Dreadnought) ─────────────────────────────────────────
@@ -945,270 +999,302 @@ def draw_boss_ship(
 def _draw_boss_ship(
     surface: pygame.Surface, x: float, y: float, width: float = 120, height: float = 100, health_ratio: float = 1.0
 ) -> None:
-    """Armored alien dreadnought with a heavy hull, siege wings, and toxic energy cores."""
+    """Armored alien dreadnought — domed carapace, siege-cannon wings, bioluminescent eye.
+
+    The boss faces down-screen toward the player (matching its facing-vector
+    math): engine plumes trail at the top, the eye glares from the lower hull,
+    and the mandible gun pylons align with the muzzle-flash anchor points.
+    """
     center_x = x + width / 2
     hull_dark, hull_mid, hull_light, hull_highlight, bio_green, bio_bright = _boss_colors(health_ratio)
-    void = (10, 5, 14)
+    void = (24, 12, 30)
     rib_dark = (34, 12, 36)
 
-    # Broad upper carapace establishes a heavy silhouette before details are layered in.
-    crown_outer = [
-        (center_x, y - height * 0.20),
-        (center_x + width * 0.26, y - height * 0.02),
-        (center_x + width * 0.50, y + height * 0.18),
-        (center_x + width * 0.34, y + height * 0.38),
-        (center_x, y + height * 0.30),
-        (center_x - width * 0.34, y + height * 0.38),
-        (center_x - width * 0.50, y + height * 0.18),
-        (center_x - width * 0.26, y - height * 0.02),
-    ]
-    pygame.draw.polygon(surface, void, crown_outer)
-    crown_inner = [
-        (center_x, y - height * 0.10),
-        (center_x + width * 0.22, y + height * 0.04),
-        (center_x + width * 0.36, y + height * 0.18),
-        (center_x + width * 0.22, y + height * 0.28),
-        (center_x, y + height * 0.22),
-        (center_x - width * 0.22, y + height * 0.28),
-        (center_x - width * 0.36, y + height * 0.18),
-        (center_x - width * 0.22, y + height * 0.04),
-    ]
-    pygame.draw.polygon(surface, hull_dark, crown_inner)
-    pygame.draw.line(surface, hull_highlight, crown_outer[0], crown_outer[1], 2)
-    pygame.draw.line(surface, hull_highlight, crown_outer[0], crown_outer[-1], 2)
+    # ── Rear engine plumes (top, trailing upward; bells drawn later) ──────
+    for ex_frac, ey_frac in ((-0.20, 0.06), (0.20, 0.06), (0.0, -0.02)):
+        ex = center_x + width * ex_frac
+        ey = y + height * ey_frac
+        for i in range(3):
+            flame_y = ey + height * (0.05 - i * 0.05)
+            flame_w = max(3, int(width * (0.11 - i * 0.025)))
+            pygame.draw.ellipse(
+                surface,
+                (*bio_green, 130 - i * 40),
+                (int(ex - flame_w // 2), int(flame_y), flame_w, max(2, int(height * 0.055))),
+            )
 
-    # Lower mandible pylons replace loose appendages with a compact armored mass.
+    # ── Domed carapace (top armor shell) ──────────────────────────────────
+    carapace_outer = [
+        (center_x, y + height * 0.06),
+        (center_x + width * 0.22, y + height * 0.10),
+        (center_x + width * 0.42, y + height * 0.20),
+        (center_x + width * 0.52, y + height * 0.34),
+        (center_x + width * 0.44, y + height * 0.44),
+        (center_x, y + height * 0.38),
+        (center_x - width * 0.44, y + height * 0.44),
+        (center_x - width * 0.52, y + height * 0.34),
+        (center_x - width * 0.42, y + height * 0.20),
+        (center_x - width * 0.22, y + height * 0.10),
+    ]
+    pygame.draw.polygon(surface, void, carapace_outer)
+    carapace_mid = [
+        (center_x, y + height * 0.11),
+        (center_x + width * 0.19, y + height * 0.15),
+        (center_x + width * 0.35, y + height * 0.23),
+        (center_x + width * 0.43, y + height * 0.33),
+        (center_x + width * 0.37, y + height * 0.40),
+        (center_x, y + height * 0.35),
+        (center_x - width * 0.37, y + height * 0.40),
+        (center_x - width * 0.43, y + height * 0.33),
+        (center_x - width * 0.35, y + height * 0.23),
+        (center_x - width * 0.19, y + height * 0.15),
+    ]
+    pygame.draw.polygon(surface, hull_dark, carapace_mid)
+    carapace_top = [
+        (center_x, y + height * 0.16),
+        (center_x + width * 0.14, y + height * 0.19),
+        (center_x + width * 0.24, y + height * 0.25),
+        (center_x + width * 0.28, y + height * 0.31),
+        (center_x + width * 0.20, y + height * 0.35),
+        (center_x, y + height * 0.32),
+        (center_x - width * 0.20, y + height * 0.35),
+        (center_x - width * 0.28, y + height * 0.31),
+        (center_x - width * 0.24, y + height * 0.25),
+        (center_x - width * 0.14, y + height * 0.19),
+    ]
+    pygame.draw.polygon(surface, hull_mid, carapace_top)
+    # Rim light along the dome apex and plate seams radiating downward.
     for side in (-1, 1):
-        mandible_outer = [
-            (center_x + side * width * 0.18, y + height * 0.50),
-            (center_x + side * width * 0.48, y + height * 0.54),
-            (center_x + side * width * 0.56, y + height * 0.72),
-            (center_x + side * width * 0.34, y + height * 0.88),
-            (center_x + side * width * 0.16, y + height * 0.70),
-        ]
-        mandible_inner = [
-            (center_x + side * width * 0.23, y + height * 0.56),
-            (center_x + side * width * 0.42, y + height * 0.59),
-            (center_x + side * width * 0.46, y + height * 0.70),
-            (center_x + side * width * 0.32, y + height * 0.80),
-            (center_x + side * width * 0.22, y + height * 0.68),
-        ]
-        pygame.draw.polygon(surface, void, mandible_outer)
-        pygame.draw.polygon(surface, hull_mid, mandible_inner)
         pygame.draw.line(
             surface,
             hull_highlight,
-            (center_x + side * width * 0.26, y + height * 0.60),
-            (center_x + side * width * 0.46, y + height * 0.68),
+            (center_x, y + height * 0.065),
+            (center_x + side * width * 0.30, y + height * 0.14),
+            2,
+        )
+        pygame.draw.line(
+            surface,
+            rib_dark,
+            (center_x, y + height * 0.12),
+            (center_x + side * width * 0.25, y + height * 0.28),
+            1,
+        )
+        # Bioluminescent dots trace the carapace seams.
+        pygame.draw.circle(
+            surface,
+            (*bio_green, 90),
+            (int(center_x + side * width * 0.13), int(y + height * 0.20)),
             1,
         )
 
-    # Side siege cannons fill the boss silhouette and clarify its dangerous width.
-    for side in (-1, 1):
-        cannon_root_x = center_x + side * width * 0.30
-        cannon = [
-            (cannon_root_x, y + height * 0.31),
-            (cannon_root_x + side * width * 0.34, y + height * 0.25),
-            (cannon_root_x + side * width * 0.42, y + height * 0.40),
-            (cannon_root_x + side * width * 0.12, y + height * 0.52),
-        ]
-        pygame.draw.polygon(surface, void, cannon)
+    # ── Engine bells capping the carapace ─────────────────────────────────
+    for ex_frac, ey_frac in ((-0.20, 0.06), (0.20, 0.06), (0.0, -0.02)):
+        ex = center_x + width * ex_frac
+        ey = y + height * ey_frac
         pygame.draw.polygon(
             surface,
-            hull_mid,
+            void,
             [
-                (cannon_root_x + side * width * 0.04, y + height * 0.35),
-                (cannon_root_x + side * width * 0.26, y + height * 0.31),
-                (cannon_root_x + side * width * 0.32, y + height * 0.39),
-                (cannon_root_x + side * width * 0.10, y + height * 0.46),
+                (ex - width * 0.06, ey + height * 0.08),
+                (ex + width * 0.06, ey + height * 0.08),
+                (ex + width * 0.045, ey + height * 0.16),
+                (ex - width * 0.045, ey + height * 0.16),
             ],
         )
-        draw_glow_circle(
-            surface,
-            (int(cannon_root_x + side * width * 0.35), int(y + height * 0.39)),
-            3,
-            bio_green,
-            12,
-        )
+        draw_glow_circle(surface, (int(ex), int(ey + height * 0.09)), 3, bio_green, 8)
 
-    # ── Heavy siege wings ───────────────────────────────────────────────────
+    # ── Siege wings with downward-angled cannons ──────────────────────────
     for side in (-1, 1):
         wing_outer = [
-            (center_x + side * width * 0.28, y + height * 0.16),
-            (center_x + side * width * 0.52, y + height * 0.22),
-            (center_x + side * width * 0.93, y + height * 0.16),
+            (center_x + side * width * 0.34, y + height * 0.22),
+            (center_x + side * width * 0.58, y + height * 0.24),
+            (center_x + side * width * 0.95, y + height * 0.18),
             (center_x + side * width * 1.02, y + height * 0.34),
-            (center_x + side * width * 0.84, y + height * 0.58),
-            (center_x + side * width * 0.36, y + height * 0.64),
-            (center_x + side * width * 0.22, y + height * 0.42),
-        ]
-        wing_mid = [
-            (center_x + side * width * 0.32, y + height * 0.24),
-            (center_x + side * width * 0.56, y + height * 0.28),
-            (center_x + side * width * 0.80, y + height * 0.25),
-            (center_x + side * width * 0.88, y + height * 0.37),
-            (center_x + side * width * 0.70, y + height * 0.50),
-            (center_x + side * width * 0.38, y + height * 0.55),
-            (center_x + side * width * 0.28, y + height * 0.40),
-        ]
-        wing_plate = [
-            (center_x + side * width * 0.40, y + height * 0.31),
-            (center_x + side * width * 0.72, y + height * 0.30),
-            (center_x + side * width * 0.79, y + height * 0.38),
-            (center_x + side * width * 0.62, y + height * 0.46),
-            (center_x + side * width * 0.40, y + height * 0.48),
-            (center_x + side * width * 0.33, y + height * 0.39),
-        ]
-        rear_fin = [
-            (center_x + side * width * 0.34, y + height * 0.56),
-            (center_x + side * width * 0.72, y + height * 0.62),
-            (center_x + side * width * 0.62, y + height * 0.80),
-            (center_x + side * width * 0.28, y + height * 0.70),
+            (center_x + side * width * 0.90, y + height * 0.54),
+            (center_x + side * width * 0.48, y + height * 0.60),
+            (center_x + side * width * 0.30, y + height * 0.46),
         ]
         pygame.draw.polygon(surface, void, wing_outer)
+        wing_mid = [
+            (center_x + side * width * 0.38, y + height * 0.27),
+            (center_x + side * width * 0.57, y + height * 0.29),
+            (center_x + side * width * 0.86, y + height * 0.24),
+            (center_x + side * width * 0.92, y + height * 0.35),
+            (center_x + side * width * 0.82, y + height * 0.49),
+            (center_x + side * width * 0.48, y + height * 0.54),
+            (center_x + side * width * 0.35, y + height * 0.43),
+        ]
         pygame.draw.polygon(surface, hull_dark, wing_mid)
+        wing_plate = [
+            (center_x + side * width * 0.42, y + height * 0.32),
+            (center_x + side * width * 0.56, y + height * 0.33),
+            (center_x + side * width * 0.76, y + height * 0.30),
+            (center_x + side * width * 0.81, y + height * 0.37),
+            (center_x + side * width * 0.74, y + height * 0.45),
+            (center_x + side * width * 0.50, y + height * 0.48),
+            (center_x + side * width * 0.40, y + height * 0.41),
+        ]
         pygame.draw.polygon(surface, hull_mid, wing_plate)
-        pygame.draw.polygon(surface, hull_dark, rear_fin)
+        # Rim light on the wing's upper edge, plus a bio-lume strip.
         pygame.draw.line(
             surface,
             hull_highlight,
-            (center_x + side * width * 0.50, y + height * 0.25),
+            (center_x + side * width * 0.56, y + height * 0.27),
             (center_x + side * width * 0.90, y + height * 0.22),
             2,
         )
         pygame.draw.line(
             surface,
             bio_green,
-            (center_x + side * width * 0.46, y + height * 0.40),
-            (center_x + side * width * 0.73, y + height * 0.37),
+            (center_x + side * width * 0.48, y + height * 0.42),
+            (center_x + side * width * 0.72, y + height * 0.38),
             1,
         )
-
-        battery = [
-            (center_x + side * width * 0.62, y + height * 0.36),
-            (center_x + side * width * 0.82, y + height * 0.35),
-            (center_x + side * width * 0.86, y + height * 0.44),
-            (center_x + side * width * 0.66, y + height * 0.48),
-        ]
-        pygame.draw.polygon(surface, rib_dark, battery)
+        # Siege cannon barrel angled down toward the player.
+        barrel_x = center_x + side * width * 0.70
+        pygame.draw.polygon(
+            surface,
+            rib_dark,
+            [
+                (barrel_x - side * width * 0.05, y + height * 0.50),
+                (barrel_x + side * width * 0.06, y + height * 0.49),
+                (barrel_x + side * width * 0.08, y + height * 0.74),
+                (barrel_x - side * width * 0.03, y + height * 0.75),
+            ],
+        )
+        pygame.draw.line(
+            surface,
+            hull_highlight,
+            (barrel_x - side * width * 0.03, y + height * 0.71),
+            (barrel_x + side * width * 0.075, y + height * 0.70),
+            1,
+        )
         draw_glow_circle(
             surface,
-            (int(center_x + side * width * 0.82), int(y + height * 0.42)),
-            3,
+            (int(barrel_x + side * width * 0.025), int(y + height * 0.76)),
+            2,
             bio_green,
-            10,
+            8,
         )
 
-    # ── Giant organic hull ──────────────────────────────────────────────────
+    # ── Main hull teardrop with ribbed armor ──────────────────────────────
     hull = [
-        (center_x, y - height * 0.16),
-        (center_x + width * 0.24, y + height * 0.02),
-        (center_x + width * 0.36, y + height * 0.24),
-        (center_x + width * 0.34, y + height * 0.48),
-        (center_x + width * 0.22, y + height * 0.74),
+        (center_x, y + height * 0.34),
+        (center_x + width * 0.22, y + height * 0.42),
+        (center_x + width * 0.30, y + height * 0.58),
+        (center_x + width * 0.22, y + height * 0.78),
         (center_x + width * 0.10, y + height * 0.94),
-        (center_x, y + height * 1.04),
+        (center_x, y + height * 1.00),
         (center_x - width * 0.10, y + height * 0.94),
-        (center_x - width * 0.22, y + height * 0.74),
-        (center_x - width * 0.34, y + height * 0.48),
-        (center_x - width * 0.36, y + height * 0.24),
-        (center_x - width * 0.24, y + height * 0.02),
+        (center_x - width * 0.22, y + height * 0.78),
+        (center_x - width * 0.30, y + height * 0.58),
+        (center_x - width * 0.22, y + height * 0.42),
     ]
     pygame.draw.polygon(surface, hull_dark, hull)
-
-    # Inner organic armor plates
     hull_inner = [
-        (center_x, y - height * 0.03),
-        (center_x + width * 0.18, y + height * 0.12),
-        (center_x + width * 0.24, y + height * 0.34),
-        (center_x + width * 0.18, y + height * 0.58),
-        (center_x + width * 0.08, y + height * 0.78),
-        (center_x, y + height * 0.88),
-        (center_x - width * 0.08, y + height * 0.78),
-        (center_x - width * 0.18, y + height * 0.58),
-        (center_x - width * 0.24, y + height * 0.34),
-        (center_x - width * 0.18, y + height * 0.12),
+        (center_x, y + height * 0.40),
+        (center_x + width * 0.16, y + height * 0.47),
+        (center_x + width * 0.21, y + height * 0.60),
+        (center_x + width * 0.15, y + height * 0.76),
+        (center_x + width * 0.065, y + height * 0.88),
+        (center_x, y + height * 0.93),
+        (center_x - width * 0.065, y + height * 0.88),
+        (center_x - width * 0.15, y + height * 0.76),
+        (center_x - width * 0.21, y + height * 0.60),
+        (center_x - width * 0.16, y + height * 0.47),
     ]
     pygame.draw.polygon(surface, hull_mid, hull_inner)
+    # Dark chitin spine and rib seams across the lower hull.
     pygame.draw.polygon(
         surface,
         rib_dark,
         [
-            (center_x, y + height * 0.00),
-            (center_x + width * 0.10, y + height * 0.22),
-            (center_x + width * 0.09, y + height * 0.64),
-            (center_x, y + height * 0.88),
-            (center_x - width * 0.09, y + height * 0.64),
-            (center_x - width * 0.10, y + height * 0.22),
+            (center_x, y + height * 0.44),
+            (center_x + width * 0.07, y + height * 0.58),
+            (center_x + width * 0.05, y + height * 0.80),
+            (center_x, y + height * 0.90),
+            (center_x - width * 0.05, y + height * 0.80),
+            (center_x - width * 0.07, y + height * 0.58),
         ],
     )
+    for i in range(3):
+        line_y = y + height * (0.80 + i * 0.065)
+        half = width * (0.16 - i * 0.045)
+        pygame.draw.line(surface, rib_dark, (center_x - half, line_y), (center_x + half, line_y), 1)
+    # Flank highlight ridge (light from above-left).
+    pygame.draw.line(
+        surface,
+        hull_light,
+        (center_x - width * 0.10, y + height * 0.46),
+        (center_x - width * 0.14, y + height * 0.70),
+        2,
+    )
 
-    # Hull highlight ridge
-    ridge = [
-        (center_x, y + height * 0.02),
-        (center_x - width * 0.08, y + height * 0.36),
-        (center_x, y + height * 0.76),
-        (center_x + width * 0.08, y + height * 0.36),
-    ]
-    pygame.draw.polygon(surface, hull_light, ridge)
-
-    # Armored brow over the core eye.
+    # ── Armored brow and the great bioluminescent eye ─────────────────────
     brow = [
-        (center_x - width * 0.28, y + height * 0.21),
-        (center_x - width * 0.10, y + height * 0.12),
-        (center_x + width * 0.10, y + height * 0.12),
-        (center_x + width * 0.28, y + height * 0.21),
-        (center_x + width * 0.18, y + height * 0.31),
-        (center_x - width * 0.18, y + height * 0.31),
+        (center_x - width * 0.26, y + height * 0.52),
+        (center_x - width * 0.09, y + height * 0.46),
+        (center_x + width * 0.09, y + height * 0.46),
+        (center_x + width * 0.26, y + height * 0.52),
+        (center_x + width * 0.16, y + height * 0.60),
+        (center_x - width * 0.16, y + height * 0.60),
     ]
     pygame.draw.polygon(surface, void, brow)
     pygame.draw.line(surface, hull_highlight, brow[0], brow[1], 2)
     pygame.draw.line(surface, hull_highlight, brow[2], brow[3], 2)
 
-    # ── Central bioluminescent eye ───────────────────────────────────────────
-    eye_y = y + height * 0.32
-    draw_glow_circle(surface, (int(center_x), int(eye_y)), 16, bio_green, 42)
-    draw_glow_circle(surface, (int(center_x), int(eye_y)), 10, bio_bright, 28)
-    draw_glow_circle(surface, (int(center_x), int(eye_y)), 5, (220, 255, 180), 16)
-    draw_glow_circle(surface, (int(center_x), int(eye_y)), 2, (255, 255, 240), 8)
+    eye_y = y + height * 0.66
+    draw_glow_circle(surface, (int(center_x), int(eye_y)), 13, bio_green, 36)
+    draw_glow_circle(surface, (int(center_x), int(eye_y)), 8, bio_bright, 22)
+    # Vertical slit pupil gives the eye a predatory, reptilian read.
+    pygame.draw.ellipse(
+        surface,
+        (8, 18, 6),
+        (int(center_x - width * 0.022), int(eye_y - height * 0.05), max(2, int(width * 0.044)), int(height * 0.10)),
+    )
+    pygame.draw.circle(surface, (240, 255, 230), (int(center_x - width * 0.03), int(eye_y - height * 0.04)), 2)
 
-    # ── Secondary eyes (pairs flanking the central eye) ─────────────────────
+    # ── Secondary eyes flanking the great eye ─────────────────────────────
     for sx, sy_frac in [
-        (center_x - width * 0.14, 0.24),
-        (center_x + width * 0.14, 0.24),
-        (center_x - width * 0.08, 0.44),
-        (center_x + width * 0.08, 0.44),
+        (center_x - width * 0.17, 0.60),
+        (center_x + width * 0.17, 0.60),
+        (center_x - width * 0.10, 0.78),
+        (center_x + width * 0.10, 0.78),
     ]:
-        draw_glow_circle(surface, (int(sx), int(y + height * sy_frac)), 4, bio_green, 14)
-        draw_glow_circle(surface, (int(sx), int(y + height * sy_frac)), 2, bio_bright, 7)
+        draw_glow_circle(surface, (int(sx), int(y + height * sy_frac)), 3, bio_green, 10)
+        draw_glow_circle(surface, (int(sx), int(y + height * sy_frac)), 1, bio_bright, 5)
 
-    # ── Organic exhaust orifices (rear) ─────────────────────────────────────
-    exhaust_positions = [
-        (center_x - width * 0.20, y + height * 0.68),
-        (center_x + width * 0.20, y + height * 0.68),
-        (center_x - width * 0.10, y + height * 0.84),
-        (center_x + width * 0.10, y + height * 0.84),
-    ]
-    for ex, ey_pos in exhaust_positions:
-        draw_glow_circle(surface, (int(ex), int(ey_pos)), 5, bio_green, 16)
-        for i in range(4):
-            flame_y = ey_pos + height * 0.03 + i * height * 0.04
-            alpha = 160 - i * 35
-            pygame.draw.ellipse(
-                surface,
-                (*bio_green, alpha),
-                (int(ex - width * 0.03), int(flame_y), int(width * 0.06), int(height * 0.05)),
-            )
-
-    # ── Organic armor texture — horizontal chitin ridges ────────────────────
-    for i in range(5):
-        line_y = y + height * (0.15 + i * 0.10)
-        line_w = width * (0.26 - i * 0.035)
-        pygame.draw.line(surface, hull_highlight, (center_x - line_w, line_y), (center_x + line_w, line_y), 1)
-        # Small bioluminescent dots along ridges
-        dot_y = int(line_y)
-        for dot_x in [int(center_x - line_w * 0.7), int(center_x + line_w * 0.7)]:
-            pygame.draw.circle(surface, (*bio_green, 80), (dot_x, dot_y), 1)
+    # ── Mandible gun pylons (tips align with muzzle-flash anchors) ────────
+    for side in (-1, 1):
+        muzzle_x = center_x + side * width * 0.34
+        pygame.draw.polygon(
+            surface,
+            void,
+            [
+                (muzzle_x - side * width * 0.055, y + height * 0.70),
+                (muzzle_x + side * width * 0.055, y + height * 0.70),
+                (muzzle_x + side * width * 0.035, y + height * 1.04),
+                (muzzle_x - side * width * 0.035, y + height * 1.04),
+            ],
+        )
+        pygame.draw.polygon(
+            surface,
+            hull_mid,
+            [
+                (muzzle_x - side * width * 0.030, y + height * 0.74),
+                (muzzle_x + side * width * 0.030, y + height * 0.74),
+                (muzzle_x + side * width * 0.018, y + height * 0.98),
+                (muzzle_x - side * width * 0.018, y + height * 0.98),
+            ],
+        )
+        pygame.draw.line(
+            surface,
+            hull_highlight,
+            (muzzle_x - side * width * 0.033, y + height * 1.00),
+            (muzzle_x + side * width * 0.033, y + height * 1.00),
+            1,
+        )
+        draw_glow_circle(surface, (int(muzzle_x), int(y + height * 1.05)), 3, bio_green, 10)
 
 
 def prewarm_ship_sprite_caches(force: bool = False) -> None:
