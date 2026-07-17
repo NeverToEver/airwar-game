@@ -4,6 +4,7 @@ import logging
 
 import pygame
 
+from airwar.ui.scene_rendering_utils import render_cached_text
 from airwar.utils.fonts import get_cjk_font
 
 from ..constants import GAME_CONSTANTS
@@ -28,6 +29,7 @@ class NotificationManager:
         self.duration = duration
         pygame.font.init()
         self.notif_font = get_cjk_font(32)
+        self._text_cache: dict[str, tuple[str, pygame.Surface]] = {}
 
     def show(self, message: str, duration: int | None = None) -> None:
         self.current_notification = message
@@ -42,7 +44,9 @@ class NotificationManager:
             try:
                 alpha = min(255, self.timer * 4)
                 color = (0, 255, 150) if alpha > GAME_CONSTANTS.TIMING.NOTIFICATION_ALPHA_THRESHOLD else (150, 255, 200)
-                text = self.notif_font.render(self.current_notification, True, color)
+                text = render_cached_text(
+                    self.notif_font, self.current_notification, color, f"notification_{color}", self._text_cache
+                )
                 text.set_alpha(alpha)
                 x = surface.get_width() // 2 - text.get_width() // 2
                 # Clamp to screen edges so CJK text doesn't overflow

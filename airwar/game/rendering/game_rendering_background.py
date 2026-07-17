@@ -17,6 +17,14 @@ class _LayerConfig(TypedDict):
     color_brightness: int
 
 
+# Shared sine lookup table for all star/dust layers (one table instead of
+# one per layer instance).
+_SIN_TABLE_SIZE = 1024
+_SIN_TABLE = [math.sin(math.tau * i / _SIN_TABLE_SIZE) for i in range(_SIN_TABLE_SIZE)]
+_SIN_TABLE_MASK = _SIN_TABLE_SIZE - 1
+_SIN_TABLE_SCALE = _SIN_TABLE_SIZE / math.tau
+
+
 class SpaceBackground:
     """Space game background with parallax starfield and nebula hints.
 
@@ -164,9 +172,9 @@ class StarLayer:
         self._scroll_offset = 0.0
         self._stars: list[dict] = []
         self._glow_cache: dict = {}
-        self._sin_table_size = 1024
-        self._sin_table = [math.sin(math.tau * i / self._sin_table_size) for i in range(self._sin_table_size)]
-        self._sin_table_mask = self._sin_table_size - 1
+        self._sin_table_size = _SIN_TABLE_SIZE
+        self._sin_table = _SIN_TABLE
+        self._sin_table_mask = _SIN_TABLE_MASK
         self._init_stars(screen_width, screen_height, count)
 
     def _init_stars(self, screen_width: int, screen_height: int, count: int) -> None:
@@ -357,7 +365,7 @@ class DustLayer:
             x = int(d["x"] * self._screen_width)
             y = int(d["y"] * self._screen_height)
 
-            pulse = math.sin(time * d["pulse_speed"] + d["pulse_offset"])
+            pulse = _SIN_TABLE[int((time * d["pulse_speed"] + d["pulse_offset"]) * _SIN_TABLE_SCALE) & _SIN_TABLE_MASK]
             alpha = int(d["alpha"] * (self.DUST_PULSE_ALPHA_BASE + self.DUST_PULSE_ALPHA_AMP * pulse))
             size = max(1, int(d["size"] * (self.DUST_PULSE_SIZE_BASE + self.DUST_PULSE_SIZE_AMP * pulse)))
 

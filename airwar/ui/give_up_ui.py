@@ -8,6 +8,7 @@ from airwar.config.design_tokens import SceneColors, SystemColors, SystemLayout,
 from airwar.utils.fonts import get_cjk_font
 
 from .chamfered_panel import draw_chamfered_panel
+from .scene_rendering_utils import render_cached_text
 
 
 class GiveUpUI:
@@ -38,6 +39,7 @@ class GiveUpUI:
 
         pygame.font.init()
         self._font = get_cjk_font(self._tokens.typography.BODY_SIZE)
+        self._text_cache: dict[str, tuple[str, pygame.Surface]] = {}
 
     def show(self) -> None:
         self._visible = True
@@ -71,7 +73,7 @@ class GiveUpUI:
 
     def _render_glow_text(self, surface: pygame.Surface, center_x: int, y: int, alpha: int) -> None:
         """Render text in military style."""
-        text = self._font.render("投降", True, SceneColors.DANGER_RED)
+        text = render_cached_text(self._font, "投降", SceneColors.DANGER_RED, "title_themed", self._text_cache)
         text.set_alpha(alpha)
         text_rect = text.get_rect(center=(center_x, y))
         surface.blit(text, text_rect)
@@ -110,7 +112,7 @@ class GiveUpUI:
             )
 
     def _render_text(self, surface: pygame.Surface, center_x: int, y: int, alpha: int) -> None:
-        text = self._font.render("投降", True, self._text_color)
+        text = render_cached_text(self._font, "投降", self._text_color, "title_plain", self._text_cache)
         text.set_alpha(alpha)
         text_rect = text.get_rect(center=(center_x, y))
         surface.blit(text, text_rect)

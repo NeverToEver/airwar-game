@@ -7,6 +7,7 @@ from typing import Any
 import pygame
 
 from airwar.config.design_tokens import SystemColors, SystemLayout, get_design_tokens
+from airwar.ui.scene_rendering_utils import render_cached_text
 from airwar.utils.fonts import get_cjk_font
 
 
@@ -119,6 +120,7 @@ class BoostGauge:
         self._text_color = c.TEXT_MUTED
         self._text_bright = c.TEXT_PRIMARY
         self._fonts: dict = {}
+        self._text_cache: dict[str, tuple[str, pygame.Surface]] = {}
         self._bg_cache = None
         self._arc_cache = None
         self._arc_cache_key: tuple[Any, ...] = (0, 0)
@@ -370,12 +372,12 @@ class BoostGauge:
         """Title, value, min/max, and BOOSTING indicator."""
         title_font = self._get_font(self.LABEL_TITLE_FONT_SIZE)
         label_color = self._cooldown_color if cooldown else self._text_color
-        title = title_font.render("加速燃料", True, label_color)
+        title = render_cached_text(title_font, "加速燃料", label_color, f"title_{label_color}", self._text_cache)
         surface.blit(title, title.get_rect(center=(cx, cy + self.LABEL_TITLE_Y_OFFSET)))
 
         val_font = self._get_font(self.LABEL_VALUE_FONT_SIZE)
         val_color = self._cooldown_color if cooldown else self._text_bright if active else self._text_color
-        val = val_font.render(str(int(current)), True, val_color)
+        val = render_cached_text(val_font, str(int(current)), val_color, f"value_{val_color}", self._text_cache)
         surface.blit(val, val.get_rect(center=(cx, cy + self.LABEL_VALUE_Y_OFFSET)))
 
         tiny = self._get_font(self.LABEL_TINY_FONT_SIZE)
@@ -383,11 +385,11 @@ class BoostGauge:
         rad_end = math.radians(self.ARC_END_DEG)
         lr = r + self.LABEL_EXTRA_RADIUS
 
-        zero = tiny.render("0", True, self._text_color)
+        zero = render_cached_text(tiny, "0", self._text_color, "min", self._text_cache)
         lx, ly = cx + math.cos(rad_start) * lr, cy - math.sin(rad_start) * lr
         surface.blit(zero, zero.get_rect(center=(lx, ly)))
 
-        full = tiny.render(f"{int(max_val)}", True, self._text_color)
+        full = render_cached_text(tiny, f"{int(max_val)}", self._text_color, "max", self._text_cache)
         rx, ry = cx + math.cos(rad_end) * lr, cy - math.sin(rad_end) * lr
         surface.blit(full, full.get_rect(center=(rx, ry)))
 
@@ -402,5 +404,5 @@ class BoostGauge:
             else:
                 text = "加速中"
                 color = self._needle_active
-            at = af.render(text, True, (*color, self.LABEL_ACTIVE_ALPHA))
+            at = render_cached_text(af, text, (*color, self.LABEL_ACTIVE_ALPHA), "state", self._text_cache)
             surface.blit(at, at.get_rect(center=(cx, cy + self.LABEL_ACTIVE_Y_OFFSET)))

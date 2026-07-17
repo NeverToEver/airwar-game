@@ -5,6 +5,7 @@ from typing import Any
 import pygame
 
 from airwar.config.design_tokens import SystemColors, SystemUI
+from airwar.ui.scene_rendering_utils import render_cached_text
 from airwar.utils.fonts import get_cjk_font
 
 
@@ -194,6 +195,7 @@ class BossHealthBar:
         self.height = height
         self.segment_count = 8  # 8 段 (每段 12.5%)
         self._default_font = get_cjk_font(20)
+        self._text_cache: dict[str, tuple[str, pygame.Surface]] = {}
         self.progress_bar = SegmentedProgressBar(
             width - 24,  # 减去标签宽度
             height - 8,
@@ -262,19 +264,19 @@ class BossHealthBar:
 
         # 绘制百分比
         percent_text = f"{int(ratio * 100)}%"
-        text_surf = font.render(percent_text, True, SystemColors.TEXT_PRIMARY)
+        text_surf = render_cached_text(font, percent_text, SystemColors.TEXT_PRIMARY, "percent", self._text_cache)
         text_rect = text_surf.get_rect(right=bar_x + self.width - label_width - 10, centery=y + self.height // 2)
         surface.blit(text_surf, text_rect)
 
         # 绘制阶段指示器
         if total_phases > 1:
             phase_text = f"阶段 {current_phase}/{total_phases}"
-            phase_surf = font.render(phase_text, True, SystemColors.AMBER_DIM)
+            phase_surf = render_cached_text(font, phase_text, SystemColors.AMBER_DIM, "phase", self._text_cache)
             phase_rect = phase_surf.get_rect(left=bar_x + 8, top=y - 22)
             surface.blit(phase_surf, phase_rect)
 
         # 绘制 Boss 名称
         if boss_name:
-            name_surf = font.render(boss_name, True, SystemColors.TEXT_PRIMARY)
+            name_surf = render_cached_text(font, boss_name, SystemColors.TEXT_PRIMARY, "boss_name", self._text_cache)
             name_rect = name_surf.get_rect(left=bar_x, centery=y + self.height // 2)
             surface.blit(name_surf, name_rect)

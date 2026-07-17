@@ -16,7 +16,7 @@ from airwar.utils.fonts import get_cjk_font
 from .buff_display import get_buff_display_name
 from .chamfered_panel import draw_chamfered_panel
 from .hex_icon import ICON_DEFENSE, ICON_POWER, ICON_SPEED, HexIcon
-from .scene_rendering_utils import fit_text_to_width
+from .scene_rendering_utils import fit_text_to_width, render_cached_text
 
 logger = logging.getLogger(__name__)
 
@@ -240,6 +240,8 @@ class BuffStatsPanel:
         self._aggregator = BuffStatsAggregator(buff_factory=buff_factory or create_buff)
         self._cached_surface: pygame.Surface | None = None
         self._cache_valid = False
+        self._text_cache: dict[str, tuple[str, pygame.Surface]] = {}
+        self._content_surf: pygame.Surface | None = None
 
     def _calculate_panel_height(self, buff_count: int) -> int:
         if buff_count == 0:
@@ -407,13 +409,16 @@ class BuffStatsPanel:
             chamfer_depth=8,
         )
 
-        # Render content on a separate surface
-        content_surf = pygame.Surface((panel_width, panel_height), pygame.SRCALPHA)
+        # Render content on a separate surface (reused across frames, cleared each frame)
+        content_size = (panel_width, panel_height)
+        if self._content_surf is None or self._content_surf.get_size() != content_size:
+            self._content_surf = pygame.Surface(content_size, pygame.SRCALPHA)
+        content_surf = self._content_surf
         content_surf.fill((0, 0, 0, 0))
 
         # Title
         title_font = get_cjk_font(SystemUI.MILITARY_LABEL_SIZE)
-        title = title_font.render("增益", True, SystemColors.TEXT_DIM)
+        title = render_cached_text(title_font, "增益", SystemColors.TEXT_DIM, "title", self._text_cache)
         title_rect = title.get_rect(centerx=panel_width // 2, top=10)
         content_surf.blit(title, title_rect)
 
@@ -498,6 +503,10 @@ class AttackModePanel:
         self._colors = SystemColors
         self._font = get_cjk_font(SystemUI.MILITARY_LABEL_SIZE)
         self._name_font = get_cjk_font(SystemUI.MILITARY_LABEL_SIZE)
+        self._text_cache: dict[str, tuple[str, pygame.Surface]] = {}
+        self._content_surf: pygame.Surface | None = None
+        self._glow_surfs: dict[tuple[int, int, int], pygame.Surface] = {}
+        self._hexagon_cache: dict[tuple[int, tuple[int, int, int]], pygame.Surface] = {}
 
     def render(self, surface: pygame.Surface, reward_system, screen_width: int, screen_height: int) -> None:
         if not reward_system:
@@ -533,11 +542,14 @@ class AttackModePanel:
             chamfer_depth=5,
         )
 
-        content_surf = pygame.Surface((panel_width, self.PANEL_HEIGHT), pygame.SRCALPHA)
+        content_size = (panel_width, self.PANEL_HEIGHT)
+        if self._content_surf is None or self._content_surf.get_size() != content_size:
+            self._content_surf = pygame.Surface(content_size, pygame.SRCALPHA)
+        content_surf = self._content_surf
         content_surf.fill((0, 0, 0, 0))
 
         # Title
-        title = self._font.render("攻击", True, SystemColors.TEXT_BRIGHT)
+        title = render_cached_text(self._font, "攻击", SystemColors.TEXT_BRIGHT, "title", self._text_cache)
         title_rect = title.get_rect(left=12, top=6)
         content_surf.blit(title, title_rect)
 
@@ -553,12 +565,15 @@ class AttackModePanel:
 
             # Glow when on
             if entry.is_on:
-                glow_surf = pygame.Surface((self.LIGHT_SIZE * 4 + 8, self.LIGHT_SIZE * 4 + 8), pygame.SRCALPHA)
-                for r in range(self.LIGHT_SIZE + 4, 1, -2):
-                    alpha = max(0, 70 - (r - 1) * 5)
-                    pygame.draw.circle(
-                        glow_surf, (*color_on, alpha), (self.LIGHT_SIZE * 2 + 4, self.LIGHT_SIZE * 2 + 4), r
-                    )
+                glow_surf = self._glow_surfs.get(color_on)
+                if glow_surf is None:
+                    glow_surf = pygame.Surface((self.LIGHT_SIZE * 4 + 8, self.LIGHT_SIZE * 4 + 8), pygame.SRCALPHA)
+                    for r in range(self.LIGHT_SIZE + 4, 1, -2):
+                        alpha = max(0, 70 - (r - 1) * 5)
+                        pygame.draw.circle(
+                            glow_surf, (*color_on, alpha), (self.LIGHT_SIZE * 2 + 4, self.LIGHT_SIZE * 2 + 4), r
+                        )
+                    self._glow_surfs[color_on] = glow_surf
                 content_surf.blit(glow_surf, (cx - self.LIGHT_SIZE * 2 - 4, hex_center_y - self.LIGHT_SIZE * 2 - 4))
 
             # Hexagon indicator
@@ -568,13 +583,18 @@ class AttackModePanel:
 
             # Label below hexagon
             label_color = color_on if entry.is_on else (110, 110, 120)
-            label = self._name_font.render(entry.short_name, True, label_color)
+            label_key = f"mode_{entry.short_name}_{entry.is_on}"
+            label = render_cached_text(self._name_font, entry.short_name, label_color, label_key, self._text_cache)
             label_rect = label.get_rect(centerx=cx, top=label_top_y)
             content_surf.blit(label, label_rect)
 
         surface.blit(content_surf, (panel_x, panel_y))
 
     def _draw_hexagon(self, size: int, color: tuple[int, int, int]) -> pygame.Surface:
+        key = (size, color)
+        cached = self._hexagon_cache.get(key)
+        if cached is not None:
+            return cached
         surf = pygame.Surface((size * 2, size * 2), pygame.SRCALPHA)
         cx, cy = size, size
         points = []
@@ -591,4 +611,5 @@ class AttackModePanel:
             py = cy + (size - 3) * math.sin(angle)
             inner.append((px, py))
         pygame.draw.polygon(surf, (30, 30, 40), inner)
+        self._hexagon_cache[key] = surf
         return surf

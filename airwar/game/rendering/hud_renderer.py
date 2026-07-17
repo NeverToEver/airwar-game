@@ -89,6 +89,7 @@ class HUDRenderer:
         self._boss_hurry_font = get_cjk_font(self.BOSS_HURRY_FONT_SIZE)
         self._buff_stats_panel = BuffStatsPanel(buff_factory=create_buff)
         self._attack_mode_panel = AttackModePanel()
+        self._boss_bar: BossHealthBar | None = None
         self._text_cache: dict = {}
 
     def _render_value(self, font, text, color, cache_key: str):
@@ -170,7 +171,7 @@ class HUDRenderer:
             colors = self._tokens.colors
             alpha = min(255, timer * 4)
             color = colors.INFO if alpha > GAME_CONSTANTS.TIMING.NOTIFICATION_ALPHA_THRESHOLD else (150, 255, 200)
-            text = self.notif_font.render(notification, True, color)
+            text = self._render_value(self.notif_font, notification, color, f"notification_{color}")
             text.set_alpha(alpha)
             x = surface.get_width() // 2 - text.get_width() // 2
             y = self.NOTIFICATION_Y
@@ -252,7 +253,7 @@ class HUDRenderer:
             tick = pygame.time.get_ticks() * self.HURRY_PULSE_SPEED
             pulse = abs(math.sin(tick)) * self.HURRY_PULSE_AMP + self.HURRY_PULSE_BASE
             alpha = int(200 * pulse)
-            hurry_text = self._boss_hurry_font.render("逃跑中!", True, self.HURRY_COLOR)
+            hurry_text = self._render_value(self._boss_hurry_font, "逃跑中!", self.HURRY_COLOR, "boss_hurry")
             hurry_text.set_alpha(alpha)
             hurry_rect = hurry_text.get_rect(midtop=(x + bar_width // 2, y + timer_panel_h + 6))
             surface.blit(hurry_text, hurry_rect)
@@ -278,8 +279,10 @@ class HUDRenderer:
             chamfer_depth=8,
         )
 
-        # Draw segmented progress bar
-        boss_bar = BossHealthBar(bar_width, bar_height)
+        # Draw segmented progress bar — instance is reused so its text/surface caches stay warm
+        if self._boss_bar is None or (self._boss_bar.width, self._boss_bar.height) != (bar_width, bar_height):
+            self._boss_bar = BossHealthBar(bar_width, bar_height)
+        boss_bar = self._boss_bar
         font = self._boss_label_font
 
         # Determine boss name

@@ -13,6 +13,73 @@ from airwar.utils.responsive import ResponsiveHelper
 
 from .chamfered_panel import draw_chamfered_panel
 
+_GLOW_TEXT_CACHE_MAX_SIZE = 64
+_glow_text_cache: dict[tuple, pygame.Surface] = {}
+_themed_title_cache: dict[tuple, pygame.Surface] = {}
+
+
+def _store_bounded(cache: dict, key, surface: pygame.Surface) -> None:
+    if len(cache) >= _GLOW_TEXT_CACHE_MAX_SIZE:
+        cache.clear()
+    cache[key] = surface
+
+
+def get_glow_text_surface(
+    font: pygame.font.Font,
+    text: str,
+    color: Sequence[int],
+    glow_color: Sequence[int],
+    glow_radius: int,
+    glow_offset: float,
+    alpha_divisor: float,
+) -> pygame.Surface:
+    """Pre-composed glow layers + main text, cached per unique parameter set.
+
+    The main text is centered in the returned surface, so callers can blit it
+    with ``get_rect(center=pos)`` exactly like a freshly rendered text surface.
+    """
+    key = (text, font, tuple(color), tuple(glow_color), glow_radius, glow_offset, alpha_divisor)
+    composed = _glow_text_cache.get(key)
+    if composed is None:
+        main_text = font.render(text, True, color)
+        text_w, text_h = main_text.get_size()
+        pad = -(-glow_radius * glow_offset // 1)  # ceil for positive numbers
+        composed = pygame.Surface((text_w, int(text_h + 2 * pad)), pygame.SRCALPHA)
+        anchor = composed.get_rect().center
+        for i in range(glow_radius, 0, -1):
+            glow_surf = font.render(text, True, glow_color)
+            glow_surf.set_alpha(int(alpha_divisor / i))
+            composed.blit(glow_surf, glow_surf.get_rect(center=(anchor[0], anchor[1] + i * glow_offset)))
+        composed.blit(main_text, main_text.get_rect(center=anchor))
+        _store_bounded(_glow_text_cache, key, composed)
+    return composed
+
+
+def get_themed_title_surface(font: pygame.font.Font, text: str) -> pygame.Surface:
+    """Pre-composed military-style layered amber glow title, centered (cached)."""
+    key = (text, font)
+    composed = _themed_title_cache.get(key)
+    if composed is None:
+        main_text = font.render(text, True, SceneColors.GOLD_PRIMARY)
+        text_w, text_h = main_text.get_size()
+        pad = 4
+        composed = pygame.Surface((text_w + 2 * pad, text_h + 2 * pad), pygame.SRCALPHA)
+        anchor = composed.get_rect().center
+        for blur, alpha, color in [
+            (4, 20, SceneColors.GOLD_DIM),
+            (2, 35, SceneColors.GOLD_PRIMARY),
+        ]:
+            glow_surf = font.render(text, True, color)
+            glow_surf.set_alpha(alpha)
+            for offset_x in range(-blur, blur + 1, 2):
+                for offset_y in range(-blur, blur + 1, 2):
+                    if offset_x * offset_x + offset_y * offset_y <= blur * blur:
+                        glow_rect = glow_surf.get_rect(center=(anchor[0] + offset_x, anchor[1] + offset_y))
+                        composed.blit(glow_surf, glow_rect)
+        composed.blit(main_text, main_text.get_rect(center=anchor))
+        _store_bounded(_themed_title_cache, key, composed)
+    return composed
+
 
 def draw_centered_option_box(
     surface: pygame.Surface,
@@ -217,15 +284,8 @@ class SceneRenderingUtils:
             glow_offset: Vertical offset multiplier per layer (i * glow_offset).
             alpha_divisor: Base alpha value divided by layer index (alpha_divisor / i).
         """
-        for i in range(glow_radius, 0, -1):
-            alpha = int(alpha_divisor / i)
-            glow_surf = font.render(text, True, glow_color)
-            glow_surf.set_alpha(alpha)
-            glow_rect = glow_surf.get_rect(center=(pos[0], pos[1] + i * glow_offset))
-            surface.blit(glow_surf, glow_rect)
-
-        main_text = font.render(text, True, color)
-        surface.blit(main_text, main_text.get_rect(center=pos))
+        composed = get_glow_text_surface(font, text, color, glow_color, glow_radius, glow_offset, alpha_divisor)
+        surface.blit(composed, composed.get_rect(center=pos))
 
     @staticmethod
     def draw_option_box(
@@ -348,20 +408,8 @@ def draw_themed_title(
         font: Pygame font object.
         pos: (x, y) center position for the text.
     """
-    for blur, alpha, color in [
-        (4, 20, SceneColors.GOLD_DIM),
-        (2, 35, SceneColors.GOLD_PRIMARY),
-    ]:
-        glow_surf = font.render(text, True, color)
-        glow_surf.set_alpha(alpha)
-        for offset_x in range(-blur, blur + 1, 2):
-            for offset_y in range(-blur, blur + 1, 2):
-                if offset_x * offset_x + offset_y * offset_y <= blur * blur:
-                    glow_rect = glow_surf.get_rect(center=(pos[0] + offset_x, pos[1] + offset_y))
-                    surface.blit(glow_surf, glow_rect)
-
-    title = font.render(text, True, SceneColors.GOLD_PRIMARY)
-    surface.blit(title, title.get_rect(center=pos))
+    composed = get_themed_title_surface(font, text)
+    surface.blit(composed, composed.get_rect(center=pos))
 
 
 def draw_themed_decorations(

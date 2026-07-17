@@ -193,6 +193,10 @@ class AggressiveMovement(MovementStrategy):
         enemy.sync_rects()
 
 
+_SMOOTH_NOISE_CACHE_MAX_SIZE = 512
+_smooth_noise_cache: dict[tuple[int, int], tuple[float, float]] = {}
+
+
 def _smooth_noise(x: float, seed: int) -> float:
     """Smooth continuous noise function using cosine interpolation.
 
@@ -201,18 +205,22 @@ def _smooth_noise(x: float, seed: int) -> float:
     int_x = int(x)
     frac_x = x - int_x
 
-    v1 = math.sin(int_x * 1.0 + seed * 0.1) * 0.5
-    v2 = math.sin(int_x * 2.3 + seed * 0.2) * 0.3
-    v3 = math.sin(int_x * 4.7 + seed * 0.3) * 0.2
-    v4 = math.sin((int_x + 1) * 1.0 + seed * 0.1) * 0.5
-    v5 = math.sin((int_x + 1) * 2.3 + seed * 0.2) * 0.3
-    v6 = math.sin((int_x + 1) * 4.7 + seed * 0.3) * 0.2
+    cache_key = (int_x, seed)
+    endpoints = _smooth_noise_cache.get(cache_key)
+    if endpoints is None:
+        v1 = math.sin(int_x * 1.0 + seed * 0.1) * 0.5
+        v2 = math.sin(int_x * 2.3 + seed * 0.2) * 0.3
+        v3 = math.sin(int_x * 4.7 + seed * 0.3) * 0.2
+        v4 = math.sin((int_x + 1) * 1.0 + seed * 0.1) * 0.5
+        v5 = math.sin((int_x + 1) * 2.3 + seed * 0.2) * 0.3
+        v6 = math.sin((int_x + 1) * 4.7 + seed * 0.3) * 0.2
+        endpoints = (v1 + v2 + v3, v4 + v5 + v6)
+        if len(_smooth_noise_cache) >= _SMOOTH_NOISE_CACHE_MAX_SIZE:
+            _smooth_noise_cache.clear()
+        _smooth_noise_cache[cache_key] = endpoints
 
     t = 0.5 - 0.5 * math.cos(frac_x * math.pi)
-    val0 = v1 + v2 + v3
-    val1 = v4 + v5 + v6
-
-    result = val0 + (val1 - val0) * t
+    result = endpoints[0] + (endpoints[1] - endpoints[0]) * t
     return max(-1.0, min(1.0, result * 1.2))
 
 

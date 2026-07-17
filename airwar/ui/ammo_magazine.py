@@ -6,6 +6,7 @@ import math
 import pygame
 
 from airwar.config.design_tokens import SystemColors
+from airwar.ui.scene_rendering_utils import render_cached_text
 from airwar.utils.fonts import get_cjk_font
 
 
@@ -82,6 +83,8 @@ class AmmoMagazine:
     COMPACT_SCALE = 0.82
     COMPACT_HEIGHT_THRESHOLD = 760
 
+    _CELL_CACHE_MAX = 64
+
     def __init__(self):
         self._frame_color = self.FRAME_COLOR
         self._frame_border = self.FRAME_BORDER_COLOR
@@ -98,6 +101,13 @@ class AmmoMagazine:
         self._frame_cache = None
         self._frame_cache_key = (0, 0)
         self._pulse_phase = 0.0
+        self._text_cache: dict[str, tuple[str, pygame.Surface]] = {}
+        self._cell_cache: dict[tuple, pygame.Surface] = {}
+
+    def _store_cell_surf(self, key: tuple, surf: pygame.Surface) -> None:
+        if len(self._cell_cache) >= self._CELL_CACHE_MAX:
+            self._cell_cache.clear()
+        self._cell_cache[key] = surf
 
     @property
     def frame_width(self) -> int:
@@ -257,7 +267,7 @@ class AmmoMagazine:
         surface.blit(self._frame_cache, (fx, fy))
 
         # Header label
-        label = label_font.render("母舰", True, self._text_color)
+        label = render_cached_text(label_font, "母舰", self._text_color, "label", self._text_cache)
         label_rect = label.get_rect(center=(fx + fw // 2, fy + self.LABEL_CENTER_Y))
         surface.blit(label, label_rect)
 
@@ -300,7 +310,7 @@ class AmmoMagazine:
         else:
             count_text = f"{int(ammo_count)}/{int(ammo_max)}"
         count_color = self.COUNT_WARNING_COLOR if is_warning else self._text_color
-        count_surf = count_font.render(count_text, True, count_color)
+        count_surf = render_cached_text(count_font, count_text, count_color, f"count_{count_color}", self._text_cache)
         has_reduction = is_cooldown and cooldown_reduction > 0.005
         count_y = cells_end_y + (8 if has_reduction else self.FRAME_PAD_BOTTOM // 2)
         count_rect = count_surf.get_rect(center=(fx + fw // 2, count_y))
@@ -309,7 +319,9 @@ class AmmoMagazine:
         if has_reduction:
             reduction_pct = min(99, round(cooldown_reduction * 100))
             reduction_text = f"返场 -{reduction_pct}%"
-            reduction_surf = detail_font.render(reduction_text, True, self._cell_filled)
+            reduction_surf = render_cached_text(
+                detail_font, reduction_text, self._cell_filled, "reduction", self._text_cache
+            )
             reduction_rect = reduction_surf.get_rect(center=(fx + fw // 2, cells_end_y + 22))
             surface.blit(reduction_surf, reduction_rect)
 
@@ -335,30 +347,42 @@ class AmmoMagazine:
             fill_width = int(cw * ratio)
             if fill_width > 0:
                 # Glow halo
-                glow_surf = pygame.Surface(
-                    (fill_width + self.GLOW_HALO_EXPAND, ch + self.GLOW_HALO_EXPAND), pygame.SRCALPHA
-                )
                 glow_alpha = int(alpha * self.GLOW_ALPHA_SCALE)
-                pygame.draw.rect(
-                    glow_surf,
-                    (*glow_color, glow_alpha),
-                    glow_surf.get_rect(),
-                    border_radius=self.CELL_BORDER_RADIUS + 1,
-                )
+                glow_key = ("glow", fill_width, glow_color, glow_alpha)
+                glow_surf = self._cell_cache.get(glow_key)
+                if glow_surf is None:
+                    glow_surf = pygame.Surface(
+                        (fill_width + self.GLOW_HALO_EXPAND, ch + self.GLOW_HALO_EXPAND), pygame.SRCALPHA
+                    )
+                    pygame.draw.rect(
+                        glow_surf,
+                        (*glow_color, glow_alpha),
+                        glow_surf.get_rect(),
+                        border_radius=self.CELL_BORDER_RADIUS + 1,
+                    )
+                    self._store_cell_surf(glow_key, glow_surf)
                 surface.blit(glow_surf, (x - self.GLOW_OFFSET, y - self.GLOW_OFFSET))
 
                 # Fill bar
-                fill_surf = pygame.Surface((fill_width, ch), pygame.SRCALPHA)
-                pygame.draw.rect(
-                    fill_surf, (*fill_color, alpha), fill_surf.get_rect(), border_radius=self.CELL_BORDER_RADIUS
-                )
+                fill_key = ("fill", fill_width, fill_color, alpha)
+                fill_surf = self._cell_cache.get(fill_key)
+                if fill_surf is None:
+                    fill_surf = pygame.Surface((fill_width, ch), pygame.SRCALPHA)
+                    pygame.draw.rect(
+                        fill_surf, (*fill_color, alpha), fill_surf.get_rect(), border_radius=self.CELL_BORDER_RADIUS
+                    )
+                    self._store_cell_surf(fill_key, fill_surf)
                 surface.blit(fill_surf, (x, y))
 
                 # Bright top-edge highlight
                 if fill_width > self.HL_MIN_WIDTH:
-                    hl_surf = pygame.Surface((fill_width - self.HL_OFFSET * 2, self.HL_HEIGHT), pygame.SRCALPHA)
                     hl_alpha = min(self.HL_ALPHA_BASE, alpha + self.HL_ALPHA_BOOST)
-                    pygame.draw.rect(
-                        hl_surf, (*fill_color, hl_alpha), hl_surf.get_rect(), border_radius=self.HL_BORDER_RADIUS
-                    )
+                    hl_key = ("hl", fill_width, fill_color, hl_alpha)
+                    hl_surf = self._cell_cache.get(hl_key)
+                    if hl_surf is None:
+                        hl_surf = pygame.Surface((fill_width - self.HL_OFFSET * 2, self.HL_HEIGHT), pygame.SRCALPHA)
+                        pygame.draw.rect(
+                            hl_surf, (*fill_color, hl_alpha), hl_surf.get_rect(), border_radius=self.HL_BORDER_RADIUS
+                        )
+                        self._store_cell_surf(hl_key, hl_surf)
                     surface.blit(hl_surf, (x + self.HL_OFFSET, y + self.HL_OFFSET))

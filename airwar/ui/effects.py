@@ -7,7 +7,7 @@ from airwar.utils.fonts import get_cjk_font
 from airwar.utils.responsive import ResponsiveHelper
 
 from .chamfered_panel import draw_chamfered_panel
-from .scene_rendering_utils import draw_centered_option_box
+from .scene_rendering_utils import draw_centered_option_box, get_glow_text_surface
 
 
 class EffectsRenderer:
@@ -141,14 +141,17 @@ class EffectsRenderer:
             color = SystemColors.TEXT_PRIMARY
 
         if glow:
-            # 发光层
-            glow_color = SystemColors.AMBER_PRIMARY
-            for i in range(self.TEXT_GLOW_LAYERS, 0, -1):
-                alpha = int(self.TEXT_GLOW_ALPHA_DIVISOR / i)
-                glow_surf = font.render(text, True, glow_color)
-                glow_surf.set_alpha(alpha)
-                glow_rect = glow_surf.get_rect(center=(x, y + i * 0.5))
-                surface.blit(glow_surf, glow_rect)
+            composed = get_glow_text_surface(
+                font,
+                text,
+                color,
+                SystemColors.AMBER_PRIMARY,
+                self.TEXT_GLOW_LAYERS,
+                0.5,
+                self.TEXT_GLOW_ALPHA_DIVISOR,
+            )
+            surface.blit(composed, composed.get_rect(center=(x, y)))
+            return
 
         main_text = font.render(text, True, color)
         text_rect = main_text.get_rect(center=(x, y))

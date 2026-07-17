@@ -10,7 +10,7 @@ from airwar.i18n import t
 from airwar.ui.effects import EffectsRenderer
 from airwar.ui.menu_background import MenuBackground
 from airwar.ui.particles import ParticleSystem
-from airwar.ui.scene_rendering_utils import SceneRenderingUtils
+from airwar.ui.scene_rendering_utils import SceneRenderingUtils, render_cached_text
 from airwar.utils.fonts import get_cjk_font
 from airwar.utils.mouse_interaction import MouseSelectableMixin
 from airwar.utils.responsive import ResponsiveHelper
@@ -64,6 +64,8 @@ class DeathScene(Scene, MouseSelectableMixin):
         self._particle_system.reset(tokens.components.PARTICLE_PARTICLE_ALT_COUNT, "particle")
 
         self._init_colors()
+
+        self._text_cache: dict[str, tuple[str, pygame.Surface]] = {}
 
     def _init_colors(self) -> None:
         colors = self._tokens.colors
@@ -167,16 +169,24 @@ class DeathScene(Scene, MouseSelectableMixin):
             alpha_decrement=6,
         )
 
-        score_text = self.score_font.render(t("death.score_label", score=self.score), True, self.colors["score"])
+        score_text = render_cached_text(
+            self.score_font, t("death.score_label", score=self.score), self.colors["score"], "score", self._text_cache
+        )
         score_y = height // 2 - ResponsiveHelper.scale(SceneLayout.DEATH_SCORE_OFFSET, scale)
         surface.blit(score_text, score_text.get_rect(center=(width // 2, score_y)))
 
-        kills_text = self.score_font.render(t("death.kills_label", kills=self.kills), True, self.colors["kills"])
+        kills_text = render_cached_text(
+            self.score_font, t("death.kills_label", kills=self.kills), self.colors["kills"], "kills", self._text_cache
+        )
         kills_y = height // 2 + ResponsiveHelper.scale(SceneLayout.DEATH_KILLS_OFFSET, scale)
         surface.blit(kills_text, kills_text.get_rect(center=(width // 2, kills_y)))
 
-        boss_text = self.desc_font.render(
-            t("death.boss_kills_label", boss_kills=self.boss_kills), True, self.colors["hint"]
+        boss_text = render_cached_text(
+            self.desc_font,
+            t("death.boss_kills_label", boss_kills=self.boss_kills),
+            self.colors["hint"],
+            "boss_kills",
+            self._text_cache,
         )
         boss_y = height // 2 + ResponsiveHelper.scale(SceneLayout.DEATH_BOSS_OFFSET, scale)
         surface.blit(boss_text, boss_text.get_rect(center=(width // 2, boss_y)))
@@ -213,11 +223,13 @@ class DeathScene(Scene, MouseSelectableMixin):
         blink_interval = self._tokens.animation.BLINK_INTERVAL
         blink = (self.animation_time // blink_interval) % 2 == 0
         hint_text = t("pause.hint.confirm") if blink else "               "
-        hint = self.hint_font.render(hint_text, True, self.colors["hint"])
+        hint = render_cached_text(self.hint_font, hint_text, self.colors["hint"], "hint", self._text_cache)
         hint_offset = ResponsiveHelper.scale(SceneLayout.DEATH_BOTTOM_HINT_OFFSET, scale)
         surface.blit(hint, hint.get_rect(center=(width // 2, height - hint_offset)))
 
-        controls = self.desc_font.render(t("pause.hint.navigate"), True, SceneColors.DESC_TEXT)
+        controls = render_cached_text(
+            self.desc_font, t("pause.hint.navigate"), SceneColors.DESC_TEXT, "controls", self._text_cache
+        )
         controls_offset = ResponsiveHelper.scale(SceneLayout.DEATH_BOTTOM_CONTROLS_OFFSET, scale)
         surface.blit(controls, controls.get_rect(center=(width // 2, height - controls_offset)))
 

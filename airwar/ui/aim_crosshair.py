@@ -16,6 +16,12 @@ class AimCrosshair:
     LINE_LENGTH = 14
     LINE_WIDTH = 2
     PULSE_SPEED = 0.04
+    _ARC_ANGLES = (
+        (math.radians(18), math.radians(78)),
+        (math.radians(108), math.radians(168)),
+        (math.radians(198), math.radians(258)),
+        (math.radians(288), math.radians(348)),
+    )
 
     def __init__(self) -> None:
         self._tokens = get_design_tokens()
@@ -41,10 +47,8 @@ class AimCrosshair:
         ring_rect = pygame.Rect(0, 0, self.RADIUS * 2, self.RADIUS * 2)
         ring_rect.center = (x, y)
         arc_width = 2
-        pygame.draw.arc(surface, accent, ring_rect, math.radians(18), math.radians(78), arc_width)
-        pygame.draw.arc(surface, accent, ring_rect, math.radians(108), math.radians(168), arc_width)
-        pygame.draw.arc(surface, accent, ring_rect, math.radians(198), math.radians(258), arc_width)
-        pygame.draw.arc(surface, accent, ring_rect, math.radians(288), math.radians(348), arc_width)
+        for start_angle, end_angle in self._ARC_ANGLES:
+            pygame.draw.arc(surface, accent, ring_rect, start_angle, end_angle, arc_width)
 
         line_color = (*dim, 185)
         pygame.draw.line(surface, line_color, (x - self.GAP - self.LINE_LENGTH, y), (x - self.GAP, y), self.LINE_WIDTH)

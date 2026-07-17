@@ -33,6 +33,7 @@ class PlayerWeapon:
 
     # Bullet spawn geometry (mirrors legacy class-level constants).
     SPREAD_ANGLES = (-10, 0, 10)
+    _SPREAD_TRIG = {angle: (math.cos(math.radians(angle)), math.sin(math.radians(angle))) for angle in SPREAD_ANGLES}
     WING_MUZZLE_X_OFFSETS = (-24, 24)
     WING_MUZZLE_Y_OFFSET = -36
 
@@ -224,9 +225,11 @@ class PlayerWeapon:
     def _aim_bullet_velocity(self, bullet: Bullet, aim_direction, angle_offset: float = 0.0) -> None:
         direction = aim_direction
         if angle_offset:
-            angle_rad = math.radians(angle_offset)
-            cos_a = math.cos(angle_rad)
-            sin_a = math.sin(angle_rad)
+            trig = self._SPREAD_TRIG.get(angle_offset)
+            if trig is None:
+                angle_rad = math.radians(angle_offset)
+                trig = (math.cos(angle_rad), math.sin(angle_rad))
+            cos_a, sin_a = trig
             direction = type(direction)(
                 aim_direction.x * cos_a - aim_direction.y * sin_a,
                 aim_direction.x * sin_a + aim_direction.y * cos_a,

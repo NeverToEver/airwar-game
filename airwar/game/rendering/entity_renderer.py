@@ -28,6 +28,8 @@ class EntityRenderer:
     """Draw gameplay entities without coupling entity classes to sprite/UI modules."""
 
     TRAIL_CACHE_MAX_SIZE = 256
+    ENRAGE_CACHE_MAX_SIZE = 96
+    _ENRAGE_ANGLE_STEP = 2.0
     _WARNING_TEXT_CACHE: dict[tuple[str, tuple[int, int, int]], pygame.Surface] = {}
     ENTRY_FONT_SIZE = 36
     ESCAPE_FONT_SIZE = 28
@@ -39,6 +41,8 @@ class EntityRenderer:
 
     def __init__(self):
         self.player_docked = False
+        self._enrage_sprite_cache: dict[tuple[int, int, int, int], pygame.Surface] = {}
+        self._enrage_ring_cache: dict[tuple[int, int, int, int, int], pygame.Surface] = {}
 
     @classmethod
     def _get_warning_font(cls):
@@ -170,10 +174,22 @@ class EntityRenderer:
 
         self._render_enrage_body_aura(surface, boss, ticks)
         sprite = get_boss_sprite(boss.rect.width, boss.rect.height, health_ratio)
-        rotation = 90.0 - boss.facing_angle
-        rotated = pygame.transform.rotozoom(sprite, rotation, 1.0)
+        rotated = self._get_rotated_enrage_sprite(sprite, boss, health_ratio)
         surface.blit(rotated, rotated.get_rect(center=(round(boss.rect.centerx), round(boss.rect.centery))))
         self._render_enrage_core_lines(surface, boss, ticks)
+
+    def _get_rotated_enrage_sprite(
+        self, sprite: pygame.Surface, boss: "Boss", health_ratio: float
+    ) -> pygame.Surface:
+        angle_bucket = round((90.0 - boss.facing_angle) / self._ENRAGE_ANGLE_STEP)
+        cache_key = (boss.rect.width, boss.rect.height, int(health_ratio * 10), angle_bucket)
+        rotated = self._enrage_sprite_cache.get(cache_key)
+        if rotated is None:
+            rotated = pygame.transform.rotozoom(sprite, angle_bucket * self._ENRAGE_ANGLE_STEP, 1.0)
+            if len(self._enrage_sprite_cache) >= self.ENRAGE_CACHE_MAX_SIZE:
+                self._enrage_sprite_cache.clear()
+            self._enrage_sprite_cache[cache_key] = rotated
+        return rotated
 
     def _render_enrage_body_aura(self, surface: pygame.Surface, boss: "Boss", ticks: int) -> None:
         intensity = max(0.15, boss.enrage_visual_intensity())
@@ -194,16 +210,7 @@ class EntityRenderer:
             (int(boss.rect.centerx), int(boss.rect.centery)),
             max(2, core_radius // 5),
         )
-        ring_size = (
-            max(1, int(boss.rect.width * (1.26 + 0.05 * pulse))),
-            max(1, int(boss.rect.height * (1.18 + 0.05 * pulse))),
-        )
-        ring = pygame.Surface(ring_size, pygame.SRCALPHA)
-        ring_rect = ring.get_rect()
-        pygame.draw.ellipse(ring, (*core_color, int(64 * intensity)), ring_rect, max(2, int(4 + 2 * pulse)))
-        inner = ring_rect.inflate(-max(4, ring_size[0] // 7), -max(4, ring_size[1] // 7))
-        pygame.draw.ellipse(ring, (*danger_color, int(42 * intensity)), inner, 2)
-        rotated_ring = pygame.transform.rotozoom(ring, 90.0 - boss.facing_angle, 1.0)
+        rotated_ring = self._get_enrage_ring(boss, pulse, intensity, core_color, danger_color)
         surface.blit(rotated_ring, rotated_ring.get_rect(center=(round(boss.rect.centerx), round(boss.rect.centery))))
 
         target = boss.enrage_snapshot_target
@@ -216,6 +223,39 @@ class EntityRenderer:
                 (int(target_x), int(target_y)),
                 max(1, int(1 + 2 * intensity)),
             )
+
+    def _get_enrage_ring(
+        self,
+        boss: "Boss",
+        pulse: float,
+        intensity: float,
+        core_color: tuple[int, int, int],
+        danger_color: tuple[int, int, int],
+    ) -> pygame.Surface:
+        pulse_bucket = round(pulse * 8)
+        intensity_bucket = round(intensity * 8)
+        angle_bucket = round((90.0 - boss.facing_angle) / self._ENRAGE_ANGLE_STEP)
+        cache_key = (boss.rect.width, boss.rect.height, pulse_bucket, intensity_bucket, angle_bucket)
+        rotated_ring = self._enrage_ring_cache.get(cache_key)
+        if rotated_ring is None:
+            bucketed_pulse = pulse_bucket / 8
+            bucketed_intensity = intensity_bucket / 8
+            ring_size = (
+                max(1, int(boss.rect.width * (1.26 + 0.05 * bucketed_pulse))),
+                max(1, int(boss.rect.height * (1.18 + 0.05 * bucketed_pulse))),
+            )
+            ring = pygame.Surface(ring_size, pygame.SRCALPHA)
+            ring_rect = ring.get_rect()
+            pygame.draw.ellipse(
+                ring, (*core_color, int(64 * bucketed_intensity)), ring_rect, max(2, int(4 + 2 * bucketed_pulse))
+            )
+            inner = ring_rect.inflate(-max(4, ring_size[0] // 7), -max(4, ring_size[1] // 7))
+            pygame.draw.ellipse(ring, (*danger_color, int(42 * bucketed_intensity)), inner, 2)
+            rotated_ring = pygame.transform.rotozoom(ring, angle_bucket * self._ENRAGE_ANGLE_STEP, 1.0)
+            if len(self._enrage_ring_cache) >= self.ENRAGE_CACHE_MAX_SIZE:
+                self._enrage_ring_cache.clear()
+            self._enrage_ring_cache[cache_key] = rotated_ring
+        return rotated_ring
 
     def _render_enrage_core_lines(self, surface: pygame.Surface, boss: "Boss", ticks: int) -> None:
         pulse = 0.5 + 0.5 * math.sin(ticks * 0.007)
@@ -279,12 +319,23 @@ class EntityRenderer:
         trail_len = len(trail)
         health_ratio = boss.health / boss.max_health if boss.max_health > 0 else 1.0
         ghost = self._get_enrage_trail_ghost(boss, health_ratio)
-        render_ghost = pygame.transform.smoothscale(ghost, self._enrage_trail_render_size(boss))
+        render_ghost = self._get_enrage_trail_render_ghost(boss, ghost)
         for index, center in enumerate(trail):
             alpha = int(24 + 96 * (index + 1) / trail_len)
             render_ghost.set_alpha(alpha)
             surface.blit(render_ghost, render_ghost.get_rect(center=center))
         render_ghost.set_alpha(255)
+
+    @staticmethod
+    def _get_enrage_trail_render_ghost(boss: "Boss", ghost: pygame.Surface) -> pygame.Surface:
+        final_width, final_height = EntityRenderer._enrage_trail_render_size(boss)
+        cache_key = (final_width, final_height, id(ghost))
+        render_ghost = boss._enrage_trail_render_ghost
+        if render_ghost is None or boss._enrage_trail_render_ghost_key != cache_key:
+            render_ghost = pygame.transform.smoothscale(ghost, (final_width, final_height))
+            boss._enrage_trail_render_ghost = render_ghost
+            boss._enrage_trail_render_ghost_key = cache_key
+        return render_ghost
 
     @staticmethod
     def _sample_enrage_trail_for_render(boss: "Boss"):

@@ -172,6 +172,8 @@ class Boss(Entity):
         self._enrage_trail: list[tuple[float, float]] = []
         self._enrage_trail_ghost: pygame.Surface | None = None
         self._enrage_trail_ghost_key: tuple[int, int, int, int] | None = None
+        self._enrage_trail_render_ghost: pygame.Surface | None = None
+        self._enrage_trail_render_ghost_key: tuple[int, int, int] | None = None
         self._enrage_bullets: list[Bullet] = []
         # ---- Components (Phase 1 split) ----
         self._state = boss_state.BossStateMachine(self)

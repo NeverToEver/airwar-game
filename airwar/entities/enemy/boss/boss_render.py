@@ -64,6 +64,8 @@ class BossRenderer:
         boss._enrage_trail.clear()
         boss._enrage_trail_ghost = None
         boss._enrage_trail_ghost_key = None
+        boss._enrage_trail_render_ghost = None
+        boss._enrage_trail_render_ghost_key = None
 
     # ------------------------------------------------------------------
     # Public draw
