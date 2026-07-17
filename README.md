@@ -1,18 +1,22 @@
-# 空战 · Air War
+<div align="center">
 
-[English](./README.en.md) | **中文**
+# 🛩️ 空战 · Air War
 
-![CI](https://github.com/NeverToEver/airwar-game/actions/workflows/ci.yml/badge.svg?branch=master)
-![Python](https://img.shields.io/badge/python-3.11%2B-blue)
-![Pygame](https://img.shields.io/badge/pygame-2.6%2B-2e8b57)
-![Rust](https://img.shields.io/badge/rust-PyO3-orange?logo=rust)
+**一款 2D 太空射击游戏 —— 使用 Python + Pygame 构建,可选 Rust 扩展加速性能热点**
+
+[English](./README.en.md) · **中文**
+
+[![CI](https://github.com/NeverToEver/airwar-game/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/NeverToEver/airwar-game/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
+[![Pygame](https://img.shields.io/badge/pygame-2.6%2B-2e8b57)](https://www.pygame.org/)
+[![Rust](https://img.shields.io/badge/rust-PyO3-orange?logo=rust)](https://pyo3.rs/)
 [![Release](https://img.shields.io/github/v/release/NeverToEver/airwar-game)](https://github.com/NeverToEver/airwar-game/releases)
+[![Tests](https://img.shields.io/badge/tests-215%20passed-brightgreen)](#运行测试)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
-![Tests](https://img.shields.io/badge/tests-61%20passed-brightgreen)
 
-![空战游戏画面](https://raw.githubusercontent.com/NeverToEver/airwar-game/master/.github/screenshots/gameplay.png)
+<img src="https://raw.githubusercontent.com/NeverToEver/airwar-game/master/.github/screenshots/gameplay.png" alt="空战游戏画面" width="760">
 
-> 一款 2D 太空射击游戏，使用 Python + Pygame 构建，并通过可选的 Rust 扩展加速性能热点。
+</div>
 
 ---
 
@@ -122,7 +126,7 @@ python3 main.py
 python3 -m pytest tests/
 ```
 
-测试仅覆盖核心架构组件（帧时间、锁仲裁、场景管理、存档持久化、视口坐标），不测试渲染与游戏玩法细节。
+测试覆盖核心架构组件（帧时间、锁仲裁、场景管理、存档持久化、视口坐标）与关键玩法逻辑（碰撞结算、爆炸计分、子弹管理、HUD 缓存等）。
 
 ## 🏆 排行榜
 

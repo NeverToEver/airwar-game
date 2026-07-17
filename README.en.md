@@ -1,18 +1,22 @@
-# Air War · 空战
+<div align="center">
 
-**English** | [中文](./README.md)
+# 🛩️ Air War · 空战
 
-![CI](https://github.com/NeverToEver/airwar-game/actions/workflows/ci.yml/badge.svg?branch=master)
-![Python](https://img.shields.io/badge/python-3.11%2B-blue)
-![Pygame](https://img.shields.io/badge/pygame-2.6%2B-2e8b57)
-![Rust](https://img.shields.io/badge/rust-PyO3-orange?logo=rust)
+**A 2D space shooter built with Python + Pygame, with an optional Rust extension for performance-critical paths**
+
+**English** · [中文](./README.md)
+
+[![CI](https://github.com/NeverToEver/airwar-game/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/NeverToEver/airwar-game/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
+[![Pygame](https://img.shields.io/badge/pygame-2.6%2B-2e8b57)](https://www.pygame.org/)
+[![Rust](https://img.shields.io/badge/rust-PyO3-orange?logo=rust)](https://pyo3.rs/)
 [![Release](https://img.shields.io/github/v/release/NeverToEver/airwar-game)](https://github.com/NeverToEver/airwar-game/releases)
+[![Tests](https://img.shields.io/badge/tests-215%20passed-brightgreen)](#run-tests)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
-![Tests](https://img.shields.io/badge/tests-61%20passed-brightgreen)
 
-![Air War gameplay](https://raw.githubusercontent.com/NeverToEver/airwar-game/master/.github/screenshots/gameplay.png)
+<img src="https://raw.githubusercontent.com/NeverToEver/airwar-game/master/.github/screenshots/gameplay.png" alt="Air War gameplay" width="760">
 
-> A 2D space shooter built with Python + Pygame, with an optional Rust extension for performance-critical paths.
+</div>
 
 ---
 
@@ -122,7 +126,7 @@ python3 main.py
 python3 -m pytest tests/
 ```
 
-Tests cover core architectural components only (frame timing, lock arbitration, scene management, save persistence, viewport coordinates). Rendering and gameplay logic are not tested.
+Tests cover core architectural components (frame timing, lock arbitration, scene management, save persistence, viewport coordinates) and key gameplay logic (collision resolution, explosive scoring, bullet management, HUD caching).
 
 ## 🏆 Leaderboard
 
