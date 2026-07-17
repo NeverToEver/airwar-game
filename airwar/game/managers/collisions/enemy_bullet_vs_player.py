@@ -95,18 +95,16 @@ class EnemyBulletVsPlayerStrategy:
                     )
                 )
                 hits = batch_collide(eb_data, self._player_entity_data, self._grid_cell_size)
-                # Multiple enemy bullets can intersect the player in the same frame;
-                # apply damage from each until the player becomes inactive.
+                # Single-hit semantics, matching the Python fallback: only the
+                # first active hit applies damage per frame. Do not rely on the
+                # scene clearing nearby bullets to mask multi-hit divergence.
                 for bullet_id, _entity_id in hits:
                     eb = eb_map.get(bullet_id)
                     if eb is None or not eb.active:
                         continue
                     damage = calculate_damage_func(eb.data.damage)
                     on_player_hit_func(damage, player)
-                    eb.active = False
-                    if not player.active:
-                        break
-                if hits:
+                    eb.active = False  # Deactivate bullet so it doesn't re-hit next frame
                     return True
             return False
 

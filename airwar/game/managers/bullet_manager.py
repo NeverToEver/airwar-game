@@ -20,7 +20,7 @@ import struct
 from typing import Any
 
 from airwar.config import get_screen_height, get_screen_width
-from airwar.core_bindings import batch_update_bullets, batch_update_bullets_buf
+from airwar.core_bindings import batch_update_bullets_buf
 
 from ..protocols import PlayerProtocol, SpawnControllerProtocol
 
@@ -49,7 +49,6 @@ class BulletManager:
         """
         self._player = player
         self._spawn_controller = spawn_controller
-        self._use_rust = batch_update_bullets is not None
         self._batch_bullet_data: list[Any] = []
         self._batch_bullet_map: dict[int, Any] = {}
 
@@ -109,12 +108,7 @@ class BulletManager:
         Args:
             cleanup: Whether to remove inactive bullets after update.
         """
-        if self._use_rust:
-            self._update_bullets_batch(self._player.get_bullets(), cleanup)
-        else:
-            for bullet in self._player.get_bullets():
-                self._update_release_delay(bullet)
-                bullet.update()
+        self._update_bullets_batch(self._player.get_bullets(), cleanup)
         if cleanup:
             self._player.cleanup_inactive_bullets()
 
@@ -124,12 +118,7 @@ class BulletManager:
         Args:
             cleanup: Whether to remove inactive bullets after update.
         """
-        if self._use_rust:
-            self._update_bullets_batch(self._spawn_controller.enemy_bullets, cleanup)
-        else:
-            for bullet in self._spawn_controller.enemy_bullets:
-                self._update_release_delay(bullet)
-                bullet.update()
+        self._update_bullets_batch(self._spawn_controller.enemy_bullets, cleanup)
         if cleanup:
             self._cleanup_enemy_bullets()
 
@@ -138,11 +127,13 @@ class BulletManager:
     _BULLET_BUF_SIZE = struct.calcsize(_BULLET_BUF_FMT)
 
     def _update_bullets_batch(self, bullets: list, cleanup: bool) -> None:
-        """Batch update bullets using Rust for position updates.
+        """Batch update bullets via core_bindings (Rust extension or Python fallback).
 
-        Handles position updates and screen boundary checks in Rust,
-        then applies results back. For laser bullets, still calls
-        bullet.update() for trail management.
+        Handles position updates in the batch backend, then applies results
+        back. Off-screen culling uses ``OFFSCREEN_MARGIN`` on all four sides
+        (see the boundary check below); the backend's own vertical check is
+        only an early-out hint. For laser bullets, the trail is maintained
+        in Python after applying the new position.
 
         Uses binary buffer FFI for reduced overhead.
 
@@ -246,7 +237,9 @@ class BulletManager:
         if direction is None:
             # Keep the bullet held until a valid release direction is available.
             return
-        bullet.velocity = direction * getattr(bullet, "enrage_release_speed", bullet.data.speed)
+        # ``enrage_release_speed`` defaults to 0.0 when a spawn path never set
+        # it; fall back to the bullet's base speed so it never hovers forever.
+        bullet.velocity = direction * (bullet.enrage_release_speed or bullet.data.speed)
         bullet.held = False
         bullet.enrage_release_pending = False
 

@@ -3,6 +3,7 @@
 from types import SimpleNamespace
 
 import pytest
+from pygame.math import Vector2
 
 from airwar.entities.bullet import Bullet, BulletData
 from airwar.game.managers.bullet_manager import BulletManager
@@ -52,3 +53,36 @@ def test_data_none_bullet_does_not_shift_buffer_index(manager):
     assert b3.rect.x == pytest.approx(5.0)
     assert b3.rect.y == pytest.approx(2.0)
     assert b2.active is True
+
+
+def _make_held_bullet(speed: float = 5.0) -> Bullet:
+    bullet = Bullet(100.0, 100.0, BulletData(speed=speed, owner="enemy"))
+    bullet.held = True
+    bullet.enrage_release_pending = True
+    bullet.release_direction = Vector2(1, 0)
+    return bullet
+
+
+def test_enrage_release_falls_back_to_data_speed(manager):
+    """A held bullet whose enrage_release_speed was never set (0.0) must
+    release at its base speed — not a zero vector, which would hover
+    forever, never leave the screen, and keep colliding every frame."""
+    bullet = _make_held_bullet(speed=5.0)
+
+    manager._update_release_delay(bullet)
+
+    assert bullet.velocity.x == pytest.approx(5.0)
+    assert bullet.velocity.y == pytest.approx(0.0)
+    assert bullet.held is False
+    assert bullet.enrage_release_pending is False
+
+
+def test_enrage_release_uses_explicit_speed(manager):
+    """An explicitly set enrage_release_speed takes precedence over data.speed."""
+    bullet = _make_held_bullet(speed=5.0)
+    bullet.enrage_release_speed = 8.0
+
+    manager._update_release_delay(bullet)
+
+    assert bullet.velocity.x == pytest.approx(8.0)
+    assert bullet.velocity.y == pytest.approx(0.0)

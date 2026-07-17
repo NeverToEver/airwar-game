@@ -106,13 +106,15 @@ class HUDRenderer:
         next_progress: int,
         boss_kills: int = 0,
     ) -> None:
-        score_text = self.hud_font.render(f"分数: {score}", True, HUDLayout.SCORE_COLOR)
+        score_text = self._render_value(self.hud_font, f"分数: {score}", HUDLayout.SCORE_COLOR, "hud_score")
         surface.blit(score_text, HUDLayout.SCORE_POS)
 
-        progress_text = self.hud_font.render(f"目标: {next_progress}%", True, HUDLayout.PROGRESS_COLOR)
+        progress_text = self._render_value(
+            self.hud_font, f"目标: {next_progress}%", HUDLayout.PROGRESS_COLOR, "hud_progress"
+        )
         surface.blit(progress_text, HUDLayout.PROGRESS_POS)
 
-        diff_text = self.hud_font.render(f"{difficulty.upper()}", True, HUDLayout.PROGRESS_COLOR)
+        diff_text = self._render_value(self.hud_font, f"{difficulty.upper()}", HUDLayout.PROGRESS_COLOR, "hud_diff")
         diff_rect = diff_text.get_rect(right=surface.get_width() - 15)
         diff_rect.y = HUDLayout.DIFFICULTY_Y
         surface.blit(diff_text, diff_rect)
@@ -120,17 +122,22 @@ class HUDRenderer:
         health_color = HUDLayout.HEALTH_NORMAL
         if player_health < player_max_health * HUDLayout.HEALTH_DANGER_RATIO:
             health_color = HUDLayout.HEALTH_DANGER
-        health_text = self.hud_font.render(f"生命: {player_health}/{player_max_health}", True, health_color)
+        health_text = self._render_value(
+            self.hud_font,
+            f"生命: {player_health}/{player_max_health}",
+            health_color,
+            f"hud_health_{health_color}",
+        )
         health_rect = health_text.get_rect(right=surface.get_width() - 15)
         health_rect.y = HUDLayout.HEALTH_Y
         surface.blit(health_text, health_rect)
 
-        kills_text = self.hud_font.render(f"击杀: {kills}", True, HUDLayout.KILLS_COLOR)
+        kills_text = self._render_value(self.hud_font, f"击杀: {kills}", HUDLayout.KILLS_COLOR, "hud_kills")
         kills_rect = kills_text.get_rect(right=surface.get_width() - 15)
         kills_rect.y = HUDLayout.KILLS_Y
         surface.blit(kills_text, kills_rect)
 
-        boss_text = self.hud_font.render(f"BOSS: {boss_kills}", True, HUDLayout.BOSS_COLOR)
+        boss_text = self._render_value(self.hud_font, f"BOSS: {boss_kills}", HUDLayout.BOSS_COLOR, "hud_boss")
         boss_rect = boss_text.get_rect(right=surface.get_width() - 15)
         boss_rect.y = HUDLayout.BOSS_Y
         surface.blit(boss_text, boss_rect)

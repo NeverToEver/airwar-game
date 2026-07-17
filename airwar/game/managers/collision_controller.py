@@ -86,8 +86,6 @@ class CollisionController:
         self._enemy_grid_cells: dict[tuple[int, int], list[Any]] = {}
         self._grid_cell_size = self.GRID_CELL_SIZE
         self._use_rust = True
-        # Reusable temp containers for Python spatial-hash queries.
-        self._query_seen: set[int] = set()
         # Reusable temp containers for Rust batch collision
         self._bullet_data: list[tuple] = []
         self._bullet_map: dict = {}
@@ -189,8 +187,9 @@ class CollisionController:
         min_y = math.floor(top / self._grid_cell_size)
         max_y = math.floor(bottom / self._grid_cell_size)
 
-        seen = self._query_seen
-        seen.clear()
+        # Local dedup set: a generator may be paused at a yield while a nested
+        # query runs, so the set must not be shared between query instances.
+        seen: set[int] = set()
         for gx in range(min_x, max_x + 1):
             for gy in range(min_y, max_y + 1):
                 key = (gx, gy)
