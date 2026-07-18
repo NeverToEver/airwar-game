@@ -324,24 +324,30 @@ python -m airwar.leaderboard.server --port 8000 --db-path ./leaderboard.db
 6. **类型检查仅供参考**：`mypy` 当前仍有数百个历史错误（见 `docs/audits/type_interface_audit_report.md`）。新增代码尽量加类型注解，但不要求一次性修复全部历史问题。
 7. **运行前检查**：提交前执行 `ruff check .`、`compileall -q airwar main.py` 和 `pytest tests/`。
 
-## 12. 高优先级执行任务（2026-07-17 标记）
+## 12. 高优先级执行任务（2026-07-17 标记，2026-07-18 重排）
 
-以下任务由项目所有者于 2026-07-17 标记为**高优先级**，按编号顺序执行。完成某一项后，在该行「状态」列标注完成日期与提交哈希。
+以下任务**按优先级顺序排列**（效果优先，效率辅助）。按 P1 → P5 顺序执行。完成某一项后，在该行「状态」列标注完成日期与提交哈希。
 
 | # | 任务 | 背景与现状 | 验收标准 | 关键模块 | 状态 |
 |---|------|-----------|---------|---------|------|
-| P0 | 提交已验证的未提交改动 | 战机素材重绘、主界面点击失灵修复、爆炸导弹渲染崩溃修复已在工作区验证（193 项测试通过 + 实机游玩通过 Boss #4），尚未提交 | 三个主题分别成 commit 合入 master | `utils/_sprites_ships.py`、`scenes/welcome_scene.py`、`utils/_sprites_bullets.py`、`tests/test_welcome_scene_clicks.py`、`tests/test_sprites_bullets.py`、`scripts/render_ship_sprites.py` | ✅ 2026-07-17（6017217 / 8ca1b97 / 8a42f5f） |
-| P1 | Boss 狂暴抓取 × 母舰对接的位置冲突 | 玩家在母舰对接状态下触发 Boss 狂暴，Boss 实施抓取（aim-dash / enrage path）后，玩家舰船出现在意料之外的位置。疑似狂暴位移逻辑与对接位置锁（`GameScene.update` 第 13 步）相互打架 | 明确定义对接状态下的抓取行为（跳过抓取，或将玩家刚性绑定于母舰）；任意时序下玩家坐标合法；手动完整验证「对接中触发狂暴→抓取→脱离」全流程 | `entities/enemy/boss/`（`boss_movement.py` aim-dash / enrage 路径）、`scenes/game_scene.py`、`game/managers/game_loop_manager.py` | 未开始 |
-| P2 | 狂暴期间母舰应被锁定并停火 | 设计意图（所有者原话）：Boss 狂暴同样锁定母舰位置，但玩家不会受到伤害；母舰此时停止开火，防止造成"仅开火但造不成伤害"的假象。现状：对接中触发狂暴时母舰仍可自由移动并开火（`LockLayer.MOTHERSHIP`=80 高于 `BOSS_ENRAGE`=60，狂暴锁不住母舰行为） | 狂暴激活期间：母舰位置锁定、武器停火、玩家保持无敌；狂暴结束后全部恢复正常；为 LockManager 交互新增回归测试 | `game/managers/lock_manager.py`、`game/managers/game_loop_manager.py::_sync_boss_enrage_lock`、`game/mother_ship/game_integrator.py` | 未开始 |
-| P3 | Rust 扩展逻辑审计 → 本地重编 | 本地 wheel 过时：17 个绑定测试失败、启动报 `missing functions ... falling back`。**先**审计 Rust 源码与 `core_bindings.py` Python fallback 的逻辑一致性，确认正确后**再**重编本地扩展 | 审计结论记录在案（哪个函数、哪侧、是否一致）；重编安装后 17 个绑定测试全部通过 | `airwar_core/src/*.rs`、`airwar/core_bindings.py` | ✅ 2026-07-17：绑定测试套件即一致性审计（Rust 与 fallback 输出逐函数比对），wheel 0.1.0→0.2.0 重编安装后 210 项测试全绿，启动 fallback 警告消失 |
-| P4 | 排行榜服务器集成检测 | FastAPI 远程排行榜（`run_with_server.py`）从未实测，仅单元测试覆盖 | 服务器启动、成绩提交、排行榜拉取全链路手动验证通过；发现的问题单独立项 | `airwar/leaderboard/`、`run_with_server.py` | 未开始 |
-| P5 | 固定攻击音效资产 | `bullet_fire` 目前由 numpy + `pygame.sndarray` 按各平台 mixer 采样率**程序生成**，每个平台音色都不同；`airwar/assets/audio/` 目录为空 | 生成一份固定音频文件随仓库分发，全平台播放一致；文件缺失时保留程序生成回退；确认 PyInstaller 打包（`AirWar.spec`）包含该资产 | `airwar/audio/sound_manager.py`、`airwar/assets/audio/`、`AirWar.spec` | 未开始 |
-| P6 | 次要功能回归检测 | 部分边缘功能缺乏近期实机验证 | 手动过一遍：相位冲刺、返航（homecoming）、投降（give-up）流程、设置项持久化、窗口缩放/全屏切换；发现问题单独立项 | 多模块 | 未开始 |
-| P7 | 可变分辨率：固定长宽比 + 大/中/小三档 | 窗口默认 1920×1080 且可自由拖放（`Window._min_size`=1024×768 还是 4:3），VIDEORESIZE 任意改变宽高比，pygame `SCALED` 把 1920×1080 逻辑面直接拉伸到窗口，非 16:9 窗口下画面变形；设置界面无分辨率选项 | 提供大/中/小三档窗口尺寸且全部锁定 16:9（建议 2560×1440 / 1920×1080 / 1280×720），设置界面可切换并持久化到 `UserDB.settings`，启动时按上次档位恢复；任意档位与全屏切换下画面不变形、鼠标坐标映射正确 | `airwar/window/window.py`、`game/scaled_viewport.py`、`scenes/settings_scene.py`、`utils/database.py`（settings 字段） | 未开始 |
+| P1 | Boss 狂暴 × 母舰对接（位置冲突 + 母舰停火） | **子问题 A — 位置冲突**：更新流水线步骤 10（`_step_core_logic`）中，先执行 `update_game()` → `boss.update()` → `_center_player_for_enrage()` 将玩家 rect **直接移到屏幕中央**（绕过 LockManager，属于架构违规），随后 `if docked` 分支又将玩家 rect **覆盖回**对接舱坐标。两个位置写入在同一帧内先后发生，后者覆盖前者。**子问题 B — 母舰假装开火**：母舰实体的移动与开火由 `game_integrator.py` 独立控制，不经过 LockManager。狂暴期间 `game_integrator` 继续开火，但子弹对对接舱内玩家无效（MOTHERSHIP 锁保无敌），给玩家"在开火但造不成伤害"的假象。`MOTHERSHIP=80 > BOSS_ENRAGE=60` **是正确的优先级设计**——玩家对接后理应保持无敌，不应改动锁层 | **子问题 A**：① `_center_player_for_enrage` 改为通过 LockManager 请求玩家位置变更（或由 `_step_core_logic` 统一判定"对接中 → 跳过狂暴位移"）；② 任意时序下玩家坐标合法且确定；③ 新增自动化回归测试。**子问题 B**：④ 在 `game_integrator.py` 的 `update()` / `_update_mothership_firing()` / `_update_mothership_input()` 中检查 Boss 狂暴状态（`boss_state.is_enrage_active()` / `is_enrage_transitioning()`），狂暴期间跳过母舰移动输入和开火逻辑；⑤ 狂暴结束后自动恢复；⑥ 为 `game_integrator` 狂暴行为新增回归测试；⑦ 手动完整验证「对接中触发狂暴→母舰停火+锁定+玩家安全→狂暴结束恢复」全流程 | A：`entities/enemy/boss/boss.py::_center_player_for_enrage`、`scenes/game_scene_updater.py::_step_core_logic`、`game/managers/game_loop_manager.py`；B：`game/mother_ship/game_integrator.py`（`update()` / `_update_mothership_firing()` / `_update_mothership_input()`）、`entities/enemy/boss/boss_state.py` | 未开始 |
+| P2 | 可变分辨率：固定长宽比 + 大/中/小三档 | 窗口默认 1920×1080 且可自由拖放（`Window._min_size`=1024×768 还是 4:3），VIDEORESIZE 任意改变宽高比，pygame `SCALED` 把 1920×1080 逻辑面直接拉伸到窗口，非 16:9 窗口下画面变形；设置界面无分辨率选项。**设计决策（2026-07-18）**：采用**方案 A**——逻辑分辨率保持 1920×1080 不变，只改变 OS 窗口尺寸，依赖 SDL2 SCALED 做 GPU 缩放。所有游戏坐标不变，鼠标坐标通过 `ScaledViewport.screen_to_logical()` 换算（16:9 窗口下天然无 letterbox，映射恒等）。**全屏注意事项**：`Window.toggle_fullscreen()` 当前使用 `pygame.FULLSCREEN`（不带 SCALED），若桌面非 16:9 会变形，须在 `ScaledViewport.present()` 走 letterbox 逻辑补黑边 | ① 大/中/小三档窗口尺寸全部锁定 16:9：**L**=2560×1440、**M**=1920×1080（默认）、**S**=1280×720；② `Window.resize()` 约束宽高比 16:9（`height = width * 9 // 16`），`_min_size` 改为 1280×720；③ `Window._get_adaptive_size()` 输出也约束 16:9；④ 设置界面新增分辨率下拉选项，切换后持久化到 `UserDB.settings["resolution_tier"]`（值为 `"S"` / `"M"` / `"L"`），启动时按上次档位恢复；⑤ 任意档位与全屏切换下画面不变形（全屏非 16:9 时 `ScaledViewport.present()` 补 letterbox 黑边）；⑥ 各档位下鼠标坐标映射正确（验证 `screen_to_logical` 换算） | `airwar/window/window.py`、`game/scaled_viewport.py`、`scenes/settings_scene.py`、`utils/database.py` | 未开始 |
+| P3 | 固定攻击音效资产 | `bullet_fire` 目前由 numpy + `pygame.sndarray` 按各平台 mixer 采样率**程序生成**，每个平台音色都不同；`airwar/assets/audio/` 目录为空 | ① 生成 `bullet_fire.wav`（规格：**44100 Hz / 16-bit / mono**，内容与当前 `_generate_beep(frequency=880, harmonics=(1.0,0.35))` 一致），提交到 `airwar/assets/audio/`；② `_build_sfx("bullet_fire")` 改为优先加载 WAV 文件，文件缺失时回退到 numpy 程序生成（保留现有 `_generate_beep`）；③ 确认 PyInstaller 打包（`AirWar.spec`）包含 `airwar/assets/audio/`；④ 生成脚本放 `scripts/generate_bullet_fire_wav.py` | `airwar/audio/sound_manager.py`、`airwar/assets/audio/`、`AirWar.spec` | 未开始 |
+| P4 | 排行榜服务器集成检测 | FastAPI 远程排行榜（`run_with_server.py`）从未实测，仅单元测试覆盖。测试范围：**本地 FastAPI 模式**（`AIRWAR_LEADERBOARD_MODE=local`），无需远程服务器 | ① 服务器启动 → 游戏内成绩提交 → 排行榜拉取 → 数据显示全链路手动验证通过；② 对照 `.env.example` 确认所有排行榜相关环境变量均被 `service.py` 正确消费，缺字段/字段名不一致的修正 `.env.example`；③ 发现的问题单独立项 | `airwar/leaderboard/`、`run_with_server.py`、`.env.example` | 未开始 |
+| P5 | 次要功能回归检测（持续追加） | 部分边缘功能缺乏近期实机验证。**本任务为持续追加项**：P1/P2 修复完成后须追加对应回归条目 | 手动过一遍：① 相位冲刺（按-松 Shift → 瞬移 + 无敌帧）；② 返航 homecoming（长按 B 2.4s → 回基地 → 补给）；③ 投降 give-up（长按 K 3s → 放弃出击）；④ 设置项持久化（改设置 → 退游戏 → 重进验证）；⑤ 窗口缩放/全屏切换（拖放 + 全屏往返）；⑥ **P1 修复后追加**：对接中触发狂暴全流程；⑦ **P2 修复后追加**：三档分辨率切换 + 鼠标映射。发现问题单独立项 | 多模块 | 未开始 |
 
-执行备注：
+### ✅ 已完成
 
-- P1 / P2 都涉及 `LockManager` 优先级交互，动手前重读第 7 节架构要点中的锁层表与 `tests/test_lock_manager.py`；两个 bug 建议同一轮实机验证。
-- P3 重编命令：`cd airwar_core && maturin build --release && pip install --force-reinstall target/wheels/airwar_core-*.whl`（无需 venv）；或 `maturin develop --release`（需 venv）。
-- P5 的一次性音频生成脚本放 `scripts/`，产出物（如 `bullet_fire.wav`）提交进 `airwar/assets/audio/`。
-- P7 注意 `SCALED` 模式下 display surface 保持逻辑分辨率、鼠标事件用 OS 窗口坐标（见 `Window.get_size` 注释），档位切换后必须验证 `ScaledViewport` 的鼠标换算；`Window._min_size` 目前是 4:3（1024×768），随本任务一并改为 16:9。
+| 原编号 | 任务 | 完成日期 | 提交 |
+|--------|------|---------|------|
+| P0 | 提交已验证的未提交改动（战机素材重绘、主界面点击失灵修复、爆炸导弹渲染崩溃修复） | 2026-07-17 | `6017217` / `8ca1b97` / `8a42f5f` |
+| Rust 审计 | Rust 扩展逻辑审计 → 本地重编（绑定测试套件即一致性审计，wheel 0.1.0→0.2.0） | 2026-07-17 | 210 项测试全绿 |
+
+---
+
+### 执行备注
+
+- **P1 是本次最高优先级**。两个子问题共享同一条实机验证路径（「对接中触发狂暴」全流程），合并执行避免重复验证。**不涉及 LockManager 优先级变更**——`MOTHERSHIP=80 > BOSS_ENRAGE=60` 是正确的。子问题 A 修复在 pipeline / LockManager 仲裁层；子问题 B 修复在 `game_integrator.py` 直接检查 Boss 狂暴状态，不经过 LockManager。
+- **P2 方案 A 关键简化**：逻辑分辨率恒为 1920×1080，display surface 不变。`Window.resize()` 只改变 OS 窗口尺寸而不重建 display surface（或重建但保持 1920×1080），配合 SCALED 让 SDL2 处理缩放。`ScaledViewport.screen_to_logical` 在 16:9 窗口下天然恒等映射。全屏是唯一需要 `ScaledViewport` 做 letterbox 的场景（桌面 ≠ 16:9 时）。
+- **P3** 一次性音频生成脚本放 `scripts/generate_bullet_fire_wav.py`，产出物 `bullet_fire.wav`（44100 Hz / 16-bit / mono）提交进 `airwar/assets/audio/`。
+- **Rust 重编命令**（如后续需要）：`cd airwar_core && maturin build --release && pip install --force-reinstall target/wheels/airwar_core-*.whl`（无需 venv）；或 `maturin develop --release`（需 venv）。
