@@ -337,9 +337,11 @@ python -m airwar.leaderboard.server --port 8000 --db-path ./leaderboard.db
 | P4 | 排行榜服务器集成检测 | FastAPI 远程排行榜（`run_with_server.py`）从未实测，仅单元测试覆盖 | 服务器启动、成绩提交、排行榜拉取全链路手动验证通过；发现的问题单独立项 | `airwar/leaderboard/`、`run_with_server.py` | 未开始 |
 | P5 | 固定攻击音效资产 | `bullet_fire` 目前由 numpy + `pygame.sndarray` 按各平台 mixer 采样率**程序生成**，每个平台音色都不同；`airwar/assets/audio/` 目录为空 | 生成一份固定音频文件随仓库分发，全平台播放一致；文件缺失时保留程序生成回退；确认 PyInstaller 打包（`AirWar.spec`）包含该资产 | `airwar/audio/sound_manager.py`、`airwar/assets/audio/`、`AirWar.spec` | 未开始 |
 | P6 | 次要功能回归检测 | 部分边缘功能缺乏近期实机验证 | 手动过一遍：相位冲刺、返航（homecoming）、投降（give-up）流程、设置项持久化、窗口缩放/全屏切换；发现问题单独立项 | 多模块 | 未开始 |
+| P7 | 可变分辨率：固定长宽比 + 大/中/小三档 | 窗口默认 1920×1080 且可自由拖放（`Window._min_size`=1024×768 还是 4:3），VIDEORESIZE 任意改变宽高比，pygame `SCALED` 把 1920×1080 逻辑面直接拉伸到窗口，非 16:9 窗口下画面变形；设置界面无分辨率选项 | 提供大/中/小三档窗口尺寸且全部锁定 16:9（建议 2560×1440 / 1920×1080 / 1280×720），设置界面可切换并持久化到 `UserDB.settings`，启动时按上次档位恢复；任意档位与全屏切换下画面不变形、鼠标坐标映射正确 | `airwar/window/window.py`、`game/scaled_viewport.py`、`scenes/settings_scene.py`、`utils/database.py`（settings 字段） | 未开始 |
 
 执行备注：
 
 - P1 / P2 都涉及 `LockManager` 优先级交互，动手前重读第 7 节架构要点中的锁层表与 `tests/test_lock_manager.py`；两个 bug 建议同一轮实机验证。
 - P3 重编命令：`cd airwar_core && maturin build --release && pip install --force-reinstall target/wheels/airwar_core-*.whl`（无需 venv）；或 `maturin develop --release`（需 venv）。
 - P5 的一次性音频生成脚本放 `scripts/`，产出物（如 `bullet_fire.wav`）提交进 `airwar/assets/audio/`。
+- P7 注意 `SCALED` 模式下 display surface 保持逻辑分辨率、鼠标事件用 OS 窗口坐标（见 `Window.get_size` 注释），档位切换后必须验证 `ScaledViewport` 的鼠标换算；`Window._min_size` 目前是 4:3（1024×768），随本任务一并改为 16:9。
