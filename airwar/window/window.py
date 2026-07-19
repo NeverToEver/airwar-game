@@ -2,16 +2,29 @@
 
 from __future__ import annotations
 
+import logging
 import os
 
 import pygame
 
 from airwar.config import set_display_size
 
+logger = logging.getLogger(__name__)
+
 # Prefer GPU-accelerated SDL2 render backend on Linux.
 # On Windows this is handled by the direct3d default.
 if not os.environ.get("SDL_RENDER_DRIVER"):
     os.environ["SDL_RENDER_DRIVER"] = "opengl"
+
+# P2: selectable window tiers, all locked to 16:9. Only the OS window
+# size changes between tiers; the logical render surface stays at the
+# display mode size and SDL2 SCALED handles the GPU-side stretching.
+RESOLUTION_TIERS: dict[str, tuple[int, int]] = {
+    "S": (1280, 720),
+    "M": (1920, 1080),
+    "L": (2560, 1440),
+}
+DEFAULT_RESOLUTION_TIER = "M"
 
 
 class Window:
@@ -27,7 +40,7 @@ class Window:
         self._height = height
         self._title = title
         self._resizable = resizable
-        self._min_size = (1024, 768)
+        self._min_size = (1280, 720)
         self._max_size = (2560, 1440)
         self._is_fullscreen = False
         self._windowed_size = (width, height)
@@ -35,44 +48,63 @@ class Window:
     def init(self, width: int | None = None, height: int | None = None) -> None:
         pygame.init()
 
-        if width is not None and height is not None:
-            self._width = width
-            self._height = height
-        else:
-            self._width, self._height = self._get_adaptive_size()
-
         flags = pygame.DOUBLEBUF | pygame.SCALED
         if self._resizable:
             flags |= pygame.RESIZABLE
-        self._screen = pygame.display.set_mode((self._width, self._height), flags)
+        # The display surface is always the fixed logical resolution
+        # (default 1920x1080). SDL2 SCALED stretches it to whatever the
+        # OS window size is, so game coordinates never change.
+        self._screen = pygame.display.set_mode((self._default_width, self._default_height), flags)
         pygame.display.set_caption(self._title)
         self._clock = pygame.time.Clock()
         self._running = True
-        set_display_size(self._width, self._height)
+        set_display_size(self._default_width, self._default_height)
+
+        if width is not None and height is not None:
+            win_w, win_h = width, height
+        else:
+            win_w, win_h = self._get_adaptive_size()
+        self._width = win_w
+        self._height = win_h
+        self._windowed_size = (win_w, win_h)
+        self._set_os_window_size(win_w, win_h)
+
+    def _set_os_window_size(self, width: int, height: int) -> None:
+        """Resize the OS window without touching the logical display surface."""
+        if self._screen is None or pygame.display.get_surface() is None:
+            return
+        if (width, height) == (self._default_width, self._default_height):
+            # The window is already created at the logical size.
+            return
+        try:
+            from pygame._sdl2 import video as sdl2_video
+
+            sdl2_video.Window.from_display_module().size = (width, height)
+        except Exception:
+            # Fallback for environments without the SDL2 window handle:
+            # recreate the mode at the requested size. This changes the
+            # display surface size, so the viewport letterbox path takes
+            # over for presentation.
+            logger.warning("SDL2 window handle unavailable; recreating display mode at %sx%s", width, height)
+            flags = pygame.DOUBLEBUF | pygame.SCALED
+            if self._resizable:
+                flags |= pygame.RESIZABLE
+            self._screen = pygame.display.set_mode((width, height), flags)
 
     def _get_adaptive_size(self) -> tuple[int, int]:
+        """Largest 16:9 window size that fits the desktop.
+
+        Only the OS window is sized; the logical render surface stays at
+        the default resolution either way.
+        """
         try:
             info = pygame.display.Info()
-            target_width = self._default_width
-            target_height = self._default_height
-
-            if target_width <= info.current_w and target_height <= info.current_h:
-                return (target_width, target_height)
-
             max_width = info.current_w - 40
             max_height = info.current_h - 80
-
-            if target_width > max_width:
-                scale = max_width / target_width
-                target_width = max_width
-                target_height = int(target_height * scale)
-
-            if target_height > max_height:
-                scale = max_height / target_height
-                target_height = max_height
-                target_width = int(target_width * scale)
-
-            return (target_width, target_height)
+            width = min(self._default_width, max_width, max_height * 16 // 9)
+            if width <= 0:
+                return (self._default_width, self._default_height)
+            return (width, width * 9 // 16)
         except pygame.error:
             return (self._default_width, self._default_height)
 
@@ -120,19 +152,29 @@ class Window:
         pygame.display.set_caption(title)
 
     def resize(self, width: int, height: int) -> None:
+        """Resize the OS window, clamped to the tier range and locked to 16:9.
+
+        The display surface stays at the fixed logical resolution; SDL2
+        SCALED handles the visual scaling, so game coordinates and the
+        mouse transform are unaffected by the aspect lock.
+        """
         if self._is_fullscreen:
             return
 
         width = max(self._min_size[0], min(width, self._max_size[0]))
-        height = max(self._min_size[1], min(height, self._max_size[1]))
+        height = width * 9 // 16  # aspect-locked: 16:9
         self._width = width
         self._height = height
-        # With SCALED, the display surface stays at its original logical
-        # resolution; SDL2 scales to the window. Only recreate on explicit
-        # size change that alters the logical resolution.
-        if self._screen:
-            self._screen = pygame.display.set_mode((width, height), pygame.DOUBLEBUF | pygame.SCALED | pygame.RESIZABLE)
-        set_display_size(width, height)
+        self._windowed_size = (width, height)
+        self._set_os_window_size(width, height)
+
+    def set_resolution_tier(self, tier: str) -> bool:
+        """Apply a P2 resolution tier ("S" / "M" / "L"). Returns True if applied."""
+        size = RESOLUTION_TIERS.get(tier)
+        if size is None:
+            return False
+        self.resize(*size)
+        return True
 
     def flip(self) -> None:
         if self._screen:
@@ -165,10 +207,10 @@ class Window:
             if event.type == pygame.QUIT:
                 quit_event = event
             elif event.type == pygame.VIDEORESIZE:
-                # With SCALED, SDL2 handles scaling — track size but don't recreate surface
+                # With SCALED, SDL2 handles scaling — track the window size
+                # for the mouse transform; the surface stays at logical size.
                 self._width = event.w
                 self._height = event.h
-                set_display_size(event.w, event.h)
                 resize_event = (event.w, event.h)
             elif event.type == pygame.KEYDOWN:
                 keydown_event = event
@@ -193,22 +235,27 @@ class Window:
             return
 
         if self._is_fullscreen:
-            self._width, self._height = self._windowed_size
-            flags = pygame.DOUBLEBUF
+            # Back to windowed: the display surface returns to the fixed
+            # logical resolution with SCALED; the OS window is restored
+            # to its previous size separately.
+            flags = pygame.DOUBLEBUF | pygame.SCALED
             if self._resizable:
                 flags |= pygame.RESIZABLE
             try:
-                self._screen = pygame.display.set_mode((self._width, self._height), flags)
+                self._screen = pygame.display.set_mode((self._default_width, self._default_height), flags)
             except pygame.error:
-                self._screen = pygame.display.set_mode((self._width, self._height), pygame.SHOWN)
+                self._screen = pygame.display.set_mode((self._default_width, self._default_height), pygame.SHOWN)
             self._is_fullscreen = False
+            self._set_os_window_size(*self._windowed_size)
+            self._width, self._height = self._windowed_size
         else:
             info = pygame.display.Info()
             self._windowed_size = (self._width, self._height)
             self._width = info.current_w
             self._height = info.current_h
             # FULLSCREEN without SCALED — SCALED causes cropped/zoomed viewport
-            # on pygame 2.6+ with certain SDL backends (X11/Wayland)
+            # on pygame 2.6+ with certain SDL backends (X11/Wayland). The
+            # ScaledViewport letterboxes the logical surface instead.
             try:
                 self._screen = pygame.display.set_mode((self._width, self._height), pygame.FULLSCREEN)
             except pygame.error:
@@ -216,16 +263,16 @@ class Window:
                 try:
                     self._screen = pygame.display.set_mode((self._width, self._height), pygame.NOFRAME)
                 except pygame.error:
-                    # Last resort: revert to windowed
+                    # Last resort: revert to windowed at the logical size
                     self._width, self._height = self._windowed_size
                     self._screen = pygame.display.set_mode(
-                        (self._width, self._height), pygame.DOUBLEBUF | pygame.RESIZABLE
+                        (self._default_width, self._default_height),
+                        pygame.DOUBLEBUF | pygame.SCALED | pygame.RESIZABLE,
                     )
                     self._is_fullscreen = False
+                    self._set_os_window_size(*self._windowed_size)
                     return
             self._is_fullscreen = True
-        self._width, self._height = self._screen.get_size()
-        set_display_size(self._width, self._height)
 
     def is_fullscreen(self) -> bool:
         return self._is_fullscreen

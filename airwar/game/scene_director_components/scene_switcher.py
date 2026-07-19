@@ -11,7 +11,7 @@ import logging
 
 import pygame
 
-from ...config import FPS, set_display_size
+from ...config import FPS
 from ...scenes import GameScene, SceneManager
 from ...scenes.scene import ExitConfirmAction, PauseAction, Scene
 from ..frame_context import FrameClock, FrameContext
@@ -391,16 +391,10 @@ class SceneSwitcher:
     # -- Resize / viewport ------------------------------------------------------
 
     def _handle_resize(self, width: int, height: int) -> None:
-        set_display_size(width, height)
-        # The viewport must keep its logical surface at the actual
-        # display size so the mouse-coordinate transform stays a no-op
-        # (see airwar/game/scaled_viewport.py for the full discussion).
-        # Without this, the first resize would reintroduce the coordinate
-        # mismatch the Game constructor already guards against.
-        self._viewport.logical_size = (width, height)
-        self._viewport._logical_surface = pygame.Surface(
-            (width, height), pygame.SRCALPHA,
-        )
+        # Fixed logical resolution (P2): the window size only feeds the
+        # mouse-coordinate transform. Presentation scaling is handled by
+        # SDL2 SCALED (windowed) or the viewport letterbox (fullscreen);
+        # the logical surface itself never changes size.
         self._viewport.update(width, height)
 
     def update_viewport_from_window(self) -> None:
@@ -408,6 +402,16 @@ class SceneSwitcher:
             return
         width, height = self._director._window.get_size()
         self._handle_resize(width, height)
+
+    def apply_resolution_tier(self, tier: str) -> None:
+        """Apply a P2 resolution tier ("S" / "M" / "L") to the OS window.
+
+        Only the window size changes; the logical render surface stays
+        fixed and the mouse transform is refreshed from the new size.
+        """
+        window = self._director._window
+        if hasattr(window, "set_resolution_tier") and window.set_resolution_tier(tier):
+            self.update_viewport_from_window()
 
     # -- Rendering --------------------------------------------------------------
 
@@ -432,6 +436,7 @@ class SceneSwitcher:
             db=self._director._user_db,
             username=self._director._current_user,
             settings_ref=self._director._settings_ref,
+            on_resolution_tier=self.apply_resolution_tier,
         )
         try:
             result = self._run_scene_loop(settings_scene)

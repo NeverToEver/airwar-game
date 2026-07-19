@@ -86,6 +86,8 @@
   "settings.change_toggle": "{label}: Toggle",
   "settings.language_label": "Language",
   "settings.change_language": "Language: {locale}",
+  "settings.resolution_label": "Resolution",
+  "settings.change_resolution": "Resolution: {size}",
   "exit_confirm.title_quit": "Quit Game",
   "exit_confirm.title_saved": "Game Saved",
   "exit_confirm.option.main_menu": "Return to Main Menu",

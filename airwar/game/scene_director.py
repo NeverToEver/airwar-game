@@ -242,6 +242,11 @@ class SceneDirector:
                 self._settings_ref.update(saved)
         except DatabaseError:
             self._logger.warning("Failed to load user settings", exc_info=True)
+        # P2: restore the persisted resolution tier on login, same
+        # timing as the language preference.
+        tier = self._settings_ref.get("resolution_tier")
+        if tier:
+            self._switcher.apply_resolution_tier(tier)
 
     def _apply_settings_to_player(self, player) -> None:
         player.apply_settings(self._settings_ref)

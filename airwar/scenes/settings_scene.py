@@ -15,6 +15,7 @@ from airwar.utils.database import DatabaseError
 from airwar.utils.fonts import get_cjk_font
 from airwar.utils.mouse_interaction import MouseInteractiveMixin
 from airwar.utils.responsive import ResponsiveHelper
+from airwar.window.window import RESOLUTION_TIERS
 
 from .scene import Scene
 
@@ -55,6 +56,11 @@ class SettingsScene(Scene, MouseInteractiveMixin):
     # when the user taps the language row in the settings list.
     AVAILABLE_LOCALES = ("zh_CN", "en_US")
 
+    # P2: resolution tiers cycled by the resolution row. The tier code is
+    # persisted in the user settings under "resolution_tier".
+    RESOLUTION_TIER_ORDER = ("S", "M", "L")
+    DEFAULT_RESOLUTION_TIER = "M"
+
     def __init__(self):
         Scene.__init__(self)
         MouseInteractiveMixin.__init__(self)
@@ -62,8 +68,9 @@ class SettingsScene(Scene, MouseInteractiveMixin):
         self._db = None
         self._username = None
         self._settings_ref: dict[str, str] = {}
+        self._on_resolution_tier = None
         self._focus_index = 0
-        self._focus_count = 4  # ctrl, shift, language, back
+        self._focus_count = 5  # ctrl, shift, language, resolution, back
         self._animation_time = 0
         self._message = ""
         self._message_timer = 0
@@ -75,6 +82,7 @@ class SettingsScene(Scene, MouseInteractiveMixin):
         self._db = kwargs.get("db")
         self._username = kwargs.get("username")
         self._settings_ref = kwargs.get("settings_ref", {})
+        self._on_resolution_tier = kwargs.get("on_resolution_tier")
         self._focus_index = 0
         self._animation_time = 0
         self._message = ""
@@ -129,6 +137,8 @@ class SettingsScene(Scene, MouseInteractiveMixin):
             elif self._focus_index == 2:
                 self._cycle_language()
             elif self._focus_index == 3:
+                self._cycle_resolution()
+            elif self._focus_index == 4:
                 self.running = False
         elif event.key in (pygame.K_LEFT, pygame.K_RIGHT):
             if self._focus_index == 0:
@@ -139,6 +149,8 @@ class SettingsScene(Scene, MouseInteractiveMixin):
                 # LEFT and RIGHT both cycle; the value is binary so direction
                 # is purely cosmetic — pick "next locale in AVAILABLE_LOCALES".
                 self._cycle_language()
+            elif self._focus_index == 3:
+                self._cycle_resolution()
 
     def _handle_button_click(self, button_name: str) -> None:
         if button_name == "back":
@@ -153,6 +165,8 @@ class SettingsScene(Scene, MouseInteractiveMixin):
             self._set_setting("shift_boost_mode", "toggle")
         elif button_name == "language":
             self._cycle_language()
+        elif button_name == "resolution":
+            self._cycle_resolution()
 
     def _toggle_setting(self, key: str) -> None:
         current = self._settings_ref.get(key, "hold")
@@ -191,6 +205,31 @@ class SettingsScene(Scene, MouseInteractiveMixin):
         self._settings_ref["language"] = next_locale
         self._save_to_db()
         self._message = t("settings.change_language", locale=next_locale)
+        self._message_timer = 90
+
+    def _cycle_resolution(self) -> None:
+        """Advance to the next resolution tier, persist it, and apply it live.
+
+        The tier code ("S" / "M" / "L") is stored on the same settings
+        dict as ``ctrl_mode`` / ``language`` under ``resolution_tier``,
+        so persistence rides the existing UserDB path. The actual window
+        resize is delegated to the ``on_resolution_tier`` callback
+        injected by the scene switcher; the logical render resolution
+        itself never changes.
+        """
+        current = self._settings_ref.get("resolution_tier", self.DEFAULT_RESOLUTION_TIER)
+        tiers = list(self.RESOLUTION_TIER_ORDER)
+        try:
+            idx = tiers.index(current)
+        except ValueError:
+            idx = tiers.index(self.DEFAULT_RESOLUTION_TIER)
+        next_tier = tiers[(idx + 1) % len(tiers)]
+        self._settings_ref["resolution_tier"] = next_tier
+        self._save_to_db()
+        if self._on_resolution_tier:
+            self._on_resolution_tier(next_tier)
+        w, h = RESOLUTION_TIERS[next_tier]
+        self._message = t("settings.change_resolution", size=f"{w}×{h}")
         self._message_timer = 90
 
     def _save_to_db(self) -> None:
@@ -281,13 +320,84 @@ class SettingsScene(Scene, MouseInteractiveMixin):
             is_focused = i == self._focus_index
             self._draw_setting_row(surface, panel_x, panel_w, y, key, is_focused)
 
-        # Language row — drawn separately because it uses a different
-        # value domain (locale codes) and a different right-hand label
-        # format (the locale code itself, not "hold"/"toggle").
+        # Language and resolution rows — drawn separately because they
+        # use different value domains (locale codes / tier sizes) and a
+        # different right-hand label format (the value itself, not
+        # "hold"/"toggle" buttons). Clicking either row cycles its value.
+        from airwar.i18n import get_locale
+
         lang_y = row_start_y + len(keys) * (self.SETTING_ROW_H + self.SETTING_GAP)
-        self._draw_language_row(
-            surface, panel_x, panel_w, lang_y, self._focus_index == len(keys),
+        self._draw_cycler_row(
+            surface, panel_x, panel_w, lang_y,
+            t("settings.language_label"),
+            self._settings_ref.get("language") or get_locale(),
+            "language",
+            self._focus_index == len(keys),
         )
+
+        tier = self._settings_ref.get("resolution_tier", self.DEFAULT_RESOLUTION_TIER)
+        tier_w, tier_h = RESOLUTION_TIERS.get(tier, RESOLUTION_TIERS[self.DEFAULT_RESOLUTION_TIER])
+        res_y = lang_y + self.SETTING_ROW_H + self.SETTING_GAP
+        self._draw_cycler_row(
+            surface, panel_x, panel_w, res_y,
+            t("settings.resolution_label"),
+            f"{tier_w}×{tier_h}",
+            "resolution",
+            self._focus_index == len(keys) + 1,
+        )
+
+    def _draw_cycler_row(
+        self, surface, panel_x, panel_w, y, label, value_text, button_name, is_focused,
+    ) -> None:
+        """Render a click-to-cycle settings row.
+
+        Mirrors the visual structure of ``_draw_setting_row`` so the
+        row reads as part of the same list, but the right-hand value
+        shows the current value text (e.g. ``zh_CN`` / ``1920×1080``)
+        instead of hold/toggle buttons. Clicking anywhere on the row
+        (or pressing Enter when focused) cycles to the next value.
+        """
+        SC = SceneColors
+
+        row_x = panel_x + 16
+        row_w = panel_w - 32
+        row_h = self.SETTING_ROW_H
+        if is_focused:
+            draw_chamfered_panel(
+                surface, row_x - 4, y - 4, row_w + 8, row_h + 8,
+                SC.BG_PANEL, SC.GOLD_GLOW, SC.GOLD_GLOW, 8,
+            )
+        draw_chamfered_panel(
+            surface, row_x, y, row_w, row_h,
+            SC.BG_PANEL if is_focused else SC.BG_PANEL_LIGHT,
+            SC.GOLD_PRIMARY if is_focused else SC.BORDER_DIM, None, 6,
+        )
+
+        label_color = SC.GOLD_PRIMARY if is_focused else SC.TEXT_PRIMARY
+        label_surf = self.body_font.render(label, True, label_color)
+        surface.blit(
+            label_surf, (row_x + 20, y + (row_h - label_surf.get_height()) // 2),
+        )
+
+        # Right-hand pill: the current value.
+        value_color = SC.GOLD_PRIMARY if is_focused else SC.TEXT_BRIGHT
+        value_surf = self.hint_font.render(value_text, True, value_color)
+        value_rect = value_surf.get_rect(
+            center=(row_x + row_w - 60, y + row_h // 2),
+        )
+
+        # Register the whole row as a click target so a click anywhere
+        # on it cycles the value. (The active "pill" is purely visual —
+        # the click target is the full row width.)
+        self.register_button(
+            button_name, pygame.Rect(row_x, y, row_w, row_h),
+        )
+        if self.is_button_hovered(button_name) and not is_focused:
+            value_surf = self.hint_font.render(value_text, True, SC.GOLD_PRIMARY)
+            value_rect = value_surf.get_rect(
+                center=(row_x + row_w - 60, y + row_h // 2),
+            )
+        surface.blit(value_surf, value_rect)
 
     def _draw_setting_row(
         self, surface: pygame.Surface, panel_x: int, panel_w: int, y: int, key: str, is_focused: bool
@@ -352,64 +462,6 @@ class SettingsScene(Scene, MouseInteractiveMixin):
             text_surf = fit_text_to_width(self.hint_font, text, text_color, self.TOGGLE_BTN_W - 16)
             surface.blit(text_surf, text_surf.get_rect(center=(bx + self.TOGGLE_BTN_W // 2, btn_center_y)))
 
-    def _draw_language_row(
-        self, surface, panel_x, panel_w, y, is_focused,
-    ) -> None:
-        """Render the language-picker row.
-
-        Mirrors the visual structure of ``_draw_setting_row`` so the
-        row reads as part of the same list, but the right-hand value
-        shows the active locale code (e.g. ``zh_CN`` / ``en_US``)
-        instead of hold/toggle buttons. Clicking anywhere on the row
-        (or pressing Enter when focused) cycles to the next locale.
-        """
-        from airwar.i18n import get_locale
-
-        SC = SceneColors
-        current_locale = self._settings_ref.get("language") or get_locale()
-
-        row_x = panel_x + 16
-        row_w = panel_w - 32
-        row_h = self.SETTING_ROW_H
-        if is_focused:
-            draw_chamfered_panel(
-                surface, row_x - 4, y - 4, row_w + 8, row_h + 8,
-                SC.BG_PANEL, SC.GOLD_GLOW, SC.GOLD_GLOW, 8,
-            )
-        draw_chamfered_panel(
-            surface, row_x, y, row_w, row_h,
-            SC.BG_PANEL if is_focused else SC.BG_PANEL_LIGHT,
-            SC.GOLD_PRIMARY if is_focused else SC.BORDER_DIM, None, 6,
-        )
-
-        label_color = SC.GOLD_PRIMARY if is_focused else SC.TEXT_PRIMARY
-        label_surf = self.body_font.render(
-            t("settings.language_label"), True, label_color,
-        )
-        surface.blit(
-            label_surf, (row_x + 20, y + (row_h - label_surf.get_height()) // 2),
-        )
-
-        # Right-hand pill: the current locale code.
-        value_color = SC.GOLD_PRIMARY if is_focused else SC.TEXT_BRIGHT
-        value_surf = self.hint_font.render(current_locale, True, value_color)
-        value_rect = value_surf.get_rect(
-            center=(row_x + row_w - 60, y + row_h // 2),
-        )
-
-        # Register the whole row as a click target so a click anywhere
-        # on it cycles the language. (The active "pill" is purely
-        # visual — the click target is the full row width.)
-        self.register_button(
-            "language", pygame.Rect(row_x, y, row_w, row_h),
-        )
-        if self.is_button_hovered("language") and not is_focused:
-            value_surf = self.hint_font.render(current_locale, True, SC.GOLD_PRIMARY)
-            value_rect = value_surf.get_rect(
-                center=(row_x + row_w - 60, y + row_h // 2),
-            )
-        surface.blit(value_surf, value_rect)
-
     def _render_back_button(self, surface: pygame.Surface, sw: int, sh: int) -> None:
         SC = SceneColors
         scale = ResponsiveHelper.get_scale_factor(sw, sh)
@@ -418,7 +470,7 @@ class SettingsScene(Scene, MouseInteractiveMixin):
         btn_x = (sw - btn_w) // 2
         btn_y = sh - SceneLayout.BACK_BUTTON_BOTTOM_OFFSET
 
-        is_focused = self._focus_index == 3
+        is_focused = self._focus_index == 4
         self.register_button("back", pygame.Rect(btn_x, btn_y, btn_w, btn_h))
         hover = self.is_button_hovered("back")
 

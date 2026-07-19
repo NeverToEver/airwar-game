@@ -42,17 +42,13 @@ class Game:
         # frames before login.
         set_locale("zh_CN")
         self._window = create_window(SCREEN_WIDTH, SCREEN_HEIGHT, "Air War - Sky Combat", resizable=True)
-        # Use the actual adaptive window size for the viewport's logical
-        # surface, not the design-time SCREEN_WIDTH/HEIGHT. With
-        # `_get_adaptive_size` the actual display surface is at the
-        # adaptive size (e.g. 1670x939 on a small laptop), so the
-        # render and mouse coordinates both live in that space. Passing
-        # the design size here would cause the viewport to apply a
-        # scale+offset transform to mouse events that does not match
-        # where the buttons are actually drawn.
-        actual_w, actual_h = self._window.get_size()
-        self._viewport = ScaledViewport(actual_w, actual_h)
-        self._viewport.update(actual_w, actual_h)
+        # Fixed logical resolution (P2): the viewport's logical surface
+        # is always the design-time 1920x1080, no matter what size the
+        # OS window is. Windowed scaling is done by SDL2 SCALED; the
+        # viewport letterboxes in fullscreen. Mouse coordinates are
+        # mapped back via ScaledViewport.screen_to_logical().
+        self._viewport = ScaledViewport(SCREEN_WIDTH, SCREEN_HEIGHT)
+        self._viewport.update(*self._window.get_size())
         self._scene_manager = SceneManager()
         self._db = UserDB()
         self._director = SceneDirector(self._window, self._scene_manager, self._db, self._viewport)
