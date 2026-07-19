@@ -95,6 +95,11 @@ class GameIntegrator:
         self._current_time = 0.0
         self._exit_refund_progress: float = 0.0  # Ammo refund on early exit (0.0-0.3)
         self._score_reduction_factor = 1.0 / 3.0
+        # Cached once per frame in update(): True while the boss enrage
+        # grab (transition or active dash) is running. The mothership
+        # then holds position and ceases fire. Caching avoids querying
+        # the boss state machine from several call sites per frame.
+        self._boss_enrage_engaged = False
 
     def _update_entering_animation(self) -> None:
         self._animations.tick_entering()
@@ -140,9 +145,23 @@ class GameIntegrator:
         self._state_machine._unregister_handlers()
         self._game_scene = None
 
+    def _sync_boss_enrage_cache(self) -> None:
+        """Refresh the cached boss-enrage flag (once per frame).
+
+        Consumed by ``_update_mothership_input`` and the firing guard
+        in ``update`` so neither re-queries the boss state machine.
+        """
+        boss = self._game_scene.get_boss() if self._game_scene else None
+        if boss is None or not getattr(boss, "active", False):
+            self._boss_enrage_engaged = False
+            return
+        is_engaged = getattr(boss, "is_enrage_engaged", lambda: False)
+        self._boss_enrage_engaged = bool(is_engaged())
+
     def _update_mothership_input(self) -> None:
-        # Mothership movement is only allowed while docked
-        if not self._mother_ship.is_visible() or not self._state_machine.is_docked():
+        # Mothership movement is only allowed while docked, and is
+        # frozen while the boss enrage grab is running (position lock).
+        if self._boss_enrage_engaged or not self._mother_ship.is_visible() or not self._state_machine.is_docked():
             self._mother_ship.set_player_input(0, 0)
             return
 
@@ -165,6 +184,7 @@ class GameIntegrator:
         if self._game_scene is None:
             return
         self._current_time = elapsed_seconds
+        self._sync_boss_enrage_cache()
         self._update_mothership_input()
 
         # Run animations without blocking the game loop
@@ -185,7 +205,12 @@ class GameIntegrator:
         self._mother_ship.update()
 
         if self._state_machine.is_docked():
-            self._update_mothership_firing(delta_seconds)
+            # Cease fire while the boss enrage grab runs: the docked
+            # player is invincible, so firing would only pretend to
+            # threaten the boss without consequence. In-flight bullets
+            # keep flying and the player stays bound to the dock.
+            if not self._boss_enrage_engaged:
+                self._update_mothership_firing(delta_seconds)
             self._update_mothership_bullets()
             dock_pos = self._mother_ship.get_docking_position()
             self._game_scene.set_player_position(dock_pos[0], dock_pos[1])

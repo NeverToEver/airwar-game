@@ -249,14 +249,23 @@ class GameSceneUpdater:
 
         Reads ``self._docked`` from the prior ``mothership_integrator``
         step; writes ``player.rect.x/y`` when docked to lock the player
-        to the mothership docking bay.
+        to the mothership docking bay. The docked flag is pushed onto
+        the boss BEFORE ``update_game`` runs so the enrage trigger
+        skips its screen-center grab while docking owns the player
+        position — the two position writers can no longer fight
+        within the same frame.
         """
         scene = self._scene
+        boss = scene.spawn_controller.boss
+        if boss is not None:
+            boss.player_position_locked = self._docked
         scene._game_loop_manager.update_game(scene.player)
         if self._docked:
             dock_pos = scene._mother_ship_integrator.get_docking_position()
             scene.player.rect.x = dock_pos[0] - scene.player.rect.width // 2
             scene.player.rect.y = dock_pos[1] - scene.player.rect.height // 2
+            if hasattr(scene.player, "sync_hitbox"):
+                scene.player.sync_hitbox()
 
     def _step_phase_dash_sync(self) -> None:
         """Step 11: phase dash invincibility sync (L328)."""

@@ -175,6 +175,11 @@ class Boss(Entity):
         self._enrage_trail_render_ghost: pygame.Surface | None = None
         self._enrage_trail_render_ghost_key: tuple[int, int, int] | None = None
         self._enrage_bullets: list[Bullet] = []
+        # Per-frame input written by the update pipeline
+        # (``GameSceneUpdater._step_core_logic``): True while an external
+        # system owns the player position (e.g. mothership docking).
+        # The enrage trigger must then leave ``player.rect`` untouched.
+        self.player_position_locked: bool = False
         # ---- Components (Phase 1 split) ----
         self._state = boss_state.BossStateMachine(self)
         self._movement = boss_movement.BossMovement(self)
@@ -334,6 +339,15 @@ class Boss(Entity):
     def should_lock_player_movement(self) -> bool:
         return self._state.should_lock_player_movement()
 
+    def is_enrage_engaged(self) -> bool:
+        """True while the enrage grab sequence is running.
+
+        Covers the transition wind-up and the active dash — the window
+        in which external systems (e.g. the mothership integrator) must
+        hold position and cease fire.
+        """
+        return self._state.is_enrage_active() or self._state.is_enrage_transitioning()
+
     def enrage_slow_factor(self) -> float:
         return self._state.enrage_slow_factor()
 
@@ -463,6 +477,11 @@ class Boss(Entity):
         target = (get_screen_width() / 2, get_screen_height() / 2)
         if player is not None:
             rect = player.rect
+            if self.player_position_locked:
+                # An external system (mothership docking) owns the player
+                # position this frame: grab at the player's current spot
+                # instead of dragging the rect to the screen center.
+                return (float(rect.centerx), float(rect.centery))
             new_x = max(0, min(target[0] - rect.width / 2, get_screen_width() - rect.width))
             new_y = max(0, min(target[1] - rect.height / 2, get_screen_height() - rect.height))
             rect.x, rect.y = new_x, new_y
