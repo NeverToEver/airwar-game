@@ -67,6 +67,8 @@ a = Analysis(
     datas=[
         # Ship a writable asset directory so first-run generation works.
         (ASSET_DIR, "airwar/data/generated_assets"),
+        # P3: shipped audio SFX (bullet_fire variants).
+        (os.path.join(PROJECT_ROOT, "airwar", "assets", "audio"), "airwar/assets/audio"),
     ],
     hiddenimports=HIDDENIMPORTS,
     hookspath=[],
