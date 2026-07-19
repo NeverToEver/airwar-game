@@ -13,13 +13,6 @@ APP_DIR_NAME = "airwar"
 # exported correctly by the cygwin/msys runtime).
 _WINDOWS_PLATFORMS = frozenset({"win32", "cygwin", "msys"})
 
-# Default location for generated sprite/font/boss image caches, co-located with
-# the package. The directory is git-ignored (see top-level .gitignore).
-_PACKAGE_DATA_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "data",
-)
-
 
 def _home() -> str:
     return os.path.expanduser("~")
@@ -66,11 +59,16 @@ def user_cache_dir() -> str:
 
 
 def generated_asset_cache_dir() -> str:
-    """Return the generated image asset cache directory."""
+    """Return the generated image asset cache directory.
+
+    Defaults to the platform user cache so the game also works from
+    read-only install locations (Program Files, /opt, pip site-packages,
+    PyInstaller ``_internal``). ``AIRWAR_GENERATED_ASSET_DIR`` overrides.
+    """
     override = os.environ.get("AIRWAR_GENERATED_ASSET_DIR")
     if override:
         return os.path.abspath(os.path.expanduser(override))
-    return os.path.join(_PACKAGE_DATA_DIR, "generated_assets")
+    return os.path.join(user_cache_dir(), "generated_assets")
 
 
 def redact_home_path(path: str) -> str:

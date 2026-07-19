@@ -16,12 +16,9 @@ block_cipher = None
 # Project root (where this spec file lives)
 PROJECT_ROOT = os.path.abspath(SPECPATH)
 
-# Generated asset directory. AIRWAR_GENERATED_ASSET_DIR can override it at
-# runtime. The directory itself is created on
-# first run; we don't ship a populated one, so no need to include it.
-ASSET_DIR = os.path.join(PROJECT_ROOT, "airwar", "data", "generated_assets")
-if not os.path.isdir(ASSET_DIR):
-    os.makedirs(ASSET_DIR, exist_ok=True)
+# Generated asset caches live in the platform user cache directory at
+# runtime (see airwar/utils/platform_paths.py), so nothing needs to be
+# pre-created or shipped for first-run generation.
 
 # Detect optional Rust extension at build time; if installed, collect it.
 try:
@@ -65,10 +62,13 @@ a = Analysis(
     pathex=[PROJECT_ROOT],
     binaries=[],
     datas=[
-        # Ship a writable asset directory so first-run generation works.
-        (ASSET_DIR, "airwar/data/generated_assets"),
         # P3: shipped audio SFX (bullet_fire variants).
         (os.path.join(PROJECT_ROOT, "airwar", "assets", "audio"), "airwar/assets/audio"),
+        # Bundled CJK font — without it frozen builds depend on the
+        # target system having a suitable font installed.
+        (os.path.join(PROJECT_ROOT, "airwar", "assets", "fonts"), "airwar/assets/fonts"),
+        # i18n locale catalogs.
+        (os.path.join(PROJECT_ROOT, "airwar", "locales"), "airwar/locales"),
     ],
     hiddenimports=HIDDENIMPORTS,
     hookspath=[],
