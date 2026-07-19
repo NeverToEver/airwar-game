@@ -285,3 +285,33 @@ class TestLockManagerImmutability:
         original = dataclasses.asdict(req)
         manager.acquire_strict(LockLayer.PHASE_DASH, req)
         assert dataclasses.asdict(req) == original
+
+
+class TestMothershipVsBossEnrage:
+    """P1: MOTHERSHIP(80) > BOSS_ENRAGE(60) — a docked player keeps the
+    mothership invincibility while the enrage lock seizes controls."""
+
+    def test_docked_player_stays_invincible_during_enrage(self, manager, game_state, player):
+        manager.acquire(
+            LockLayer.MOTHERSHIP,
+            LockRequest(
+                invincible=True,
+                lock_controls=True,
+                is_silent_invincible=True,
+                invincibility_duration=LockManager.PERMANENT_INVINCIBILITY_FRAMES,
+            ),
+        )
+        # Production enrage request: controls seized, invincible only
+        # during the transition wind-up (False here = active dash phase).
+        manager.acquire(LockLayer.BOSS_ENRAGE, LockRequest(lock_controls=True, invincible=False))
+
+        assert game_state.is_player_invincible is True  # mothership protection wins
+        assert game_state.is_silent_invincible is True
+        assert player.is_controls_locked is True
+
+        manager.release(LockLayer.BOSS_ENRAGE)
+        assert game_state.is_player_invincible is True  # still docked
+
+        manager.release(LockLayer.MOTHERSHIP)
+        assert game_state.is_player_invincible is False
+        assert player.is_controls_locked is False

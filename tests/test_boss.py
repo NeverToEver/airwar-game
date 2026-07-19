@@ -84,3 +84,18 @@ def test_enrage_trigger_centers_player_when_position_unlocked():
     assert player.rect.centery == get_screen_height() // 2
     assert boss._state.enrage_snapshot_target == (get_screen_width() / 2, get_screen_height() / 2)
     assert hitbox_syncs
+
+
+def test_is_enrage_engaged_predicate():
+    """P1-B: the public predicate the mothership integrator consults must
+    be False before the trigger and True once the grab sequence starts."""
+    boss = _boss_ready_to_enrage()
+    assert boss.is_enrage_engaged() is False
+
+    player = SimpleNamespace(
+        rect=pygame.Rect(300, 200, 40, 30),
+        sync_hitbox=lambda: None,
+    )
+    boss._trigger_enrage_if_needed(None, player)
+
+    assert boss.is_enrage_engaged() is True
